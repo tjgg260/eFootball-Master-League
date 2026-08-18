@@ -23,17 +23,34 @@ data files. Nothing below works until this is done.
 
 ---
 
-## 1. Back up the install folder
+## 1. Back up — the data files, not the whole install
 
-Before any tool touches it.
+> **Disk reality on this machine:** `C:` is the only drive, with ~90 GB free. There is no `D:`,
+> despite `libraryfolders.vdf` still referencing a `D:\SteamLibrary` that is not attached.
+> eFootball runs 40–60 GB, so the install plus a full mirror of it will not fit. Do not try.
+
+That is fine, because a full-folder backup is the wrong insurance for a Steam game. Steam's
+**Verify integrity of game files** restores any vanilla file on demand, and the whole install is
+redownloadable. What is *not* trivially recoverable is a `Player.bin` you have spent an evening
+editing — so that is what gets backed up, and it is small.
+
+Backup directory (already created): `C:\Users\tjgg2\Backups\eFootball`
+
+**After the game is installed and you have located the files in step 3**, copy them:
 
 ```bash
-robocopy "C:\Program Files (x86)\Steam\steamapps\common\eFootball" "D:\Backups\eFootball-clean" /MIR /R:1 /W:1
+Copy-Item "<path>\Player.bin","<path>\PlayerAssignment.bin","<path>\PlayerAppearance.bin" -Destination "C:\Users\tjgg2\Backups\eFootball\vanilla\" -Force
 ```
 
-- [ ] Full clean backup taken, and its location noted below
+Take that copy **before the editor's first save**, so you always hold a known-vanilla set that
+does not depend on the editor's own `.bak`.
 
-**Record — backup location:** `________________________`
+- [ ] Backup folder exists
+- [ ] Vanilla `.bin` files copied into it, before any edit
+- [ ] Confirmed Steam → eFootball → Properties → Installed Files → Verify integrity is available
+      as the fallback for everything else
+
+**Record — actual backup location and file sizes:** `________________________`
 
 ---
 
