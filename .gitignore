@@ -1,0 +1,38 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Test output
+TestResults/
+*.trx
+*.coverage
+
+# Tesseract model — 15 MB, fetched from tesseract-ocr/tessdata_best, not source
+tools/tessdata/*.traineddata
+
+# The career save itself. Never commit a database.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Game files must never end up in the repo. Only anonymised exports belong in /samples.
+*.bin
+*.bak
+*.cpk
+*.pak
+
+# Raw screenshots — keep only the deliberate calibration samples in /samples
+*.jpg
+*.jpeg
+!samples/results-*.png
