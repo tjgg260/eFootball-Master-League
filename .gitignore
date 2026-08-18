@@ -36,3 +36,7 @@ tools/tessdata/*.traineddata
 *.jpg
 *.jpeg
 !samples/results-*.png
+
+# The editor's bundled player database: 13 MB of third-party data, not ours to
+# redistribute. Its shape is recorded in samples/schema-players.md instead.
+samples/editor-bundled-players.csv
