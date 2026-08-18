@@ -67,21 +67,88 @@ of our edits exist. Adding it later means redoing the apply.
 
 ---
 
-## 3. Point the editor at the game
+## 3. Locate the data files — RESOLVED 2026-08-18
 
-You already have `eFootball-Player-Editor.exe`. Before running it: scan it, and check it opens
-the game's own encrypted `Player.bin` directly — v6.0.0 claims to decrypt WESYS on the fly, so
-the separate `eFootball-WESYS-Unzlib-Tool.exe` should not be needed.
+The plan assumed `Player.bin` sat loose in the install. It does not. **There are zero `.bin`
+files anywhere in the 49 GB install.** The database lives inside the encrypted `cpk\` archives —
+`dt000_console_all.cpk` has a valid `CPK ` header and then high-entropy bytes, so even the
+archive's filename table is encrypted. That is the WESYS container.
 
-- [ ] Editor opens the game's `Player.bin` without a separate unpack step
-- [ ] `PlayerAssignment.bin` loaded alongside it (team membership + squad numbers)
+`eFootball-WESYS-Unzlib-Tool.exe` is what produces the files. After extraction they land at the
+CPK-internal path `common\etc\...`:
 
-**Record — exact path to `Player.bin`:** `________________________`
-**Record — exact path to `PlayerAssignment.bin`:** `________________________`
-**Record — exact path to `PlayerAppearance.bin`:** `________________________`
+| File | Path (relative to extraction root) | Size |
+|---|---|---|
+| `Player.bin` | `common\etc\pesdb\Player.bin` | 2,264,622 |
+| `PlayerAssignment.bin` | `common\etc\pesdb\PlayerAssignment.bin` | 190,732 |
+| `PlayerAppearance.bin` | `common\etc\appearance\PlayerAppearance.bin` | 647,488 |
+| `Team.bin` | `common\etc\pesdb\Team.bin` | 106,135 |
 
-**Record — do these live inside a `cpk`/`pak` that EvoMod overwrites?** `yes / no`
-This is the difference between "reapply after an EvoMod reinstall" and "don't care".
+Current extraction root on this machine: `Downloads\eFootball Master League\bins\`
+(gitignored — `*.bin` is excluded, so game files never enter the repo).
+
+`Team.bin` matters more than the plan anticipated: the editor's bundled CSV carries team as a
+**name string**, with no id. `Team.bin` is where the numeric team ids live, and the writeback
+needs those.
+
+- [x] Files located and extracted
+- [ ] EvoMod's effect on `cpk\` established (does it replace the archive these came from?)
+
+**Record — do these live inside a `cpk` that EvoMod overwrites?** `yes / no`
+
+---
+
+## 3b. The open question: getting edits back IN
+
+**This is now the riskiest unknown in the whole project, and the plan did not anticipate it.**
+
+Extraction is solved. Re-injection is not. The files came *out* of an encrypted CPK, and nothing
+in the install exposes a load-order config — no ini, no cfg, only `InstallScript.vdf`, which
+just runs `Settings.exe`. The `dt###` numbering implies priority, but that is inference, not
+fact.
+
+Candidate approaches, none yet verified:
+
+1. **Loose-file override** — the game reads a loose `common\etc\pesdb\Player.bin` from some
+   root path in preference to the CPK. Cheapest if true. This is the mechanism eFootball Sider
+   implements, which is circumstantial evidence it exists.
+2. **Higher-numbered CPK** — repack the edited files into e.g. `dt999_console_win.cpk` and let
+   the numbering override the base archive.
+3. **Repack in place** — rebuild the original CPK. Worst option: slow, and it puts a 833 MB
+   archive at risk on every apply.
+
+Whichever it turns out to be **is** Phase 4's apply step, so it has to be answered before Phase
+4 has a design.
+
+**Record — which method works:** `________________________`
+**Record — exact destination path for an edited `Player.bin`:** `________________________`
+
+---
+
+## 4. The Wirtz test
+
+The single most informative thing you can do this evening. It proves the whole writeback path
+end to end — that an edit outside the game survives into a playable match — which is the one
+assumption the entire project rests on. Note that step 7 is the unresolved part above; the test
+is as much about discovering that as about Wirtz.
+
+**Backup is already done** — vanilla copies of all 11 MB of extracted bins are at
+`C:\Users\tjgg2\Backups\eFootball\vanilla-2026-08-18\`. Do not edit that copy.
+
+1. Open `eFootball-Player-Editor.exe`. Load `Player.bin`, then `PlayerAssignment.bin` and
+   `PlayerAppearance.bin` alongside it.
+2. Find **Florian Wirtz**. Record his PID, current club and squad number.
+3. Open **Chelsea's** squad and write down which numbers are already taken. A collision is the
+   most likely way this fails.
+4. Move Wirtz to Chelsea on a free number.
+5. Move one Chelsea squad player — not a key one — the other way, onto a free number at Wirtz's
+   old club, so both squads stay legal.
+6. Save. Check whether the editor wrote a `.bak`. You have your own backup either way, so this
+   is information about the tool, not a safety net you depend on.
+7. **Get the edited files back into the game** — see 3b. Try loose-file override first.
+8. Launch eFootball, start an offline match vs the CPU, open the Chelsea squad list.
+
+**Pass condition:** Wirtz is in the Chelsea squad, with his own face, and is playable.
 
 ---
 
