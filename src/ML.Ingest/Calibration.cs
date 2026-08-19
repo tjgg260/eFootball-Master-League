@@ -39,30 +39,67 @@ public sealed class CalibrationProfile
     public required IReadOnlyList<StatRegion> Regions { get; init; }
 
     /// <summary>
-    /// A starting-point layout for eFootball's full-time stats screen at 1920x1080. These are
-    /// deliberately approximate — Phase 3's calibration UI exists so the user corrects them once
-    /// against a real screenshot; hard-coding exact pixels would be guessing.
+    /// The full eFootball full-time stat table, in the order the game lists it. Every stat has a
+    /// home and away column. These are the stat rows eFootball actually shows — the profile
+    /// captures all of them; the calibration UI just nudges the row band to the real screenshot.
     /// </summary>
-    public static CalibrationProfile Default1080p() => new()
+    public static readonly IReadOnlyList<(string Key, RegionKind Kind)> StatRows = new[]
     {
-        Name = "eFootball full-time 1080p (starter)",
-        Width = 1920,
-        Height = 1080,
-        Regions = new StatRegion[]
+        ("possession", RegionKind.Percentage),
+        ("shots", RegionKind.Number),
+        ("shots_on_target", RegionKind.Number),
+        ("fouls", RegionKind.Number),
+        ("offside", RegionKind.Number),
+        ("corner_kicks", RegionKind.Number),
+        ("free_kicks", RegionKind.Number),
+        ("passes", RegionKind.Number),
+        ("pass_accuracy", RegionKind.Percentage),
+        ("crosses", RegionKind.Number),
+        ("interceptions", RegionKind.Number),
+        ("tackles", RegionKind.Number),
+        ("saves", RegionKind.Number),
+        ("possession_time", RegionKind.Number),
+        ("ball_recovery", RegionKind.Number),
+        ("clearances", RegionKind.Number),
+        ("shots_blocked", RegionKind.Number),
+        ("yellow_cards", RegionKind.Number),
+        ("red_cards", RegionKind.Number),
+    };
+
+    /// <summary>
+    /// A starting-point layout for eFootball's full-time stats screen at 1920x1080. The score sits
+    /// up top; the stat table is a two-column grid the calibration UI aligns once against a real
+    /// screenshot — hard-coding exact pixels would be guessing, so these are honest approximations.
+    /// </summary>
+    public static CalibrationProfile Default1080p()
+    {
+        var regions = new List<StatRegion>
         {
             new("home_score", RegionKind.Number, 0.42, 0.10, 0.05, 0.08),
             new("away_score", RegionKind.Number, 0.53, 0.10, 0.05, 0.08),
-            new("home_possession", RegionKind.Percentage, 0.30, 0.30, 0.07, 0.05),
-            new("away_possession", RegionKind.Percentage, 0.63, 0.30, 0.07, 0.05),
-            new("home_shots", RegionKind.Number, 0.30, 0.38, 0.06, 0.05),
-            new("away_shots", RegionKind.Number, 0.64, 0.38, 0.06, 0.05),
-            new("home_shots_on_target", RegionKind.Number, 0.30, 0.44, 0.06, 0.05),
-            new("away_shots_on_target", RegionKind.Number, 0.64, 0.44, 0.06, 0.05),
-            new("home_fouls", RegionKind.Number, 0.30, 0.50, 0.06, 0.05),
-            new("away_fouls", RegionKind.Number, 0.64, 0.50, 0.06, 0.05),
-            new("home_corners", RegionKind.Number, 0.30, 0.56, 0.06, 0.05),
-            new("away_corners", RegionKind.Number, 0.64, 0.56, 0.06, 0.05),
-            new("scorers", RegionKind.Text, 0.20, 0.66, 0.60, 0.25),
-        },
-    };
+        };
+
+        // The stat table occupies a vertical band; distribute the rows evenly down it. Home
+        // column on the left of centre, away on the right.
+        const double tableTop = 0.28, tableBottom = 0.80;
+        const double rowH = 0.035, colW = 0.07;
+        var n = StatRows.Count;
+        for (var i = 0; i < n; i++)
+        {
+            var (key, kind) = StatRows[i];
+            var y = tableTop + (tableBottom - tableTop) * i / Math.Max(1, n - 1);
+            regions.Add(new StatRegion($"home_{key}", kind, 0.30, y, colW, rowH));
+            regions.Add(new StatRegion($"away_{key}", kind, 0.63, y, colW, rowH));
+        }
+
+        regions.Add(new StatRegion("scorers", RegionKind.Text, 0.20, 0.82, 0.60, 0.16));
+
+        return new CalibrationProfile
+        {
+            Name = "eFootball full-time 1080p (full stat table)",
+            Width = 1920,
+            Height = 1080,
+            Regions = regions,
+        };
+    }
 }
