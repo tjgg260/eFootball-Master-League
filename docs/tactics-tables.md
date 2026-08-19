@@ -41,10 +41,35 @@ repositions players or invents custom shapes.
 | 8 | u8 | team attacking-style enum, 6 values 0–5 (build-up/mentality preset; labels unconfirmed) |
 | 9 | u8 | **phase bit 0x100**: one record clear, one set → in-possession vs out-of-possession shape |
 
-**Headline:** the two-shapes-per-team (fluid formation) mechanism is **native and almost
-entirely unused** — 889 of 890 teams point both phases at the *same* formation_id; only team 6261
-actually morphs (4-3-3 → 4-2-3-1). Authoring two distinct formation_ids per team gives real fluid
-formations. Rich sliders (pressing, line height, width, tempo) are **not** here — the flags word
+**Two shapes per team, but "fluid formation" is OVERSTATED — CORRECTION 2026-08-19.** Each team
+stores two formation shapes and 889/890 point both at the same id; only team 6261 has distinct
+shapes. I originally concluded "author two distinct shapes → real fluid formations, AI uses it
+automatically." **That was inference from the data, never verified in-game, and the user reports
+the AI does NOT visibly use fluid formations.**
+
+What the investigation then showed:
+- `eFootball.exe` contains **zero** formation/tactic/possession strings.
+- The `pak` files are UE5 IoStore (utoc/ucas) with hashed chunk ids — no readable asset paths.
+- So whether/how the engine switches between the two shapes is **compiled UE5 gameplay code in
+  the paks**, not a data flag in any cpk.
+
+**RE-CORRECTED 2026-08-19 after the user's in-game test (El Jadida VB):**
+
+1. El Jadida's two shapes ARE both present, but the **"Use Sub-Tactic" toggle defaults OFF** for
+   both user and AI — you flip it on in the tactics menu.
+2. With it ON, the **AI does use it in-match** (confirmed by taking CPU control and enabling it).
+   So the capability is real and data-adjacent; only the default is off.
+3. It is the **Main + Sub tactic** system, not in/out-possession. The two Tactics.bin records per
+   team are Main (phase 0) and Sub (phase 1) — each a FULL preset: own formation, team playstyle
+   (the style byte @8), and individual instructions. The in-game menu is literally "Use
+   Sub-Tactic / Set Formation / Team Playstyle / Individual Instructions".
+
+So `phase` @9 = Main(0) / Sub(1), NOT in/out possession. Editing the shapes works; the open
+question is whether the **"Use Sub-Tactic = On" enable flag** is stored per-team in dt200 (so we
+can default it on for every AI team) or is a save-file/engine default. That flag has NOT been
+located yet — found only by toggling it and diffing, since every team ships with it off.
+
+Rich sliders (pressing, line height, width, tempo) are **not** in Tactics.bin — the flags word
 uses only 4 bits — and likely live in Team.bin's 1600-byte record (still to decode).
 
 ## Coach.bin — coach philosophy
