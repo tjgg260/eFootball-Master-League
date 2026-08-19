@@ -76,9 +76,36 @@ Recorded so paths don't have to be rediscovered. Verify before relying on them.
   `C:\Program Files (x86)\Steam\userdata\1253972527\760\remote\1665460\screenshots`
 - Tesseract model: `tools/tessdata/eng.traineddata`
 
+## The writeback pipeline (PROVEN — Phase 0 passed 2026-08-19)
+
+A transfer, applied and confirmed in-game (Gyökeres started for Liverpool):
+
+```bash
+python tools/ml_swap.py   --csv PlayerAssignment.csv --a <pid-in> --b <pid-out> --apply
+python tools/ml_deploy.py --csv PlayerAssignment.csv --install
+```
+
+Hard-won rules baked into those tools — change them at your peril:
+
+- **PlayerAssignment is a POSITIONAL format.** A record's club is its physical position in
+  the file, not its `TeamID` value. A transfer swaps *which player occupies* a record; it
+  never moves a record or edits `TeamID`. Editing `TeamID` put a winger in goal.
+- **Never rebuild or re-serialise the CPK.** cpkmakec rebuilds at alignment 2048 and the game
+  silently ignores anything but 512. cricodecs `save()` after a size-changing `replace_bytes`
+  re-lays-out the archive and the game black-screens. The deploy does a **pure in-place byte
+  patch**: the edited payload re-packs at zlib level 1 to the exact original length, so its
+  bytes drop into the same slot and every other byte of the CPK is untouched.
+- **WESYS payload is encrypted** (v6.0.0), decrypted via vendored Sider code. Level 1 repacks
+  Konami's files byte-identically.
+- CSV quirks: the editor export truncates `TeamID` to u16; `Slot` is `sort_key // 4` and the
+  low bits are flags that must be preserved.
+
 ## Phase status
 
-- **Phase 0** — manual proof. See [docs/phase0-checklist.md](docs/phase0-checklist.md). **Gate: not yet passed.**
-- **Phase 1** — blocked on Phase 0 producing real CSV exports into `/samples`.
+- **Phase 0** — PASSED 2026-08-19. Writeback proven in-game. See [docs/phase0-checklist.md](docs/phase0-checklist.md).
+- **Phase 1** — data foundation. Real schemas recovered in `/samples`; SQLite seed not built.
 - **Phase 2** — league engine. Built and tested.
-- **Phase 3–5** — not started.
+- **Phase 3** — capture. Not started.
+- **Phase 4** — writeback. Core mechanism proven early (tools/ml_*.py); needs the `applied_state`
+  diff model and the ML.Sync integration.
+- **Phase 5** — not started.
