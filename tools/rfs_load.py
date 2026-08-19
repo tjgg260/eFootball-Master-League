@@ -178,9 +178,9 @@ def main() -> int:
             [(pid, a, v) for a, v in p["abilities"].items()])
         added += 1
 
-    # --- teams (catalog: RFS clubs get a high game_team_id block, eFootball's untouched) ---
+    # --- teams (catalog: RFS clubs get a high id + game_team_id block, clear of eFootball's) ---
     tt = rfs.tables["teams"]
-    team_pk = 1
+    team_pk = 100_000
     game_team = 20_000
     for i in range(tt.rows):
         r = rfs.record("teams", i)
@@ -194,13 +194,13 @@ def main() -> int:
         team_pk += 1
         game_team += 1
 
-    # --- competitions -> leagues ---
+    # --- competitions -> leagues (high id block, clear of eFootball's) ---
     ct = rfs.tables["competitions"]
     for i in range(ct.rows):
         r = rfs.record("competitions", i)
         name = r[2:2 + 40].split(b"\0")[0].decode("utf-8", "replace")
         if name.strip():
-            con.execute("INSERT OR IGNORE INTO leagues(id,name,tier) VALUES(?,?,1)", (i + 1, name))
+            con.execute("INSERT OR IGNORE INTO leagues(id,name,tier) VALUES(?,?,1)", (100_000 + i, name))
 
     con.commit()
     counts = {tbl: con.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
