@@ -1,0 +1,207 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ML.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="ML.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Master League" Width="1180" Height="760"
+        Background="#0E1116" TransparencyLevelHint="Mica">
+
+  <Window.DataTemplates>
+    <!-- page templates: VM -> view -->
+    <DataTemplate DataType="vm:DashboardViewModel">
+      <ScrollViewer Padding="28">
+        <StackPanel Spacing="20">
+          <TextBlock Text="{Binding ClubName}" FontSize="30" FontWeight="Bold" Foreground="White"/>
+          <TextBlock Text="{Binding LeagueName}" FontSize="15" Foreground="#8A93A2" Margin="0,-8,0,0"/>
+          <WrapPanel>
+            <Border Classes="tile"><StackPanel>
+              <TextBlock Classes="tileLabel" Text="LEAGUE POSITION"/>
+              <TextBlock Classes="tileBig" Text="{Binding Position}"/></StackPanel></Border>
+            <Border Classes="tile"><StackPanel>
+              <TextBlock Classes="tileLabel" Text="BOARD CONFIDENCE"/>
+              <TextBlock Classes="tileBig" Text="{Binding BoardLabel}"/>
+              <ProgressBar Maximum="100" Value="{Binding BoardConfidence}" Height="6" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Classes="tile"><StackPanel>
+              <TextBlock Classes="tileLabel" Text="SQUAD MORALE"/>
+              <TextBlock Classes="tileBig" Text="{Binding MoraleLabel}"/>
+              <ProgressBar Maximum="100" Value="{Binding Morale}" Height="6" Margin="0,8,0,0"/></StackPanel></Border>
+            <Border Classes="tile"><StackPanel>
+              <TextBlock Classes="tileLabel" Text="BALANCE"/>
+              <TextBlock Classes="tileBig" Text="{Binding Balance}"/></StackPanel></Border>
+          </WrapPanel>
+          <Grid ColumnDefinitions="*,*">
+            <Border Grid.Column="0" Classes="panel" Margin="0,0,10,0"><StackPanel>
+              <TextBlock Classes="panelHead" Text="Upcoming"/>
+              <ItemsControl ItemsSource="{Binding Upcoming}">
+                <ItemsControl.ItemTemplate><DataTemplate>
+                  <TextBlock Text="{Binding}" Foreground="#C7CEDA" Margin="0,4" FontSize="14"/>
+                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
+            <Border Grid.Column="1" Classes="panel" Margin="10,0,0,0"><StackPanel>
+              <TextBlock Classes="panelHead" Text="Recent form"/>
+              <ItemsControl ItemsSource="{Binding Form}">
+                <ItemsControl.ItemTemplate><DataTemplate>
+                  <TextBlock Text="{Binding}" Foreground="#C7CEDA" Margin="0,4" FontSize="14" FontFamily="Consolas"/>
+                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
+          </Grid>
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:TableViewModel">
+      <DataGrid Margin="20" ItemsSource="{Binding Rows}" IsReadOnly="True"
+                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="#" Binding="{Binding Pos}" Width="44"/>
+          <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="*"/>
+          <DataGridTextColumn Header="P" Binding="{Binding P}" Width="46"/>
+          <DataGridTextColumn Header="W" Binding="{Binding W}" Width="46"/>
+          <DataGridTextColumn Header="D" Binding="{Binding D}" Width="46"/>
+          <DataGridTextColumn Header="L" Binding="{Binding L}" Width="46"/>
+          <DataGridTextColumn Header="GF" Binding="{Binding GF}" Width="46"/>
+          <DataGridTextColumn Header="GA" Binding="{Binding GA}" Width="46"/>
+          <DataGridTextColumn Header="GD" Binding="{Binding GD}" Width="46"/>
+          <DataGridTextColumn Header="Pts" Binding="{Binding Pts}" Width="56"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:SquadViewModel">
+      <DataGrid Margin="20" ItemsSource="{Binding Rows}" IsReadOnly="True"
+                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="#" Binding="{Binding Number}" Width="50"/>
+          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
+          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="60"/>
+          <DataGridTextColumn Header="OVR" Binding="{Binding Rating}" Width="70"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:FixturesViewModel">
+      <DataGrid Margin="20" ItemsSource="{Binding Rows}" IsReadOnly="True"
+                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="" Binding="{Binding Matchday}" Width="70"/>
+          <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="*"/>
+          <DataGridTextColumn Header="" Binding="{Binding Score}" Width="70"/>
+          <DataGridTextColumn Header="Away" Binding="{Binding Away}" Width="*"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:FinancesViewModel">
+      <StackPanel Margin="28" Spacing="16">
+        <TextBlock Text="Finances" FontSize="24" FontWeight="Bold" Foreground="White"/>
+        <WrapPanel>
+          <Border Classes="tile"><StackPanel>
+            <TextBlock Classes="tileLabel" Text="BALANCE"/>
+            <TextBlock Classes="tileBig" Text="{Binding Balance}"/></StackPanel></Border>
+          <Border Classes="tile"><StackPanel>
+            <TextBlock Classes="tileLabel" Text="WAGE BILL"/>
+            <TextBlock Classes="tileBig" Text="{Binding WageBill}"/></StackPanel></Border>
+          <Border Classes="tile"><StackPanel>
+            <TextBlock Classes="tileLabel" Text="SEASON INCOME"/>
+            <TextBlock Classes="tileBig" Text="{Binding SeasonIncome}"/></StackPanel></Border>
+          <Border Classes="tile"><StackPanel>
+            <TextBlock Classes="tileLabel" Text="SEASON SPEND"/>
+            <TextBlock Classes="tileBig" Text="{Binding SeasonExpenditure}"/></StackPanel></Border>
+        </WrapPanel>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:InboxViewModel">
+      <ScrollViewer Padding="20">
+        <ItemsControl ItemsSource="{Binding Rows}">
+          <ItemsControl.ItemTemplate><DataTemplate>
+            <Border Classes="panel" Margin="0,0,0,12">
+              <StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Icon}" FontSize="16"/>
+                  <TextBlock Text="{Binding Subject}" FontWeight="SemiBold" Foreground="White" FontSize="15"/>
+                </StackPanel>
+                <TextBlock Text="{Binding Body}" Foreground="#A9B2C0" TextWrapping="Wrap" Margin="0,6,0,0"/>
+              </StackPanel>
+            </Border>
+          </DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <Window.Styles>
+    <Style Selector="Border.tile">
+      <Setter Property="Background" Value="#171C24"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="18"/>
+      <Setter Property="Margin" Value="0,0,14,14"/>
+      <Setter Property="Width" Value="210"/>
+    </Style>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="#171C24"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="18"/>
+    </Style>
+    <Style Selector="TextBlock.tileLabel">
+      <Setter Property="Foreground" Value="#7C8698"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="TextBlock.tileBig">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontSize" Value="24"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Margin" Value="0,4,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.panelHead">
+      <Setter Property="Foreground" Value="#7C8698"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+    <Style Selector="Button.nav">
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#C7CEDA"/>
+      <Setter Property="Padding" Value="14,10"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="CornerRadius" Value="8"/>
+    </Style>
+    <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#1E2530"/>
+    </Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="230,*">
+    <!-- sidebar -->
+    <Border Grid.Column="0" Background="#12161C">
+      <DockPanel Margin="16">
+        <StackPanel DockPanel.Dock="Top" Margin="6,10,6,20">
+          <TextBlock Text="{Binding ClubName}" Foreground="White" FontSize="18" FontWeight="Bold" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding LeagueName}" Foreground="#7C8698" FontSize="12"/>
+        </StackPanel>
+        <ItemsControl ItemsSource="{Binding Pages}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PageViewModel">
+              <Button Classes="nav"
+                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NavigateCommand}"
+                      CommandParameter="{Binding}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <TextBlock Text="{Binding Icon}" FontSize="16"/>
+                  <TextBlock Text="{Binding Title}"/>
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </DockPanel>
+    </Border>
+
+    <!-- content -->
+    <ContentControl Grid.Column="1" Content="{Binding CurrentPage}"/>
+  </Grid>
+</Window>

@@ -53,3 +53,6 @@ tools/vendor/sider-full/
 
 build/
 *.bak
+
+# Avalonia app build screenshot
+build/mlapp_screenshot.png
