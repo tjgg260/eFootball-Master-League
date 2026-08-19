@@ -149,15 +149,38 @@ def find(payload: bytes, pid: int, team: int | None = None) -> list[dict]:
     return hits
 
 
-def write_record(payload: bytearray, index: int, *, team_id: int, shirt: int, slot: int) -> None:
-    base = index * REC
+# Two record layouts exist in the wild and they are NOT interchangeable. dt200 (the base
+# archive) is v1; dt870 (the live-update archive the game actually reads) is v2, which moves
+# every field. Writing v1 offsets into a v2 record silently lands team_id on top of the shirt
+# byte and clobbers the trailing zero region.
+LAYOUTS = {
+    "v1": {"team": 16, "shirt": 20, "sort": 21},
+    "v2": {"team": 8, "shirt": 16, "sort": 17},
+}
+
+
+def layout_of(payload: bytes) -> str:
+    return "v2" if pesdb.detect_assignment_layout(bytes(payload)).endswith("/v2") else "v1"
+
+
+def write_record(
+    payload: bytearray, index: int, *, team_id: int, shirt: int, sort_key: int, layout: str
+) -> None:
+    """
+    Writes club, shirt and squad position. sort_key is passed through RAW rather than derived
+    from a slot number — the two players in a swap simply exchange each other's existing value,
+    so we never have to assume how the game encodes position.
+    """
     if not 1 <= shirt <= 99:
         raise ApplyError(f"Shirt {shirt} out of range 1-99")
-    if slot * SLOT_STRIDE > 0xFF:
-        raise ApplyError(f"Slot {slot} too large to encode")
-    struct.pack_into("<I", payload, base + OFF_TEAM_ID, team_id)
-    payload[base + OFF_SHIRT] = shirt - 1
-    payload[base + OFF_SORT_KEY] = slot * SLOT_STRIDE
+    if not 0 <= sort_key <= 0xFF:
+        raise ApplyError(f"sort_key {sort_key} does not fit in a byte")
+
+    off = LAYOUTS[layout]
+    base = index * REC
+    struct.pack_into("<I", payload, base + off["team"], team_id)
+    payload[base + off["shirt"]] = shirt - 1
+    payload[base + off["sort"]] = sort_key
 
 
 # --------------------------------------------------------------------------- validation
@@ -279,10 +302,12 @@ def cmd_transfer(args) -> int:
 
     # Exchange places: each takes the other's slot, keeping both squads the same size and
     # their slot ranges contiguous.
+    layout = layout_of(payload)
+    print(f"  record layout: {layout}")
     write_record(payload, src["index"], team_id=args.to,
-                 shirt=args.shirt, slot=swap["sort_key"] // SLOT_STRIDE)
+                 shirt=args.shirt, sort_key=swap["sort_key"], layout=layout)
     write_record(payload, swap["index"], team_id=from_team,
-                 shirt=args.swap_shirt, slot=src["sort_key"] // SLOT_STRIDE)
+                 shirt=args.swap_shirt, sort_key=src["sort_key"], layout=layout)
 
     problems = validate(bytes(payload), {args.to, from_team})
     if problems:
@@ -299,10 +324,38 @@ def cmd_transfer(args) -> int:
     return 0
 
 
+def match_source_archive(out: Path, align: int) -> None:
+    """
+    Compare the rebuilt archive against the one it replaces.
+
+    A CPK built to the wrong alignment is the nastiest failure this project has hit: the file
+    is structurally valid, cricodecs reads it back perfectly, the payload verifies clean — and
+    the game silently ignores it and keeps showing the old data. Nothing errors. The only
+    visible symptom is "my edit didn't apply".
+
+    eFootball's archives are all 512. cpkmakec defaults to 2048.
+    """
+    try:
+        from cricodecs import cpk as _cpk
+    except ImportError:
+        return
+
+    target = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk") / out.name
+    if not target.exists():
+        return
+
+    original = _cpk.load(target)
+    if original.alignment != align:
+        print(f"\n  WARNING: {out.name} in the game folder is {align=} but the archive you are")
+        print(f"  replacing uses alignment {original.alignment}. A mismatched build loads")
+        print(f"  without error and is ignored. Rebuild with --align {original.alignment}.")
+
+
 def cmd_build_cpk(args) -> int:
     if not CPKMAKEC.exists():
         raise ApplyError(f"cpkmakec not found at {CPKMAKEC}")
     out = Path(args.out).resolve()
+    match_source_archive(out, args.align)
     cmd = [str(CPKMAKEC), str(BINS), str(out), f"-mode={args.mode}", f"-align={args.align}", "-view"]
     print("  " + " ".join(cmd))
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -337,7 +390,10 @@ def main() -> int:
     p = sub.add_parser("build-cpk", help="rebuild a CPK from bins/ via cpkmakec")
     p.add_argument("--out", required=True)
     p.add_argument("--mode", default="FILENAME")
-    p.add_argument("--align", type=int, default=2048)
+    # 512, NOT cpkmakec's 2048 default. eFootball's own archives and EvoMod's are all
+    # built at 512, and a 2048-aligned rebuild is silently ignored by the game - it loads
+    # without error and simply shows the old data.
+    p.add_argument("--align", type=int, default=512)
 
     args = ap.parse_args()
     use_tree(args.tree)
