@@ -11,10 +11,24 @@ See [efootball-master-league-plan.md](efootball-master-league-plan.md) for the f
 **The app's SQLite database is the single source of truth. The game's files are a render
 target.** Never read game state back in as authority after the initial seed.
 
+## Licence: GPL-3.0
+
+This repository is GPL-3.0 because it links vendored Sider code (`tools/vendor/sider/`) for
+WESYS decryption. Deliberate, informed choice — see
+[VENDOR.md](tools/vendor/sider/VENDOR.md). Do not add code here under an incompatible licence.
+
 ## Standing instructions
 
-- **Never write a binary parser for `Player.bin`.** All game I/O goes through the RBsGameLab
-  editor's CSV import/export. If a task seems to need direct binary access, stop and ask.
+- **Never hand-roll the binary formats.** Superseded 2026-08-19: we now read and write
+  `PlayerAssignment.bin` directly, but *only* through vendored Sider code whose layouts and
+  cipher came from upstream. Do not write a new parser from scratch, and do not edit the
+  vendored files in place — re-pull from upstream so the diff stays visible.
+- **No write happens without a byte-exact round-trip proof first.** `prove_round_trip()` in
+  `tools/ml_apply.py` rebuilds the *unmodified* source file and compares byte for byte. If it
+  cannot, we do not understand the format well enough to be trusted, and nothing is written.
+  Keep that gate on every new file type.
+- **Nothing from `tools/vendor/sider/` may run while the game is running.** Only the offline
+  file-format code is used. Sider's `dxgi.dll` injection runtime is deliberately not vendored.
 - **Never guess CSV column names or attribute field names.** Read them from a real export file
   in `/samples`. If the file isn't there, ask for it.
 - SQLite is the source of truth. No code path may treat a game file as authoritative state.
