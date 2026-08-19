@@ -41,8 +41,10 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools" / "vendor" / "sider"))
+sys.path.insert(0, str(REPO / "tools"))
 import wesys   # noqa: E402
 import pesdb   # noqa: E402
+from ability_bits import write_abilities as _write_abilities   # noqa: E402
 
 PLAYER_REC = 400
 APP_REC = 64
@@ -148,7 +150,8 @@ class Tree:
 
     # --- authoring ------------------------------------------------------------
 
-    def author_player(self, donor_pid: int, new_pid: int, full_name: str) -> bool:
+    def author_player(self, donor_pid: int, new_pid: int, full_name: str,
+                      abilities: dict[str, int] | None = None) -> bool:
         di = self.player_idx.get(donor_pid)
         if di is None:
             return False
@@ -160,6 +163,10 @@ class Tree:
                          (NAME_SHORT, short_name(full_name))):
             b = val.encode("utf-8")[:60]
             rec[off:off + 61] = b + b"\x00" * (61 - len(b))
+        # Write the player's REAL (translated) abilities over the donor's, so they play with
+        # their own attributes rather than the cloned template's. The bit offsets are verified.
+        if abilities:
+            _write_abilities(rec, abilities)
         self._pending_players.append((new_pid, bytes(rec)))
         # appearance: clone donor's if present
         ai = self.app_idx.get(donor_pid)
