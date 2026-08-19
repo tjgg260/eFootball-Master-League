@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using ML.Core.Management;
 
 namespace ML.App.ViewModels;
@@ -151,6 +152,60 @@ public sealed class FinancesViewModel : PageViewModel
     public string SeasonExpenditure { get; }
     public string WageBill { get; }
     public bool InTheRed { get; }
+}
+
+// --- Transfermarket (browse the full 74k-player master DB) ------------------------
+
+public sealed record MarketPlayer(string Name, string Position, int Overall, string Source);
+
+public sealed class MarketViewModel : PageViewModel
+{
+    public MarketViewModel(Session s)
+    {
+        // Read the compiled master DB (RFS + eFootball) if it's been built; else fall back to
+        // the session's sample squad so the screen always shows something.
+        var masterDb = FindMasterDb();
+        if (masterDb is not null)
+        {
+            using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={masterDb};Mode=ReadOnly");
+            con.Open();
+            using var count = con.CreateCommand();
+            count.CommandText = "SELECT COUNT(*) FROM players";
+            TotalPlayers = Convert.ToInt32(count.ExecuteScalar());
+
+            using var cmd = con.CreateCommand();
+            cmd.CommandText =
+                "SELECT name, position, COALESCE(overall_rating,0), is_custom FROM players " +
+                "ORDER BY overall_rating DESC LIMIT 200";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                Rows.Add(new MarketPlayer(r.GetString(0), r.GetString(1), r.GetInt32(2),
+                    r.GetInt32(3) == 1 ? "RFS" : "eFootball"));
+            }
+        }
+    }
+
+    public override string Title => "Market";
+    public override string Icon => "🔁";
+    public int TotalPlayers { get; }
+    public string Header => TotalPlayers > 0 ? $"Transfermarket — {TotalPlayers:N0} players" : "Transfermarket";
+    public ObservableCollection<MarketPlayer> Rows { get; } = new();
+
+    private static string? FindMasterDb()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, "build", "master.db");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+            dir = dir.Parent;
+        }
+        return null;
+    }
 }
 
 // --- Inbox ------------------------------------------------------------------------

@@ -19,6 +19,7 @@ public partial class MainWindowViewModel : ObservableObject
             new DashboardViewModel(session),
             new TableViewModel(session),
             new SquadViewModel(session),
+            new MarketViewModel(session),
             new FixturesViewModel(session),
             new FinancesViewModel(session),
             new InboxViewModel(session),
