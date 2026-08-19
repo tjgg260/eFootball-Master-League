@@ -58,3 +58,6 @@ build/
 build/mlapp_screenshot.png
 
 build/mfl_reference/
+
+build/master.db
+build/rfs_ability_offsets.json
