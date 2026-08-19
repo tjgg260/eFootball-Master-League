@@ -44,3 +44,9 @@ samples/editor-bundled-players.csv
 # Real exports: game data, not ours to redistribute. Schema docs are the record.
 bins/
 samples/*.csv
+bins-evomod/
+bins-evomod-full/
+EvoMod_6.0/
+*.cpk
+*.rar
+tools/vendor/sider-full/

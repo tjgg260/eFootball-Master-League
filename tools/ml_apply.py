@@ -40,6 +40,20 @@ import pesdb  # noqa: E402
 
 BINS = REPO / "bins"
 ASSIGNMENT_BIN = BINS / "common" / "etc" / "pesdb" / "PlayerAssignment.bin"
+
+
+def use_tree(tree: str | None) -> None:
+    """
+    Point the tool at an extracted CPK tree other than bins/.
+
+    This matters for install order: the plan's rule is Konami patch -> EvoMod -> our edit, so
+    when EvoMod is installed our edit has to be applied to ITS extracted tree, not to vanilla.
+    EvoMod ships its own PlayerAssignment.bin and editing vanilla would silently revert it.
+    """
+    global BINS, ASSIGNMENT_BIN
+    if tree:
+        BINS = Path(tree).resolve()
+        ASSIGNMENT_BIN = BINS / "common" / "etc" / "pesdb" / "PlayerAssignment.bin"
 BACKUP_DIR = Path.home() / "Backups" / "eFootball"
 CPKMAKEC = REPO / "CRI_File_System_Tools_v2.40.13.0" / "crifilesystem v2.40.13.0" / "cpkmakec.exe"
 
@@ -75,18 +89,35 @@ def load() -> tuple[bytes, bytearray, int]:
     return blob, bytearray(payload), blob[1] & 0x0F
 
 
-def prove_round_trip(blob: bytes, payload: bytes, nibble: int) -> int:
+def prove_round_trip(blob: bytes, payload: bytes, nibble: int) -> tuple[int, bool]:
     """
-    Find the zlib level that reproduces the source file byte for byte, and fail if none does.
+    Prove we can rebuild the source file before we are trusted to edit it.
 
-    This runs against the UNMODIFIED payload. If we cannot rebuild the original exactly, we do
-    not understand the format well enough to be trusted with an edit, and nothing is written.
+    Two bars, because there are two kinds of input:
+
+      exact    -- some zlib level reproduces the file BYTE FOR BYTE. True of Konami's own
+                  files (level 1) and the strongest proof available: it means our decrypt,
+                  our recompress and our re-encrypt all agree with whoever built it.
+
+      semantic -- we cannot match the bytes, but decrypt(encrypt(payload)) == payload. This
+                  is what a third-party repack looks like: EvoMod's PlayerAssignment.bin
+                  decodes perfectly but was compressed by a different zlib build, and no
+                  level we can produce recreates its exact stream. Byte-identity there would
+                  be proof of THEIR encoder, not of our understanding.
+
+    Failing both means we cannot rebuild the file at all, and nothing is written.
     """
     for level in range(10):
         if wesys.pack_wesys_container(payload, key_nibble=nibble, compression_level=level) == blob:
-            return level
+            return level, True
+
+    level = 1
+    packed = wesys.pack_wesys_container(payload, key_nibble=nibble, compression_level=level)
+    if wesys.unpack_wesys_payload(packed) == payload:
+        return level, False
+
     raise ApplyError(
-        "Round-trip proof FAILED: no zlib level reproduces the original file.\n"
+        "Round-trip proof FAILED: cannot rebuild this file at all.\n"
         "Refusing to write. The container format may have changed in a game patch.")
 
 
@@ -172,14 +203,14 @@ def validate(payload: bytes, teams: set[int]) -> list[str]:
 
 def cmd_inspect(_args) -> int:
     blob, payload, nibble = load()
-    level = prove_round_trip(blob, bytes(payload), nibble)
+    level, exact = prove_round_trip(blob, bytes(payload), nibble)
     recs = records(payload)
     teams = {r["team_id"] for r in recs}
     print(f"file        {ASSIGNMENT_BIN}")
     print(f"container   {len(blob):,} bytes, header {blob[:3].hex()}, key nibble {nibble}")
     print(f"payload     {len(payload):,} bytes = {len(recs):,} records of {REC}")
     print(f"layout      {pesdb.detect_assignment_layout(bytes(payload))}")
-    print(f"round-trip  byte-exact at zlib level {level}")
+    print(f"round-trip  {'BYTE-EXACT' if exact else 'semantic only (third-party repack)'} at zlib level {level}")
     print(f"teams       {len(teams):,}   players {len({r['player_id'] for r in recs}):,}")
     return 0
 
@@ -204,8 +235,8 @@ def cmd_squad(args) -> int:
 
 def cmd_transfer(args) -> int:
     blob, payload, nibble = load()
-    level = prove_round_trip(blob, bytes(payload), nibble)
-    print(f"round-trip proven byte-exact at zlib level {level}")
+    level, exact = prove_round_trip(blob, bytes(payload), nibble)
+    print(f"round-trip: {'byte-exact' if exact else 'semantic only (third-party repack)'} at zlib level {level}")
 
     moves = [(args.pid, args.to, args.shirt)]
     if args.swap_pid is not None:
@@ -285,6 +316,8 @@ def cmd_build_cpk(args) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--tree", default=None,
+                    help="extracted CPK tree to work on (default: bins/)")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("inspect", help="decrypt and summarise the assignment file")
@@ -307,6 +340,7 @@ def main() -> int:
     p.add_argument("--align", type=int, default=2048)
 
     args = ap.parse_args()
+    use_tree(args.tree)
     try:
         return {
             "inspect": cmd_inspect,
