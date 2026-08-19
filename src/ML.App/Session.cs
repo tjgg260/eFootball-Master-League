@@ -49,7 +49,7 @@ public sealed class Session
     {
         var teams = LeagueTeams().Select(t => new TeamId(t.Id)).ToList();
         var fixtures = new List<Fixture>();
-        foreach (var f in Repo.Fixtures(SeasonId).Where(f => f.LeagueId == LeagueId))
+        foreach (var f in Repo.Fixtures(SeasonId).Where(f => f.LeagueId == LeagueId && f.Kind == "league"))
         {
             var fixture = new Fixture(f.Id, f.Matchday, new TeamId(f.HomeTeamId), new TeamId(f.AwayTeamId));
             if (f.Played)

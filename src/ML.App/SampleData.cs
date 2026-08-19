@@ -94,6 +94,30 @@ public static class SampleData
 
         // Manage Tamworth by default (the club we proved on the pitch).
         var current = Array.IndexOf(Clubs, "Tamworth") + 1;
+
+        // Preseason friendlies for the managed club (matchday 0, before the league kicks off).
+        var fixtureId = fixtures.Max(f => f.Id) + 1;
+        int[] opponents = { 7, 14, 22, 3 }; // a few clubs to warm up against
+        foreach (var opp in opponents)
+        {
+            if (opp == current) continue;
+            var home = fixtureId % 2 == 0;
+            repo.AddFixture(new FixtureRow
+            {
+                Id = fixtureId, SeasonId = 1, LeagueId = 1, Matchday = 0,
+                HomeTeamId = home ? current : opp, AwayTeamId = home ? opp : current,
+                Kind = "friendly", Played = true,
+            });
+            var result = sim.Simulate(
+                new ML.Core.Simulation.TeamStrength(60, 60),
+                new ML.Core.Simulation.TeamStrength(58, 58));
+            repo.RecordResult(new ResultRow
+            {
+                FixtureId = fixtureId, HomeGoals = result.HomeGoals, AwayGoals = result.AwayGoals,
+            });
+            fixtureId++;
+        }
+
         return new Session(db, current, seasonId: 1);
     }
 

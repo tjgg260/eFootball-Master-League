@@ -129,8 +129,8 @@ public sealed class Repository
         "ON CONFLICT(id) DO UPDATE SET year=excluded.year, is_current=excluded.is_current", s);
 
     public void AddFixture(FixtureRow f) => _c.Execute(
-        "INSERT INTO fixtures(id,season_id,league_id,matchday,home_team_id,away_team_id,played) " +
-        "VALUES(@Id,@SeasonId,@LeagueId,@Matchday,@HomeTeamId,@AwayTeamId,@Played) " +
+        "INSERT INTO fixtures(id,season_id,league_id,matchday,home_team_id,away_team_id,played,kind) " +
+        "VALUES(@Id,@SeasonId,@LeagueId,@Matchday,@HomeTeamId,@AwayTeamId,@Played,@Kind) " +
         "ON CONFLICT(id) DO UPDATE SET played=excluded.played", f);
 
     public void RecordResult(ResultRow r)
@@ -156,7 +156,7 @@ public sealed class Repository
 
     public IReadOnlyList<FixtureRow> Fixtures(int seasonId, int? matchday = null) => _c.Query<FixtureRow>(
         "SELECT id Id,season_id SeasonId,league_id LeagueId,matchday Matchday,home_team_id HomeTeamId," +
-        "away_team_id AwayTeamId,played Played FROM fixtures WHERE season_id=@seasonId " +
+        "away_team_id AwayTeamId,played Played,kind Kind FROM fixtures WHERE season_id=@seasonId " +
         (matchday is null ? "" : "AND matchday=@matchday ") + "ORDER BY matchday,id",
         new { seasonId, matchday }).ToList();
 

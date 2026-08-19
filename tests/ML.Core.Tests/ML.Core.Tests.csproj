@@ -22,6 +22,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ML.Core\ML.Core.csproj" />
+    <ProjectReference Include="..\..\src\ML.Data\ML.Data.csproj" />
+    <ProjectReference Include="..\..\src\ML.Ingest\ML.Ingest.csproj" />
+    <ProjectReference Include="..\..\src\ML.Sync\ML.Sync.csproj" />
   </ItemGroup>
 
 </Project>

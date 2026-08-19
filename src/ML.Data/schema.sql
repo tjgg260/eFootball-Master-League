@@ -147,7 +147,8 @@ CREATE TABLE IF NOT EXISTS fixtures (
     matchday     INTEGER NOT NULL,
     home_team_id INTEGER NOT NULL REFERENCES teams(id),
     away_team_id INTEGER NOT NULL REFERENCES teams(id),
-    played       INTEGER NOT NULL DEFAULT 0
+    played       INTEGER NOT NULL DEFAULT 0,
+    kind         TEXT NOT NULL DEFAULT 'league'   -- 'league' | 'friendly' (preseason) | 'cup'
 );
 
 CREATE TABLE IF NOT EXISTS results (

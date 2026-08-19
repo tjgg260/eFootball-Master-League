@@ -120,7 +120,8 @@ public sealed class FixturesViewModel : PageViewModel
         {
             var r = f.Played ? s.ResultFor(f.Id) : null;
             var score = r is null ? "v" : $"{r.HomeGoals}-{r.AwayGoals}";
-            Rows.Add(new FixtureEntry($"MD{f.Matchday}", s.TeamName(f.HomeTeamId),
+            var label = f.Kind == "friendly" ? "Friendly" : $"MD{f.Matchday}";
+            Rows.Add(new FixtureEntry(label, s.TeamName(f.HomeTeamId),
                 s.TeamName(f.AwayTeamId), score, f.Played));
         }
     }

@@ -116,6 +116,7 @@ public sealed record FixtureRow
     public int HomeTeamId { get; init; }
     public int AwayTeamId { get; init; }
     public bool Played { get; init; }
+    public string Kind { get; init; } = "league";
 }
 
 public sealed record ResultRow
