@@ -56,3 +56,5 @@ build/
 
 # Avalonia app build screenshot
 build/mlapp_screenshot.png
+
+build/mfl_reference/
