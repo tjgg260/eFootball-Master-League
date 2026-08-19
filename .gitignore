@@ -50,3 +50,6 @@ EvoMod_6.0/
 *.cpk
 *.rar
 tools/vendor/sider-full/
+
+build/
+*.bak
