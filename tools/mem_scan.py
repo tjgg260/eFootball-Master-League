@@ -35,7 +35,8 @@ PAGE_NOACCESS = 0x01
 WRITABLE = 0x04 | 0x08 | 0x40 | 0x80   # RW, WC, RWX — live stats live in writable data pages
 STATE = Path("build/mem_scan_state.json")
 
-FMT = {"f32": ("<f", 4), "f64": ("<d", 8), "i32": ("<i", 4), "u32": ("<I", 4), "u16": ("<H", 2)}
+FMT = {"f32": ("<f", 4), "float": ("<f", 4), "f64": ("<d", 8), "double": ("<d", 8),
+       "i32": ("<i", 4), "u32": ("<I", 4), "u16": ("<H", 2)}
 
 
 class MBI(ctypes.Structure):
@@ -89,23 +90,29 @@ def _read(h, base, size):
     return b""
 
 
-def _matches(data, base, fmt, size, value, eps):
-    hits = []
-    for off in range(0, len(data) - size, 4 if size >= 4 else 2):
-        try:
-            v = struct.unpack_from(fmt, data, off)[0]
-        except struct.error:
-            continue
-        if isinstance(v, float):
-            if abs(v - value) <= eps:
-                hits.append(base + off)
-        elif v == int(value):
-            hits.append(base + off)
-    return hits
+import numpy as np
+
+# numpy dtype + alignment per scan type. Alignment 4 matches typical struct field packing and
+# makes a full first-scan fast; the correlation still nails the exact field.
+NPT = {"f32": ("<f4", 4), "float": ("<f4", 4), "f64": ("<f8", 8), "double": ("<f8", 8),
+       "i32": ("<i4", 4), "u32": ("<u4", 4), "u16": ("<u2", 2)}
+
+
+def _matches(data, base, typ, value, eps):
+    dt, step = NPT[typ]
+    n = len(data) - (len(data) % step)
+    if n < step:
+        return []
+    a = np.frombuffer(data[:n], dtype=dt)
+    if a.dtype.kind == "f":
+        with np.errstate(invalid="ignore"):     # NaN floats in some regions — ignore, not match
+            idx = np.nonzero(np.abs(a - value) <= eps)[0]
+    else:
+        idx = np.nonzero(a == int(value))[0]
+    return (base + idx.astype(np.int64) * step).tolist()
 
 
 def cmd_find(value, typ, eps):
-    fmt, size = FMT[typ]
     pid = find_pid() or sys.exit("eFootball not running.")
     h = _open(pid)
     hits = []
@@ -113,7 +120,7 @@ def cmd_find(value, typ, eps):
         for base, size_r in _regions(h):
             data = _read(h, base, size_r)
             if data:
-                hits.extend(_matches(data, base, fmt, size, value, eps))
+                hits.extend(_matches(data, base, typ, value, eps))
                 if len(hits) > 2_000_000:
                     break
     finally:

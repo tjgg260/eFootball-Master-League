@@ -5,6 +5,13 @@ attempted/completed, tackles, shots, duels, distance…) **exist in memory durin
 they're just never written to a file or shown. This is how we read them out. Read-only
 (ReadProcessMemory only — we never write to the game), same mechanism as `find_aes_key_live.py`.
 
+> **Toolchain note (confirmed 2026-08-20):** eFootball's anti-tamper blocks **Cheat Engine
+> specifically** (attaches but every scan returns 0 — reads are walled off by CE's signature).
+> A plain external process is NOT blocked: `tools/mem_probe.py` read 40 regions of real data,
+> and `tools/mem_scan.py` (numpy-accelerated) scanned the live game and returned 82k candidate
+> hits for a test value. **So we do the whole mapping with our own `mem_scan.py`, not CE.**
+> The CE bridge (`ce_bridge.lua`) stays in the repo for other games but is unused here.
+
 ## Why this works (and the exe route doesn't help here)
 
 - The rating is derived from counters → the counters are live game state in RAM.
