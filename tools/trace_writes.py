@@ -244,6 +244,11 @@ def main():
                 if h:
                     k32.CloseHandle(h)
             k32.ContinueDebugEvent(ev.dwProcessId, ev.dwThreadId, DBG_CONTINUE)
+            # Grab-and-go: once we've snapshotted the source pointers, detach immediately to
+            # minimise the window the anti-tamper has to spot the debug registers.
+            if len(dumped) >= 4:
+                print("\ncaptured source pointers — detaching NOW (minimising exposure).")
+                break
     finally:
         for tid in thread_ids(pid):
             set_bps(tid, targets, clear=True)
