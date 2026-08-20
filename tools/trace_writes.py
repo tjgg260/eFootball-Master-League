@@ -149,6 +149,19 @@ def main():
         targets += [int(x, 16) for x in a[a.index("--addr") + 1].split(",")]
     if "--team-passes" in a:
         targets.append(locate_team_passes(a[a.index("--team-passes") + 1]))
+    if "--match-passes" in a:
+        # locate by the EXACT on-screen passes pair (deterministic, works while paused),
+        # then watch BOTH teams' passes so whichever ticks first fires.
+        from read_team_stats import locate_by_passes
+        home, away = (int(x) for x in a[a.index("--match-passes") + 1].split(","))
+        h0 = _open(find_pid())
+        addr = locate_by_passes(h0, home, away)
+        k32.CloseHandle(h0)
+        if addr is None:
+            sys.exit(f"no team-stats struct with passes {home}/{away} — re-read the current "
+                     f"numbers off the paused stats screen and pass them exactly.")
+        print(f"located struct @ 0x{addr:x}  (passes {home}/{away})")
+        targets += [addr + 7 * 8, addr + 7 * 8 + 4]     # home + away passes
     targets = targets[:4]
     if not targets:
         print(__doc__)

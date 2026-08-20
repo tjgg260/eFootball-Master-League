@@ -36,8 +36,9 @@ def _read_struct(f, ints, i):
     return out
 
 
-def locate_and_read(h):
-    best = None            # (activity, addr, stats)
+def locate_candidates(h):
+    """All addresses that look like a real team-stats struct (possession + realistic ints)."""
+    cands = []                                          # absolute address of possession-home float
     for base, size in _regions(h):
         data = _read(h, base, size)
         n = len(data) - (len(data) % 4)
@@ -48,22 +49,74 @@ def locate_and_read(h):
         with np.errstate(invalid="ignore", over="ignore"):
             a, b = f[:-1], f[1:]
             finite = np.isfinite(a) & np.isfinite(b)
-            # possession pair: two fractions summing to EXACTLY 1.0 (percentages of 100)
             cand = np.nonzero(finite & (a > 0.05) & (a < 0.95) & (b > 0.05) & (b < 0.95)
-                              & (np.abs(a + b - 1.0) < 0.006))[0]
+                              & (np.abs(a + b - 1.0) < 0.004))[0]
         for i in cand:
             need = i + len(STATS) * 2
             if need >= len(ints):
                 continue
-            pairs = ints[i + 2: need]                  # int stats after possession
-            if pairs.min() < 0 or pairs.max() > 5000:
+            pairs = ints[i + 2: need]                   # the 24 int stats after possession
+            # REAL match: modest values, and several zeros (garbage structs have neither)
+            if pairs.min() < 0 or pairs.max() > 300:
                 continue
-            activity = int(pairs.sum())                # real full-time match has activity
-            if activity < 20:                          # reject near-empty false pairs
+            if int((pairs == 0).sum()) < 4:
                 continue
-            if best is None or activity > best[0]:
-                best = (activity, base + i * 4, _read_struct(f, ints, i))
-    return (best[1], best[2]) if best else (None, None)
+            cands.append(int(base + i * 4))
+    return cands
+
+
+def locate_by_passes(h, home, away):
+    """Find the team-stats struct by its exact current passes pair (works while paused)."""
+    for base, size in _regions(h):
+        data = _read(h, base, size)
+        n = len(data) - (len(data) % 4)
+        if n < 4 * (len(STATS) * 2):
+            continue
+        f = np.frombuffer(data[:n], dtype="<f4")
+        ints = np.frombuffer(data[:n], dtype="<i4")
+        with np.errstate(invalid="ignore", over="ignore"):
+            a, b = f[:-1], f[1:]
+            finite = np.isfinite(a) & np.isfinite(b)
+            cand = np.nonzero(finite & (a > 0.02) & (a < 0.98) & (b > 0.02) & (b < 0.98)
+                              & (np.abs(a + b - 1.0) < 0.02))[0]
+        ph = 7 * 2                                       # passes home index from possession home
+        for i in cand:
+            if i + ph + 1 >= len(ints):
+                continue
+            if int(ints[i + ph]) == home and int(ints[i + ph + 1]) == away:
+                return int(base + i * 4)
+    return None
+
+
+def _read_u32(h, addr):
+    d = _read(h, addr, 4)
+    return int.from_bytes(d, "little") if len(d) == 4 else -1
+
+
+def locate_live(h):
+    """Pick the struct whose PASSES are changing right now — that's the live match, not a corpse."""
+    import time as _t
+    cands = locate_candidates(h)
+    if not cands:
+        return None
+    passes_off = 7 * 8                                   # passes home offset from possession home
+    first = {a: (_read_u32(h, a + passes_off), _read_u32(h, a + passes_off + 4)) for a in cands}
+    _t.sleep(1.5)
+    changed = [a for a in cands
+               if (_read_u32(h, a + passes_off), _read_u32(h, a + passes_off + 4)) != first[a]]
+    return (changed or cands)[0]
+
+
+def locate_and_read(h):
+    """Best single struct: the live (changing) one if any, else the first realistic candidate."""
+    addr = locate_live(h)
+    if addr is None:
+        return None, None
+    data = _read(h, addr - 0, 4 * (len(STATS) * 2) + 8)
+    n = len(data) - (len(data) % 4)
+    f = np.frombuffer(data[:n], dtype="<f4")
+    ints = np.frombuffer(data[:n], dtype="<i4")
+    return addr, _read_struct(f, ints, 0)
 
 
 def main():
