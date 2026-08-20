@@ -317,6 +317,15 @@
             <TextBlock Classes="tileLabel" Text="SEASON SPEND"/>
             <TextBlock Classes="tileBig" Text="{Binding SeasonExpenditure}"/></StackPanel></Border>
         </WrapPanel>
+        <Border Classes="panel" IsVisible="{Binding TrendVisible}"><StackPanel Spacing="6">
+          <TextBlock Classes="panelHead" Text="Money over time"/>
+          <TextBlock Text="{Binding TrendLabel}" Foreground="#8A93A2" FontSize="12"/>
+          <Panel Width="640" Height="96" HorizontalAlignment="Left">
+            <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
+            <Polyline Points="{Binding BalancePoints}" Stroke="{DynamicResource ThemeAccentBrush}"
+                      StrokeThickness="2" StrokeJoin="Round"/>
+          </Panel>
+        </StackPanel></Border>
       </StackPanel>
     </DataTemplate>
 
@@ -358,6 +367,23 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
           <TextBlock Text="{Binding FanLine}" Foreground="#E0A526" FontSize="13" Margin="0,8,0,0"/>
+          <Panel Width="520" Height="48" HorizontalAlignment="Left" IsVisible="{Binding FanTrendVisible}">
+            <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
+            <Polyline Points="{Binding FanPoints}" Stroke="#E0A526" StrokeThickness="2" StrokeJoin="Round"/>
+          </Panel>
+        </StackPanel></Border>
+        <Border Classes="panel"><StackPanel Spacing="8">
+          <TextBlock Classes="panelHead" Text="Club infrastructure"/>
+          <TextBlock Text="{Binding FacilitiesLine}" Foreground="#C7CEDA" FontSize="13"/>
+          <WrapPanel>
+            <Button Content="💷 Request budget" Command="{Binding RequestBudgetCommand}" Margin="0,2,6,0"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="12,7" CornerRadius="7" FontSize="12"/>
+            <Button Content="🏋 Upgrade training ground" Command="{Binding UpgradeTrainingCommand}" Margin="0,2,6,0"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="12,7" CornerRadius="7" FontSize="12"/>
+            <Button Content="🎓 Upgrade academy" Command="{Binding UpgradeAcademyCommand}" Margin="0,2,6,0"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="12,7" CornerRadius="7" FontSize="12"/>
+          </WrapPanel>
+          <TextBlock Text="{Binding LeverStatus}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"/>
         </StackPanel></Border>
         <Border Classes="panel" IsVisible="{Binding EloTrendVisible}"><StackPanel Spacing="6">
           <TextBlock Classes="panelHead" Text="Club trajectory"/>
@@ -550,8 +576,9 @@
               <DataGrid ItemsSource="{Binding TopScorers}" IsReadOnly="True" HeadersVisibility="None" Height="320">
                 <DataGrid.Columns>
                   <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
-                  <DataGridTextColumn Binding="{Binding Team}" Width="110"/>
-                  <DataGridTextColumn Binding="{Binding Goals}" Width="44"/>
+                  <DataGridTextColumn Binding="{Binding Team}" Width="100"/>
+                  <DataGridTextColumn Binding="{Binding Goals}" Width="40"/>
+                  <DataGridTextColumn Binding="{Binding Rate}" Width="86"/>
                 </DataGrid.Columns></DataGrid></StackPanel></Border>
             <Border Grid.Column="1" Classes="panel" Margin="4,0,4,0"><StackPanel>
               <TextBlock Classes="panelHead" Text="🅰 Top assists"/>
@@ -568,6 +595,28 @@
                   <DataGridTextColumn Binding="{Binding Team}" Width="*"/>
                   <DataGridTextColumn Binding="{Binding Value}" Width="60"/>
                 </DataGrid.Columns></DataGrid></StackPanel></Border>
+          </Grid>
+          <Grid ColumnDefinitions="*,*,*">
+            <Border Grid.Column="0" Classes="panel" Margin="0,0,8,0" IsVisible="{Binding HasCleanSheets}"><StackPanel>
+              <TextBlock Classes="panelHead" Text="🧤 Clean sheets"/>
+              <DataGrid ItemsSource="{Binding CleanSheets}" IsReadOnly="True" HeadersVisibility="None" MaxHeight="240">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Binding="{Binding Team}" Width="*"/>
+                  <DataGridTextColumn Binding="{Binding Value}" Width="50"/>
+                </DataGrid.Columns></DataGrid></StackPanel></Border>
+            <Border Grid.Column="1" Classes="panel" Margin="4,0,4,0" IsVisible="{Binding HasDiscipline}"><StackPanel>
+              <TextBlock Classes="panelHead" Text="🟨 Discipline"/>
+              <DataGrid ItemsSource="{Binding Discipline}" IsReadOnly="True" HeadersVisibility="None" MaxHeight="240">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
+                  <DataGridTextColumn Binding="{Binding Team}" Width="100"/>
+                  <DataGridTextColumn Binding="{Binding Cards}" Width="80"/>
+                </DataGrid.Columns></DataGrid></StackPanel></Border>
+            <Border Grid.Column="2" Classes="panel" Margin="8,0,0,0" IsVisible="{Binding HasHeadToHead}"><StackPanel>
+              <TextBlock Classes="panelHead" Text="⚔ Head to head"/>
+              <TextBlock Text="{Binding HeadToHeadLine}" Foreground="#C7CEDA" FontSize="14"
+                         TextWrapping="Wrap" Margin="0,6,0,0"/>
+            </StackPanel></Border>
           </Grid>
           <Border Classes="panel"><StackPanel>
             <TextBlock Classes="panelHead" Text="📊 Match reports"/>
@@ -810,6 +859,8 @@
                     Content="Boot eFootball automatically on Play Match"/>
           <CheckBox IsChecked="{Binding RealNames}" Foreground="#C7CEDA"
                     Content="Real club names in-game (next compile)"/>
+          <TextBlock Text="Your manager name" Foreground="#8A93A2" FontSize="12"/>
+          <TextBox Text="{Binding ManagerName}" Watermark="The Gaffer"/>
           <TextBlock Text="{Binding WorldSeedLine}" Foreground="#8A93A2" FontSize="11"
                      TextWrapping="Wrap"/>
         </StackPanel></Border>

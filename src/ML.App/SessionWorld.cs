@@ -725,7 +725,9 @@ public sealed partial class Session
             {
                 var id = nextId++;
                 var age = 16 + rng.Next(3);
-                var rating = 44 + rng.Next(16);
+                // Your academy level lifts the floor of the class (item 4 facilities).
+                var facilityLift = yours ? (AcademyLevel - 1) * 2 : 0;
+                var rating = 44 + facilityLift + rng.Next(16);
                 var name = $"{first[rng.Next(first.Count)]} {last[rng.Next(last.Count)]}";
                 var position = positions[rng.Next(positions.Length)];
                 Repo.UpsertPlayer(new PlayerRow
@@ -1140,13 +1142,16 @@ public sealed partial class Session
                 counts.GetValueOrDefault("red"), avg);
     }
 
-    /// <summary>League leaders for any counted event type ('goal', 'assist').</summary>
-    public IReadOnlyList<(string Player, string Team, int Count)> LeadersBy(string eventType, int count = 12)
+    /// <summary>League leaders for any counted event type ('goal', 'assist') + apps for per-90s.</summary>
+    public IReadOnlyList<(string Player, string Team, int Count, int Apps)> LeadersBy(string eventType, int count = 12)
     {
-        var rows = new List<(string, string, int)>();
+        var rows = new List<(string, string, int, int)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
-            "SELECT p.name, COALESCE(s.team_id, 0), COUNT(*) AS g FROM match_events e " +
+            "SELECT p.name, COALESCE(s.team_id, 0), COUNT(*) AS g, " +
+            "(SELECT COUNT(*) FROM match_events a JOIN fixtures af ON af.id=a.fixture_id " +
+            " WHERE a.player_id=e.player_id AND a.event_type='app' AND af.season_id=$s) AS apps " +
+            "FROM match_events e " +
             "JOIN players p ON p.id = e.player_id " +
             "LEFT JOIN squad_members s ON s.player_id = e.player_id " +
             "JOIN fixtures f ON f.id = e.fixture_id " +
@@ -1158,9 +1163,82 @@ public sealed partial class Session
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
-            rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2)));
+            rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2), r.GetInt32(3)));
         }
         return rows;
+    }
+
+    /// <summary>Clean sheets this season per club, best first (league games only).</summary>
+    public IReadOnlyList<(string Team, int Count)> CleanSheetTable(int count = 8)
+    {
+        var rows = new List<(string, int)>();
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText =
+            "SELECT t.name, SUM(CASE WHEN (f.home_team_id=t.id AND r.away_goals=0) " +
+            "OR (f.away_team_id=t.id AND r.home_goals=0) THEN 1 ELSE 0 END) AS cs " +
+            "FROM teams t JOIN fixtures f ON (f.home_team_id=t.id OR f.away_team_id=t.id) " +
+            "JOIN results r ON r.fixture_id=f.id " +
+            "WHERE f.season_id=$s AND f.kind='league' " +
+            "GROUP BY t.id HAVING cs > 0 ORDER BY cs DESC, t.name LIMIT $n";
+        cmd.Parameters.AddWithValue("$s", SeasonId);
+        cmd.Parameters.AddWithValue("$n", count);
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) rows.Add((r.GetString(0), r.GetInt32(1)));
+        return rows;
+    }
+
+    /// <summary>Discipline: bookings-heaviest players (a red counts as three points).</summary>
+    public IReadOnlyList<(string Player, string Team, int Yellows, int Reds)> DisciplineLeaders(int count = 8)
+    {
+        var rows = new List<(string, string, int, int)>();
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText =
+            "SELECT p.name, COALESCE(s.team_id, 0), " +
+            "SUM(CASE WHEN e.event_type='yellow' THEN 1 ELSE 0 END) AS y, " +
+            "SUM(CASE WHEN e.event_type='red' THEN 1 ELSE 0 END) AS rd " +
+            "FROM match_events e JOIN players p ON p.id=e.player_id " +
+            "LEFT JOIN squad_members s ON s.player_id=e.player_id " +
+            "JOIN fixtures f ON f.id=e.fixture_id " +
+            "WHERE e.event_type IN ('yellow','red') AND f.season_id=$s " +
+            "GROUP BY e.player_id ORDER BY y + rd*3 DESC, p.name LIMIT $n";
+        cmd.Parameters.AddWithValue("$s", SeasonId);
+        cmd.Parameters.AddWithValue("$n", count);
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2), r.GetInt32(3)));
+        return rows;
+    }
+
+    /// <summary>All-time competitive record between two clubs, from A's point of view.</summary>
+    public (int Wins, int Draws, int Losses) HeadToHead(int teamA, int teamB)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText =
+            "SELECT " +
+            "SUM(CASE WHEN (f.home_team_id=$a AND r.home_goals>r.away_goals) " +
+            "  OR (f.away_team_id=$a AND r.away_goals>r.home_goals) THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN r.home_goals=r.away_goals THEN 1 ELSE 0 END), " +
+            "SUM(CASE WHEN (f.home_team_id=$a AND r.home_goals<r.away_goals) " +
+            "  OR (f.away_team_id=$a AND r.away_goals<r.home_goals) THEN 1 ELSE 0 END) " +
+            "FROM fixtures f JOIN results r ON r.fixture_id=f.id " +
+            "WHERE f.kind<>'friendly' AND ((f.home_team_id=$a AND f.away_team_id=$b) " +
+            "  OR (f.home_team_id=$b AND f.away_team_id=$a))";
+        cmd.Parameters.AddWithValue("$a", teamA);
+        cmd.Parameters.AddWithValue("$b", teamB);
+        using var r = cmd.ExecuteReader();
+        return r.Read() && !r.IsDBNull(0)
+            ? (r.GetInt32(0), r.GetInt32(1), r.GetInt32(2))
+            : (0, 0, 0);
+    }
+
+    /// <summary>Competitive appearances ('app' events) per player this season.</summary>
+    public int AppsOf(int playerId)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM match_events e JOIN fixtures f ON f.id=e.fixture_id " +
+                          "WHERE e.player_id=$p AND e.event_type='app' AND f.season_id=$s";
+        cmd.Parameters.AddWithValue("$p", playerId);
+        cmd.Parameters.AddWithValue("$s", SeasonId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
     // Squad cache for CPU goal attribution: (player id, weight) per team, weighted to the front.

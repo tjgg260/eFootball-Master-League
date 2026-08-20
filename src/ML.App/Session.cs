@@ -1003,6 +1003,15 @@ public sealed partial class Session
         try { RunDeadlineDay(matchday); } catch { /* deadline drama never blocks the pass */ }
         try { EvaluatePlayingTime(matchday); } catch { /* playing time never blocks the pass */ }
 
+        // Weekly history snapshot (item 11): the trend charts read this series.
+        try { RecordClubHistory(matchday); }
+        catch { /* history never blocks the pass */ }
+
+        // International breaks (item 5): after MDs 4/9/14/25 your stars fly off and come home
+        // leggy. The best players in the squad pick up extra fatigue; a letter says who.
+        try { ApplyInternationalBreak(matchday); }
+        catch { /* call-ups never block the pass */ }
+
         // The January window: mid-season market activity + fresh offers for your players.
         if (matchday == 17 && GetMeta($"jan_{SeasonId}") is null)
         {
@@ -1012,6 +1021,70 @@ public sealed partial class Session
                 "Market screen, and the free-agent pool is live.", matchday);
             SetMeta($"jan_{SeasonId}", "1");
         }
+    }
+
+    /// <summary>One snapshot per matchday pass: money, fans, board, ELO (item 11 charts).</summary>
+    private void RecordClubHistory(int matchday)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText =
+            "INSERT OR REPLACE INTO club_history(season_id, matchday, team_id, balance, fans, board, elo) " +
+            "VALUES($s, $m, $t, $bal, $fans, $board, $elo)";
+        cmd.Parameters.AddWithValue("$s", SeasonId);
+        cmd.Parameters.AddWithValue("$m", matchday);
+        cmd.Parameters.AddWithValue("$t", CurrentTeamId);
+        cmd.Parameters.AddWithValue("$bal", Finances.Balance);
+        cmd.Parameters.AddWithValue("$fans", FanHappiness());
+        cmd.Parameters.AddWithValue("$board", Board.Value);
+        cmd.Parameters.AddWithValue("$elo", EloOf(CurrentTeamId));
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>The stored weekly series for one column of club_history, oldest first.</summary>
+    public IReadOnlyList<long> ClubHistorySeries(string column)
+    {
+        if (column is not ("balance" or "fans" or "board" or "elo"))
+            throw new ArgumentException("unknown history column", nameof(column));
+        var rows = new List<long>();
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = $"SELECT {column} FROM club_history WHERE team_id=$t " +
+                          "ORDER BY season_id, matchday";
+        cmd.Parameters.AddWithValue("$t", CurrentTeamId);
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) rows.Add(r.GetInt64(0));
+        return rows;
+    }
+
+    /// <summary>FIFA windows, roughly: Sept, Oct, Nov and the late-March window.</summary>
+    public static readonly int[] InternationalBreakMatchdays = { 4, 9, 14, 25 };
+
+    /// <summary>Your best players get called up after these matchdays and come home leggy.</summary>
+    private void ApplyInternationalBreak(int matchday)
+    {
+        if (!InternationalBreakMatchdays.Contains(matchday)) return;
+        if (GetMeta($"intbreak_{SeasonId}_{matchday}") is not null) return;
+        SetMeta($"intbreak_{SeasonId}_{matchday}", "1");
+
+        // Call-ups: everyone rated 78+, capped at the six best (a small club may send none).
+        var called = Repo.SquadPlayers(CurrentTeamId)
+            .Where(p => (p.OverallRating ?? 0) >= 78)
+            .OrderByDescending(p => p.OverallRating)
+            .Take(6).ToList();
+        if (called.Count == 0) return;
+        foreach (var p in called)
+        {
+            using var cmd = Db.Connection.CreateCommand();
+            cmd.CommandText =
+                "INSERT INTO player_condition(player_id, fatigue) VALUES($p, 12) " +
+                "ON CONFLICT(player_id) DO UPDATE SET fatigue = MIN(100, fatigue + 12)";
+            cmd.Parameters.AddWithValue("$p", p.Id);
+            cmd.ExecuteNonQuery();
+        }
+        PostInbox("Club", "International break — call-ups",
+            "Country comes calling. Away on duty this window:\n" +
+            string.Join("\n", called.Select(p => $"• {p.Name} ({p.OverallRating})")) +
+            "\nThey return with heavier legs — rotate or manage their minutes next matchday.",
+            matchday);
     }
 
     /// <summary>What the training ground produced on the last matchday pass (for the UI).</summary>

@@ -1,0 +1,119 @@
+namespace ML.App;
+
+/// <summary>
+/// Board levers (build item 4): ask the chairman for money, invest in the training ground and
+/// the academy, and give every AI dugout a real name from Konami's coach pool (Coach.bin →
+/// `coach_names`, 906 names). Facility levels feed development and intake quality.
+/// </summary>
+public sealed partial class Session
+{
+    // ------------------------------------------------------------------ AI manager names
+
+    /// <summary>Deterministic real coach name for any club's dugout; yours is your own.</summary>
+    public string ManagerNameOf(int teamId)
+    {
+        if (teamId == CurrentTeamId) return ManagerName;
+        if (GetMeta($"mgrname_{teamId}") is { Length: > 0 } stored) return stored;
+        var name = PickCoachName(teamId);
+        SetMeta($"mgrname_{teamId}", name);
+        return name;
+    }
+
+    private string PickCoachName(int teamId)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM coach_names";
+        int count;
+        try { count = Convert.ToInt32(cmd.ExecuteScalar()); }
+        catch { return "the manager"; }
+        if (count == 0) return "the manager";
+        var pick = (int)((uint)((teamId * 2654435761) ^ WorldSeed) % count);
+        using var sel = Db.Connection.CreateCommand();
+        sel.CommandText = "SELECT name FROM coach_names ORDER BY name LIMIT 1 OFFSET $o";
+        sel.Parameters.AddWithValue("$o", pick);
+        return sel.ExecuteScalar() as string ?? "the manager";
+    }
+
+    /// <summary>Your own name — set it in Settings; defaults to "The Gaffer".</summary>
+    public string ManagerName
+    {
+        get => GetMeta("manager_name") is { Length: > 0 } v ? v : "The Gaffer";
+        set => SetMeta("manager_name", value.Trim());
+    }
+
+    // ------------------------------------------------------------------ budget request
+
+    /// <summary>Ask the board for extra transfer money. One ask per season; they remember.</summary>
+    public string RequestBudget()
+    {
+        if (GetMeta($"budgetask_{SeasonId}") is not null)
+            return "You already went to the board this season — twice would be pushing it.";
+        SetMeta($"budgetask_{SeasonId}", "1");
+        var confidence = Board.Value;
+        if (confidence < 55)
+        {
+            StoredBoardConfidence -= 2;
+            PostInbox("Board", "Budget request declined",
+                $"Chairman {Chairman()} is unmoved: \"Results first, money after.\"");
+            return "Declined — the board wants results before it writes cheques.";
+        }
+        // Backing scales with how much they believe in you.
+        var grant = 500_000L * (1 + (confidence - 55) / 10);
+        Finances.ReceivePrize(grant);
+        AdjustBudget(grant);
+        PostInbox("Board", "The board finds extra money",
+            $"Chairman {Chairman()} frees up £{grant:N0} for the transfer kitty. Spend it well.");
+        return $"Granted — £{grant:N0} added to the budget.";
+    }
+
+    // ------------------------------------------------------------------ facilities
+
+    public int TrainingLevel
+    {
+        get => int.TryParse(GetMeta($"trainlvl_{CurrentTeamId}"), out var v) ? Math.Clamp(v, 1, 5) : 1;
+        private set => SetMeta($"trainlvl_{CurrentTeamId}", value.ToString());
+    }
+
+    public int AcademyLevel
+    {
+        get => int.TryParse(GetMeta($"acadlvl_{CurrentTeamId}"), out var v) ? Math.Clamp(v, 1, 5) : 1;
+        private set => SetMeta($"acadlvl_{CurrentTeamId}", value.ToString());
+    }
+
+    public long FacilityUpgradeCost(int currentLevel) => 2_000_000L * currentLevel;
+
+    public string UpgradeTrainingGround()
+    {
+        var lvl = TrainingLevel;
+        if (lvl >= 5) return "The training ground is already state of the art.";
+        var cost = FacilityUpgradeCost(lvl);
+        if (!Finances.TrySpendOnTransfer(cost, minBalanceAfter: 0))
+            return $"Level {lvl + 1} costs £{cost:N0} — you have £{Finances.Balance:N0}.";
+        AdjustBudget(-cost);
+        TrainingLevel = lvl + 1;
+        SyncBudget();
+        PostInbox("Club", $"Training ground upgraded to level {lvl + 1}",
+            "Better pitches, better recovery suites, better sessions — development across the " +
+            "squad quickens from today.");
+        return $"Training ground now level {lvl + 1} (£{cost:N0}).";
+    }
+
+    public string UpgradeAcademy()
+    {
+        var lvl = AcademyLevel;
+        if (lvl >= 5) return "The academy is already elite.";
+        var cost = FacilityUpgradeCost(lvl);
+        if (!Finances.TrySpendOnTransfer(cost, minBalanceAfter: 0))
+            return $"Level {lvl + 1} costs £{cost:N0} — you have £{Finances.Balance:N0}.";
+        AdjustBudget(-cost);
+        AcademyLevel = lvl + 1;
+        SyncBudget();
+        PostInbox("Club", $"Academy upgraded to level {lvl + 1}",
+            "Sharper coaching and wider scouting nets at youth level — expect stronger intakes " +
+            "from next summer.");
+        return $"Academy now level {lvl + 1} (£{cost:N0}).";
+    }
+
+    /// <summary>Facility growth bonus: level 1 = ×1.0 … level 5 = ×1.4 on weekly development.</summary>
+    internal double TrainingFacilityMultiplier => 1.0 + (TrainingLevel - 1) * 0.1;
+}

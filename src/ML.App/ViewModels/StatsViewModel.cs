@@ -2,11 +2,13 @@ using System.Collections.ObjectModel;
 
 namespace ML.App.ViewModels;
 
-// --- Stats (league leaders + roll of honour) --------------------------------------
+// --- Stats (league leaders, discipline, clean sheets, head-to-head, honours) ------
 
 public sealed record StatRow(string Team, int Value);
 
-public sealed record ScorerRow(string Player, string Team, int Goals);
+public sealed record ScorerRow(string Player, string Team, int Goals, string Rate);
+
+public sealed record CardRow(string Player, string Team, string Cards);
 
 public sealed record HonourRow(int Year, string Competition, string Team);
 
@@ -17,16 +19,41 @@ public sealed class StatsViewModel : PageViewModel
     public StatsViewModel(Session s)
     {
         var table = s.Table();
+        static string Rate(int count, int apps) =>
+            apps > 0 ? $"{count / (double)apps:0.00}/game" : "";
         TopScorers = new ObservableCollection<ScorerRow>(
-            s.LeadersBy("goal").Select(x => new ScorerRow(x.Player, x.Team, x.Count)));
+            s.LeadersBy("goal").Select(x => new ScorerRow(x.Player, x.Team, x.Count, Rate(x.Count, x.Apps))));
         TopAssists = new ObservableCollection<ScorerRow>(
-            s.LeadersBy("assist").Select(x => new ScorerRow(x.Player, x.Team, x.Count)));
+            s.LeadersBy("assist").Select(x => new ScorerRow(x.Player, x.Team, x.Count, Rate(x.Count, x.Apps))));
         ScorersNote = TopScorers.Count == 0
             ? "Goals appear here as matches are played — type your scorers when you record a result."
             : "";
         BestDefence = new ObservableCollection<StatRow>(
             table.OrderBy(t => t.GoalsAgainst).Take(8)
                  .Select(t => new StatRow(s.TeamName(t.TeamId.Value), t.GoalsAgainst)));
+        try
+        {
+            CleanSheets = new ObservableCollection<StatRow>(
+                s.CleanSheetTable().Select(x => new StatRow(x.Team, x.Count)));
+            Discipline = new ObservableCollection<CardRow>(
+                s.DisciplineLeaders().Select(x => new CardRow(x.Player, x.Team,
+                    x.Reds > 0 ? $"{x.Yellows}🟨 {x.Reds}🟥" : $"{x.Yellows}🟨")));
+        }
+        catch { /* season may have no events yet */ }
+
+        // Head-to-head vs your next opponent — the record that matters this week.
+        try
+        {
+            if (s.NextFixture() is { } next && next.Kind != "friendly")
+            {
+                var opp = next.HomeTeamId == s.CurrentTeamId ? next.AwayTeamId : next.HomeTeamId;
+                var (w, d, l) = s.HeadToHead(s.CurrentTeamId, opp);
+                if (w + d + l > 0)
+                    HeadToHeadLine = $"vs {s.TeamName(opp)} (all-time): {w} won · {d} drawn · {l} lost";
+            }
+        }
+        catch { /* h2h is decoration */ }
+
         Honours = new ObservableCollection<HonourRow>(
             s.Honours().Select(h => new HonourRow(h.Year, h.Competition, h.Team)));
         MatchReports = new ObservableCollection<ReportRow>(
@@ -42,6 +69,12 @@ public sealed class StatsViewModel : PageViewModel
     public ObservableCollection<ScorerRow> TopAssists { get; }
     public string ScorersNote { get; }
     public ObservableCollection<StatRow> BestDefence { get; }
+    public ObservableCollection<StatRow> CleanSheets { get; } = new();
+    public ObservableCollection<CardRow> Discipline { get; } = new();
+    public string HeadToHeadLine { get; } = "";
+    public bool HasHeadToHead => HeadToHeadLine.Length > 0;
+    public bool HasCleanSheets => CleanSheets.Count > 0;
+    public bool HasDiscipline => Discipline.Count > 0;
     public ObservableCollection<HonourRow> Honours { get; }
     public ObservableCollection<ReportRow> MatchReports { get; }
     public string HonoursNote { get; }

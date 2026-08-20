@@ -51,6 +51,13 @@ public sealed partial class Session
         Add("cup_run", finishTarget <= teams / 3 ? 8 : 16, "important");
         Add("youth_apps", 6 + rng.Next(5), "bonus");        // starts by players 21 or under
         Add("home_goals", 18 + rng.Next(9), "bonus");       // the fans want entertaining
+        // Derby days matter: if the club has a rival, the fans expect at least one scalp.
+        try
+        {
+            if (RivalsOf(CurrentTeamId).FirstOrDefault() is var rival and > 0)
+                Add("beat_rival", rival, "important");
+        }
+        catch { /* rivalries are additive */ }
 
         PostInbox("Board", "The board sets this season's objectives",
             $"Chairman {Chairman()} lays it out:\n" +
@@ -86,6 +93,7 @@ public sealed partial class Session
         "cup_run" => $"Reach the {RoundName(target)} in a cup",
         "youth_apps" => $"Give players 21 or under {target} starts",
         "home_goals" => $"Score {target} league goals at home — the fans want a show",
+        "beat_rival" => $"Beat {TeamName(target)} — the derby is the fans' season",
         _ => kind,
     };
 
@@ -103,8 +111,26 @@ public sealed partial class Session
             : "no cup ties yet",
         "youth_apps" => $"{YouthStarts()} of {target}",
         "home_goals" => $"{HomeLeagueGoals()} of {target}",
+        "beat_rival" => WinsAgainst(target) > 0
+            ? $"done — {WinsAgainst(target)} derby win(s)"
+            : "no derby win yet",
         _ => "",
     };
+
+    /// <summary>Competitive wins over the given club this season.</summary>
+    private int WinsAgainst(int rivalId)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText =
+            "SELECT COUNT(*) FROM results r JOIN fixtures f ON f.id=r.fixture_id " +
+            "WHERE f.season_id=$s AND f.kind<>'friendly' AND (" +
+            " (f.home_team_id=$t AND f.away_team_id=$r AND r.home_goals>r.away_goals) OR" +
+            " (f.away_team_id=$t AND f.home_team_id=$r AND r.away_goals>r.home_goals))";
+        cmd.Parameters.AddWithValue("$s", SeasonId);
+        cmd.Parameters.AddWithValue("$t", CurrentTeamId);
+        cmd.Parameters.AddWithValue("$r", rivalId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
 
     /// <summary>The deepest round (by entrant count) any of your cup ties reached this season.</summary>
     private int? BestCupRunSize()
@@ -183,6 +209,7 @@ public sealed partial class Session
                 "cup_run" => BestCupRunSize() is { } b && b <= o.Target,
                 "youth_apps" => YouthStarts() >= o.Target,
                 "home_goals" => HomeLeagueGoals() >= o.Target,
+                "beat_rival" => WinsAgainst(o.Target) > 0,
                 _ => false,
             };
             using var upd = Db.Connection.CreateCommand();

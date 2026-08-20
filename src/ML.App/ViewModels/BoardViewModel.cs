@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Controls.ApplicationLifetimes;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ML.App.Views;
 
@@ -69,9 +70,25 @@ public sealed partial class BoardViewModel : PageViewModel
         }
         catch { EloTrendVisible = false; }
 
+        // Fan happiness over the matchweeks (item 11) — the mood as a line, not just a word.
+        try
+        {
+            var fans = s.ClubHistorySeries("fans");
+            if (fans.Count >= 3)
+            {
+                const double w = 520, h = 48;
+                var step = w / (fans.Count - 1);
+                for (var i = 0; i < fans.Count; i++)
+                    FanPoints.Add(new Avalonia.Point(i * step, h - 4 - fans[i] / 100.0 * (h - 8)));
+                FanTrendVisible = true;
+            }
+        }
+        catch { FanTrendVisible = false; }
+
         Offers = new ObservableCollection<JobOfferRow>(
             s.JobOffers().Select(o => new JobOfferRow(o.TeamId,
                 $"{o.Club}  ·  {o.League}  ·  squad {o.SquadRating}")));
+        RefreshFacilities();
         OffersNote = Offers.Count > 0
             ? "Accepting ends your current post immediately and reopens the app at your new club."
             : Sacked
@@ -98,8 +115,40 @@ public sealed partial class BoardViewModel : PageViewModel
     public string FanLine { get; } = "";
     public Avalonia.Points EloPoints { get; } = new();
     public bool EloTrendVisible { get; }
+    public Avalonia.Points FanPoints { get; } = new();
+    public bool FanTrendVisible { get; }
     public string EloTrendLabel { get; } = "";
     public bool HasOffers => Offers.Count > 0;
+
+    // --- board levers (item 4): money and bricks ---------------------------------------
+
+    [ObservableProperty] private string _leverStatus = "";
+    [ObservableProperty] private string _facilitiesLine = "";
+
+    [RelayCommand]
+    private void RequestBudget()
+    {
+        LeverStatus = _s.RequestBudget();
+        RefreshFacilities();
+    }
+
+    [RelayCommand]
+    private void UpgradeTraining()
+    {
+        LeverStatus = _s.UpgradeTrainingGround();
+        RefreshFacilities();
+    }
+
+    [RelayCommand]
+    private void UpgradeAcademy()
+    {
+        LeverStatus = _s.UpgradeAcademy();
+        RefreshFacilities();
+    }
+
+    private void RefreshFacilities() =>
+        FacilitiesLine = $"Training ground: level {_s.TrainingLevel}/5 · Academy: level {_s.AcademyLevel}/5" +
+                         $" · Manager: {_s.ManagerName}";
 
     /// <summary>Take the job, then reload the whole app on the new club's Session.</summary>
     [RelayCommand]

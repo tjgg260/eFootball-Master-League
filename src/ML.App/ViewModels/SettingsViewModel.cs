@@ -24,6 +24,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _sackLeniency = s.GetSetting("sack_leniency") ?? "Normal";
         _autoBoot = s.GetSetting("auto_boot") != "0";
         _realNames = s.GetSetting("real_names") != "0";
+        _managerName = s.ManagerName;
         WorldSeedLine = $"World seed: {s.WorldSeed} (this career's universe — unique per save)";
         LoadBackups();
     }
@@ -90,6 +91,14 @@ public sealed partial class SettingsViewModel : PageViewModel
             "Real club names in-game (applies on the next Play Match compile).");
 
     public string WorldSeedLine { get; }
+
+    [ObservableProperty] private string _managerName;
+    partial void OnManagerNameChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        _s.ManagerName = value;
+        Status = $"You are {_s.ManagerName} — the press and the board use this name.";
+    }
 
     // ---------------------------------------------------------------- OCR paths
 

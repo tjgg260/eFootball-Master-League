@@ -375,6 +375,26 @@ CREATE TABLE IF NOT EXISTS player_status (
 -- Loans (P-next): players parked at another club for the season; recalls from the January
 -- window; everyone comes home at rollover. direction: 'out' = yours at a host, 'in' = theirs
 -- with you.
+-- Weekly club history: one row per matchday pass, feeds the trend charts (item 11).
+CREATE TABLE IF NOT EXISTS club_history (
+    season_id  INTEGER NOT NULL,
+    matchday   INTEGER NOT NULL,
+    team_id    INTEGER NOT NULL,
+    balance    INTEGER NOT NULL,
+    fans       INTEGER NOT NULL,
+    board      INTEGER NOT NULL,
+    elo        INTEGER NOT NULL,
+    PRIMARY KEY (season_id, matchday, team_id)
+);
+
+-- Rivalries: Konami Derby.bin import (tools/derby_import.py) + synthesized career rivals.
+CREATE TABLE IF NOT EXISTS team_rivals (
+    team_id   INTEGER NOT NULL,
+    rival_id  INTEGER NOT NULL,
+    intensity INTEGER NOT NULL DEFAULT 5,   -- 1 fierce, 5 moderate, 6 mild
+    PRIMARY KEY (team_id, rival_id)
+);
+
 CREATE TABLE IF NOT EXISTS loans (
     player_id  INTEGER PRIMARY KEY REFERENCES players(id),
     owner_team INTEGER NOT NULL,

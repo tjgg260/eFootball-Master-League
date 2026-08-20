@@ -422,7 +422,10 @@ public sealed partial class DashboardViewModel : PageViewModel
                 _ => $"Matchday {next.Matchday}",
             };
             var when = ML.Core.Scheduling.SeasonCalendar.Label(_s.DateOfFixture(next));
-            NextMatchLabel = $"{kind} · {when}\n{_homeName}  vs  {_awayName}";
+            var derby = "";
+            try { if (next.Kind != "friendly" && _s.IsDerby(_homeId, _awayId)) derby = " · 🔥 DERBY"; }
+            catch { /* rivalries are additive */ }
+            NextMatchLabel = $"{kind} · {when}{derby}\n{_homeName}  vs  {_awayName}";
             try { DeadlineVisible = _s.IsDeadlineDay(); } catch { DeadlineVisible = false; }
             try
             {
@@ -431,7 +434,14 @@ public sealed partial class DashboardViewModel : PageViewModel
             }
             catch { PreTalkVisible = false; }
             HasNextMatch = true;
-            MatchStatus = "Play Match to build dt200 + boot eFootball, then enter the score.";
+            var oppMgr = "";
+            try
+            {
+                var opp = _homeId == _s.CurrentTeamId ? _awayId : _homeId;
+                oppMgr = $" In the other dugout: {_s.ManagerNameOf(opp)}.";
+            }
+            catch { /* names are additive */ }
+            MatchStatus = "Play Match to build dt200 + boot eFootball, then enter the score." + oppMgr;
         }
         else
         {
@@ -750,6 +760,8 @@ public sealed partial class DashboardViewModel : PageViewModel
         try
         {
             _s.ApplyFansAfterResult(_homeId, _awayId, (int)HomeScore, (int)AwayScore, _kind);
+            if (_kind != "friendly")
+                _s.ApplyDerbySwing(_homeId, _awayId, (int)HomeScore, (int)AwayScore);
         }
         catch { /* the fans never block recording */ }
 

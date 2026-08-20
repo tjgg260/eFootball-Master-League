@@ -369,3 +369,24 @@ Gates: build 0, tests 168/168, smoke + Squad screenshot OK.
   (10% of value fee), recall from January (MD≥17) via the OUT ON LOAN strip on Squad,
   ReturnAllLoans() at season rollover with "returns sharper" letter.
 - Gates: build 0 errors · tests 168/168 · ML_RESUME smoke on Squad OK.
+
+## Block: Derby.bin crack + board levers + breaks + stats + history (items 3-6, 8, 11)
+
+- **Derby.bin CRACKED** (12-byte records: team u32, group u32, row u16, intensity u16 —
+  794 anchored rivalry groups). tools/derby_import.py → `team_rivals` (1,764 directed pairs).
+  Career (RFS) clubs aren't covered by Konami data, so EnsureRival synthesizes one mutual
+  rival per club (nearest ELO, same division). Wired: 🔥 DERBY tag on the Dashboard,
+  ±8 fan-ledger derby swings with letters, and a "Beat {rival}" board objective.
+- **Coach name pool from Coach.bin** (906 real names; full 176-byte record layout has odd
+  string alignment — names extracted, team-link not cracked). ManagerNameOf() assigns a
+  stable real name to every AI dugout; shown pre-match. Your own name is a Settings field.
+- **Board levers**: RequestBudget (once/season, confidence-gated grant), training ground +
+  academy upgrades (£2m×level, 5 levels) — training level multiplies weekly development of
+  YOUR squad, academy level lifts intake floors. New Club Infrastructure panel on Board.
+- **International breaks** after MDs 4/9/14/25: top-rated players (78+, max 6) return with
+  +12 fatigue + call-ups letter; 🌍 markers on the Calendar.
+- **Stats depth**: clean-sheet table, discipline leaders (🟨/🟥, red = 3 pts), per-game rates
+  on scorers/assists, all-time head-to-head vs your next opponent.
+- **Weekly club history** (`club_history`): balance/fans/board/ELO snapshot per matchweek —
+  money trend chart on Finances, fan-mood sparkline on Board.
+- Gates: build 0 errors · tests 168/168 · ML_RESUME smoke on Board OK.

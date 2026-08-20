@@ -14,7 +14,32 @@ public sealed class FinancesViewModel : PageViewModel
         var (_, _, weeklyWages) = s.FinancialOverview();
         WageBill = $"£{weeklyWages:N0} / wk";
         InTheRed = s.Finances.InTheRed;
+
+        // The money line over time (item 11): every weekly pass leaves a snapshot behind.
+        try
+        {
+            var series = s.ClubHistorySeries("balance");
+            if (series.Count >= 3)
+            {
+                const double w = 640, h = 96;
+                long lo = series.Min(), hi = Math.Max(series.Max(), lo + 1);
+                var step = w / (series.Count - 1);
+                for (var i = 0; i < series.Count; i++)
+                {
+                    var y = h - 6 - (series[i] - lo) / (double)(hi - lo) * (h - 12);
+                    BalancePoints.Add(new Avalonia.Point(i * step, y));
+                }
+                TrendVisible = true;
+                TrendLabel = $"Bank balance over {series.Count} matchweeks — " +
+                             $"peak £{hi:N0}, low £{lo:N0}";
+            }
+        }
+        catch { TrendVisible = false; }
     }
+
+    public Avalonia.Points BalancePoints { get; } = new();
+    public bool TrendVisible { get; }
+    public string TrendLabel { get; } = "";
 
     public override string Title => "Finances";
     public override string Icon => "💷";

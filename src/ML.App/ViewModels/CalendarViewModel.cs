@@ -61,6 +61,8 @@ public sealed partial class CalendarViewModel : PageViewModel
             MarkEvent(LeagueDate(17), "🪟 window opens");
             MarkEvent(LeagueDate(19).AddDays(-2), "review due");
             MarkEvent(SeasonCalendar.DateOf(s.SeasonYear, 0, "friendly"), "🎓 intake day");
+            foreach (var md in Session.InternationalBreakMatchdays)
+                MarkEvent(LeagueDate(md).AddDays(3), "🌍 international break");
         }
         catch { /* markers are decoration */ }
 

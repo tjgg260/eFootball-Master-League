@@ -169,7 +169,15 @@ public sealed partial class Session
     internal double GrowthMultiplierOf(int playerId)
     {
         var (det, prof, _, _) = TraitsOf(playerId);
-        return PersonalityModel.GrowthMultiplier(det, prof);
+        var facility = 1.0;
+        try
+        {
+            // Only YOUR squad trains on your facilities.
+            if (Repo.Squad(CurrentTeamId).Any(m => m.PlayerId == playerId))
+                facility = TrainingFacilityMultiplier;
+        }
+        catch { /* facilities are additive */ }
+        return PersonalityModel.GrowthMultiplier(det, prof) * facility;
     }
 
     // ------------------------------------------------------------------ potential (P2)
