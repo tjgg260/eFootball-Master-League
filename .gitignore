@@ -71,3 +71,6 @@ build/pc0000_paths.txt
 build/iostore_assets.txt
 build/mem_scan_state.json
 build/stats_map.json
+build/ce/cmd.txt
+build/ce/cmd.done
+build/ce/result.json
