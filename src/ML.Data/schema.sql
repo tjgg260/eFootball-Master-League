@@ -106,6 +106,16 @@ CREATE TABLE IF NOT EXISTS contracts (
     PRIMARY KEY (player_id, team_id)
 );
 
+-- matchday condition driving AI XI selection (ML.Core.Selection). Missing row = fresh player:
+-- callers default fatigue 0 / form 6.5 / not injured. injured_until_md: the player is out
+-- THROUGH that matchday (misses matchdays <= injured_until_md); NULL = fit.
+CREATE TABLE IF NOT EXISTS player_condition (
+    player_id        INTEGER PRIMARY KEY REFERENCES players(id),
+    fatigue          INTEGER NOT NULL DEFAULT 0,
+    injured_until_md INTEGER,
+    form             REAL NOT NULL DEFAULT 6.5
+);
+
 -- ---------------------------------------------------------------- tactics
 
 CREATE TABLE IF NOT EXISTS formations (
@@ -206,3 +216,158 @@ CREATE TABLE IF NOT EXISTS inbox (
 CREATE INDEX IF NOT EXISTS ix_squad_team ON squad_members(team_id);
 CREATE INDEX IF NOT EXISTS ix_fixtures_season_md ON fixtures(season_id, matchday);
 CREATE INDEX IF NOT EXISTS ix_players_team ON squad_members(player_id);
+
+-- ---------------------------------------------------------------- world (cup, academy, honours)
+
+-- Knockout cup ties live in fixtures (kind='cup', league_id=9002); this records each season's
+-- silverware for the Roll of Honour.
+CREATE TABLE IF NOT EXISTS honours (
+    season_id   INTEGER NOT NULL,
+    competition TEXT    NOT NULL,              -- 'league' | 'division2' | 'cup'
+    team_id     INTEGER NOT NULL REFERENCES teams(id),
+    PRIMARY KEY (season_id, competition)
+);
+
+-- Youth players attached to a club but not yet in its senior squad.
+CREATE TABLE IF NOT EXISTS academy (
+    player_id     INTEGER PRIMARY KEY REFERENCES players(id),
+    team_id       INTEGER NOT NULL REFERENCES teams(id),
+    joined_season INTEGER NOT NULL
+);
+
+-- Per-player match ratings (typed in from eFootball's post-match screen for your games).
+CREATE TABLE IF NOT EXISTS player_match_ratings (
+    fixture_id INTEGER NOT NULL REFERENCES fixtures(id),
+    player_id  INTEGER NOT NULL REFERENCES players(id),
+    rating     REAL    NOT NULL,
+    PRIMARY KEY (fixture_id, player_id)
+);
+
+-- Weekly training focus per player: an ability group ('shooting','passing','defending',
+-- 'physical','pace') or a new position ('pos:LB'). Progress ticks on recorded matchdays.
+CREATE TABLE IF NOT EXISTS training_focus (
+    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+    focus     TEXT    NOT NULL,
+    progress  INTEGER NOT NULL DEFAULT 0
+);
+
+-- Positions a player has LEARNED beyond their registered one (role training, 6 sessions).
+CREATE TABLE IF NOT EXISTS player_positions (
+    player_id INTEGER NOT NULL REFERENCES players(id),
+    position  TEXT    NOT NULL,
+    PRIMARY KEY (player_id, position)
+);
+
+-- Backroom staff (FM parity phase A): one hired member per role, quality drives effects
+-- (coach -> training speed, physio -> injury recovery, scout -> report depth, assistant -> advice).
+CREATE TABLE IF NOT EXISTS staff (
+    team_id INTEGER NOT NULL REFERENCES teams(id),
+    role    TEXT    NOT NULL,               -- 'Assistant' | 'Coach' | 'Scout' | 'Physio'
+    name    TEXT    NOT NULL,
+    quality INTEGER NOT NULL DEFAULT 3,     -- 1-5 stars
+    wage    INTEGER NOT NULL DEFAULT 2000,  -- weekly, joins the wage bill
+    PRIMARY KEY (team_id, role)
+);
+
+-- Scouting missions (FM phase A2): the scout watches a club or a player; the report unlocks
+-- after ready_md. Depth of the rendered report scales with the scout's quality at view time.
+CREATE TABLE IF NOT EXISTS scout_jobs (
+    id          INTEGER PRIMARY KEY,
+    kind        TEXT    NOT NULL,              -- 'club' | 'player'
+    target_id   INTEGER NOT NULL,
+    started_md  INTEGER NOT NULL,
+    ready_md    INTEGER NOT NULL,
+    done        INTEGER NOT NULL DEFAULT 0
+);
+
+-- Manager promises (FM phase B2): "more starts" / "a new contract", tracked to a deadline.
+-- Kept promises lift morale; broken ones crater it.
+CREATE TABLE IF NOT EXISTS promises (
+    id          INTEGER PRIMARY KEY,
+    player_id   INTEGER NOT NULL REFERENCES players(id),
+    kind        TEXT    NOT NULL,              -- 'starts' | 'contract'
+    made_md     INTEGER NOT NULL,
+    deadline_md INTEGER NOT NULL,
+    done        INTEGER NOT NULL DEFAULT 0    -- 0 open, 1 kept, 2 broken
+);
+
+-- FM-style character layer (P1): visible Determination + hidden traits (all 1-20), seeded
+-- deterministically per player on first read; the personality name derives from these.
+CREATE TABLE IF NOT EXISTS player_traits (
+    player_id       INTEGER PRIMARY KEY REFERENCES players(id),
+    determination   INTEGER NOT NULL,
+    professionalism INTEGER NOT NULL,
+    ambition        INTEGER NOT NULL,
+    temperament     INTEGER NOT NULL
+);
+
+-- eFootball Player Skills a player carries (learned on the training ground or seeded innate).
+CREATE TABLE IF NOT EXISTS player_skills (
+    player_id INTEGER NOT NULL REFERENCES players(id),
+    skill     TEXT    NOT NULL,
+    source    TEXT    NOT NULL DEFAULT 'trained',   -- 'trained' | 'innate'
+    PRIMARY KEY (player_id, skill)
+);
+
+-- Active skill training: one skill in progress per player; sessions tick each matchweek and
+-- the target session count comes from determination + professionalism + coaching.
+CREATE TABLE IF NOT EXISTS skill_training (
+    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+    team_id   INTEGER NOT NULL REFERENCES teams(id),
+    skill     TEXT    NOT NULL,
+    progress  INTEGER NOT NULL DEFAULT 0,
+    target    INTEGER NOT NULL
+);
+
+-- P2 living world: stored potential (the ceiling development grows toward; academy stars are
+-- real now), and FM-style board objectives with importance tiers, evaluated mid-season + end.
+CREATE TABLE IF NOT EXISTS player_potential (
+    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+    potential INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS objectives (
+    id         INTEGER PRIMARY KEY,
+    season_id  INTEGER NOT NULL REFERENCES seasons(id),
+    team_id    INTEGER NOT NULL REFERENCES teams(id),
+    kind       TEXT    NOT NULL,   -- 'league_finish' | 'cup_run' | 'youth_apps' | 'home_goals'
+    target     INTEGER NOT NULL,   -- position / round size / apps / goals
+    importance TEXT    NOT NULL,   -- 'critical' | 'important' | 'bonus'
+    status     INTEGER NOT NULL DEFAULT 0   -- 0 open, 1 met, 2 failed
+);
+
+-- FM-style knowledge (P5): how well YOU know each player this save. Baselines (own squad,
+-- league rivals) are derived in code; stored rows come from scouting and facing a club.
+CREATE TABLE IF NOT EXISTS player_knowledge (
+    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+    level     INTEGER NOT NULL DEFAULT 0
+);
+
+-- Appearance (P6 imagery): skin tone 1 (lightest) - 6 (darkest), the PlayerAppearance.bin
+-- field recovered by portrait correlation. Sources: 'bin' (read from the game),
+-- 'portrait' (sampled from the player's own portrait), 'seeded' (generated).
+CREATE TABLE IF NOT EXISTS player_appearance (
+    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+    skin_tone INTEGER NOT NULL,
+    source    TEXT    NOT NULL DEFAULT 'seeded'
+);
+
+-- Live transfer negotiations with selling clubs (P5): one open negotiation per target.
+CREATE TABLE IF NOT EXISTS negotiations (
+    player_id   INTEGER PRIMARY KEY REFERENCES players(id),
+    seller_id   INTEGER NOT NULL,               -- 0 = free agent (no club step)
+    round       INTEGER NOT NULL DEFAULT 1,
+    ask         INTEGER NOT NULL,
+    state       TEXT    NOT NULL DEFAULT 'open' -- 'open' | 'agreed' | 'dead'
+);
+
+-- FM-style playing-time status (P5): the manager's promise of minutes, the player's
+-- expectation, and the AI's willingness to sell all hang off this.
+CREATE TABLE IF NOT EXISTS player_status (
+    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+    status    TEXT    NOT NULL
+);
+
+-- News imagery (P6): letters about a player carry his id so the feed can show his face.
+-- (Existing DBs migrate via ALTER in tools; CREATE TABLE IF NOT EXISTS covers fresh ones
+-- through the column list below being additive-only.)

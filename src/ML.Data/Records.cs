@@ -77,6 +77,14 @@ public sealed record SquadMemberRow
     public int Role { get; init; }
 }
 
+public sealed record PlayerConditionRow
+{
+    public int PlayerId { get; init; }
+    public int Fatigue { get; init; }
+    public int? InjuredUntilMd { get; init; }
+    public double Form { get; init; }
+}
+
 public sealed record FormationRow
 {
     public int Id { get; init; }

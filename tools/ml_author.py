@@ -98,16 +98,28 @@ class DonorPool:
             self.by_pos[pos].sort()
         self._cursor: dict[str, int] = defaultdict(int)
 
-    def take(self, ef_pos: str, lo: int = 58, hi: int = 74) -> int | None:
+    def take(self, ef_pos: str, lo: int = 58, hi: int = 74,
+             skin: int | None = None, skin_of=None) -> int | None:
         """
         A donor of this position in a lower-league rating band. Donors are REUSED round-robin
         rather than consumed — cloning one donor for several authored players is safe (each
         gets its own PID and name), and it guarantees every slot can be filled.
+
+        When the target's skin tone is known (RFS appearance data), the pool is FIRST
+        filtered to donors of the same tone, so the clone's whole appearance record (face
+        model, hair, physique) is drawn from a matching player rather than a random one.
         """
         pool = self.by_pos.get(ef_pos) or self.by_pos.get("CMF") or []
         band = [pid for rating, pid in pool if lo <= rating <= hi] or [pid for _, pid in pool]
         if not band:
             return None
+        if skin is not None and skin_of is not None:
+            matched = [pid for pid in band if skin_of(pid) == skin]
+            # near-match (±1 tone) before giving up on appearance entirely
+            if not matched:
+                matched = [pid for pid in band if abs((skin_of(pid) or 0) - skin) <= 1]
+            if matched:
+                band = matched
         i = self._cursor[ef_pos] % len(band)
         self._cursor[ef_pos] += 1
         return band[i]
@@ -148,10 +160,23 @@ class Tree:
         self.a_pid = 0 if self.a_v2 else 8
         self.a_shirt = 16 if self.a_v2 else 20
 
+    def skin_of(self, pid: int) -> int | None:
+        """Skin tone 1-6 from PlayerAppearance (3-bit field at bit 292; tools/appearance.py)."""
+        k = self.app_idx.get(pid)
+        if k is None:
+            return None
+        base = k * APP_REC * 8 + 292
+        v = 0
+        for i in range(3):
+            b = base + i
+            v |= ((self.appear[b // 8] >> (b % 8)) & 1) << i
+        return v if 1 <= v <= 6 else None
+
     # --- authoring ------------------------------------------------------------
 
     def author_player(self, donor_pid: int, new_pid: int, full_name: str,
-                      abilities: dict[str, int] | None = None) -> bool:
+                      abilities: dict[str, int] | None = None,
+                      skin_tone: int | None = None) -> bool:
         di = self.player_idx.get(donor_pid)
         if di is None:
             return False
@@ -168,11 +193,20 @@ class Tree:
         if abilities:
             _write_abilities(rec, abilities)
         self._pending_players.append((new_pid, bytes(rec)))
-        # appearance: clone donor's if present
+        # appearance: clone donor's if present, then write the player's OWN skin tone over
+        # the donor's (3-bit field at bit 292, verified by portrait correlation — see
+        # tools/appearance.py). Clones stop wearing the donor's face colour.
         ai = self.app_idx.get(donor_pid)
         if ai is not None:
             arec = bytearray(self.appear[ai * APP_REC:(ai + 1) * APP_REC])
             struct.pack_into("<Q", arec, 0, new_pid)
+            if skin_tone is not None and 1 <= skin_tone <= 6:
+                for i in range(3):                       # bits 292..294 = byte 36, bits 4-6
+                    b = 292 + i
+                    if (skin_tone >> i) & 1:
+                        arec[b // 8] |= 1 << (b % 8)
+                    else:
+                        arec[b // 8] &= ~(1 << (b % 8))
             self._pending_appear.append((new_pid, bytes(arec)))
         return True
 
@@ -273,10 +307,13 @@ def main() -> int:
         players = club["players"][:n_slots]   # trim to host slot count
         for i, p in enumerate(players):
             ef_pos = POS_MAP.get(p["position"].strip().upper(), "CMF")
-            donor = donors.take(ef_pos)
+            # Appearance-matched donor (RFS truth): same skin tone class where possible.
+            donor = donors.take(ef_pos, skin=p.get("skin_tone"), skin_of=t.skin_of)
             if donor is None:
                 continue
-            if t.author_player(donor, next_pid, p["name"]):
+            # Pass the player's REAL translated abilities so they play with their own attributes,
+            # not the cloned donor's. author_player writes them over the donor's bit-packed fields.
+            if t.author_player(donor, next_pid, p["name"], p.get("abilities"), p.get("skin_tone")):
                 t.assign_slot(tid, i, next_pid, p.get("shirt") or None)
                 next_pid += 1
                 authored += 1

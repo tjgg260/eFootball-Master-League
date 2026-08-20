@@ -24,7 +24,7 @@ sys.path.insert(0, str(REPO / "tools" / "vendor" / "sider"))
 import wesys   # noqa: E402
 
 PESDB = REPO / "bins" / "common" / "etc" / "pesdb"
-PLAYSTYLES = {0: "Possession", 1: "Quick Counter", 2: "Long Ball Counter", 3: "Long Ball", 4: "Out Wide"}
+PLAYSTYLES = {0: "Possession", 1: "Quick Counter", 2: "Long Ball Counter", 3: "Long Ball", 4: "Out Wide", 5: "Overload"}
 
 
 def dec(name: str) -> bytes:

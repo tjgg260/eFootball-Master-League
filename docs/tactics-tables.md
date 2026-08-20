@@ -39,21 +39,32 @@ repositions players or invents custom shapes.
 | 0 | u32 | `team_id` (owner) — matches Team.bin +12 |
 | 4 | u32 | `formation_id` → TacticsFormation.bin |
 | 8 | u8 | team attacking-style enum, 6 values 0–5 (build-up/mentality preset; labels unconfirmed) |
-| 9 | u8 | **phase bit 0x100**: one record clear, one set → in-possession vs out-of-possession shape |
+| 9 | u8 | **phase**: 0 = Main tactic, 1 = Sub tactic (the in-game "Use Sub-Tactic" preset, toggle defaults OFF) |
 
-**Two shapes per team, but "fluid formation" is OVERSTATED — CORRECTION 2026-08-19.** Each team
-stores two formation shapes and 889/890 point both at the same id; only team 6261 has distinct
-shapes. I originally concluded "author two distinct shapes → real fluid formations, AI uses it
-automatically." **That was inference from the data, never verified in-game, and the user reports
-the AI does NOT visibly use fluid formations.**
+**Every team OWNS its two formation records — VERIFIED 2026-08-19 (supersedes an earlier claim
+here that 889/890 teams shared one formation id; that count was wrong).** The measured facts:
 
-What the investigation then showed:
+- Tactics.bin has 1,780 records = **890 teams × 2 phases**, carrying **1,780 distinct
+  formation_ids — zero shared**, and phase-0 fid ≠ phase-1 fid for *every* team.
+- TacticsFormation.bin has exactly **11 geometry rows per fid** (19,580 = 1,780 × 11).
+- So a "formation" is not a shared catalogue entry — it is a per-team position set. Two teams
+  both playing 4-3-3 own two separate 4-3-3 geometry blocks.
+
+**Standing rule (the writeback model this forces):** to change a team's shape, rewrite the
+geometry of the team's **own** fid pair in place (role u32@0, y u8@8, x u8@9 of its 11 rows).
+The `formation_id` u32@4 in Tactics.bin is **never repointed** — pointing team A at team B's fid
+makes A's edits mutate B's shape (that was the old, corrupting editor model). The app mirrors
+this: every career club owns a DB fid pair (910000+), and the match compiler copies that
+geometry onto the in-game team's own fids (`team_fid_pair` / `write_formation_geometry` /
+`write_style` in `tools/play_match.py`); only the style byte is written in Tactics.bin.
+
+Earlier investigation notes that still hold:
 - `eFootball.exe` contains **zero** formation/tactic/possession strings.
 - The `pak` files are UE5 IoStore (utoc/ucas) with hashed chunk ids — no readable asset paths.
-- So whether/how the engine switches between the two shapes is **compiled UE5 gameplay code in
-  the paks**, not a data flag in any cpk.
+- So how the engine uses the two shapes is **compiled UE5 gameplay code in the paks**, not a
+  data flag in any cpk.
 
-**RE-CORRECTED 2026-08-19 after the user's in-game test (El Jadida VB):**
+**In-game meaning of the pair (user's in-game test, El Jadida VB):**
 
 1. El Jadida's two shapes ARE both present, but the **"Use Sub-Tactic" toggle defaults OFF** for
    both user and AI — you flip it on in the tactics menu.
@@ -64,10 +75,12 @@ What the investigation then showed:
    (the style byte @8), and individual instructions. The in-game menu is literally "Use
    Sub-Tactic / Set Formation / Team Playstyle / Individual Instructions".
 
-So `phase` @9 = Main(0) / Sub(1), NOT in/out possession. Editing the shapes works; the open
-question is whether the **"Use Sub-Tactic = On" enable flag** is stored per-team in dt200 (so we
-can default it on for every AI team) or is a save-file/engine default. That flag has NOT been
-located yet — found only by toggling it and diffing, since every team ships with it off.
+So `phase` @9 = Main(0) / Sub(1), NOT in/out possession — the app's Tactics screen labels the
+second tab "Sub (out of possession)" honestly and notes the in-game toggle. Editing the shapes
+works; the open question is whether the **"Use Sub-Tactic = On" enable flag** is stored per-team
+in dt200 (so we can default it on for every AI team) or is a save-file/engine default. That flag
+has NOT been located yet — found only by toggling it and diffing, since every team ships with it
+off.
 
 Rich sliders (pressing, line height, width, tempo) are **not** in Tactics.bin — the flags word
 uses only 4 bits — and likely live in Team.bin's 1600-byte record (still to decode).
@@ -88,8 +101,9 @@ Offsets 21–22 are the "tactics reflect the coach" levers.
 
 1. **Multiple tactics/formations per match** — the table holds 2 shapes/team; >2 needs rewriting
    records between matches (app-driven). 2 phase-shapes is free.
-2. **Fluid formations** — VERIFIED moddable now: point a team's two Tactics records at two
-   different, genuinely distinct formation_ids. This is the strongest, lowest-risk win.
+2. **Fluid formations** — moddable now, the right way: write two genuinely different shapes into
+   the geometry of the team's **own** Main and Sub fids (never repoint the ids). The Sub shape
+   sits behind the in-game "Use Sub-Tactic" toggle, which defaults OFF.
 3. **Coach philosophy** — set Coach.bin +21 (formation) and +22 (playstyle) per coach.
 
 All three are in-place edits on tables we can already decrypt/encrypt — no headcount change — so

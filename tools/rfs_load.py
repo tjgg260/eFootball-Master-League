@@ -124,6 +124,10 @@ def load_efootball_base(con: sqlite3.Connection) -> int:
             pid = int(r["player_id"])
         except (ValueError, KeyError):
             continue
+        # BASE CARDS ONLY. Variant cards (Epic / Featured / special editions) carry a high-bit
+        # prefix (PID >= 2^24); base cards are below it. We keep one real entry per player.
+        if pid >= (1 << 24):
+            continue
         name = r.get("player_name", "").strip()
         if not name:
             continue

@@ -102,6 +102,37 @@ public sealed class Repository
         "SELECT team_id TeamId,player_id PlayerId,squad_number SquadNumber,slot Slot,role Role " +
         "FROM squad_members WHERE team_id=@teamId ORDER BY slot", new { teamId }).ToList();
 
+    public void RemoveSquadMember(int teamId, int playerId) => _c.Execute(
+        "DELETE FROM squad_members WHERE team_id=@teamId AND player_id=@playerId", new { teamId, playerId });
+
+    public void RecordTransfer(int playerId, int toTeamId, int seasonId) => _c.Execute(
+        "INSERT INTO transfers(player_id,to_team_id,season_id,window) " +
+        "VALUES(@playerId,@toTeamId,@seasonId,'signing')", new { playerId, toTeamId, seasonId });
+
+    /// <summary>Just one club's players (joined via squad_members) — avoids loading the whole DB.</summary>
+    public IReadOnlyList<PlayerRow> SquadPlayers(int teamId) => _c.Query<PlayerRow>(
+        "SELECT p.id Id,p.game_pid GamePid,p.base_pid BasePid,p.donor_pid DonorPid,p.is_custom IsCustom," +
+        "p.name Name,p.short_name ShortName,p.position Position,p.age Age,p.dob Dob,p.nationality Nationality," +
+        "p.height_cm HeightCm,p.weight_kg WeightKg,p.overall_rating OverallRating,p.portrait_path PortraitPath " +
+        "FROM players p JOIN squad_members s ON s.player_id=p.id WHERE s.team_id=@teamId", new { teamId }).ToList();
+
+    // --- condition ------------------------------------------------------------
+
+    /// <summary>
+    /// Condition rows for one club's current squad. Only players that HAVE a row come back —
+    /// callers treat a missing player as fresh (fatigue 0, form 6.5, fit).
+    /// </summary>
+    public IReadOnlyList<PlayerConditionRow> ConditionsFor(int teamId) => _c.Query<PlayerConditionRow>(
+        "SELECT c.player_id PlayerId,c.fatigue Fatigue,c.injured_until_md InjuredUntilMd,c.form Form " +
+        "FROM player_condition c JOIN squad_members s ON s.player_id=c.player_id " +
+        "WHERE s.team_id=@teamId ORDER BY c.player_id", new { teamId }).ToList();
+
+    public void UpsertCondition(PlayerConditionRow c) => _c.Execute(
+        "INSERT INTO player_condition(player_id,fatigue,injured_until_md,form) " +
+        "VALUES(@PlayerId,@Fatigue,@InjuredUntilMd,@Form) " +
+        "ON CONFLICT(player_id) DO UPDATE SET fatigue=excluded.fatigue, " +
+        "injured_until_md=excluded.injured_until_md, form=excluded.form", c);
+
     // --- tactics --------------------------------------------------------------
 
     public void UpsertFormation(FormationRow f, IEnumerable<FormationSlotRow> slots)
@@ -121,6 +152,11 @@ public sealed class Repository
     public IReadOnlyList<TeamTacticsRow> TeamTactics(int teamId) => _c.Query<TeamTacticsRow>(
         "SELECT team_id TeamId,phase Phase,formation_id FormationId,style Style " +
         "FROM team_tactics WHERE team_id=@teamId ORDER BY phase", new { teamId }).ToList();
+
+    public IReadOnlyList<FormationSlotRow> FormationSlots(int formationId) => _c.Query<FormationSlotRow>(
+        "SELECT formation_id FormationId,slot_index SlotIndex,position Position,x X,y Y " +
+        "FROM formation_slots WHERE formation_id=@formationId ORDER BY slot_index",
+        new { formationId }).ToList();
 
     // --- season / fixtures / results -----------------------------------------
 
