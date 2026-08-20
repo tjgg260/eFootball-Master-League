@@ -394,7 +394,14 @@ CREATE TABLE IF NOT EXISTS staff_people (
     tactical         INTEGER NOT NULL,
     man_management   INTEGER NOT NULL,
     pref_formation   TEXT    NOT NULL,   -- e.g. '4-3-3'
-    pref_style       TEXT    NOT NULL,   -- Possession | High Press | Counter-Attack | Direct | Balanced
+    pref_style       TEXT    NOT NULL,   -- best of the 6 style strengths below (derived, kept for display)
+    -- strengths 1-20 in the game's six tactical styles:
+    style_possession       INTEGER NOT NULL DEFAULT 10,  -- Possession Game
+    style_quick_counter    INTEGER NOT NULL DEFAULT 10,  -- Quick Counter
+    style_long_ball_counter INTEGER NOT NULL DEFAULT 10, -- Long Ball Counter
+    style_long_ball        INTEGER NOT NULL DEFAULT 10,  -- Long Ball
+    style_out_wide         INTEGER NOT NULL DEFAULT 10,  -- Out Wide
+    style_overload         INTEGER NOT NULL DEFAULT 10,  -- Overload
     wage             INTEGER NOT NULL,   -- weekly
     team_id          INTEGER,            -- NULL = free agent
     contract_until   INTEGER             -- season id the deal runs to (employed only)

@@ -192,7 +192,27 @@ public sealed partial class Session
         var atk = atkSum / atkN;
         var def = defSum / defN;
         var condAdj = -(fatigue / n) / 12.0 + (form / n - 6.5) * 1.2;   // ± a few rating points
-        return (atk + condAdj, def + condAdj);
+        // Staff style fit: an assistant who's strong in the club's chosen playstyle drills it
+        // all week — a small, honest edge (max +1.0 rating point at strength 20).
+        var prep = 0.0;
+        try
+        {
+            if (teamId == CurrentTeamId &&
+                StaffPersonFor("Assistant Manager") is { } asst &&
+                CurrentClubStyle() is { } style)
+                prep = Math.Max(0, asst.StrengthIn(style) - 10) / 10.0;
+        }
+        catch { /* staff are additive */ }
+        return (atk + condAdj + prep, def + condAdj + prep);
+    }
+
+    /// <summary>The club's saved playstyle name (from team_tactics), or null if unset.</summary>
+    public string? CurrentClubStyle()
+    {
+        var t = Repo.TeamTactics(CurrentTeamId).FirstOrDefault();
+        return t is not null && t.Style >= 0 && t.Style < TacticalStyles.Length
+            ? TacticalStyles[t.Style]
+            : null;
     }
 
     /// <summary>

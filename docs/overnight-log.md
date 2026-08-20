@@ -428,3 +428,16 @@ Gates: build 0, tests 168/168, smoke + Squad screenshot OK.
 - New Staff screen: backroom cards (attributes + style line + release), staff market with
   full detail rows, delegation panel with role-gating hints.
 - Gates: build 0 errors · tests 168/168 · ML_RESUME smoke on Staff OK.
+
+## Block: staff style strengths (the game's six styles)
+
+- Every staff member now carries strengths 1-20 in the game's own six playstyles —
+  Possession Game, Quick Counter, Long Ball Counter, Long Ball, Out Wide, Overload —
+  one clear speciality each (13-20), stored in staff_people (6 new columns; live DB
+  migrated in place, new careers seed them natively). The invented style list
+  (High Press/Direct/etc.) is gone; the game's vocabulary is the only one used.
+- Shown on staff cards + market rows as top-3 strengths.
+- They matter: an Assistant Manager strong (14+) in the club's SAVED playstyle
+  (team_tactics.style) gives the simmed XI up to +1.0 rating point of match prep, and his
+  pre-match note calls out fit ("Overload is his speciality (17/20)") or misfit.
+- Gates: build 0 errors · tests 168/168 · ML_RESUME smoke on Staff OK.

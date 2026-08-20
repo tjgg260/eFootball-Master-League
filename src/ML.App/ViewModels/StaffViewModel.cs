@@ -64,6 +64,10 @@ public sealed partial class StaffViewModel : PageViewModel
         _ => "",
     };
 
+    /// <summary>Top style strengths, e.g. "Overload 17 · Quick Counter 12 · Out Wide 9".</summary>
+    private static string StylesSummary(StaffPerson p) =>
+        string.Join(" · ", p.StyleStrengths.Take(3).Select(s => $"{s.Style} {s.Strength}"));
+
     private void Reload()
     {
         Backroom.Clear();
@@ -72,7 +76,8 @@ public sealed partial class StaffViewModel : PageViewModel
         {
             Backroom.Add(mine.TryGetValue(role, out var p)
                 ? new BackroomCard(p.Id, role, p.Name, $"{p.Age} yrs", new string('★', p.Stars),
-                    $"£{p.Wage:N0}/wk", p.StyleLine, AttrSummary(p), true)
+                    $"£{p.Wage:N0}/wk", $"prefers {p.PrefFormation} · {StylesSummary(p)}",
+                    AttrSummary(p), true)
                 : new BackroomCard(0, role, "— vacant —", "", "", "", "", "", false));
         }
         WageLine = $"Backroom wage bill: £{_s.StaffWages():N0}/week across {mine.Count} of 9 desks";
@@ -86,7 +91,8 @@ public sealed partial class StaffViewModel : PageViewModel
         foreach (var p in _s.StaffMarket(SelectedRole))
         {
             Market.Add(new StaffMarketRow(p.Id, p.Name, p.Age.ToString(),
-                new string('★', p.Stars), AttrSummary(p), p.StyleLine, $"£{p.Wage:N0}/wk"));
+                new string('★', p.Stars), AttrSummary(p),
+                $"prefers {p.PrefFormation} · {StylesSummary(p)}", $"£{p.Wage:N0}/wk"));
         }
         SelectedCandidate = Market.FirstOrDefault();
     }

@@ -11,8 +11,23 @@ public sealed record StaffPerson(
     long Id, string Name, int Age, string Role,
     int Coaching, int Youth, int Fitness, int Physio,
     int JudgingAbility, int JudgingPotential, int Tactical, int ManManagement,
-    string PrefFormation, string PrefStyle, int Wage, int? TeamId, int? ContractUntil)
+    string PrefFormation, string PrefStyle, int Wage, int? TeamId, int? ContractUntil,
+    int StylePossession = 10, int StyleQuickCounter = 10, int StyleLongBallCounter = 10,
+    int StyleLongBall = 10, int StyleOutWide = 10, int StyleOverload = 10)
 {
+    /// <summary>Strengths in the game's six tactical styles, strongest first.</summary>
+    public IReadOnlyList<(string Style, int Strength)> StyleStrengths => new[]
+    {
+        ("Possession Game", StylePossession), ("Quick Counter", StyleQuickCounter),
+        ("Long Ball Counter", StyleLongBallCounter), ("Long Ball", StyleLongBall),
+        ("Out Wide", StyleOutWide), ("Overload", StyleOverload),
+    }.OrderByDescending(s => s.Item2).ToList();
+
+    public string BestStyle => StyleStrengths[0].Style;
+
+    public int StrengthIn(string style) =>
+        StyleStrengths.FirstOrDefault(s => s.Style == style).Strength;
+
     /// <summary>The attribute that defines competence in this person's role.</summary>
     public int KeyAttribute => Role switch
     {
@@ -31,7 +46,8 @@ public sealed record StaffPerson(
     /// <summary>1-5 stars derived from the key attribute (20-scale ÷ 4).</summary>
     public int Stars => Math.Clamp((KeyAttribute + 3) / 4, 1, 5);
 
-    public string StyleLine => $"prefers {PrefFormation}, {PrefStyle}";
+    public string StyleLine =>
+        $"prefers {PrefFormation} · best style: {BestStyle} {StyleStrengths[0].Strength}";
 }
 
 /// <summary>
@@ -48,8 +64,9 @@ public sealed partial class Session
         "Fitness Coach", "Youth Coach", "Physio", "Scout", "Analyst",
     };
 
-    private static readonly string[] StaffStyles =
-        { "Possession", "High Press", "Counter-Attack", "Direct", "Balanced" };
+    /// <summary>The game's six team playstyles - the only tactical vocabulary we use.</summary>
+    public static readonly string[] TacticalStyles =
+        { "Possession Game", "Quick Counter", "Long Ball Counter", "Long Ball", "Out Wide", "Overload" };
 
     private static readonly string[] StaffFormations =
         { "4-3-3", "4-2-3-1", "4-4-2", "3-5-2", "5-3-2", "4-1-2-3", "3-4-3" };
@@ -96,6 +113,11 @@ public sealed partial class Session
         {
             for (var i = 0; i < count; i++)
             {
+                // Style strengths: a modest base everywhere and one clear speciality.
+                var styles = new int[6];
+                for (var k = 0; k < 6; k++) styles[k] = 3 + rng.Next(11);
+                var special = rng.Next(6);
+                styles[special] = 13 + rng.Next(8);
                 var person = new StaffPerson(
                     0, names[next++ % names.Count], 33 + rng.Next(30), role,
                     Attr(role is "Coach" or "GK Coach" or "Assistant Manager"),
@@ -107,8 +129,9 @@ public sealed partial class Session
                     Attr(role is "Assistant Manager" or "Analyst"),
                     Attr(role is "Assistant Manager" or "Director of Football"),
                     StaffFormations[rng.Next(StaffFormations.Length)],
-                    StaffStyles[rng.Next(StaffStyles.Length)],
-                    0, null, null);
+                    TacticalStyles[special],
+                    0, null, null,
+                    styles[0], styles[1], styles[2], styles[3], styles[4], styles[5]);
                 InsertStaffPerson(person with { Wage = 600 + person.KeyAttribute * 190 + rng.Next(400) });
             }
         }
@@ -122,8 +145,10 @@ public sealed partial class Session
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO staff_people(name,age,role,coaching,youth,fitness,physio,judging_ability," +
-            "judging_potential,tactical,man_management,pref_formation,pref_style,wage,team_id,contract_until) " +
-            "VALUES($n,$a,$r,$c,$y,$f,$ph,$ja,$jp,$ta,$mm,$pf,$ps,$w,$t,$cu)";
+            "judging_potential,tactical,man_management,pref_formation,pref_style,wage,team_id,contract_until," +
+            "style_possession,style_quick_counter,style_long_ball_counter,style_long_ball," +
+            "style_out_wide,style_overload) " +
+            "VALUES($n,$a,$r,$c,$y,$f,$ph,$ja,$jp,$ta,$mm,$pf,$ps,$w,$t,$cu,$s1,$s2,$s3,$s4,$s5,$s6)";
         cmd.Parameters.AddWithValue("$n", p.Name);
         cmd.Parameters.AddWithValue("$a", p.Age);
         cmd.Parameters.AddWithValue("$r", p.Role);
@@ -140,6 +165,12 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$w", p.Wage);
         cmd.Parameters.AddWithValue("$t", (object?)p.TeamId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$cu", (object?)p.ContractUntil ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$s1", p.StylePossession);
+        cmd.Parameters.AddWithValue("$s2", p.StyleQuickCounter);
+        cmd.Parameters.AddWithValue("$s3", p.StyleLongBallCounter);
+        cmd.Parameters.AddWithValue("$s4", p.StyleLongBall);
+        cmd.Parameters.AddWithValue("$s5", p.StyleOutWide);
+        cmd.Parameters.AddWithValue("$s6", p.StyleOverload);
         cmd.ExecuteNonQuery();
     }
 
@@ -176,11 +207,15 @@ public sealed partial class Session
         r.GetInt32(8), r.GetInt32(9), r.GetInt32(10), r.GetInt32(11),
         r.GetString(12), r.GetString(13), r.GetInt32(14),
         r.IsDBNull(15) ? null : r.GetInt32(15),
-        r.IsDBNull(16) ? null : r.GetInt32(16));
+        r.IsDBNull(16) ? null : r.GetInt32(16),
+        r.GetInt32(17), r.GetInt32(18), r.GetInt32(19),
+        r.GetInt32(20), r.GetInt32(21), r.GetInt32(22));
 
     private const string StaffColumns =
         "id,name,age,role,coaching,youth,fitness,physio,judging_ability,judging_potential," +
-        "tactical,man_management,pref_formation,pref_style,wage,team_id,contract_until";
+        "tactical,man_management,pref_formation,pref_style,wage,team_id,contract_until," +
+        "style_possession,style_quick_counter,style_long_ball_counter,style_long_ball," +
+        "style_out_wide,style_overload";
 
     // ------------------------------------------------------------------ reading
 
@@ -428,7 +463,10 @@ public sealed partial class Session
         return pos == "GK" ? 1.25 : 1.0;
     }
 
-    /// <summary>The assistant's tactical read of the next opponent, coloured by their style.</summary>
+    /// <summary>
+    /// The assistant's tactical read of the next opponent, in the game's own style vocabulary —
+    /// including whether the club's current playstyle is one they can actually drill.
+    /// </summary>
     public string AssistantTacticalNote(int opponentId)
     {
         if (StaffPersonFor("Assistant Manager") is not { } asst) return "";
@@ -436,12 +474,24 @@ public sealed partial class Session
         var ours = EloOf(CurrentTeamId);
         var read = asst.Tactical >= 14
             ? oppElo > ours + 40
-                ? $"they're the stronger side — {asst.PrefStyle} would frustrate them"
+                ? $"they're the stronger side — {asst.BestStyle} would frustrate them"
                 : oppElo < ours - 40
                     ? "we should dictate — get on the ball high up the pitch"
                     : "an even contest — small margins, set pieces matter"
             : "hard to call this one";
-        return $"{asst.Name} ({asst.StyleLine}): \"{read}.\"";
+        var fit = "";
+        try
+        {
+            if (CurrentClubStyle() is { } style)
+            {
+                var s = asst.StrengthIn(style);
+                fit = s >= 14 ? $" {style} is his speciality ({s}/20) — the sessions show it."
+                    : s <= 7 ? $" Note: {style} is not his game ({s}/20)."
+                    : "";
+            }
+        }
+        catch { /* style fit is decoration */ }
+        return $"{asst.Name} ({asst.StyleLine}): \"{read}.\"{fit}";
     }
 
     /// <summary>
