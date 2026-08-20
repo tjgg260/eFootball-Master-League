@@ -210,8 +210,9 @@ local function tick()
 end
 
 ensureAttached()
-if bridgeTimer then bridgeTimer.destroy() end
-bridgeTimer = createTimer(nil)
+-- Owner MUST be the main form, or CE garbage-collects the timer after one tick.
+if bridgeTimer then pcall(function() bridgeTimer.destroy() end) end
+bridgeTimer = createTimer(getMainForm())
 bridgeTimer.Interval = POLL_MS
 bridgeTimer.OnTimer = function() local ok, e = pcall(tick); if not ok then print("bridge tick error: "..tostring(e)) end end
 print("CE bridge running. Polling "..CMD.." every "..POLL_MS.."ms. Attached pid="..getOpenedProcessID())
