@@ -127,6 +127,39 @@ def set_bps(tid, targets, clear=False):
     k32.CloseHandle(h)
 
 
+def locate_rating_array(pid, want=4):
+    """Find the per-player rating array by its signature: 24-byte records with int[+12]==-1
+    and int[+20]==12032, repeating >=8x. Returns the first `want` players' rating addresses."""
+    import numpy as np
+    from mem_scan import _regions
+    h = _open(pid)
+    try:
+        for base, size in _regions(h):
+            data = _read(h, base, size)
+            n = len(data) - (len(data) % 4)
+            if n < 4 * 6 * 8:
+                continue
+            a = np.frombuffer(data[:n], dtype="<i4")
+            m1 = (a == -1)
+            mk = (a == 12032)
+            L = len(a) - 5
+            if L <= 0:
+                continue
+            valid = m1[3:3 + L] & mk[5:5 + L]           # record start k is valid
+            for k in np.nonzero(valid)[0]:
+                run = 0
+                while k + run * 6 < len(valid) and valid[k + run * 6]:
+                    run += 1
+                    if run >= 8:
+                        break
+                if run >= 8:
+                    ratings = [int(base + (k + j * 6) * 4) for j in range(want)]
+                    return ratings
+    finally:
+        k32.CloseHandle(h)
+    return []
+
+
 def locate_team_passes(side):
     from read_team_stats import locate_and_read
     h = _open(find_pid())
@@ -149,6 +182,15 @@ def main():
         targets += [int(x, 16) for x in a[a.index("--addr") + 1].split(",")]
     if "--team-passes" in a:
         targets.append(locate_team_passes(a[a.index("--team-passes") + 1]))
+    if "--ratings" in a:
+        # watch the first 4 players' rating fields — a rating write reads that player's stats
+        rats = locate_rating_array(find_pid(), want=4)
+        if not rats:
+            sys.exit("rating array not found — is a match live with ratings in memory?")
+        print(f"rating array: {len(rats)} players, watching player[0..3] ratings")
+        for r in rats:
+            print(f"  0x{r:x}")
+        targets += rats
     if "--match-passes" in a:
         # locate by the EXACT on-screen passes pair (deterministic, works while paused),
         # then watch BOTH teams' passes so whichever ticks first fires.
