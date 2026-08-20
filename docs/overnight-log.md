@@ -459,3 +459,15 @@ Gates: build 0, tests 168/168, smoke + Squad screenshot OK.
 - Requires user installs (not yet done on this machine): OBS Studio + ffmpeg.
 - Gates: compile clean (verified to scratch output — the app was open and held the DLLs),
   tests 168/168. Smoke deferred until the app is closed.
+
+## Ops: OBS + ffmpeg installed, dt200 re-baselined
+
+- OBS Studio was already installed; ffmpeg 9.0 installed via winget and its full path saved to
+  the app's ffmpeg_path setting (no shell restart needed).
+- Patch-guard trip root-caused: NOT a Konami patch (Steam last updated Aug 18 22:33). The
+  game's dt200 was replaced at Aug 19 21:09 — EvoMod re-run / manual swap. tools/rebaseline.py
+  (new) backed up the old base + tree, adopted the game's file as the new base
+  (8,881,096 bytes) and re-extracted 2,999 files into build/tree_base. Sanity: key pesdb files
+  present; Derby.bin stride unchanged; PlayerAppearance 23,424 records (+36 from EvoMod).
+- Old base and tree kept: build/backups/dt200_base.20260820-191338.cpk and
+  build/tree_base.20260820-191338.old.
