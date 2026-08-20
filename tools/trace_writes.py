@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mem_scan import find_pid, _open, k32
+from mem_scan import find_pid, _open, _read, k32
 
 k32.CloseHandle.argtypes = [wt.HANDLE]
 DBG_CONTINUE = 0x00010002
@@ -187,6 +187,8 @@ def main():
     ev = DEBUG_EVENT()
     hits = 0
     seen = set()
+    dumped = set()
+    ph = _open(pid)            # separate read handle to snapshot pointers DURING each hit
     t0 = time.time()
     try:
         while time.time() - t0 < seconds and hits < 400:
@@ -219,6 +221,23 @@ def main():
                             ptrs = [(r, v) for r, v in regs.items() if 0x10000 < v < 0x7FFFFFFFFFFF]
                             print("    source-candidate pointers: " +
                                   ", ".join(f"{r}=0x{v:x}" for r, v in ptrs))
+                            # CAPTURE each pointer's memory NOW (process is frozen at the BP) —
+                            # survives the anti-tamper delayed kill. Hunt small-int arrays.
+                            for r, v in ptrs:
+                                if v in dumped:
+                                    continue
+                                dumped.add(v)
+                                d = _read(ph, v, 192)
+                                if len(d) < 192:
+                                    continue
+                                vals = [int.from_bytes(d[k:k+4], "little", signed=True)
+                                        for k in range(0, 192, 4)]
+                                small = [x for x in vals if 0 <= x <= 200]
+                                print(f"      [{r} 0x{v:x}] ints: " +
+                                      " ".join(str(x) for x in vals[:24]))
+                                if len(small) >= 8:
+                                    print(f"         ^ {len(small)} small ints, sum(0..200)="
+                                          f"{sum(small)} — possible per-player array")
                     ctx.Dr6 = 0
                     ctx.ContextFlags = CTX_FLAGS
                     k32.SetThreadContext(h, ctypes.byref(ctx))
@@ -230,6 +249,7 @@ def main():
             set_bps(tid, targets, clear=True)
         k32.DebugSetProcessKillOnExit(False)
         k32.DebugActiveProcessStop(pid)
+        k32.CloseHandle(ph)
 
     print(f"\n{len(seen)} distinct writing instruction(s) across {len(targets)} target(s).")
     print("A base-register + small offset is the per-player struct. Dump it:  "
