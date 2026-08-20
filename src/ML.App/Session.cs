@@ -278,6 +278,7 @@ public sealed partial class Session
         // The board settles its objectives (P2) — confidence, rep and backing move here.
         try { EvaluateObjectives(myPos); } catch { /* the verdict never blocks rollover */ }
 
+        try { ReturnAllLoans(); } catch { /* loans never block rollover */ }
         AgeAndDevelopSquads();
         try { RetireAndExpire(); } catch { /* the world never blocks rollover */ }
         CpuTransferActivity();     // the market moves between seasons (and re-fills the retired)

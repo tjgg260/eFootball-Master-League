@@ -140,8 +140,12 @@ public sealed partial class Session
     public const string CupName = "National Cup";
     public const int LeagueCupId = 9003;
     public const string LeagueCupName = "League Cup";
+    public const int ContinentalId = 9004;
+    public const string ContinentalName = "Continental Cup";
 
-    /// <summary>Both knockouts: distinct midweek matchday tracks so rounds never collide.</summary>
+    /// <summary>All knockouts: distinct midweek matchday tracks so rounds never collide.
+    /// The Continental Cup is the eight-team elite tier — last season's top two qualify,
+    /// the rest enter on rating (Elos).</summary>
     public static readonly CupSpec[] Cups =
     {
         new(CupLeague, CupName, new[]
@@ -154,6 +158,10 @@ public sealed partial class Session
             (32, 5, "Round of 32"), (16, 11, "Round of 16"), (8, 19, "Quarter-final"),
             (4, 26, "Semi-final"), (2, 31, "Final"),
         }, 74747),
+        new(ContinentalId, ContinentalName, new[]
+        {
+            (8, 13, "Quarter-final"), (4, 21, "Semi-final"), (2, 35, "Final"),
+        }, 55511),
     };
 
     public static string CupRoundName(int matchday) =>
@@ -173,7 +181,29 @@ public sealed partial class Session
             if (Repo.Fixtures(SeasonId).Any(f => f.Kind == "cup" && f.LeagueId == cup.LeagueId)) continue;
             Repo.UpsertLeague(new LeagueRow { Id = cup.LeagueId, Name = cup.Name, Tier = 0 });
             var rng = new SeededRandom((SeasonId * cup.Salt + 11) ^ WorldSeed);
-            var entrants = clubs.OrderBy(_ => rng.Next(1_000_000)).Take(32).ToList();
+            List<int> entrants;
+            if (cup.LeagueId == ContinentalId)
+            {
+                // Elite entry: last season's qualifiers first, ELO fills the rest of the 8.
+                var qualified = new List<int>();
+                if (GetMeta($"continental_{SeasonId}") is { } q)
+                {
+                    foreach (var part in q.Split(','))
+                    {
+                        if (int.TryParse(part, out var tid) && clubs.Contains(tid)) qualified.Add(tid);
+                    }
+                }
+                entrants = qualified
+                    .Concat(clubs.Where(c => !qualified.Contains(c))
+                        .OrderByDescending(EloOf))
+                    .Take(8)
+                    .OrderBy(_ => rng.Next(1_000_000))
+                    .ToList();
+            }
+            else
+            {
+                entrants = clubs.OrderBy(_ => rng.Next(1_000_000)).Take(32).ToList();
+            }
             var nextId = NextFixtureId();
             for (var i = 0; i + 1 < entrants.Count; i += 2)
             {
@@ -309,7 +339,8 @@ public sealed partial class Session
         {
             if (GetMeta($"cup_winner_{cup.LeagueId}_{SeasonId}") is { } w && int.TryParse(w, out var wid))
             {
-                var amount = cup.LeagueId == CupLeague ? 4_000_000L : 2_000_000L;
+                var amount = cup.LeagueId == CupLeague ? 4_000_000L
+                    : cup.LeagueId == ContinentalId ? 10_000_000L : 2_000_000L;
                 Pay(wid, amount);
                 if (wid == CurrentTeamId) mine += amount;
             }
@@ -354,6 +385,8 @@ public sealed partial class Session
             Put("cup", cupWinner);
         if (GetMeta($"cup_winner_{LeagueCupId}_{SeasonId}") is { } lw && int.TryParse(lw, out var lcupWinner))
             Put("lcup", lcupWinner);
+        if (GetMeta($"cup_winner_{ContinentalId}_{SeasonId}") is { } cc && int.TryParse(cc, out var ccWinner))
+            Put("ccup", ccWinner);
     }
 
     /// <summary>
@@ -423,6 +456,7 @@ public sealed partial class Session
                 "league" => LeagueNameFor(TopFlight),
                 "division2" => LeagueNameFor(Division2),
                 "lcup" => LeagueCupName,
+                "ccup" => ContinentalName,
                 "pots" => "Player of the Season",
                 _ => CupName,
             };

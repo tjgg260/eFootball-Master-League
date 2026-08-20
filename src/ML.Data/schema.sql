@@ -371,3 +371,14 @@ CREATE TABLE IF NOT EXISTS player_status (
 -- News imagery (P6): letters about a player carry his id so the feed can show his face.
 -- (Existing DBs migrate via ALTER in tools; CREATE TABLE IF NOT EXISTS covers fresh ones
 -- through the column list below being additive-only.)
+
+-- Loans (P-next): players parked at another club for the season; recalls from the January
+-- window; everyone comes home at rollover. direction: 'out' = yours at a host, 'in' = theirs
+-- with you.
+CREATE TABLE IF NOT EXISTS loans (
+    player_id  INTEGER PRIMARY KEY REFERENCES players(id),
+    owner_team INTEGER NOT NULL,
+    host_team  INTEGER NOT NULL,
+    season_id  INTEGER NOT NULL,
+    direction  TEXT    NOT NULL
+);

@@ -359,3 +359,13 @@ not stored) as an accent polyline with now/peak/low caption.
 Tactics views converted to DynamicResource theme tokens — Broadsheet/Retro PES/Club Colours
 now restyle far more of the app.
 Gates: build 0, tests 168/168, smoke + Squad screenshot OK.
+
+## Block: Continental Cup + Loans (items 1-2 of 12)
+
+- Continental Cup (id 9004): 8 teams, MDs 13/21/35, qualifiers from `continental_{season}` meta
+  + ELO fill, £10m prize, honours 'ccup'. Wired into Cups array / EnsureCup / PayPrizes / Honours.
+- Loans both directions (SessionLoans.cs + `loans` table): Loan out from the Squad card
+  (deterministic lower-half host, dev bonus ≤22 at return), Loan in from the Market profile
+  (10% of value fee), recall from January (MD≥17) via the OUT ON LOAN strip on Squad,
+  ReturnAllLoans() at season rollover with "returns sharper" letter.
+- Gates: build 0 errors · tests 168/168 · ML_RESUME smoke on Squad OK.

@@ -319,6 +319,14 @@ public sealed partial class MarketViewModel : PageViewModel
     }
 
     [RelayCommand]
+    private void LoanIn()
+    {
+        if (SelectedPlayer is null) { SignStatus = "Pick a player first."; return; }
+        SignStatus = _s.LoanIn(SelectedPlayer.Id);
+        if (SignStatus.StartsWith("Loan DONE")) Requery();
+    }
+
+    [RelayCommand]
     private void SendOffer()
     {
         if (SelectedPlayer is null || !Negotiating) return;

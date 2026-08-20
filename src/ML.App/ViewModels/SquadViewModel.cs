@@ -119,6 +119,8 @@ public static class PlayerCard
             .Select(w => w == "gk" ? "GK" : char.ToUpperInvariant(w[0]) + w[1..]));
 }
 
+public sealed record LoanRowVm(int PlayerId, string Line, bool IsOut);
+
 public sealed partial class SquadViewModel : PageViewModel
 {
     private readonly Session _s;
@@ -173,6 +175,7 @@ public sealed partial class SquadViewModel : PageViewModel
         _nextMd = md;
         ApplyFilter();
         Selected = Rows.FirstOrDefault();
+        ReloadLoans();
     }
 
     public override string Title => "Squad";
@@ -195,6 +198,50 @@ public sealed partial class SquadViewModel : PageViewModel
     partial void OnActiveChipChanged(string value) => ApplyFilter();
 
     [RelayCommand] private void SetChip(string chip) => ActiveChip = chip;
+
+    // Loans (P-next): out from the card, recalls from the loans strip.
+    public ObservableCollection<LoanRowVm> Loans { get; } = new();
+    public bool HasLoans => Loans.Count > 0;
+
+    private void ReloadLoans()
+    {
+        Loans.Clear();
+        try
+        {
+            foreach (var l in _s.ActiveLoans())
+            {
+                var line = l.Direction == "out"
+                    ? $"{l.Player} → {l.OtherClub} (until June)"
+                    : $"{l.Player} — on loan from {l.OtherClub}";
+                Loans.Add(new LoanRowVm(l.PlayerId, line, l.Direction == "out"));
+            }
+        }
+        catch { /* loans are additive */ }
+        OnPropertyChanged(nameof(HasLoans));
+    }
+
+    [RelayCommand]
+    private void LoanOut()
+    {
+        if (Selected is null) return;
+        var pid = Selected.PlayerId;
+        SquadStatus = _s.LoanOut(pid);
+        // If the loan went through he's no longer in the squad — drop the row.
+        if (!_s.Repo.Squad(_s.CurrentTeamId).Any(m => m.PlayerId == pid))
+        {
+            _all.RemoveAll(e => e.PlayerId == pid);
+            ApplyFilter();
+            Selected = Rows.FirstOrDefault();
+        }
+        ReloadLoans();
+    }
+
+    [RelayCommand]
+    private void RecallLoan(LoanRowVm loan)
+    {
+        SquadStatus = _s.RecallLoan(loan.PlayerId);
+        ReloadLoans();
+    }
 
     private void ApplyFilter()
     {

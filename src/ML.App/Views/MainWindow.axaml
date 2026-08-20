@@ -221,6 +221,10 @@
                         Background="#1F9D4D" Foreground="White" FontWeight="Bold"
                         Padding="14,9" CornerRadius="8" HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center"/>
+                <Button Content="↔ Loan until June (10% of value)" Command="{Binding LoanInCommand}"
+                        Background="#232B36" Foreground="#C7CEDA"
+                        Padding="14,8" CornerRadius="8" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"/>
                 <Border Background="#1B222C" CornerRadius="10" Padding="12"
                         IsVisible="{Binding Negotiating}">
                   <StackPanel Spacing="8">
