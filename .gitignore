@@ -67,3 +67,7 @@ build/rfs_ability_offsets.json
 *_Toriga*.zip
 HDGraphic_Toriga.zip
 tools/__pycache__/
+build/pc0000_paths.txt
+build/iostore_assets.txt
+build/mem_scan_state.json
+build/stats_map.json
