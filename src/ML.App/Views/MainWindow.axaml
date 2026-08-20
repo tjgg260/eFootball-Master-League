@@ -524,46 +524,93 @@
     </DataTemplate>
 
     <DataTemplate DataType="vm:StaffViewModel">
-      <Grid Margin="20" ColumnDefinitions="*,*" RowDefinitions="Auto,*">
-        <TextBlock Grid.ColumnSpan="2" Text="Backroom Staff" FontSize="24" FontWeight="Bold"
-                   Foreground="White" Margin="0,0,0,12"/>
-        <Border Grid.Row="1" Grid.Column="0" Classes="panel" Margin="0,0,8,0">
-          <StackPanel Spacing="4">
-            <TextBlock Classes="panelHead" Text="Your staff"/>
-            <ItemsControl ItemsSource="{Binding Rows}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:StaffRow">
-                  <Grid ColumnDefinitions="110,*,70,90" Margin="0,5">
-                    <TextBlock Text="{Binding Role}" Foreground="#8A93A2" FontSize="13" FontWeight="Bold"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="#E6EAF0" FontSize="14"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Stars}" Foreground="#E0A526" FontSize="13"/>
-                    <TextBlock Grid.Column="3" Text="{Binding Wage}" Foreground="#8A93A2" FontSize="12"/>
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <Grid Margin="20" ColumnDefinitions="*,420" RowDefinitions="Auto,Auto,*">
+        <StackPanel Grid.ColumnSpan="2" Margin="0,0,0,10">
+          <TextBlock Text="Backroom Staff" FontSize="24" FontWeight="Bold" Foreground="White"/>
+          <TextBlock Text="{Binding WageLine}" Foreground="#8A93A2" FontSize="12" Margin="0,4,0,0"/>
+          <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- your backroom: one card per desk, attributes + tactical preference -->
+        <ScrollViewer Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Margin="0,0,10,0">
+          <ItemsControl ItemsSource="{Binding Backroom}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:BackroomCard">
+                <Border Background="#161C24" CornerRadius="8" Padding="12,9" Margin="0,0,0,7">
+                  <Grid ColumnDefinitions="150,*,Auto">
+                    <StackPanel>
+                      <TextBlock Text="{Binding Role}" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"/>
+                      <TextBlock Text="{Binding Stars}" Foreground="#E0A526" FontSize="12"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="1">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Name}" Foreground="#E6EAF0" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding AgeLine}" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Wage}" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+                      </StackPanel>
+                      <TextBlock Text="{Binding AttrLine}" Foreground="#C7CEDA" FontSize="12"/>
+                      <TextBlock Text="{Binding StyleLine}" Foreground="#7FA6D9" FontSize="11" FontStyle="Italic"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Content="Release" IsVisible="{Binding Filled}"
+                            Background="#3A2328" Foreground="#E08A8A" Padding="10,5" CornerRadius="6" FontSize="11"
+                            VerticalAlignment="Center"
+                            Command="{Binding $parent[ItemsControl].((vm:StaffViewModel)DataContext).ReleaseCommand}"
+                            CommandParameter="{Binding}"/>
                   </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Button Content="Release from role" Command="{Binding FireCommand}" Margin="0,10,0,0"
-                    Background="#3A2328" Foreground="#E08A8A" Padding="12,8" CornerRadius="6" FontSize="12"/>
-          </StackPanel>
-        </Border>
-        <Border Grid.Row="1" Grid.Column="1" Classes="panel" Margin="8,0,0,0">
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+
+        <!-- the market: free agents per role, best first -->
+        <Border Grid.Row="1" Grid.Column="1" Classes="panel">
           <StackPanel Spacing="8">
-            <TextBlock Classes="panelHead" Text="Hire"/>
-            <ComboBox ItemsSource="{Binding RoleOptions}" SelectedItem="{Binding SelectedRole}" Width="160"/>
-            <ListBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}"
-                     Background="Transparent" BorderThickness="0">
+            <TextBlock Classes="panelHead" Text="Staff market"/>
+            <ComboBox ItemsSource="{Binding RoleOptions}" SelectedItem="{Binding SelectedRole}"
+                      HorizontalAlignment="Stretch"/>
+            <ListBox ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedCandidate}"
+                     Background="Transparent" BorderThickness="0" MaxHeight="330">
               <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:StaffCandidateRow">
-                  <TextBlock Text="{Binding Line}" Foreground="#C7CEDA" FontSize="13" Margin="2,3"/>
+                <DataTemplate x:DataType="vm:StaffMarketRow">
+                  <StackPanel Margin="2,4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Name}" Foreground="#E6EAF0" FontSize="13" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding Age}" Foreground="#8A93A2" FontSize="12"/>
+                      <TextBlock Text="{Binding Stars}" Foreground="#E0A526" FontSize="12"/>
+                      <TextBlock Text="{Binding Wage}" Foreground="#8A93A2" FontSize="12"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding KeyAttrs}" Foreground="#C7CEDA" FontSize="11"/>
+                    <TextBlock Text="{Binding Style}" Foreground="#7FA6D9" FontSize="11" FontStyle="Italic"/>
+                  </StackPanel>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
             <Button Content="Hire selected" Command="{Binding HireCommand}"
                     Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="16,9" CornerRadius="8"/>
-            <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- delegation: hand duties to the people you hired -->
+        <Border Grid.Row="2" Grid.Column="1" Classes="panel" Margin="0,10,0,0" VerticalAlignment="Top">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="panelHead" Text="Delegation"/>
+            <ItemsControl ItemsSource="{Binding Toggles}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DelegationToggle">
+                  <StackPanel Margin="0,2">
+                    <CheckBox IsChecked="{Binding IsOn}" Content="{Binding Label}"
+                              Foreground="#C7CEDA" FontSize="12"/>
+                    <TextBlock Text="{Binding Hint}" Foreground="#E0A526" FontSize="10" Margin="26,0,0,0"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
         </Border>
       </Grid>
+      </ScrollViewer>
     </DataTemplate>
 
     <DataTemplate DataType="vm:StatsViewModel">

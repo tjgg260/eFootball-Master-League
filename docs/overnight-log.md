@@ -409,3 +409,22 @@ Gates: build 0, tests 168/168, smoke + Squad screenshot OK.
   portraits beyond the 12.8k already imported from RFS. Nothing to build.
 - Item 12 (toast unification / full view-split) remains partially done from the earlier token
   sweep; SquadView/TacticsView/DashboardView are split out, the rest still inline.
+
+## Block: Staff database (FM-style)
+
+- `staff_people`: 220 persistent individuals across 9 roles (Assistant Manager, Director of
+  Football, Coach, GK Coach, Fitness Coach, Youth Coach, Physio, Scout, Analyst) with 1-20
+  attributes (coaching/youth/fitness/physio/judging ability/judging potential/tactical/man
+  management), tactical preferences (formation + style), wages, contracts. Names from the
+  Coach.bin pool; deterministic per world seed; old 4-role hires migrated in.
+- Hiring: free-agent market per role, best first; hire = 2-year deal, replaces + releases the
+  incumbent; release returns people to the pool.
+- Delegation (5 toggles): Assistant picks XI · DoF handles renewals · DoF suggests targets
+  (judging-ability-scaled shortlist letters every 4 MDs) · Scout auto-reports next opponent ·
+  Fitness Coach manages recovery (2-6 fatigue/wk relief). Runs in the weekly pass.
+- Attribute-driven effects: Coach 14+ = faster training · Physio attr/8 matchdays off layoffs ·
+  Youth Coach 13+ = +2 intake floor · GK Coach 12+ = ×1.25 keeper growth · assistant tactical
+  read of the next opponent in their own preferred style.
+- New Staff screen: backroom cards (attributes + style line + release), staff market with
+  full detail rows, delegation panel with role-gating hints.
+- Gates: build 0 errors · tests 168/168 · ML_RESUME smoke on Staff OK.

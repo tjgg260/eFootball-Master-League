@@ -375,6 +375,31 @@ CREATE TABLE IF NOT EXISTS player_status (
 -- Loans (P-next): players parked at another club for the season; recalls from the January
 -- window; everyone comes home at rollover. direction: 'out' = yours at a host, 'in' = theirs
 -- with you.
+-- The staff DATABASE (FM-style): persistent individual people with 1-20 attributes and
+-- tactical preferences. team_id NULL = free agent. One person per (team, role) is enforced
+-- in code; firing returns the person to the pool rather than deleting them.
+CREATE TABLE IF NOT EXISTS staff_people (
+    id               INTEGER PRIMARY KEY,
+    name             TEXT    NOT NULL,
+    age              INTEGER NOT NULL,
+    role             TEXT    NOT NULL,   -- Assistant Manager | Director of Football | Coach |
+                                         -- GK Coach | Fitness Coach | Youth Coach | Physio |
+                                         -- Scout | Analyst
+    coaching         INTEGER NOT NULL,   -- all attributes 1-20, FM-style
+    youth            INTEGER NOT NULL,
+    fitness          INTEGER NOT NULL,
+    physio           INTEGER NOT NULL,
+    judging_ability  INTEGER NOT NULL,
+    judging_potential INTEGER NOT NULL,
+    tactical         INTEGER NOT NULL,
+    man_management   INTEGER NOT NULL,
+    pref_formation   TEXT    NOT NULL,   -- e.g. '4-3-3'
+    pref_style       TEXT    NOT NULL,   -- Possession | High Press | Counter-Attack | Direct | Balanced
+    wage             INTEGER NOT NULL,   -- weekly
+    team_id          INTEGER,            -- NULL = free agent
+    contract_until   INTEGER             -- season id the deal runs to (employed only)
+);
+
 -- Weekly club history: one row per matchday pass, feeds the trend charts (item 11).
 CREATE TABLE IF NOT EXISTS club_history (
     season_id  INTEGER NOT NULL,

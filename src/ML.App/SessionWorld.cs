@@ -725,8 +725,8 @@ public sealed partial class Session
             {
                 var id = nextId++;
                 var age = 16 + rng.Next(3);
-                // Your academy level lifts the floor of the class (item 4 facilities).
-                var facilityLift = yours ? (AcademyLevel - 1) * 2 : 0;
+                // Your academy level + a good Youth Coach lift the floor of the class.
+                var facilityLift = yours ? (AcademyLevel - 1) * 2 + YouthCoachIntakeBonus() : 0;
                 var rating = 44 + facilityLift + rng.Next(16);
                 var name = $"{first[rng.Next(first.Count)]} {last[rng.Next(last.Count)]}";
                 var position = positions[rng.Next(positions.Length)];

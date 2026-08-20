@@ -172,9 +172,9 @@ public sealed partial class Session
         var facility = 1.0;
         try
         {
-            // Only YOUR squad trains on your facilities.
+            // Only YOUR squad trains on your facilities — and your GK coach.
             if (Repo.Squad(CurrentTeamId).Any(m => m.PlayerId == playerId))
-                facility = TrainingFacilityMultiplier;
+                facility = TrainingFacilityMultiplier * GkCoachMultiplier(playerId);
         }
         catch { /* facilities are additive */ }
         return PersonalityModel.GrowthMultiplier(det, prof) * facility;

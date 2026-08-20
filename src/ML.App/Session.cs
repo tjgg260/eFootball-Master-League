@@ -1003,6 +1003,10 @@ public sealed partial class Session
         try { RunDeadlineDay(matchday); } catch { /* deadline drama never blocks the pass */ }
         try { EvaluatePlayingTime(matchday); } catch { /* playing time never blocks the pass */ }
 
+        // Delegated staff duties (staff DB): renewals, shortlists, opposition scouting, recovery.
+        try { RunStaffDelegation(matchday); }
+        catch { /* delegation never blocks the pass */ }
+
         // Weekly history snapshot (item 11): the trend charts read this series.
         try { RecordClubHistory(matchday); }
         catch { /* history never blocks the pass */ }

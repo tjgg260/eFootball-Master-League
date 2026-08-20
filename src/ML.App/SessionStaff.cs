@@ -1,89 +1,452 @@
+using Microsoft.Data.Sqlite;
+using ML.Core;
+
 namespace ML.App;
 
+/// <summary>Legacy summary shape — kept so scout/morale/report call sites stay stable.</summary>
 public sealed record StaffMember(string Role, string Name, int Quality, int Wage);
 
+/// <summary>One person from the staff database, attributes 1-20 (FM-style).</summary>
+public sealed record StaffPerson(
+    long Id, string Name, int Age, string Role,
+    int Coaching, int Youth, int Fitness, int Physio,
+    int JudgingAbility, int JudgingPotential, int Tactical, int ManManagement,
+    string PrefFormation, string PrefStyle, int Wage, int? TeamId, int? ContractUntil)
+{
+    /// <summary>The attribute that defines competence in this person's role.</summary>
+    public int KeyAttribute => Role switch
+    {
+        "Assistant Manager" => Tactical,
+        "Director of Football" => JudgingAbility,
+        "Coach" => Coaching,
+        "GK Coach" => Coaching,
+        "Fitness Coach" => Fitness,
+        "Youth Coach" => Youth,
+        "Physio" => Physio,
+        "Scout" => JudgingAbility,
+        "Analyst" => Tactical,
+        _ => Coaching,
+    };
+
+    /// <summary>1-5 stars derived from the key attribute (20-scale ÷ 4).</summary>
+    public int Stars => Math.Clamp((KeyAttribute + 3) / 4, 1, 5);
+
+    public string StyleLine => $"prefers {PrefFormation}, {PrefStyle}";
+}
+
 /// <summary>
-/// The backroom (FM parity phase A1): one hire per role, paid weekly, with real effects —
-/// a good coach speeds training, a good physio shortens injuries, the assistant explains
-/// XI suggestions, and the scout gates report depth (phase A2).
+/// The staff database (FM-style): a persistent world pool of individual people with 1-20
+/// attributes and tactical preferences. Hire one per role, delegate responsibilities, and the
+/// attributes drive real effects — training speed, injury recovery, intake quality, report
+/// depth, renewals and target-finding when the Director of Football has the keys.
 /// </summary>
 public sealed partial class Session
 {
-    public static readonly string[] StaffRoles = { "Assistant", "Coach", "Scout", "Physio" };
-
-    private static readonly string[] StaffFirst =
-        { "Marco", "Steve", "Jurgen", "Paulo", "Kenny", "Ivan", "Didier", "Rafael", "Tomas", "Gareth" };
-    private static readonly string[] StaffLast =
-        { "Keane", "Vidic", "Molina", "Berger", "Sanchez", "Novak", "Toure", "Eriksen", "Costa", "Marsh" };
-
-    public StaffMember? StaffFor(string role)
+    public static readonly string[] StaffRoles =
     {
-        using var cmd = Db.Connection.CreateCommand();
-        cmd.CommandText = "SELECT name, quality, wage FROM staff WHERE team_id=$t AND role=$r";
-        cmd.Parameters.AddWithValue("$t", CurrentTeamId);
-        cmd.Parameters.AddWithValue("$r", role);
-        using var r = cmd.ExecuteReader();
-        return r.Read() ? new StaffMember(role, r.GetString(0), r.GetInt32(1), r.GetInt32(2)) : null;
-    }
+        "Assistant Manager", "Director of Football", "Coach", "GK Coach",
+        "Fitness Coach", "Youth Coach", "Physio", "Scout", "Analyst",
+    };
 
-    public IReadOnlyList<StaffMember> AllStaff() =>
-        StaffRoles.Select(StaffFor).Where(s => s is not null).Select(s => s!).ToList();
+    private static readonly string[] StaffStyles =
+        { "Possession", "High Press", "Counter-Attack", "Direct", "Balanced" };
 
-    /// <summary>Three deterministic candidates per role per season — better ones cost more.</summary>
-    public IReadOnlyList<StaffMember> StaffCandidates(string role)
+    private static readonly string[] StaffFormations =
+        { "4-3-3", "4-2-3-1", "4-4-2", "3-5-2", "5-3-2", "4-1-2-3", "3-4-3" };
+
+    // ------------------------------------------------------------------ the pool
+
+    /// <summary>Seed the world's staff pool once per career (deterministic from the seed).</summary>
+    public void EnsureStaffPool()
     {
-        var list = new List<StaffMember>();
-        for (var i = 0; i < 3; i++)
+        using (var q = Db.Connection.CreateCommand())
         {
-            var seed = (uint)((SeasonId * 131 + role.Length * 17 + i * 7919 + CurrentTeamId) * 2654435761);
-            var quality = 1 + (int)(seed % 5);
-            var name = $"{StaffFirst[(int)(seed / 5 % 10)]} {StaffLast[(int)(seed / 50 % 10)]}";
-            list.Add(new StaffMember(role, name, quality, 1000 + quality * 1500));
+            q.CommandText = "SELECT COUNT(*) FROM staff_people";
+            if (Convert.ToInt32(q.ExecuteScalar()) > 0) return;
         }
-        return list.OrderByDescending(s => s.Quality).ToList();
+        var rng = new SeededRandom(777_001 ^ WorldSeed);
+
+        // Real coach names first (Coach.bin pool), synthetic fill after.
+        var names = new List<string>();
+        try
+        {
+            using var n = Db.Connection.CreateCommand();
+            n.CommandText = "SELECT name FROM coach_names ORDER BY name";
+            using var r = n.ExecuteReader();
+            while (r.Read()) names.Add(r.GetString(0));
+        }
+        catch { /* pool falls back to synthetic names */ }
+        for (var i = names.Count; i < 400; i++) names.Add($"Staff Member {i + 1}");
+        // Deterministic shuffle so careers don't all hire the same alphabet.
+        for (var i = names.Count - 1; i > 0; i--)
+        {
+            var j = rng.Next(i + 1);
+            (names[i], names[j]) = (names[j], names[i]);
+        }
+
+        var counts = new (string Role, int N)[]
+        {
+            ("Assistant Manager", 28), ("Director of Football", 16), ("Coach", 44),
+            ("GK Coach", 20), ("Fitness Coach", 20), ("Youth Coach", 24),
+            ("Physio", 24), ("Scout", 28), ("Analyst", 16),
+        };
+        var next = 0;
+        int Attr(bool key) => key ? 8 + rng.Next(12) : 3 + rng.Next(12);
+        foreach (var (role, count) in counts)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var person = new StaffPerson(
+                    0, names[next++ % names.Count], 33 + rng.Next(30), role,
+                    Attr(role is "Coach" or "GK Coach" or "Assistant Manager"),
+                    Attr(role is "Youth Coach"),
+                    Attr(role is "Fitness Coach"),
+                    Attr(role is "Physio"),
+                    Attr(role is "Scout" or "Director of Football"),
+                    Attr(role is "Scout" or "Youth Coach" or "Director of Football"),
+                    Attr(role is "Assistant Manager" or "Analyst"),
+                    Attr(role is "Assistant Manager" or "Director of Football"),
+                    StaffFormations[rng.Next(StaffFormations.Length)],
+                    StaffStyles[rng.Next(StaffStyles.Length)],
+                    0, null, null);
+                InsertStaffPerson(person with { Wage = 600 + person.KeyAttribute * 190 + rng.Next(400) });
+            }
+        }
+
+        // Carry over anything hired under the old 4-role system so nobody loses their backroom.
+        MigrateLegacyStaff();
     }
 
-    public string HireStaff(StaffMember candidate)
+    private void InsertStaffPerson(StaffPerson p)
     {
         using var cmd = Db.Connection.CreateCommand();
-        cmd.CommandText = "INSERT INTO staff(team_id,role,name,quality,wage) VALUES($t,$r,$n,$q,$w) " +
-                          "ON CONFLICT(team_id,role) DO UPDATE SET name=$n, quality=$q, wage=$w";
-        cmd.Parameters.AddWithValue("$t", CurrentTeamId);
-        cmd.Parameters.AddWithValue("$r", candidate.Role);
-        cmd.Parameters.AddWithValue("$n", candidate.Name);
-        cmd.Parameters.AddWithValue("$q", candidate.Quality);
-        cmd.Parameters.AddWithValue("$w", candidate.Wage);
+        cmd.CommandText =
+            "INSERT INTO staff_people(name,age,role,coaching,youth,fitness,physio,judging_ability," +
+            "judging_potential,tactical,man_management,pref_formation,pref_style,wage,team_id,contract_until) " +
+            "VALUES($n,$a,$r,$c,$y,$f,$ph,$ja,$jp,$ta,$mm,$pf,$ps,$w,$t,$cu)";
+        cmd.Parameters.AddWithValue("$n", p.Name);
+        cmd.Parameters.AddWithValue("$a", p.Age);
+        cmd.Parameters.AddWithValue("$r", p.Role);
+        cmd.Parameters.AddWithValue("$c", p.Coaching);
+        cmd.Parameters.AddWithValue("$y", p.Youth);
+        cmd.Parameters.AddWithValue("$f", p.Fitness);
+        cmd.Parameters.AddWithValue("$ph", p.Physio);
+        cmd.Parameters.AddWithValue("$ja", p.JudgingAbility);
+        cmd.Parameters.AddWithValue("$jp", p.JudgingPotential);
+        cmd.Parameters.AddWithValue("$ta", p.Tactical);
+        cmd.Parameters.AddWithValue("$mm", p.ManManagement);
+        cmd.Parameters.AddWithValue("$pf", p.PrefFormation);
+        cmd.Parameters.AddWithValue("$ps", p.PrefStyle);
+        cmd.Parameters.AddWithValue("$w", p.Wage);
+        cmd.Parameters.AddWithValue("$t", (object?)p.TeamId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$cu", (object?)p.ContractUntil ?? DBNull.Value);
         cmd.ExecuteNonQuery();
-        PostInbox("Board", $"New {candidate.Role.ToLowerInvariant()} hired",
-            $"{candidate.Name} ({new string('★', candidate.Quality)}) joins the backroom at " +
-            $"£{candidate.Wage:N0}/week.");
-        return $"{candidate.Name} hired as {candidate.Role} — £{candidate.Wage:N0}/week joins the bill.";
     }
 
-    public string FireStaff(string role)
+    /// <summary>Old `staff` table hires become real people at the same club, role-mapped.</summary>
+    private void MigrateLegacyStaff()
     {
-        var current = StaffFor(role);
-        if (current is null) return "Nobody in that role.";
+        var legacy = new List<(int Team, string Role, string Name, int Quality, int Wage)>();
+        try
+        {
+            using var q = Db.Connection.CreateCommand();
+            q.CommandText = "SELECT team_id, role, name, quality, wage FROM staff";
+            using var r = q.ExecuteReader();
+            while (r.Read())
+                legacy.Add((r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetInt32(3), r.GetInt32(4)));
+        }
+        catch { return; }
+        foreach (var (team, role, name, quality, wage) in legacy)
+        {
+            var mapped = role == "Assistant" ? "Assistant Manager" : role;
+            var attr = Math.Clamp(quality * 4, 4, 20);
+            InsertStaffPerson(new StaffPerson(0, name, 40 + quality * 3, mapped,
+                attr, attr - 2, attr - 2, mapped == "Physio" ? attr : attr - 4,
+                attr - 2, attr - 3, attr - 1, attr - 2,
+                "4-3-3", "Balanced", wage, team, SeasonId + 1));
+        }
+        using var del = Db.Connection.CreateCommand();
+        del.CommandText = "DELETE FROM staff";
+        del.ExecuteNonQuery();
+    }
+
+    private static StaffPerson ReadStaffPerson(SqliteDataReader r) => new(
+        r.GetInt64(0), r.GetString(1), r.GetInt32(2), r.GetString(3),
+        r.GetInt32(4), r.GetInt32(5), r.GetInt32(6), r.GetInt32(7),
+        r.GetInt32(8), r.GetInt32(9), r.GetInt32(10), r.GetInt32(11),
+        r.GetString(12), r.GetString(13), r.GetInt32(14),
+        r.IsDBNull(15) ? null : r.GetInt32(15),
+        r.IsDBNull(16) ? null : r.GetInt32(16));
+
+    private const string StaffColumns =
+        "id,name,age,role,coaching,youth,fitness,physio,judging_ability,judging_potential," +
+        "tactical,man_management,pref_formation,pref_style,wage,team_id,contract_until";
+
+    // ------------------------------------------------------------------ reading
+
+    /// <summary>Your person in a role, or null while the desk sits empty.</summary>
+    public StaffPerson? StaffPersonFor(string role)
+    {
+        EnsureStaffPool();
+        var mapped = role == "Assistant" ? "Assistant Manager" : role;
         using var cmd = Db.Connection.CreateCommand();
-        cmd.CommandText = "DELETE FROM staff WHERE team_id=$t AND role=$r";
+        cmd.CommandText = $"SELECT {StaffColumns} FROM staff_people WHERE team_id=$t AND role=$r LIMIT 1";
         cmd.Parameters.AddWithValue("$t", CurrentTeamId);
+        cmd.Parameters.AddWithValue("$r", mapped);
+        using var r = cmd.ExecuteReader();
+        return r.Read() ? ReadStaffPerson(r) : null;
+    }
+
+    /// <summary>Legacy accessor — same shape the scout/morale/report code always used.</summary>
+    public StaffMember? StaffFor(string role) =>
+        StaffPersonFor(role) is { } p ? new StaffMember(role, p.Name, p.Stars, p.Wage) : null;
+
+    public IReadOnlyList<StaffPerson> MyBackroom()
+    {
+        EnsureStaffPool();
+        var rows = new List<StaffPerson>();
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = $"SELECT {StaffColumns} FROM staff_people WHERE team_id=$t ORDER BY role";
+        cmd.Parameters.AddWithValue("$t", CurrentTeamId);
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) rows.Add(ReadStaffPerson(r));
+        return rows;
+    }
+
+    /// <summary>Free agents for a role, best first — the hiring shortlist.</summary>
+    public IReadOnlyList<StaffPerson> StaffMarket(string role, int count = 8)
+    {
+        EnsureStaffPool();
+        var rows = new List<StaffPerson>();
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = $"SELECT {StaffColumns} FROM staff_people " +
+                          "WHERE role=$r AND team_id IS NULL ORDER BY " +
+                          "CASE role WHEN 'Physio' THEN physio WHEN 'Fitness Coach' THEN fitness " +
+                          "WHEN 'Youth Coach' THEN youth WHEN 'Scout' THEN judging_ability " +
+                          "WHEN 'Director of Football' THEN judging_ability " +
+                          "WHEN 'Assistant Manager' THEN tactical WHEN 'Analyst' THEN tactical " +
+                          "ELSE coaching END DESC LIMIT $n";
         cmd.Parameters.AddWithValue("$r", role);
-        cmd.ExecuteNonQuery();
-        return $"{current.Name} released from {role}.";
+        cmd.Parameters.AddWithValue("$n", count);
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) rows.Add(ReadStaffPerson(r));
+        return rows;
     }
+
+    // ------------------------------------------------------------------ hiring + firing
+
+    /// <summary>Hire a free agent: 2-year deal, replaces (and releases) any current holder.</summary>
+    public string HireStaffPerson(long staffId)
+    {
+        StaffPerson? p = null;
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText = $"SELECT {StaffColumns} FROM staff_people WHERE id=$id";
+            q.Parameters.AddWithValue("$id", staffId);
+            using var r = q.ExecuteReader();
+            if (r.Read()) p = ReadStaffPerson(r);
+        }
+        if (p is null) return "That person is no longer available.";
+        if (p.TeamId is not null && p.TeamId != CurrentTeamId)
+            return $"{p.Name} is under contract elsewhere — only free agents can be approached.";
+        if (p.TeamId == CurrentTeamId) return $"{p.Name} already works for you.";
+
+        var incumbent = StaffPersonFor(p.Role);
+        if (incumbent is not null) ReleaseStaff(incumbent.Id, quiet: true);
+
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "UPDATE staff_people SET team_id=$t, contract_until=$cu WHERE id=$id";
+        cmd.Parameters.AddWithValue("$t", CurrentTeamId);
+        cmd.Parameters.AddWithValue("$cu", SeasonId + 2);
+        cmd.Parameters.AddWithValue("$id", staffId);
+        cmd.ExecuteNonQuery();
+        PostInbox("Club", $"New {p.Role.ToLowerInvariant()}: {p.Name}",
+            $"{p.Name} ({p.Age}) joins the backroom — {new string('★', p.Stars)} · " +
+            $"{p.StyleLine} · £{p.Wage:N0}/week." +
+            (incumbent is not null ? $" {incumbent.Name} leaves to make room." : ""));
+        return $"{p.Name} hired as {p.Role} — £{p.Wage:N0}/week joins the bill.";
+    }
+
+    /// <summary>Release a person back into the pool (they keep existing as a free agent).</summary>
+    public string ReleaseStaff(long staffId, bool quiet = false)
+    {
+        string? name = null;
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText = "SELECT name FROM staff_people WHERE id=$id AND team_id=$t";
+            q.Parameters.AddWithValue("$id", staffId);
+            q.Parameters.AddWithValue("$t", CurrentTeamId);
+            name = q.ExecuteScalar() as string;
+        }
+        if (name is null) return "Not one of yours.";
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "UPDATE staff_people SET team_id=NULL, contract_until=NULL WHERE id=$id";
+        cmd.Parameters.AddWithValue("$id", staffId);
+        cmd.ExecuteNonQuery();
+        if (!quiet) PostInbox("Club", $"{name} released",
+            $"{name} leaves the club and returns to the market.");
+        return $"{name} released.";
+    }
+
+    /// <summary>Legacy role-based fire, used by older call sites.</summary>
+    public string FireStaff(string role) =>
+        StaffPersonFor(role) is { } p ? ReleaseStaff(p.Id) : "Nobody in that role.";
+
+    // ------------------------------------------------------------------ delegation
+
+    public static readonly (string Key, string Label)[] Delegations =
+    {
+        ("delegate_xi", "Assistant Manager picks the matchday XI"),
+        ("delegate_renewals", "Director of Football handles contract renewals"),
+        ("delegate_targets", "Director of Football suggests transfer targets"),
+        ("delegate_opposition", "Scout files a report on every next opponent"),
+        ("delegate_rest", "Fitness Coach manages recovery for tired players"),
+    };
+
+    public bool DelegationOn(string key) => GetMeta($"{key}_{CurrentTeamId}") == "1";
+
+    public void SetDelegation(string key, bool on) =>
+        SetMeta($"{key}_{CurrentTeamId}", on ? "1" : "0");
+
+    /// <summary>Which role must be filled for a delegation to actually run.</summary>
+    public static string DelegationRole(string key) => key switch
+    {
+        "delegate_xi" => "Assistant Manager",
+        "delegate_renewals" or "delegate_targets" => "Director of Football",
+        "delegate_opposition" => "Scout",
+        "delegate_rest" => "Fitness Coach",
+        _ => "Assistant Manager",
+    };
+
+    /// <summary>The weekly delegation pass — every switched-on duty with a filled desk runs.</summary>
+    public void RunStaffDelegation(int matchday)
+    {
+        // DoF renewals: quietly extends expiring deals for anyone at/above the squad's median.
+        if (DelegationOn("delegate_renewals") && StaffPersonFor("Director of Football") is { } dof)
+        {
+            var squad = Repo.SquadPlayers(CurrentTeamId).ToList();
+            if (squad.Count > 0)
+            {
+                var median = squad.OrderBy(p => p.OverallRating ?? 0)
+                    .ElementAt(squad.Count / 2).OverallRating ?? 0;
+                var renewed = new List<string>();
+                foreach (var p in squad.Where(p => (p.OverallRating ?? 0) >= median))
+                {
+                    if (ContractExpiresThisSeason(p.Id) && renewed.Count < 3)
+                    {
+                        var note = RenewContract(p.Id);
+                        if (note.Contains("renew", StringComparison.OrdinalIgnoreCase) ||
+                            note.Contains("sign", StringComparison.OrdinalIgnoreCase))
+                            renewed.Add(p.Name);
+                    }
+                }
+                if (renewed.Count > 0)
+                    PostInbox("Club", $"{dof.Name} ties down expiring contracts",
+                        $"The Director of Football renewed: {string.Join(", ", renewed)}.", matchday);
+            }
+        }
+
+        // DoF targets: every 4th matchday, a shortlist picked by judging ability.
+        if (DelegationOn("delegate_targets") && matchday % 4 == 0 &&
+            StaffPersonFor("Director of Football") is { } dof2)
+        {
+            var noise = 21 - dof2.JudgingAbility;   // a poor judge sees a blurrier market
+            var rng = new SeededRandom((SeasonId * 733 + matchday) ^ WorldSeed);
+            var targets = Repo.Teams()
+                .Where(t => t.Id != CurrentTeamId)
+                .SelectMany(t => Repo.SquadPlayers(t.Id).Select(p => (Team: t.Name, P: p)))
+                .Where(x => (x.P.OverallRating ?? 0) >= 68 && (x.P.Age ?? 30) <= 27)
+                .OrderByDescending(x => (x.P.OverallRating ?? 0) + rng.Next(noise))
+                .Take(3).ToList();
+            if (targets.Count > 0)
+                PostInbox("Transfer", $"{dof2.Name}'s transfer shortlist",
+                    "Names worth watching this window:\n" + string.Join("\n",
+                        targets.Select(x =>
+                            $"• {x.P.Name} ({x.P.Position}, {x.P.Age}) — {x.Team}, " +
+                            $"~£{ValuationOf(x.P.OverallRating ?? 60, x.P.Age ?? 25):N0}")),
+                    matchday);
+        }
+
+        // Scout files a report on the next opponent when no job is already running.
+        if (DelegationOn("delegate_opposition") && StaffPersonFor("Scout") is not null)
+        {
+            try
+            {
+                if (ActiveScoutJob() is null && NextFixture() is { } next && next.Kind != "friendly")
+                {
+                    var opp = next.HomeTeamId == CurrentTeamId ? next.AwayTeamId : next.HomeTeamId;
+                    StartScoutJob("club", opp, TeamName(opp));
+                }
+            }
+            catch { /* scouting is additive */ }
+        }
+
+        // Fitness coach: tired legs recover faster under a good programme.
+        if (DelegationOn("delegate_rest") && StaffPersonFor("Fitness Coach") is { } fit)
+        {
+            var relief = 2 + fit.Fitness / 5;   // 2-6 fatigue per week
+            using var cmd = Db.Connection.CreateCommand();
+            cmd.CommandText = "UPDATE player_condition SET fatigue = MAX(0, fatigue - $x) " +
+                              "WHERE fatigue >= 35 AND player_id IN " +
+                              "(SELECT player_id FROM squad_members WHERE team_id=$t)";
+            cmd.Parameters.AddWithValue("$x", relief);
+            cmd.Parameters.AddWithValue("$t", CurrentTeamId);
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>True when a stored deal runs out at this season's end (no row = unknown = false).</summary>
+    private bool ContractExpiresThisSeason(int playerId)
+    {
+        using var q = Db.Connection.CreateCommand();
+        q.CommandText = "SELECT expires_season FROM contracts WHERE player_id=$p AND team_id=$t";
+        q.Parameters.AddWithValue("$p", playerId);
+        q.Parameters.AddWithValue("$t", CurrentTeamId);
+        return q.ExecuteScalar() is long exp && exp <= SeasonId;
+    }
+
+    // ------------------------------------------------------------------ attribute-driven effects
 
     /// <summary>Weekly staff wages — folded into the financial overview + matchweek debit.</summary>
-    public long StaffWages() => AllStaff().Sum(s => (long)s.Wage);
+    public long StaffWages() => MyBackroom().Sum(s => (long)s.Wage);
 
-    /// <summary>A 4★+ coach shaves a week off every training cadence.</summary>
-    public int CoachTrainingBonus() => (StaffFor("Coach")?.Quality ?? 0) >= 4 ? 1 : 0;
+    /// <summary>A strong coach (14+) shaves a week off every training cadence.</summary>
+    public int CoachTrainingBonus() => (StaffPersonFor("Coach")?.Coaching ?? 0) >= 14 ? 1 : 0;
 
-    /// <summary>A 3★+ physio brings players back a matchday sooner.</summary>
-    public int PhysioRecoveryBonus() => (StaffFor("Physio")?.Quality ?? 0) >= 3 ? 1 : 0;
+    /// <summary>Physio skill brings players back sooner: 0-2 matchdays off every layoff.</summary>
+    public int PhysioRecoveryBonus() => (StaffPersonFor("Physio")?.Physio ?? 0) / 8;
+
+    /// <summary>Youth Coach lifts the academy intake floor (stacks with the academy building).</summary>
+    public int YouthCoachIntakeBonus() => (StaffPersonFor("Youth Coach")?.Youth ?? 0) >= 13 ? 2 : 0;
+
+    /// <summary>GK Coach: goalkeepers develop faster under a proper specialist.</summary>
+    public double GkCoachMultiplier(int playerId)
+    {
+        var coach = StaffPersonFor("GK Coach");
+        if (coach is null || coach.Coaching < 12) return 1.0;
+        var pos = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(p => p.Id == playerId)?.Position;
+        return pos == "GK" ? 1.25 : 1.0;
+    }
+
+    /// <summary>The assistant's tactical read of the next opponent, coloured by their style.</summary>
+    public string AssistantTacticalNote(int opponentId)
+    {
+        if (StaffPersonFor("Assistant Manager") is not { } asst) return "";
+        var oppElo = EloOf(opponentId);
+        var ours = EloOf(CurrentTeamId);
+        var read = asst.Tactical >= 14
+            ? oppElo > ours + 40
+                ? $"they're the stronger side — {asst.PrefStyle} would frustrate them"
+                : oppElo < ours - 40
+                    ? "we should dictate — get on the ball high up the pitch"
+                    : "an even contest — small margins, set pieces matter"
+            : "hard to call this one";
+        return $"{asst.Name} ({asst.StyleLine}): \"{read}.\"";
+    }
 
     /// <summary>
-    /// The assistant's post-match debrief (FM phase A3): where the goals came from on both
-    /// sides, built from the recorded match events. Empty when no assistant is hired.
+    /// The assistant's post-match debrief: where the goals came from on both sides,
+    /// built from the recorded match events. Empty when no assistant is hired.
     /// </summary>
     public string AssistantDebrief(int fixtureId, int homeTeamId, int awayTeamId)
     {
