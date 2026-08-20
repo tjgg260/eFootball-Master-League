@@ -16,6 +16,13 @@ public sealed class Finances
 
     public long SeasonExpenditure { get; private set; }
 
+    /// <summary>Restore persisted season tallies on load — they survive app restarts.</summary>
+    public void RestoreSeasonTallies(long income, long expenditure)
+    {
+        SeasonIncome = income;
+        SeasonExpenditure = expenditure;
+    }
+
     public long MatchdayIncome(int attendance, int ticketPrice) => (long)attendance * ticketPrice;
 
     public void RecordMatchday(int attendance, int ticketPrice)

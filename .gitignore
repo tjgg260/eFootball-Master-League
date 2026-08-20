@@ -61,3 +61,9 @@ build/mfl_reference/
 
 build/master.db
 build/rfs_ability_offsets.json
+
+# Downloaded mod packs (user assets, not source)
+*_Toriga*/
+*_Toriga*.zip
+HDGraphic_Toriga.zip
+tools/__pycache__/
