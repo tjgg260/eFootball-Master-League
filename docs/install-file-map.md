@@ -86,6 +86,23 @@ The supported override folder: any `*_P.pak` here loads on top of the base game.
 | `RealGrade_Toriga_P`, `Turf3D_Toriga_P`, `DirtyStains_Toriga_P` | Toriga graphics packs (pitch grade, turf 3D, dirt/wear). |
 | `pc9999_console_win_P.pak` | High-chunk override slot (mod/sider content). |
 
+## Pak sweep verdict (2026-08-20, key unlocked — all 312,710 assets enumerated)
+
+`tools/iostore_sweep.py` decrypted every `pc*.utoc` directory index and bucketed all 312,710
+asset paths. Findings:
+
+- **No gameplay-logic data anywhere.** Every DataTable is presentation/asset/streaming:
+  `DT_*CharacterSettings`, `DT_*PostEffectSettings`, `DT_*VFX_Settings`, `DT_LevelSets*`
+  (stadium loading), `DT_PreloadingInMatch` (asset streaming), `DT_ModelViewParams` (menu
+  viewer), crowd/cutscene/UI tables. **Zero** `DT_Tactics` / `DT_AI` / `DT_Rating` /
+  `DT_Mentality` / evaluation tables. The 474 "possession/rating/evaluation" string hits are
+  all UI fame icons (`TEAM_STYLE_CATEGORY_POSSESSION_WIN_*`) and one Niagara FX enum.
+- **Conclusion (by exhaustion): the match AI, game-management and rating logic are native C++
+  in the VM-protected exe — not data in the paks.** Modding a DataTable cannot change them.
+- **The real pak win is faces.** `PesConsole/Content/Assets/character/DT_RealFaceMapping.uasset`
+  maps player IDs → real-face assets, and thousands of `RealFace/*` assets hold the face/hair
+  models. This is the extractable prize for the app's portrait/appearance goal.
+
 ## What this means for the "AI plays the same all game" goal
 
 - **The only behaviour lever we can actually touch is `dt270`** (CPK, family 9968, decrypted,
