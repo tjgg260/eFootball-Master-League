@@ -441,3 +441,21 @@ Gates: build 0, tests 168/168, smoke + Squad screenshot OK.
   (team_tactics.style) gives the simmed XI up to +1.0 rating point of match prep, and his
   pre-match note calls out fit ("Overload is his speciality (17/20)") or misfit.
 - Gates: build 0 errors · tests 168/168 · ML_RESUME smoke on Staff OK.
+
+## Block: match video capture + analysis pipeline
+
+- ObsRecorder (ML.Ingest): minimal obs-websocket v5 client, BCL only — start/stop recording
+  bookends every Play Match; all best-effort, matchday never blocks on OBS.
+- VideoAnalyzer (ML.Ingest): ffmpeg frame sampling (1 per 2s) → scoreboard-region OCR →
+  score CHANGES become goal events with the clock minute; scorer-banner OCR near each change;
+  regions in build/video_regions.json (16:9 defaults, calibrate once per docs/video-capture.md).
+- StatOcr grows ReadTextRegion/ReadDigitsRegion; ScoreImport.BestNameMatch fuzzy-matches banner
+  text vs the 22 known XI names (containment + Levenshtein, 0.62 floor).
+- Dashboard: 🎞 Analyse recording — stops OBS, mines the newest video, prefills score + goal
+  pickers with minute + suggested scorer; unreadable banners left for manual pick.
+- Full-time STATS screen: whole-screen OCR parser ("62% Possession 38%") → match_team_stats
+  (fixture, side, stat, value) for possession/shots/passes depth.
+- Settings → Match video: record toggle, OBS URL/password, ffmpeg path, recordings folder.
+- Requires user installs (not yet done on this machine): OBS Studio + ffmpeg.
+- Gates: compile clean (verified to scratch output — the app was open and held the DLLs),
+  tests 168/168. Smoke deferred until the app is closed.

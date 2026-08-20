@@ -46,6 +46,12 @@ public sealed partial class Session
         if (GetMeta("steam_root") is { Length: > 0 } root) ScoreImport.SteamRoot = root;
         if (GetMeta("steam_user_id") is { Length: > 0 } uid) ScoreImport.SteamUserId = uid;
         MatchLauncher.AutoBoot = GetMeta("auto_boot") != "0";
+        // Match video pipeline (OBS + ffmpeg) from settings.
+        VideoCapture.RecordMatches = GetMeta("record_matches") == "1";
+        if (GetMeta("obs_url") is { Length: > 0 } obsUrl) VideoCapture.ObsUrl = obsUrl;
+        if (GetMeta("obs_password") is { Length: > 0 } obsPw) VideoCapture.ObsPassword = obsPw;
+        if (GetMeta("ffmpeg_path") is { Length: > 0 } ff) VideoCapture.FfmpegPath = ff;
+        if (GetMeta("video_dir") is { Length: > 0 } vd) VideoCapture.VideoDir = vd;
         Theme.Apply(GetMeta("ui_skin") ?? "Midnight", PrimaryColor);
         HealLegacyFormationOwnership();
         EnsureCup();

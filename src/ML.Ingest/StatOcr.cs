@@ -91,6 +91,24 @@ public sealed class StatOcr : IDisposable
         return int.TryParse(digits, out var n) ? n : 0;
     }
 
+    /// <summary>OCR one fractional region [x,y,w,h] of a frame as free text (video pipeline).</summary>
+    public (string Text, double Confidence) ReadTextRegion(string imagePath, double[] frac)
+    {
+        using var image = Image.Load<Rgba32>(imagePath);
+        var region = new StatRegion("adhoc", RegionKind.Text, frac[0], frac[1], frac[2], frac[3]);
+        var (_, conf, text) = ReadRegion(image, region);
+        return (text, conf);
+    }
+
+    /// <summary>OCR one fractional region digits-only (scoreboard / clock in the video pipeline).</summary>
+    public (string Text, double Confidence) ReadDigitsRegion(string imagePath, double[] frac)
+    {
+        using var image = Image.Load<Rgba32>(imagePath);
+        var region = new StatRegion("adhoc", RegionKind.Number, frac[0], frac[1], frac[2], frac[3]);
+        var (_, conf, text) = ReadRegion(image, region);
+        return (new string(text.Where(char.IsDigit).ToArray()), conf);
+    }
+
     /// <summary>
     /// Whole-image OCR for keyword-anchored parsing (the post-match STATS screen): no region
     /// calibration needed — callers regex the returned text for "Possession 62% 38%" style rows.

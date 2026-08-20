@@ -375,6 +375,16 @@ CREATE TABLE IF NOT EXISTS player_status (
 -- Loans (P-next): players parked at another club for the season; recalls from the January
 -- window; everyone comes home at rollover. direction: 'out' = yours at a host, 'in' = theirs
 -- with you.
+-- Team-level match stats OCR'd from the game's full-time STATS screen (video/screenshot
+-- pipeline). One row per fixture per side; stat keys are the screen's own row labels.
+CREATE TABLE IF NOT EXISTS match_team_stats (
+    fixture_id INTEGER NOT NULL REFERENCES fixtures(id),
+    side       TEXT    NOT NULL,           -- 'home' | 'away'
+    stat       TEXT    NOT NULL,           -- e.g. 'possession', 'shots', 'shots_on_target'
+    value      INTEGER NOT NULL,
+    PRIMARY KEY (fixture_id, side, stat)
+);
+
 -- The staff DATABASE (FM-style): persistent individual people with 1-20 attributes and
 -- tactical preferences. team_id NULL = free agent. One person per (team, role) is enforced
 -- in code; firing returns the person to the pool rather than deleting them.

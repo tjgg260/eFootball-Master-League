@@ -348,6 +348,56 @@ public sealed partial class DashboardViewModel : PageViewModel
     public ObservableCollection<EventPickRow> AssistPicks { get; } = new();
     public ObservableCollection<EventPickRow> CardPicks { get; } = new();
 
+    // --- match video analysis: OBS recording → goals with minutes + scorer suggestions -----
+
+    [ObservableProperty] private bool _analyzing;
+
+    [RelayCommand]
+    private async Task AnalyzeRecording()
+    {
+        if (Analyzing) return;
+        Analyzing = true;
+        try
+        {
+            await VideoCapture.StopAsync(Log);           // close the recording if OBS still runs
+            var video = VideoCapture.NewestRecording();
+            if (video is null)
+            {
+                Log("🎞 No recording found — set the video folder in Settings → Match video.");
+                return;
+            }
+            var events = await VideoCapture.AnalyzeAsync(video, Log);
+            if (events.Count == 0)
+            {
+                Log("🎞 No goals detected. If the match had goals, the scoreboard regions need " +
+                    "calibrating — see docs/video-capture.md.");
+                return;
+            }
+            var home = 0;
+            var away = 0;
+            foreach (var ev in events)
+            {
+                if (ev.Side == "home") home++; else away++;
+                // Fuzzy-match the banner text against the 22 names we already know.
+                var pick = ScoreImport.BestNameMatch(ev.PlayerText, MatchPlayerNames);
+                var row = new EventPickRow(MatchPlayerNames) { Selected = pick };
+                GoalPicks.Add(row);
+                Log($"  {ev.Minute}' GOAL ({ev.Side}) " +
+                    (pick is not null ? $"— suggested scorer: {pick}" : "— scorer unreadable, pick manually") +
+                    (string.IsNullOrWhiteSpace(ev.PlayerText) ? "" : $"  [banner: \"{ev.PlayerText}\"]"));
+            }
+            HomeScore = home;
+            AwayScore = away;
+            Log($"🎞 Prefilled {home}-{away} with {events.Count} goal(s) — check the pickers, then Record.");
+        }
+        finally
+        {
+            Analyzing = false;
+        }
+    }
+
+    private void Log(string line) => MatchStatus += (MatchStatus.Length > 0 ? "\n" : "") + line;
+
     [RelayCommand] private void AddGoalPick() => GoalPicks.Add(new EventPickRow(MatchPlayerNames));
     [RelayCommand] private void AddAssistPick() => AssistPicks.Add(new EventPickRow(MatchPlayerNames));
     [RelayCommand] private void AddCardPick() => CardPicks.Add(new EventPickRow(MatchPlayerNames));

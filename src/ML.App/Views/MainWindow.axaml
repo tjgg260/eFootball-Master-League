@@ -913,6 +913,24 @@
         </StackPanel></Border>
 
         <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+          <TextBlock Classes="panelHead" Text="Match video (OBS + ffmpeg)"/>
+          <CheckBox IsChecked="{Binding RecordMatches}" Foreground="#C7CEDA"
+                    Content="Record every match via OBS"/>
+          <TextBlock Text="OBS WebSocket URL" Foreground="#8A93A2" FontSize="12"/>
+          <TextBox Text="{Binding ObsUrl}" Watermark="ws://127.0.0.1:4455"/>
+          <TextBlock Text="OBS WebSocket password (blank if auth off)" Foreground="#8A93A2" FontSize="12"/>
+          <TextBox Text="{Binding ObsPassword}" PasswordChar="•"/>
+          <TextBlock Text="ffmpeg path" Foreground="#8A93A2" FontSize="12"/>
+          <TextBox Text="{Binding FfmpegPath}" Watermark="ffmpeg"/>
+          <TextBlock Text="Recordings folder (OBS output)" Foreground="#8A93A2" FontSize="12"/>
+          <TextBox Text="{Binding VideoDir}" Watermark="C:\Users\you\Videos"/>
+          <Button Content="Save video settings" Command="{Binding SaveVideoSettingsCommand}"
+                  Background="#232B36" Foreground="#C7CEDA" Padding="12,7" CornerRadius="7" FontSize="12"/>
+          <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+                     Text="Play Match starts the recording; 🎞 Analyse recording on the Dashboard stops it and mines goals, minutes and scorer suggestions. Setup: docs/video-capture.md."/>
+        </StackPanel></Border>
+
+        <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
           <TextBlock Classes="panelHead" Text="Screenshot OCR (Steam)"/>
           <TextBlock Text="Steam folder" Foreground="#8A93A2" FontSize="12"/>
           <TextBox Text="{Binding SteamRoot}"/>

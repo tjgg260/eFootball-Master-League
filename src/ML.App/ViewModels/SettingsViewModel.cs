@@ -25,6 +25,11 @@ public sealed partial class SettingsViewModel : PageViewModel
         _autoBoot = s.GetSetting("auto_boot") != "0";
         _realNames = s.GetSetting("real_names") != "0";
         _managerName = s.ManagerName;
+        _recordMatches = s.GetSetting("record_matches") == "1";
+        _obsUrl = s.GetSetting("obs_url") ?? VideoCapture.ObsUrl;
+        _obsPassword = s.GetSetting("obs_password") ?? "";
+        _ffmpegPath = s.GetSetting("ffmpeg_path") ?? "ffmpeg";
+        _videoDir = s.GetSetting("video_dir") ?? "";
         WorldSeedLine = $"World seed: {s.WorldSeed} (this career's universe — unique per save)";
         LoadBackups();
     }
@@ -91,6 +96,37 @@ public sealed partial class SettingsViewModel : PageViewModel
             "Real club names in-game (applies on the next Play Match compile).");
 
     public string WorldSeedLine { get; }
+
+    // ---------------------------------------------------------------- match video (OBS + ffmpeg)
+
+    [ObservableProperty] private bool _recordMatches;
+    partial void OnRecordMatchesChanged(bool value)
+    {
+        _s.SetSetting("record_matches", value ? "1" : "0");
+        VideoCapture.RecordMatches = value;
+        Status = value
+            ? "Matches record via OBS (needs OBS running with WebSocket server on). Analyse from the Dashboard."
+            : "Match recording off.";
+    }
+
+    [ObservableProperty] private string _obsUrl;
+    [ObservableProperty] private string _obsPassword;
+    [ObservableProperty] private string _ffmpegPath;
+    [ObservableProperty] private string _videoDir;
+
+    [RelayCommand]
+    private void SaveVideoSettings()
+    {
+        _s.SetSetting("obs_url", ObsUrl.Trim());
+        _s.SetSetting("obs_password", ObsPassword.Trim());
+        _s.SetSetting("ffmpeg_path", FfmpegPath.Trim());
+        _s.SetSetting("video_dir", VideoDir.Trim());
+        VideoCapture.ObsUrl = ObsUrl.Trim();
+        VideoCapture.ObsPassword = ObsPassword.Trim();
+        VideoCapture.FfmpegPath = FfmpegPath.Trim();
+        VideoCapture.VideoDir = VideoDir.Trim();
+        Status = "Match video settings saved.";
+    }
 
     [ObservableProperty] private string _managerName;
     partial void OnManagerNameChanged(string value)

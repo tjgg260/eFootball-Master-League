@@ -12,6 +12,50 @@ namespace ML.App;
 /// </summary>
 public static class ScoreImport
 {
+    /// <summary>
+    /// Closest of <paramref name="candidates"/> to OCR'd <paramref name="text"/> (video banner
+    /// pipeline). 22 known names make even scrappy OCR reliable; null when nothing is close.
+    /// </summary>
+    public static string? BestNameMatch(string text, IEnumerable<string> candidates)
+    {
+        var t = new string(text.ToLowerInvariant().Where(char.IsLetter).ToArray());
+        if (t.Length < 3) return null;
+        string? best = null;
+        var bestScore = 0.0;
+        foreach (var cand in candidates)
+        {
+            var c = new string(cand.ToLowerInvariant().Where(char.IsLetter).ToArray());
+            if (c.Length < 3) continue;
+            // Containment first (banner often shows SURNAME only), else edit distance.
+            double score;
+            if (t.Contains(c) || c.Contains(t))
+            {
+                score = 0.9;
+            }
+            else
+            {
+                var d = Levenshtein(t, c);
+                score = 1.0 - d / (double)Math.Max(t.Length, c.Length);
+            }
+            if (score > bestScore) (best, bestScore) = (cand, score);
+        }
+        return bestScore >= 0.62 ? best : null;
+    }
+
+    private static int Levenshtein(string a, string b)
+    {
+        var d = new int[a.Length + 1, b.Length + 1];
+        for (var i = 0; i <= a.Length; i++) d[i, 0] = i;
+        for (var j = 0; j <= b.Length; j++) d[0, j] = j;
+        for (var i = 1; i <= a.Length; i++)
+        for (var j = 1; j <= b.Length; j++)
+        {
+            d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1),
+                d[i - 1, j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1));
+        }
+        return d[a.Length, b.Length];
+    }
+
     private const string EFootballAppId = "1665460";
 
     // Defaults from the recorded environment; overridable via meta (Settings screen) and

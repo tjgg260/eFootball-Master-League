@@ -105,6 +105,8 @@ public static class MatchLauncher
         }
 
         log($"Open Exhibition → find the host league → {homeName} vs {awayName}. Enjoy the match!");
+        // Match video (best-effort): bookend the session with an OBS recording.
+        try { await VideoCapture.StartAsync(log); } catch { /* recording never blocks play */ }
         return true;
     }
 }
