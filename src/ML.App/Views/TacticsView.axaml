@@ -1,0 +1,535 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             x:Class="ML.App.Views.TacticsView"
+             x:DataType="vm:TacticsViewModel">
+
+  <!-- The Game Plan replica: pill bar (Lineup / Tactics / Team), left context menu, one
+       horizontal pitch with YOUR half editable and the next opponent mirrored on the right,
+       crest + Substitutes rail. Layout, journey and wording copied from the game's own
+       screens (video-frame reference, 2026-08-20). -->
+
+  <UserControl.Styles>
+    <Style Selector="Button.pill">
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Padding" Value="26,9"/>
+      <Setter Property="CornerRadius" Value="18"/>
+    </Style>
+    <Style Selector="Button.menuItem">
+      <Setter Property="Background" Value="#22262D"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Padding" Value="14,10"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    </Style>
+    <Style Selector="TextBlock.menuTitle">
+      <Setter Property="Foreground" Value="#F5E642"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Margin" Value="2,0,0,10"/>
+    </Style>
+    <Style Selector="Border.slotCard">
+      <Setter Property="Background" Value="#22262D"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="12,8"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel Margin="18,12">
+
+    <!-- ── top: the game's pill tab bar + Save (its Done button) ─────────────────── -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="220,*,220" Margin="0,0,0,10">
+      <Border Grid.Column="1" Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="22" Padding="4"
+              HorizontalAlignment="Center">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Button Classes="pill" Content="Lineup" Command="{Binding SetSectionCommand}"
+                  CommandParameter="0" Background="{Binding Tab0Brush}" Foreground="{Binding Tab0Fg}"/>
+          <Button Classes="pill" Content="Tactics" Command="{Binding SetSectionCommand}"
+                  CommandParameter="1" Background="{Binding Tab1Brush}" Foreground="{Binding Tab1Fg}"/>
+          <Button Classes="pill" Content="Team" Command="{Binding SetSectionCommand}"
+                  CommandParameter="2" Background="{Binding Tab2Brush}" Foreground="{Binding Tab2Fg}"/>
+        </StackPanel>
+      </Border>
+      <Button Grid.Column="2" Content="Save" Command="{Binding SaveTacticsCommand}"
+              Background="#2438C8" Foreground="White" FontWeight="Bold" Padding="34,10"
+              CornerRadius="8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+    </Grid>
+
+    <!-- ── bottom: status toast (the game's centre-pitch toasts land here) ───────── -->
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding SaveStatus}" Foreground="#9FE6B4"
+               FontSize="12" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+
+    <!-- ── right rail: crest + Substitutes (always visible, like the game) ───────── -->
+    <StackPanel DockPanel.Dock="Right" Width="185" Margin="12,0,0,0" Spacing="8">
+      <Image Source="{Binding ClubLogo}" Width="86" Height="86" IsVisible="{Binding HasClubLogo}"
+             HorizontalAlignment="Center"/>
+      <TextBlock Text="{Binding ClubName}" Foreground="White" FontSize="13" FontWeight="Bold"
+                 HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+      <TextBlock Text="Substitutes" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"
+                 Margin="2,6,0,0"/>
+      <ScrollViewer MaxHeight="380">
+        <ItemsControl ItemsSource="{Binding Bench}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:BenchEntry">
+              <Border BorderBrush="#242B35" BorderThickness="0,0,0,1" Padding="2,4">
+                <Grid ColumnDefinitions="38,*">
+                  <TextBlock Text="{Binding Position}" Foreground="#8A93A2" FontSize="11"
+                             FontWeight="Bold" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="#E6EAF0"
+                             FontSize="12" VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis"/>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </StackPanel>
+
+    <!-- ── left rail: context panel (the game's dark-blue diagonal column) ───────── -->
+    <Border DockPanel.Dock="Left" Width="252" Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="10"
+            Padding="12" Margin="0,0,12,0">
+      <Panel>
+
+        <!-- LINEUP: selected player mini-card + swap flow + Player Details editors -->
+        <ScrollViewer IsVisible="{Binding ShowLineup}">
+          <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Border Width="64" Height="64" CornerRadius="6" ClipToBounds="True"
+                      Background="{Binding SelectedPlayer.Fill}">
+                <Panel>
+                  <TextBlock Text="{Binding SelectedPlayer.Position}" Foreground="White"
+                             FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"
+                             VerticalAlignment="Center"/>
+                  <Image Source="{Binding SelectedPlayer.Portrait}" Stretch="UniformToFill"
+                         IsVisible="{Binding SelectedPlayer.HasPortrait}"/>
+                </Panel>
+              </Border>
+              <StackPanel VerticalAlignment="Center" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding SelectedPlayer.Position}" Foreground="White"
+                             FontSize="14" FontWeight="Bold" VerticalAlignment="Bottom"/>
+                  <TextBlock Text="{Binding SelectedPlayer.Rating}"
+                             Foreground="{Binding SelectedPlayer.RatingBrush}"
+                             FontSize="26" FontWeight="Bold"/>
+                </StackPanel>
+                <Rectangle Height="3" Fill="#2EC4A6" Width="86" HorizontalAlignment="Left"/>
+              </StackPanel>
+            </StackPanel>
+            <TextBlock Text="{Binding SelectedPlayer.Name}" Foreground="White" FontSize="16"
+                       FontWeight="SemiBold" TextWrapping="Wrap"/>
+
+            <Button Content="✨ Suggest XI" Command="{Binding SuggestXiCommand}"
+                    Background="#2D7DD2" Foreground="White" FontWeight="SemiBold"
+                    Padding="12,7" CornerRadius="6" FontSize="12"/>
+            <TextBlock Text="Click a player, then click who he swaps with (pitch or bench)."
+                       Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"/>
+
+            <!-- bench as a click-to-swap list (the game's Substitutes panel) -->
+            <TextBlock Text="Substitutes" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"/>
+            <ListBox ItemsSource="{Binding Bench}" SelectedItem="{Binding PickBench}"
+                     Background="Transparent" BorderThickness="0" MaxHeight="180">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:BenchEntry">
+                  <Grid ColumnDefinitions="30,30,*,30" Margin="0,1">
+                    <Border Width="24" Height="24" CornerRadius="12" ClipToBounds="True"
+                            Background="{Binding MarkBrush}">
+                      <Panel>
+                        <TextBlock Text="{Binding Mark}" Foreground="White" FontSize="8"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                               IsVisible="{Binding HasPortrait}"/>
+                      </Panel>
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="{Binding Position}" Foreground="#8A93A2"
+                               FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="#C7CEDA"
+                               FontSize="12" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Grid.Column="3" Text="{Binding Rating}"
+                               Foreground="{Binding RatingBrush}" FontSize="12" FontWeight="Bold"
+                               VerticalAlignment="Center"/>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Player Details (the game's Y-button card): position + playing style -->
+            <TextBlock Text="Player Details" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"
+                       Margin="0,4,0,0"/>
+            <TextBlock Text="Registered position" Foreground="#7C8698" FontSize="10"/>
+            <ComboBox ItemsSource="{Binding PositionChoices}"
+                      SelectedItem="{Binding SelectedPosition}" HorizontalAlignment="Stretch"/>
+            <TextBlock Text="Playing style (★ = suits his abilities)" Foreground="#7C8698"
+                       FontSize="10"/>
+            <ListBox ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}"
+                     Background="Transparent" BorderThickness="0" MaxHeight="230">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:RoleOption">
+                  <StackPanel Spacing="1" Margin="2">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Name}" Foreground="White" FontSize="12"
+                                 FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding Stars}" Foreground="#E0A526" FontSize="11"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Description}" Foreground="#8A93A2" FontSize="10"
+                               TextWrapping="Wrap"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- TACTICS: the game's own menu tree -->
+        <StackPanel IsVisible="{Binding ShowTacticsTab}">
+          <TextBlock Classes="menuTitle" Text="{Binding MenuTitle}"/>
+
+          <!-- root: Set Formation / Team Playstyle / Individual Instructions / Sub-Tactic -->
+          <StackPanel IsVisible="{Binding ShowMenuRoot}" Spacing="8">
+            <Button Classes="menuItem" Content="Set Formation ›"
+                    Command="{Binding OpenMenuCommand}" CommandParameter="1"/>
+            <Button Classes="menuItem" Content="Team Playstyle ›"
+                    Command="{Binding OpenMenuCommand}" CommandParameter="2"/>
+            <Button Classes="menuItem" Content="Individual Instructions ›"
+                    Command="{Binding OpenMenuCommand}" CommandParameter="3"/>
+            <Button Classes="menuItem" Content="Sub-Tactic ›"
+                    Command="{Binding OpenMenuCommand}" CommandParameter="4"/>
+          </StackPanel>
+
+          <!-- Set Formation -->
+          <StackPanel IsVisible="{Binding ShowSetFormation}" Spacing="8">
+            <Border Classes="slotCard">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Fluid Formation" Foreground="White" FontSize="14"
+                           FontWeight="SemiBold"/>
+                <CheckBox IsChecked="{Binding Fluid}" Foreground="#8A93A2" Content="On"
+                          FontSize="12"/>
+              </StackPanel>
+            </Border>
+            <Button Classes="menuItem" Content="Attacking Formation"
+                    Command="{Binding ShowMainCommand}" Background="{Binding MainTabBrush}"/>
+            <Button Classes="menuItem" Content="Defensive Formation"
+                    Command="{Binding ShowSubCommand}" IsEnabled="{Binding Fluid}"
+                    Background="{Binding SubTabBrush}"/>
+            <TextBlock Text="Formation" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"
+                       Margin="2,6,0,0"/>
+            <ListBox ItemsSource="{Binding Templates}" SelectedItem="{Binding SelectedTemplate}"
+                     Background="Transparent" BorderThickness="0" MaxHeight="280">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:FormationOption">
+                  <TextBlock Text="{Binding Shape}" Foreground="White" FontSize="13"
+                             FontWeight="SemiBold" Margin="4,3"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Text="Drag players on the pitch to edit positions. The shape saves to YOUR club's own formation records."
+                       Foreground="#5E6774" FontSize="10" TextWrapping="Wrap"/>
+            <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
+          </StackPanel>
+
+          <!-- Team Playstyle -->
+          <StackPanel IsVisible="{Binding ShowPlaystyle}" Spacing="6">
+            <ListBox ItemsSource="{Binding Styles}" SelectedItem="{Binding SelectedStyle}"
+                     Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:StyleOption">
+                  <TextBlock Text="{Binding Name}" Foreground="White" FontSize="13"
+                             FontWeight="SemiBold" Margin="4,5"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
+          </StackPanel>
+
+          <!-- Individual Instructions -->
+          <StackPanel IsVisible="{Binding ShowInstructions}" Spacing="4">
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="Attack1" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding AttackInstrNames}" SelectedItem="{Binding Attack1}"
+                        HorizontalAlignment="Stretch"/></StackPanel></Border>
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="Attack2" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding AttackInstrNames}" SelectedItem="{Binding Attack2}"
+                        HorizontalAlignment="Stretch"/></StackPanel></Border>
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="Defence1" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding DefenceInstrNames}" SelectedItem="{Binding Defence1}"
+                        HorizontalAlignment="Stretch"/></StackPanel></Border>
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="Defence2" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding DefenceInstrNames}" SelectedItem="{Binding Defence2}"
+                        HorizontalAlignment="Stretch"/></StackPanel></Border>
+            <TextBlock Text="{x:Static vm:TacticsViewModel.InstrNote}" Foreground="#5E6774"
+                       FontSize="10" TextWrapping="Wrap"/>
+            <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
+          </StackPanel>
+
+          <!-- Sub-Tactic -->
+          <StackPanel IsVisible="{Binding ShowSubTactic}" Spacing="8">
+            <Border Classes="slotCard">
+              <StackPanel Spacing="4">
+                <TextBlock Text="Fluid Formation" Foreground="White" FontSize="14"
+                           FontWeight="SemiBold"/>
+                <!-- verbatim, all.str [5706] -->
+                <TextBlock Text="A formation that changes positioning when attacking or defending can now be used."
+                           Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+            <TextBlock Text="The in-game 'Use Sub-Tactic' switch lives in your Game Plan save, not in team data — flip it on the pause menu in eFootball. Your Defensive Formation shape compiles either way."
+                       Foreground="#5E6774" FontSize="10" TextWrapping="Wrap"/>
+            <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
+          </StackPanel>
+        </StackPanel>
+
+        <!-- TEAM: In-Match Roles (armband + set pieces, all compiled) -->
+        <ScrollViewer IsVisible="{Binding ShowTeam}">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="menuTitle" Text="In-Match Roles"/>
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="Captain" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Captain}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PitchPlayer">
+                    <TextBlock Text="{Binding Surname}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox></StackPanel></Border>
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="FK Taker" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding TakerFk}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PitchPlayer">
+                    <TextBlock Text="{Binding Surname}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox></StackPanel></Border>
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="Left CK Taker" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding TakerCkl}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PitchPlayer">
+                    <TextBlock Text="{Binding Surname}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox></StackPanel></Border>
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="Right CK Taker" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding TakerCkr}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PitchPlayer">
+                    <TextBlock Text="{Binding Surname}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox></StackPanel></Border>
+            <Border Classes="slotCard"><StackPanel Spacing="3">
+              <TextBlock Text="PK Taker" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+              <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding TakerPk}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PitchPlayer">
+                    <TextBlock Text="{Binding Surname}"/>
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox></StackPanel></Border>
+            <Border Classes="slotCard" Opacity="0.55"><StackPanel Spacing="2">
+              <TextBlock Text="Player to Join Attack 1–3" Foreground="White" FontSize="13"
+                         FontWeight="SemiBold"/>
+              <TextBlock Text="None — 🔒 stored in the in-game save (write-bits unknown); set these in eFootball before kick-off."
+                         Foreground="#8A93A2" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border>
+            <TextBlock Text="Captain and all four takers compile into PlayerAssignment on the next Play Match."
+                       Foreground="#5E6774" FontSize="10" TextWrapping="Wrap"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Panel>
+    </Border>
+
+    <!-- ── centre: the horizontal Game Plan pitch, your half left, opponent right ── -->
+    <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Spacing="6">
+      <Panel>
+        <Border Width="724" Height="434" CornerRadius="8" ClipToBounds="True"
+                BorderBrush="#1F7A3D" BorderThickness="2">
+          <!-- Canvas and ItemsControls are BOTH explicitly 720x430: a size mismatch silently
+               breaks the drag coordinate mapping (regression guard — keep them in sync). -->
+          <Canvas x:Name="Pitch" Width="720" Height="430" Background="#00000001"
+                  PointerPressed="OnPointerPressed" PointerMoved="OnPointerMoved"
+                  PointerReleased="OnPointerReleased">
+
+            <!-- striped turf (vertical bands, like the game's mown lines) -->
+            <Rectangle Canvas.Left="0"   Canvas.Top="0" Width="90" Height="430" Fill="#123D22" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="90"  Canvas.Top="0" Width="90" Height="430" Fill="#17472A" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="180" Canvas.Top="0" Width="90" Height="430" Fill="#123D22" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="270" Canvas.Top="0" Width="90" Height="430" Fill="#17472A" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="360" Canvas.Top="0" Width="90" Height="430" Fill="#123D22" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="450" Canvas.Top="0" Width="90" Height="430" Fill="#17472A" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="540" Canvas.Top="0" Width="90" Height="430" Fill="#123D22" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="630" Canvas.Top="0" Width="90" Height="430" Fill="#17472A" IsHitTestVisible="False"/>
+
+            <!-- markings: your goal left, opponent goal right -->
+            <Rectangle Canvas.Left="359" Canvas.Top="0" Width="2" Height="430" Fill="#1F7A3D" IsHitTestVisible="False"/>
+            <Ellipse Canvas.Left="305" Canvas.Top="160" Width="110" Height="110"
+                     Stroke="#1F7A3D" StrokeThickness="2" IsHitTestVisible="False"/>
+            <Ellipse Canvas.Left="356" Canvas.Top="211" Width="8" Height="8" Fill="#1F7A3D" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="-2" Canvas.Top="105" Width="100" Height="220"
+                       Stroke="#1F7A3D" StrokeThickness="2" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="-2" Canvas.Top="163" Width="40" Height="104"
+                       Stroke="#1F7A3D" StrokeThickness="2" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="622" Canvas.Top="105" Width="100" Height="220"
+                       Stroke="#1F7A3D" StrokeThickness="2" IsHitTestVisible="False"/>
+            <Rectangle Canvas.Left="682" Canvas.Top="163" Width="40" Height="104"
+                       Stroke="#1F7A3D" StrokeThickness="2" IsHitTestVisible="False"/>
+
+            <!-- the edit-phase frame around YOUR half (pink Attack / teal Defence) -->
+            <Rectangle Canvas.Left="0" Canvas.Top="0" Width="360" Height="430"
+                       Stroke="{Binding PhaseBrush}" StrokeThickness="2"
+                       IsVisible="{Binding ShowSetFormation}" IsHitTestVisible="False"/>
+
+            <!-- opponent tokens (right half, read-only) -->
+            <ItemsControl ItemsSource="{Binding Opponents}" Width="720" Height="430">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><Canvas Width="720" Height="430"/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.Styles>
+                <Style Selector="ContentPresenter" x:DataType="vm:OppToken">
+                  <Setter Property="Canvas.Left" Value="{Binding Left}"/>
+                  <Setter Property="Canvas.Top" Value="{Binding Top}"/>
+                </Style>
+              </ItemsControl.Styles>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OppToken">
+                  <StackPanel Width="52" Spacing="1" Opacity="0.9" IsHitTestVisible="False">
+                    <Border Width="38" Height="38" CornerRadius="19" ClipToBounds="True"
+                            Background="{Binding MarkBrush}" HorizontalAlignment="Center">
+                      <Panel>
+                        <TextBlock Text="{Binding Mark}" Foreground="White" FontSize="9"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                               IsVisible="{Binding HasPortrait}"/>
+                      </Panel>
+                    </Border>
+                    <Border Background="#E0000000" CornerRadius="3" Padding="4,1"
+                            HorizontalAlignment="Center">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding Pos}" Foreground="#C7CEDA" FontSize="8"
+                                   FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                                   FontSize="8" FontWeight="Bold" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding Surname}" Foreground="White" FontSize="9"
+                               HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="52"
+                               TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- YOUR tokens (left half; drag only on Set Formation) -->
+            <ItemsControl ItemsSource="{Binding Players}" Width="720" Height="430">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><Canvas Width="720" Height="430"/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.Styles>
+                <Style Selector="ContentPresenter" x:DataType="vm:PitchPlayer">
+                  <Setter Property="Canvas.Left" Value="{Binding Left}"/>
+                  <Setter Property="Canvas.Top" Value="{Binding Top}"/>
+                </Style>
+              </ItemsControl.Styles>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PitchPlayer">
+                  <!-- token ROOT carries the DataContext; inner parts are IsHitTestVisible=False
+                       so click/drag always grabs the PitchPlayer (regression guard) -->
+                  <StackPanel Width="52" Background="Transparent" Spacing="1">
+                    <Panel Width="42" Height="42" HorizontalAlignment="Center" IsHitTestVisible="False">
+                      <Border Width="42" Height="42" CornerRadius="21"
+                              BorderBrush="{Binding FitBrush}" BorderThickness="2"/>
+                      <Border Width="37" Height="37" CornerRadius="19"
+                              Background="{Binding Fill}" ClipToBounds="True">
+                        <Panel>
+                          <TextBlock Text="{Binding Position}" Foreground="White" FontSize="10"
+                                     FontWeight="Bold" HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+                          <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                                 IsVisible="{Binding HasPortrait}"/>
+                        </Panel>
+                      </Border>
+                      <Ellipse Width="9" Height="9" Fill="{Binding CondBrush}"
+                               HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,1,0"/>
+                      <TextBlock Text="✚" Foreground="#FF5B5B" FontSize="10" FontWeight="Bold"
+                                 HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1,-1,0,0"
+                                 IsVisible="{Binding ShowInjury}"/>
+                    </Panel>
+                    <Border Background="#E0000000" CornerRadius="3" Padding="4,1"
+                            HorizontalAlignment="Center" IsHitTestVisible="False">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding Position}" Foreground="#C7CEDA" FontSize="8"
+                                   FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                                   FontSize="8" FontWeight="Bold" VerticalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding Surname}" Foreground="White" FontSize="9"
+                               HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="52"
+                               TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- phase banner + shape labels, like the game -->
+            <Border Canvas.Left="8" Canvas.Top="6" Background="#B0000000" CornerRadius="4"
+                    Padding="8,3" IsVisible="{Binding ShowSetFormation}" IsHitTestVisible="False">
+              <TextBlock Text="{Binding PhaseBanner}" Foreground="{Binding PhaseBrush}"
+                         FontSize="13" FontWeight="Bold"/>
+            </Border>
+            <TextBlock Canvas.Left="10" Canvas.Top="400" Text="{Binding YourShape}"
+                       Foreground="White" FontSize="16" FontWeight="Bold" IsHitTestVisible="False"/>
+            <TextBlock Canvas.Left="640" Canvas.Top="400" Text="{Binding OpponentShape}"
+                       Foreground="White" FontSize="16" FontWeight="Bold" IsHitTestVisible="False"/>
+            <Border Canvas.Left="540" Canvas.Top="6" Background="#B0000000" CornerRadius="4"
+                    Padding="8,3" IsHitTestVisible="False">
+              <TextBlock Text="{Binding OpponentLabel}" Foreground="#C7CEDA" FontSize="11"/>
+            </Border>
+          </Canvas>
+        </Border>
+      </Panel>
+
+      <!-- the game's caption line under the pitch -->
+      <TextBlock Text="{Binding PitchCaption}" Foreground="#8A93A2" FontSize="11"
+                 HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+
+      <!-- Team Playstyle detail: the game's "Player Movement" pages, verbatim -->
+      <Border Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="10" Padding="14" MaxWidth="724"
+              IsVisible="{Binding ShowPlaystyle}">
+        <ScrollViewer MaxHeight="180">
+          <StackPanel Spacing="8">
+            <TextBlock Text="{x:Static vm:TacticsViewModel.StyleIntro}" Foreground="#8A93A2"
+                       FontSize="11" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SelectedStyle.Name}" Foreground="White" FontSize="18"
+                       FontWeight="Bold"/>
+            <ItemsControl ItemsSource="{Binding SelectedStyle.Pages}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <Border Background="#1B222C" CornerRadius="6" Padding="10" Margin="0,0,0,6">
+                    <TextBlock Text="{Binding}" Foreground="#C7CEDA" FontSize="12"
+                               TextWrapping="Wrap" LineHeight="18"/>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </StackPanel>
+  </DockPanel>
+</UserControl>

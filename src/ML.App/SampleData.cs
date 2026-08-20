@@ -7,20 +7,23 @@ using ML.Data;
 namespace ML.App;
 
 /// <summary>
-/// Seeds an in-memory master DB with a playable National League so the app runs without the game
-/// installed. Uses the same club set the compiler authored into dt200, real fixtures from the
-/// engine, and a few played matchdays so the table, form and dashboard have content.
+/// Seeds an in-memory master DB with the Serbian SuperLiga so the app runs without the game
+/// installed. Club names are the real RFS names (so "Play Match" can resolve each club's true
+/// squad from RFS and author it into dt200). You manage Partizan; the next match on the calendar
+/// is the preseason Eternal Derby against Red Star — press Play Match to compile and play it.
 /// </summary>
 public static class SampleData
 {
+    // Real Serbian SuperLiga clubs, in the exact spelling RFS uses — the compiler matches on these.
     private static readonly string[] Clubs =
     {
-        "Aldershot Town", "Altrincham", "Boreham Wood", "Boston United", "Brackley Town",
-        "Braintree Town", "Carlisle United", "Eastleigh", "FC Halifax Town", "Forest Green Rovers",
-        "Gateshead", "Hartlepool United", "Morecambe", "Rochdale", "Scunthorpe United",
-        "Solihull Moors", "Southend United", "Sutton United", "Tamworth", "Truro City",
-        "Wealdstone", "Woking", "Yeovil Town", "York City",
+        "FK Partizan Belgrade", "Red Star Belgrade", "FK Vojvodina Novi Sad", "FK Cukaricki",
+        "FK TSC Backa Topola", "FK Radnicki Nis", "FK Radnicki 1923 Kragujevac", "FK Novi Pazar",
+        "FK Napredak Krusevac", "FK Mladost Lucani", "FK Zeleznicar Pancevo", "OFK Beograd",
     };
+
+    private const int Partizan = 1;   // teamId of the managed club (index 0 + 1)
+    private const int RedStar = 2;    // the derby rival — opponent in the opening friendly
 
     public static Session Build()
     {
@@ -30,7 +33,7 @@ public static class SampleData
 
         repo.UpsertLeague(new LeagueRow
         {
-            Id = 1, Name = "National League", Tier = 5, PromotionPlaces = 3, RelegationPlaces = 4,
+            Id = 1, Name = "Serbian SuperLiga", Tier = 1, PromotionPlaces = 0, RelegationPlaces = 3,
             CompetitionSlot = 586,
         });
         repo.UpsertSeason(new SeasonRow { Id = 1, Year = 2026, IsCurrent = true });
@@ -42,8 +45,8 @@ public static class SampleData
             repo.UpsertTeam(new TeamRow
             {
                 Id = teamId, GameTeamId = 5000 + teamId, IsCustom = true, Name = Clubs[i],
-                ShortName = Clubs[i][..Math.Min(3, Clubs[i].Length)].ToUpperInvariant(),
-                LeagueId = 1, Budget = 150_000 + rng.Next(400) * 1000,
+                ShortName = ShortName(Clubs[i]),
+                LeagueId = 1, Budget = 800_000 + rng.Next(600) * 1000,
             });
 
             foreach (var (pos, shirt) in Formation())
@@ -51,9 +54,9 @@ public static class SampleData
                 repo.UpsertPlayer(new PlayerRow
                 {
                     Id = playerId, GamePid = 9_000_000 + playerId, IsCustom = true,
-                    Name = $"{Clubs[i].Split(' ')[0]} Player {shirt}", ShortName = $"P{shirt}",
-                    Position = pos, Age = 19 + rng.Next(18), Nationality = "England",
-                    OverallRating = 58 + rng.Next(16),
+                    Name = $"{ShortName(Clubs[i])} Player {shirt}", ShortName = $"P{shirt}",
+                    Position = pos, Age = 19 + rng.Next(18), Nationality = "Serbia",
+                    OverallRating = 62 + rng.Next(16),
                 });
                 repo.SetSquadMember(new SquadMemberRow
                 {
@@ -63,11 +66,12 @@ public static class SampleData
             }
         }
 
-        // Real fixtures from the engine, then simulate the first third of the season.
+        // Real fixtures from the engine, then simulate the first third of the season so the table
+        // and form have content.
         var teamIds = Enumerable.Range(1, Clubs.Length).Select(t => new TeamId(t)).ToList();
         var fixtures = FixtureGenerator.GenerateDoubleRoundRobin(teamIds, rng);
         var strengths = teamIds.ToDictionary(
-            t => t.Value, t => 55 + (t.Value * 37 % 20)); // spread, deterministic
+            t => t.Value, t => 60 + (t.Value * 37 % 20));
         var sim = new PoissonMatchSimulator(rng);
 
         var playedThrough = fixtures.Max(f => f.Matchday) / 3;
@@ -92,33 +96,23 @@ public static class SampleData
             }
         }
 
-        // Manage Tamworth by default (the club we proved on the pitch).
-        var current = Array.IndexOf(Clubs, "Tamworth") + 1;
-
-        // Preseason friendlies for the managed club (matchday 0, before the league kicks off).
-        var fixtureId = fixtures.Max(f => f.Id) + 1;
-        int[] opponents = { 7, 14, 22, 3 }; // a few clubs to warm up against
-        foreach (var opp in opponents)
+        // The opening preseason friendly — the Eternal Derby, and the very next match to be PLAYED.
+        // Left unplayed on purpose: it is what the Play Match button compiles and boots.
+        var friendlyId = fixtures.Max(f => f.Id) + 1;
+        repo.AddFixture(new FixtureRow
         {
-            if (opp == current) continue;
-            var home = fixtureId % 2 == 0;
-            repo.AddFixture(new FixtureRow
-            {
-                Id = fixtureId, SeasonId = 1, LeagueId = 1, Matchday = 0,
-                HomeTeamId = home ? current : opp, AwayTeamId = home ? opp : current,
-                Kind = "friendly", Played = true,
-            });
-            var result = sim.Simulate(
-                new ML.Core.Simulation.TeamStrength(60, 60),
-                new ML.Core.Simulation.TeamStrength(58, 58));
-            repo.RecordResult(new ResultRow
-            {
-                FixtureId = fixtureId, HomeGoals = result.HomeGoals, AwayGoals = result.AwayGoals,
-            });
-            fixtureId++;
-        }
+            Id = friendlyId, SeasonId = 1, LeagueId = 1, Matchday = 0,
+            HomeTeamId = Partizan, AwayTeamId = RedStar, Kind = "friendly", Played = false,
+        });
 
-        return new Session(db, current, seasonId: 1);
+        return new Session(db, Partizan, seasonId: 1);
+    }
+
+    private static string ShortName(string club)
+    {
+        // "FK Partizan Belgrade" -> "Partizan"; "Red Star Belgrade" -> "Red Star".
+        var words = club.Replace("FK ", "").Replace("OFK ", "").Split(' ');
+        return words.Length >= 2 && words[0] == "Red" ? "Red Star" : words[0];
     }
 
     private static IEnumerable<(string Pos, int Shirt)> Formation()

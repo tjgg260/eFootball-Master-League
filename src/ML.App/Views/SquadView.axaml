@@ -1,0 +1,318 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             x:Class="ML.App.Views.SquadView"
+             x:DataType="vm:SquadViewModel">
+  <Grid ColumnDefinitions="*,336" Margin="20">
+
+    <!-- roster with search + filter chips (P6 UX) -->
+    <DockPanel Grid.Column="0">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,10">
+        <TextBox Text="{Binding SquadSearch}" Watermark="🔎 Find a player…" Width="180"/>
+        <ItemsControl ItemsSource="{Binding FilterChips}" VerticalAlignment="Center">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="5"/></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <Button Content="{Binding}" FontSize="11" Padding="10,6" CornerRadius="14"
+                      Background="#1B222C" Foreground="#C7CEDA"
+                      Command="{Binding $parent[UserControl].((vm:SquadViewModel)DataContext).SetChipCommand}"
+                      CommandParameter="{Binding}"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding ActiveChip}" Foreground="#9FE6B4" FontSize="11"
+                   FontWeight="Bold" VerticalAlignment="Center" Margin="4,0,0,0"/>
+      </StackPanel>
+    <DataGrid ItemsSource="{Binding Rows}"
+              SelectedItem="{Binding Selected, Mode=TwoWay}" IsReadOnly="True"
+              GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+      <DataGrid.Columns>
+        <DataGridTemplateColumn Header="" Width="52">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:SquadEntry">
+              <Panel Width="38" Height="38" Margin="6,3">
+                <Border CornerRadius="19" Background="{Binding MarkBrush}">
+                  <TextBlock Text="{Binding Mark}" FontSize="12" FontWeight="Bold" Foreground="White"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <Border CornerRadius="19" ClipToBounds="True">
+                  <Image Source="{Binding Portrait}" Width="38" Height="38" Stretch="UniformToFill"/>
+                </Border>
+              </Panel>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="#" Binding="{Binding Number}" Width="44"/>
+        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+        <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="56"/>
+        <DataGridTextColumn Header="Playstyle" Binding="{Binding Playstyle}" Width="120"/>
+        <DataGridTemplateColumn Header="Morale" Width="70">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:SquadEntry">
+              <TextBlock Text="{Binding MoraleFace}" FontSize="15" VerticalAlignment="Center"
+                         HorizontalAlignment="Center" ToolTip.Tip="{Binding MoraleLabel}"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="48"/>
+        <DataGridTemplateColumn Header="OVR" Width="56">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:SquadEntry">
+              <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                         FontSize="14" FontWeight="Bold"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="CON" Width="48">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:SquadEntry">
+              <Ellipse Width="10" Height="10" Fill="{Binding ConditionBrush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="" Width="36">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:SquadEntry">
+              <Border Width="18" Height="18" CornerRadius="9" Background="#D64545"
+                      IsVisible="{Binding IsInjured}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="+" FontSize="13" FontWeight="Bold" Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
+              </Border>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+      </DataGrid.Columns>
+    </DataGrid>
+    </DockPanel>
+
+    <!-- player card -->
+    <Border Grid.Column="1" Margin="16,0,0,0" Background="{DynamicResource ThemePanelBrush}" CornerRadius="12" Padding="18">
+      <Panel>
+        <TextBlock Text="Select a player" Foreground="#8A93A2" FontSize="14"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}"/>
+
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <StackPanel Spacing="14">
+
+            <!-- name / big rating / position tag -->
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Grid.Column="0" Spacing="6">
+                <TextBlock Text="{Binding Selected.Name}" FontSize="22" FontWeight="Bold"
+                           Foreground="White" TextWrapping="Wrap"/>
+                <Border Background="{Binding Selected.MarkBrush}" CornerRadius="4" Padding="8,2"
+                        HorizontalAlignment="Left">
+                  <TextBlock Text="{Binding Selected.Position}" FontSize="11" FontWeight="Bold"
+                             Foreground="White"/>
+                </Border>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Text="{Binding Selected.Rating}" FontSize="34" FontWeight="Bold"
+                         Foreground="{Binding Selected.RatingBrush}" Margin="10,0,0,0"
+                         VerticalAlignment="Top"/>
+            </Grid>
+
+            <!-- playstyle chip -->
+            <Border HorizontalAlignment="Left" CornerRadius="11" Padding="12,4"
+                    Background="#26FF2D78" BorderBrush="#80FF2D78" BorderThickness="1">
+              <TextBlock Text="{Binding Selected.Playstyle}" FontSize="12" FontWeight="SemiBold"
+                         Foreground="#FF7FAE"/>
+            </Border>
+
+            <!-- portrait -->
+            <Panel Width="96" Height="96" HorizontalAlignment="Center">
+              <Border Width="96" Height="96" CornerRadius="48" Background="{Binding Selected.MarkBrush}">
+                <TextBlock Text="{Binding Selected.Mark}" FontSize="28" FontWeight="Bold" Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <Border Width="96" Height="96" CornerRadius="48" ClipToBounds="True">
+                <Image Source="{Binding Selected.Portrait}" Width="96" Height="96" Stretch="UniformToFill"/>
+              </Border>
+            </Panel>
+
+            <!-- hexagon ability radar -->
+            <Canvas Width="200" Height="200" HorizontalAlignment="Center">
+              <Polygon Points="100,22 167.6,61 167.6,139 100,178 32.4,139 32.4,61"
+                       Stroke="#3A4759" StrokeThickness="1"/>
+              <Polygon Points="100,48 145,74 145,126 100,152 55,126 55,74"
+                       Stroke="#3A4759" StrokeThickness="1"/>
+              <Polygon Points="100,74 122.5,87 122.5,113 100,126 77.5,113 77.5,87"
+                       Stroke="#3A4759" StrokeThickness="1"/>
+              <!-- pinned comparison radar (dashed blue) under the live one -->
+              <Polygon Points="{Binding PinnedPoints}" Stroke="#2D7DD2" StrokeThickness="2"
+                       StrokeDashArray="4,3" Fill="#202D7DD2" IsVisible="{Binding HasPinned}"/>
+              <Polygon Points="{Binding RadarPoints}" Stroke="#FF2D78" StrokeThickness="2"
+                       Fill="#40FF2D78"/>
+              <TextBlock Canvas.Left="89" Canvas.Top="6" Text="SHO" FontSize="10" Foreground="#8A93A2"/>
+              <TextBlock Canvas.Left="174" Canvas.Top="48" Text="PAS" FontSize="10" Foreground="#8A93A2"/>
+              <TextBlock Canvas.Left="174" Canvas.Top="142" Text="DRI" FontSize="10" Foreground="#8A93A2"/>
+              <TextBlock Canvas.Left="89" Canvas.Top="183" Text="SPD" FontSize="10" Foreground="#8A93A2"/>
+              <TextBlock Canvas.Left="6" Canvas.Top="142" Text="DEF" FontSize="10" Foreground="#8A93A2"/>
+              <TextBlock Canvas.Left="6" Canvas.Top="48" Text="STR" FontSize="10" Foreground="#8A93A2"/>
+            </Canvas>
+
+            <!-- info strip -->
+            <Border Background="#1B222C" CornerRadius="8" Padding="12,10">
+              <Grid ColumnDefinitions="*,*,*">
+                <StackPanel Grid.Column="0" Spacing="2" HorizontalAlignment="Center">
+                  <TextBlock Text="HEIGHT" FontSize="10" Foreground="#8A93A2" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding Selected.HeightDisplay}" FontSize="13" FontWeight="SemiBold"
+                             Foreground="#C7CEDA" HorizontalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="2" HorizontalAlignment="Center">
+                  <TextBlock Text="WEIGHT" FontSize="10" Foreground="#8A93A2" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding Selected.WeightDisplay}" FontSize="13" FontWeight="SemiBold"
+                             Foreground="#C7CEDA" HorizontalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="2" HorizontalAlignment="Center">
+                  <TextBlock Text="AGE" FontSize="10" Foreground="#8A93A2" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding Selected.AgeDisplay}" FontSize="13" FontWeight="SemiBold"
+                             Foreground="#C7CEDA" HorizontalAlignment="Center"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+
+            <!-- season stats + contract + management actions -->
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding SeasonLine}" FontSize="12" Foreground="#C7CEDA"
+                         TextWrapping="Wrap"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding ContractLine}" FontSize="12" Foreground="#8A93A2"/>
+                <TextBlock Text="©" FontSize="13" FontWeight="Bold" Foreground="#E0A526"
+                           IsVisible="{Binding IsCaptain}" ToolTip.Tip="Club captain"/>
+              </StackPanel>
+              <!-- playing time (P5, FM-style) -->
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                <ComboBox ItemsSource="{Binding PtStatusOptions}"
+                          SelectedItem="{Binding SelectedPtStatus}" MinWidth="180" FontSize="12"/>
+                <TextBlock Text="{Binding PlayTimeLine}" FontSize="11" Foreground="#8A93A2"
+                           VerticalAlignment="Center"/>
+              </StackPanel>
+              <!-- character + skills (P1) -->
+              <TextBlock Text="{Binding CharacterLine}" FontSize="12" Foreground="#C7A8E8"/>
+              <TextBlock Text="{Binding SkillsLine}" FontSize="11" Foreground="#8A93A2"
+                         TextWrapping="Wrap"/>
+              <!-- career history (D3): one line per season on file -->
+              <ItemsControl ItemsSource="{Binding CareerRows}" IsVisible="{Binding HasCareerRows}"
+                            Margin="0,2,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#5E6875"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <WrapPanel>
+                <Button Content="© Captain" Command="{Binding MakeCaptainCommand}" Margin="0,2,6,0"
+                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+                <Button Content="{Binding ListLabel}" Command="{Binding ToggleListCommand}" Margin="0,2,6,0"
+                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+                <Button Content="Renew +2yrs" Command="{Binding RenewCommand}" Margin="0,2,6,0"
+                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+                <Button Content="Release" Command="{Binding ReleaseCommand}" Margin="0,2,6,0"
+                        Background="#3A2328" Foreground="#E08A8A" Padding="10,6" CornerRadius="6" FontSize="11"/>
+                <Button Content="📌 Compare" Command="{Binding PinCompareCommand}" Margin="0,2,6,0"
+                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+                <Button Content="✖" Command="{Binding ClearCompareCommand}" Margin="0,2,0,0"
+                        IsVisible="{Binding HasPinned}" ToolTip.Tip="Clear comparison"
+                        Background="#232B36" Foreground="#8A93A2" Padding="8,6" CornerRadius="6" FontSize="11"/>
+              </WrapPanel>
+              <WrapPanel>
+                <Button Content="🗣 Praise" Command="{Binding PraiseCommand}" Margin="0,2,6,0"
+                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+                <Button Content="Criticise" Command="{Binding CriticiseCommand}" Margin="0,2,6,0"
+                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+                <Button Content="Promise starts" Command="{Binding PromiseStartsCommand}" Margin="0,2,6,0"
+                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+                <Button Content="Promise contract" Command="{Binding PromiseContractCommand}" Margin="0,2,0,0"
+                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+              </WrapPanel>
+              <TextBlock Text="{Binding PromiseLine}" FontSize="11" Foreground="#E0A526"/>
+
+              <!-- contract negotiation: rounds with the agent -->
+              <Button Content="💬 Negotiate contract" Command="{Binding OpenNegotiationCommand}"
+                      IsVisible="{Binding !Negotiating}" Margin="0,2,0,0"
+                      Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
+              <Border Background="#1B222C" CornerRadius="8" Padding="10" IsVisible="{Binding Negotiating}">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding NegotiationLine}" Foreground="#C7CEDA" FontSize="12"
+                             TextWrapping="Wrap"/>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="£/wk" Foreground="#8A93A2" FontSize="11" VerticalAlignment="Center"/>
+                    <NumericUpDown Value="{Binding WageOffer}" Minimum="500" Maximum="500000"
+                                   Increment="250" FormatString="N0" Width="140"/>
+                    <ComboBox ItemsSource="{Binding YearsOptions}" SelectedItem="{Binding SelectedYears}"
+                              Width="64" ToolTip.Tip="Years"/>
+                    <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"
+                              Width="110" ToolTip.Tip="Squad status promise — cheaper wage, tracked starts"/>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Offer" Command="{Binding MakeOfferCommand}"
+                            Background="#1F9D4D" Foreground="White" FontWeight="Bold"
+                            Padding="14,7" CornerRadius="6" FontSize="12"/>
+                    <Button Content="Walk away" Command="{Binding CancelNegotiationCommand}"
+                            Background="#3A4759" Foreground="White" Padding="14,7"
+                            CornerRadius="6" FontSize="12"/>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <TextBlock Text="{Binding PinnedName, StringFormat='Comparing against {0} (dashed blue)'}"
+                         FontSize="11" Foreground="#2D7DD2" IsVisible="{Binding HasPinned}"/>
+              <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="#9FE6B4" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- ability list -->
+            <StackPanel Spacing="6">
+              <TextBlock Text="Ability" FontSize="13" FontWeight="SemiBold" Foreground="#8A93A2"/>
+              <ItemsControl ItemsSource="{Binding Abilities}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="2"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:AbilityEntry">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2,14,2">
+                      <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12"
+                                 Foreground="#C7CEDA" TextTrimming="CharacterEllipsis"/>
+                      <Panel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Display}" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{Binding ValueBrush}"/>
+                        <!-- FM mode: the colour band replaces the number -->
+                        <Border Width="26" Height="10" CornerRadius="3"
+                                Background="{Binding BandBrush}" IsVisible="{Binding ShowBand}"/>
+                      </Panel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- permanent coach/analyst reports (P5); the FM display toggle lives in Settings -->
+            <Border Background="#1B222C" CornerRadius="8" Padding="10"
+                    IsVisible="{Binding HasCoachLines}">
+              <StackPanel Spacing="2">
+                <TextBlock Text="COACH'S REPORT" Foreground="#7C8698" FontSize="10"
+                           FontWeight="Bold" LetterSpacing="1.1"/>
+                <ItemsControl ItemsSource="{Binding CoachLines}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <TextBlock Text="{Binding}" Foreground="#C7CEDA" FontSize="12"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding AnalystLine}" Foreground="#8A93A2" FontSize="11"
+                           TextWrapping="Wrap" Margin="0,4,0,0"/>
+              </StackPanel>
+            </Border>
+
+          </StackPanel>
+        </ScrollViewer>
+      </Panel>
+    </Border>
+  </Grid>
+</UserControl>

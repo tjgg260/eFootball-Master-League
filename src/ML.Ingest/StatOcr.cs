@@ -91,5 +91,16 @@ public sealed class StatOcr : IDisposable
         return int.TryParse(digits, out var n) ? n : 0;
     }
 
+    /// <summary>
+    /// Whole-image OCR for keyword-anchored parsing (the post-match STATS screen): no region
+    /// calibration needed — callers regex the returned text for "Possession 62% 38%" style rows.
+    /// </summary>
+    public string ReadFullText(string imagePath)
+    {
+        using var img = Tesseract.Pix.LoadFromFile(imagePath);
+        using var page = _engine.Process(img);
+        return page.GetText() ?? "";
+    }
+
     public void Dispose() => _engine.Dispose();
 }

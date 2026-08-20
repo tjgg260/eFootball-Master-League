@@ -1,0 +1,816 @@
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using ML.Core.Tables;
+using ML.Data;
+
+namespace ML.App.ViewModels;
+
+// --- Portal card row models (compiled-binding item types) -------------------------
+
+/// <summary>One W/D/L letter square in a form strip.</summary>
+public sealed record FormChipVm(string Letter, IBrush Bg);
+
+/// <summary>One schedule line: matchday label, opponent, and a result chip ("2-1" or "—").</summary>
+public sealed record ScheduleRowVm(string Md, string Opponent, string Chip, IBrush ChipBg, IBrush ChipFg);
+
+/// <summary>One mini-table line (or the dim "· · ·" separator when you sit outside the top six).</summary>
+public sealed record MiniRowVm(
+    string Pos, string Team, string P, string Gd, string Pts, IBrush Bg, IBrush Fg, FontWeight Weight);
+
+// --- Dashboard (the MFL "Office", FM-portal style) --------------------------------
+
+public sealed partial class DashboardViewModel : PageViewModel
+{
+    private static readonly IBrush WinBrush = Visuals.Brush("#1F9D4D");
+    private static readonly IBrush DrawBrush = Visuals.Brush("#3A4759");
+    private static readonly IBrush LossBrush = Visuals.Brush("#D64545");
+    private static readonly IBrush NeutralChip = Visuals.Brush("#232B36");
+    private static readonly IBrush TextBrush = Visuals.Brush("#C7CEDA");
+    private static readonly IBrush DimBrush = Visuals.Brush("#8A93A2");
+    private static readonly IBrush YouRowBg = Visuals.Brush("#2E1F9D4D");   // #1F9D4D tint
+    private static readonly IBrush YouRowFg = Visuals.Brush("#DFF5E7");
+
+    private readonly Session _s;
+    private string _homeName = "";
+    private string _awayName = "";
+    private int _homeId;
+    private int _awayId;
+    private int _fixtureId;
+    private int _matchday;
+    private string _kind = "league";
+
+    public DashboardViewModel(Session s)
+    {
+        _s = s;
+        ClubName = s.CurrentTeamName;
+        LeagueName = s.LeagueName;
+        BoardConfidence = s.Board.Value;
+        BoardLabel = s.Board.Label;
+        // The gauge reads the REAL per-player morale average (the old Session.Morale object
+        // was a constant 60 that nothing ever updated).
+        try { Morale = s.SquadMoraleAverage(); }
+        catch { Morale = 60; }
+        MoraleLabel = Morale switch
+        {
+            >= 85 => "Superb", >= 70 => "Very Good", >= 55 => "Good",
+            >= 40 => "Okay", >= 25 => "Poor", _ => "Abject",
+        };
+        Balance = $"£{s.Finances.Balance:N0}";
+        Expectation = s.Board.Expectation.ToString();
+        BadgeText = Visuals.Initials(ClubName);
+        BadgeBrush = Visuals.Brush(s.PrimaryColor);
+        BadgeStroke = Visuals.Brush(s.SecondaryColor);
+        Logo = Visuals.LoadBitmap(s.LogoPath);
+
+        // MFL office extras: ELO + status tier, chairman, fans gauge, financial split, ticker.
+        try
+        {
+            Elo = s.EloOf(s.CurrentTeamId);
+            Tier = s.ClubTier(s.CurrentTeamId);
+            ChairmanLine = $"Chairman: {s.Chairman()}";
+            // The fan gauge now carries a memory (P2): half persistent ledger, half form.
+            Fans = s.FanHappiness();
+            FansLabel = s.FanLabel;
+            foreach (var o in s.Objectives().Where(o => o.Importance != "bonus").Take(2))
+            {
+                ObjectiveChips.Add($"{(o.Status == 1 ? "✅" : o.Status == 2 ? "❌" : "◻")} {o.Description} — {o.Progress}");
+            }
+            var (transfer, wages, weekly) = s.FinancialOverview();
+            FinanceLine = $"Transfers £{transfer:N0}  ·  Wages £{wages:N0}  ·  £{weekly:N0}/wk bill";
+            foreach (var t in s.RecentTransfers(5)) Ticker.Add(t);
+        }
+        catch { /* office extras never brick the dashboard */ }
+
+        LoadNextMatch();
+    }
+
+    public int Elo { get; }
+    public string Tier { get; } = "";
+    public string ChairmanLine { get; } = "";
+    public int Fans { get; }
+    public string FansLabel { get; } = "";
+    public ObservableCollection<string> ObjectiveChips { get; } = new();
+    public bool HasObjectiveChips => ObjectiveChips.Count > 0;
+    public string FinanceLine { get; } = "";
+    public ObservableCollection<string> Ticker { get; } = new();
+    public bool HasTicker => Ticker.Count > 0;
+
+    public override string Title => "Office";
+    public override string Icon => "🏠";
+
+    public string ClubName { get; }
+    public string LeagueName { get; }
+    public int BoardConfidence { get; }
+    public string BoardLabel { get; }
+    public int Morale { get; }
+    public string MoraleLabel { get; }
+    public string Balance { get; }
+    public string Expectation { get; }
+    public string BadgeText { get; } = "";
+    public IBrush BadgeBrush { get; } = Visuals.Brush(null);
+    public IBrush BadgeStroke { get; } = Visuals.Brush(null);
+    public Bitmap? Logo { get; }
+    public bool HasLogo => Logo is not null;
+
+    [ObservableProperty]
+    private string _position = "—";
+
+    // --- Play Match + record result: the career loop ---
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlayEnabled))]
+    [NotifyPropertyChangedFor(nameof(SeasonOver))]
+    private bool _hasNextMatch;
+
+    [ObservableProperty]
+    private string _nextMatchLabel = "No match scheduled";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlayEnabled))]
+    private bool _isCompiling;
+
+    [ObservableProperty]
+    private string _matchStatus = "";
+
+    [ObservableProperty]
+    private decimal _homeScore;
+
+    [ObservableProperty]
+    private decimal _awayScore;
+
+    // The four stats eFootball's post-match screens give — comma-separated, surname-matched.
+    [ObservableProperty]
+    private string _scorersText = "";
+
+    [ObservableProperty]
+    private string _assistsText = "";
+
+    [ObservableProperty]
+    private string _cardsText = "";
+
+    [ObservableProperty]
+    private string _ratingsText = "";
+
+    [ObservableProperty]
+    private string _jobLine = "";
+
+    // Deadline day (P5): the banner shows when the window's last matchday is next.
+    [ObservableProperty] private bool _deadlineVisible;
+
+    // --- the post-match report (P3): full time is a moment, not a status line ----------
+
+    [ObservableProperty] private bool _reportVisible;
+    [ObservableProperty] private string _reportScore = "";
+    [ObservableProperty] private string _reportComp = "";
+    [ObservableProperty] private string _reportVerdict = "";
+    [ObservableProperty] private Avalonia.Media.IBrush _reportVerdictBrush = Visuals.Brush("#C7CEDA");
+    public ObservableCollection<string> ReportEvents { get; } = new();
+    public ObservableCollection<string> ReportRatings { get; } = new();
+    [ObservableProperty] private string _reportMoraleLine = "";
+    [ObservableProperty] private string _reportBoardLine = "";
+    [ObservableProperty] private string _reportDebrief = "";
+    public bool HasReportEvents => ReportEvents.Count > 0;
+    public bool HasReportRatings => ReportRatings.Count > 0;
+    public bool HasReportDebrief => ReportDebrief.Length > 0;
+
+    private void BuildPostMatchReport(int fixtureId, int homeId, int awayId,
+        int homeGoals, int awayGoals, string kind,
+        int moraleBefore, int boardBefore, int fansBefore)
+    {
+        try
+        {
+            var home = _s.TeamName(homeId);
+            var away = _s.TeamName(awayId);
+            ReportScore = $"{home}  {homeGoals} – {awayGoals}  {away}";
+            var leagueId = _s.Repo.Fixtures(_s.SeasonId).FirstOrDefault(f => f.Id == fixtureId)?.LeagueId ?? 9002;
+            ReportComp = kind == "cup" ? Session.CupNameFor(leagueId)
+                : kind == "friendly" ? "Preseason Friendly" : _s.LeagueName;
+            var youHome = homeId == _s.CurrentTeamId;
+            var us = youHome ? homeGoals : awayGoals;
+            var them = youHome ? awayGoals : homeGoals;
+            (ReportVerdict, ReportVerdictBrush) = us > them
+                ? ("FULL TIME — VICTORY", Visuals.Brush("#8BE04A"))
+                : us == them ? ("FULL TIME — DRAW", Visuals.Brush("#E0A526"))
+                : ("FULL TIME — DEFEAT", Visuals.Brush("#F0655A"));
+
+            ReportEvents.Clear();
+            foreach (var (type, player, teamId) in _s.EventsForFixture(fixtureId))
+            {
+                var icon = type switch { "goal" => "⚽", "assist" => "🅰", "yellow" => "🟨", _ => "🟥" };
+                var side = teamId == _s.CurrentTeamId ? "" : "  (them)";
+                ReportEvents.Add($"{icon} {player}{side}");
+            }
+            ReportRatings.Clear();
+            foreach (var (player, rating) in _s.RatingsForFixture(fixtureId).Take(11))
+            {
+                ReportRatings.Add($"{player}  {rating:0.0}");
+            }
+
+            var moraleNow = _s.SquadMoraleAverage();
+            var boardNow = _s.Board.Value;
+            var fansNow = _s.FanHappiness();
+            string Delta(int now, int before) => now - before >= 0 ? $"+{now - before}" : $"{now - before}";
+            ReportMoraleLine = $"Dressing room {moraleNow} ({Delta(moraleNow, moraleBefore)})";
+            ReportBoardLine = $"Board {boardNow} ({Delta(boardNow, boardBefore)})  ·  " +
+                              $"Fans {fansNow} ({Delta(fansNow, fansBefore)})";
+            try { ReportDebrief = _s.AssistantDebrief(fixtureId, homeId, awayId); }
+            catch { ReportDebrief = ""; }
+
+            OnPropertyChanged(nameof(HasReportEvents));
+            OnPropertyChanged(nameof(HasReportRatings));
+            OnPropertyChanged(nameof(HasReportDebrief));
+            ReportVisible = true;
+        }
+        catch { ReportVisible = false; }
+    }
+
+    [RelayCommand]
+    private void CloseReport() => ReportVisible = false;
+
+    // Team talks (C2): one pre-match and one post-match say per fixture.
+    [ObservableProperty] private bool _preTalkVisible;
+    [ObservableProperty] private string _talkHintLine = "";
+    [ObservableProperty] private bool _postTalkVisible;
+    private int _lastFixtureId;
+    private int _lastHomeId;
+    private int _lastAwayId;
+    private int? _lastOutcome;
+
+    [RelayCommand]
+    private void PreTalk(string tone)
+    {
+        if (!PreTalkVisible) return;
+        var reaction = _s.ApplyTeamTalk(_fixtureId, preMatch: true,
+            Enum.Parse<ML.Core.Selection.TalkTone>(tone), _homeId, _awayId, null);
+        PreTalkVisible = false;
+        MatchStatus = $"🗣 {reaction}";
+    }
+
+    /// <summary>OCR the post-match STATS screen (F12 on it) into the last result's record.</summary>
+    [RelayCommand]
+    private void ImportStats()
+    {
+        if (_lastFixtureId == 0) { MatchStatus = "Record a result first."; return; }
+        var r = ScoreImport.StatsFromLatestScreenshot();
+        if (r is null) { MatchStatus = "Stats OCR unavailable."; return; }
+        var (ph, pa, sh, sa, msg) = r.Value;
+        if (ph is not null || sh is not null)
+        {
+            try { _s.SaveMatchStats(_lastFixtureId, ph, pa, sh, sa); } catch { /* display only */ }
+            MatchStatus = $"📊 {msg} Saved to the match report.";
+        }
+        else
+        {
+            MatchStatus = $"📊 {msg}";
+        }
+    }
+
+    [RelayCommand]
+    private void PostTalk(string tone)
+    {
+        if (!PostTalkVisible) return;
+        var reaction = _s.ApplyTeamTalk(_lastFixtureId, preMatch: false,
+            Enum.Parse<ML.Core.Selection.TalkTone>(tone), _lastHomeId, _lastAwayId, _lastOutcome);
+        PostTalkVisible = false;
+        MatchStatus = $"🗣 {reaction}";
+    }
+
+    public bool PlayEnabled => HasNextMatch && !IsCompiling;
+
+    public bool SeasonOver => !HasNextMatch;
+
+    // --- Next Opposition card ---
+    [ObservableProperty]
+    private bool _hasOpposition;
+
+    [ObservableProperty]
+    private string _oppName = "";
+
+    [ObservableProperty]
+    private string _oppPositionLine = "";
+
+    [ObservableProperty]
+    private string _oppShapeLine = "";
+
+    [ObservableProperty]
+    private string _oppBadgeText = "";
+
+    [ObservableProperty]
+    private IBrush _oppBadgeBrush = Visuals.Brush(null);
+
+    [ObservableProperty]
+    private IBrush _oppBadgeStroke = Visuals.Brush(null);
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OppHasLogo))]
+    private Bitmap? _oppLogo;
+
+    public bool OppHasLogo => OppLogo is not null;
+
+    [ObservableProperty]
+    private bool _hasOppForm;
+
+    public ObservableCollection<FormChipVm> OppForm { get; } = new();
+
+    // Win/draw/loss from ELO (MFL match preview) + the opponent's key player.
+    [ObservableProperty]
+    private string _oddsLine = "";
+
+    [ObservableProperty]
+    private double _oddsWin;
+
+    [ObservableProperty]
+    private double _oddsDraw;
+
+    [ObservableProperty]
+    private double _oddsLoss;
+
+    [ObservableProperty]
+    private string _keyPlayerLine = "";
+
+    /// <summary>The assistant's pre-match availability note (empty until one is hired).</summary>
+    [ObservableProperty]
+    private string _assistantLine = "";
+
+    // --- Schedule + mini table cards ---
+    public ObservableCollection<ScheduleRowVm> Schedule { get; } = new();
+    public ObservableCollection<MiniRowVm> MiniTable { get; } = new();
+
+    /// <summary>Load the next unplayed fixture into the card — called at start and after each result.</summary>
+    // --- XI-driven event pickers (P3): the app knows both XIs, so nobody types names ------
+
+    public ObservableCollection<string> MatchPlayerNames { get; } = new();
+    public ObservableCollection<EventPickRow> GoalPicks { get; } = new();
+    public ObservableCollection<EventPickRow> AssistPicks { get; } = new();
+    public ObservableCollection<EventPickRow> CardPicks { get; } = new();
+
+    [RelayCommand] private void AddGoalPick() => GoalPicks.Add(new EventPickRow(MatchPlayerNames));
+    [RelayCommand] private void AddAssistPick() => AssistPicks.Add(new EventPickRow(MatchPlayerNames));
+    [RelayCommand] private void AddCardPick() => CardPicks.Add(new EventPickRow(MatchPlayerNames));
+
+    [RelayCommand]
+    private void ClearPicks()
+    {
+        GoalPicks.Clear();
+        AssistPicks.Clear();
+        CardPicks.Clear();
+    }
+
+    private void LoadMatchPlayers()
+    {
+        MatchPlayerNames.Clear();
+        ClearPicks();
+        try
+        {
+            foreach (var teamId in new[] { _homeId, _awayId })
+            {
+                var players = _s.Repo.SquadPlayers(teamId).ToDictionary(p => p.Id, p => p.Name);
+                foreach (var m in _s.Repo.Squad(teamId).Where(m => m.Slot is >= 0 and <= 10)
+                             .OrderBy(m => m.Slot))
+                {
+                    if (players.TryGetValue(m.PlayerId, out var name)) MatchPlayerNames.Add(name);
+                }
+            }
+        }
+        catch { /* pickers degrade to the free-text path */ }
+    }
+
+    /// <summary>Fold the picker rows into the text the stats engine already understands.</summary>
+    private void FoldPicksIntoTexts()
+    {
+        string Fold(IEnumerable<EventPickRow> rows) =>
+            string.Join(", ", rows.Select(r => r.Selected).Where(s => !string.IsNullOrWhiteSpace(s)));
+        var goals = Fold(GoalPicks);
+        var assists = Fold(AssistPicks);
+        var cards = Fold(CardPicks);
+        if (goals.Length > 0) ScorersText = goals;
+        if (assists.Length > 0) AssistsText = assists;
+        if (cards.Length > 0) CardsText = cards;
+    }
+
+    private void LoadNextMatch()
+    {
+        // Sacked managers do not pick teams: the dashboard goes dark until you take a new job.
+        if (_s.IsSacked)
+        {
+            NextMatchLabel = "SACKED — " + _s.SackedLine;
+            MatchStatus = $"Your career: {_s.CareerSummary()}\n" +
+                          "Job offers are on the Board screen — accept one to manage again.";
+            HasNextMatch = false;
+            return;
+        }
+
+        var next = _s.NextFixture();
+        if (next is not null)
+        {
+            _fixtureId = next.Id;
+            _matchday = next.Matchday;
+            _kind = next.Kind;
+            _homeId = next.HomeTeamId;
+            _awayId = next.AwayTeamId;
+            _homeName = _s.TeamName(_homeId);
+            _awayName = _s.TeamName(_awayId);
+            LoadMatchPlayers();   // both XIs feed the event pickers (P3)
+            var kind = next.Kind switch
+            {
+                "friendly" => "Preseason Friendly",
+                "cup" => $"{Session.CupNameFor(next.LeagueId)} — {Session.CupRoundName(next.Matchday)}",
+                _ => $"Matchday {next.Matchday}",
+            };
+            var when = ML.Core.Scheduling.SeasonCalendar.Label(_s.DateOfFixture(next));
+            NextMatchLabel = $"{kind} · {when}\n{_homeName}  vs  {_awayName}";
+            try { DeadlineVisible = _s.IsDeadlineDay(); } catch { DeadlineVisible = false; }
+            try
+            {
+                PreTalkVisible = _s.TalkAvailable(next.Id, preMatch: true);
+                TalkHintLine = _s.TalkHint(preMatch: true, _homeId, _awayId, null);
+            }
+            catch { PreTalkVisible = false; }
+            HasNextMatch = true;
+            MatchStatus = "Play Match to build dt200 + boot eFootball, then enter the score.";
+        }
+        else
+        {
+            NextMatchLabel = "Season complete — no fixtures left";
+            HasNextMatch = false;
+            MatchStatus = "";
+        }
+
+        RefreshPortal();
+    }
+
+    /// <summary>
+    /// Rebuild the portal cards (opposition report, schedule, mini table, position tile). A card
+    /// failure must never brick the Office, so this swallows and moves on.
+    /// </summary>
+    private void RefreshPortal()
+    {
+        try { Position = Ordinal(_s.CurrentPosition()); } catch { /* card-only */ }
+        try { BuildOpposition(); } catch { HasOpposition = false; }
+        try { BuildSchedule(); } catch { /* card-only */ }
+        try { BuildMiniTable(); } catch { /* card-only */ }
+        try
+        {
+            // Job security: sitting in the drop zone deep into the season turns up the heat.
+            var pos = _s.CurrentPosition();
+            var table = _s.Table();
+            var played = table.FirstOrDefault(r => r.TeamId.Value == _s.CurrentTeamId)?.Played ?? 0;
+            JobLine = pos > 0 && played >= 8 && pos > table.Count - 3
+                ? "⚠ The board is losing patience — you're in the relegation places."
+                : "";
+        }
+        catch { /* card-only */ }
+    }
+
+    private void BuildOpposition()
+    {
+        OppForm.Clear();
+        HasOppForm = false;
+        if (!HasNextMatch)
+        {
+            HasOpposition = false;
+            return;
+        }
+
+        var oppId = _homeId == _s.CurrentTeamId ? _awayId : _homeId;
+        OppName = _s.TeamName(oppId);
+        OppBadgeText = Visuals.Initials(OppName);
+        OppBadgeBrush = Visuals.Brush(_s.TeamColor(oppId));
+        OppBadgeStroke = Visuals.Brush(_s.TeamSecondary(oppId));
+        OppLogo = Visuals.LoadBitmap(_s.TeamLogoPath(oppId));
+
+        var row = _s.Table().FirstOrDefault(r => r.TeamId.Value == oppId);
+        OppPositionLine = row is null ? _s.LeagueName : $"{Ordinal(row.Position)} in {_s.LeagueName}";
+
+        // Last five league results, oldest → newest, from the opponent's point of view.
+        var played = _s.Repo.Fixtures(_s.SeasonId)
+            .Where(f => f.Kind == "league" && f.Played
+                        && (f.HomeTeamId == oppId || f.AwayTeamId == oppId))
+            .OrderBy(f => f.Matchday).ThenBy(f => f.Id)
+            .ToList();
+        foreach (var f in played.TakeLast(5))
+        {
+            var r = _s.ResultFor(f.Id);
+            if (r is null) continue;
+            var us = f.HomeTeamId == oppId ? r.HomeGoals : r.AwayGoals;
+            var them = f.HomeTeamId == oppId ? r.AwayGoals : r.HomeGoals;
+            OppForm.Add(us > them ? new FormChipVm("W", WinBrush)
+                : us == them ? new FormChipVm("D", DrawBrush)
+                : new FormChipVm("L", LossBrush));
+        }
+        HasOppForm = OppForm.Count > 0;
+
+        // Preferred shape: the opponent's own phase-0 formation geometry, clustered into lines.
+        var fid = _s.Repo.TeamTactics(oppId).FirstOrDefault(t => t.Phase == 0)?.FormationId;
+        var shape = fid is int f0
+            ? Formations.ShapeOf(_s.Repo.FormationSlots(f0).Select(sl => sl.Y))
+            : "—";
+        OppShapeLine = $"Preferred shape: {shape}  ·  ELO {_s.EloOf(oppId)}";
+
+        // Match preview from ELO — always phrased from YOUR point of view.
+        var youAreHome = _homeId == _s.CurrentTeamId;
+        var odds = _s.MatchOdds(_homeId, _awayId);
+        var (win, draw, loss) = youAreHome
+            ? (odds.HomePercent, odds.DrawPercent, odds.AwayPercent)
+            : (odds.AwayPercent, odds.DrawPercent, odds.HomePercent);
+        OddsLine = $"Win {win}%  ·  Draw {draw}%  ·  Loss {loss}%";
+        OddsWin = win;
+        OddsDraw = draw;
+        OddsLoss = loss;
+
+        var key = _s.KeyPlayer(oppId);
+        KeyPlayerLine = key is null ? ""
+            : $"Key player: {key.Name}  ({key.Position} {key.OverallRating ?? 0})";
+
+        try { AssistantLine = _s.AssistantNote(_matchday); } catch { AssistantLine = ""; }
+
+        // The scout's briefing — only when this opponent has actually been scouted.
+        try
+        {
+            var (scouted, summary, suggestion) = _s.OppositionBriefingFor(oppId);
+            BriefingSummary = scouted ? summary : "No dossier on them — send your scout (Scouting screen).";
+            BriefingSuggestion = scouted ? suggestion : "";
+        }
+        catch { BriefingSummary = ""; BriefingSuggestion = ""; }
+
+        HasOpposition = true;
+    }
+
+    [ObservableProperty] private string _briefingSummary = "";
+    [ObservableProperty] private string _briefingSuggestion = "";
+
+    private void BuildSchedule()
+    {
+        Schedule.Clear();
+        var myId = _s.CurrentTeamId;
+        var mine = _s.Repo.Fixtures(_s.SeasonId)
+            .Where(f => f.HomeTeamId == myId || f.AwayTeamId == myId)
+            .OrderBy(f => f.Matchday).ThenBy(f => f.Id)
+            .ToList();
+
+        foreach (var f in mine.Where(f => f.Played).TakeLast(3))
+        {
+            var r = _s.ResultFor(f.Id);
+            var us = f.HomeTeamId == myId ? r?.HomeGoals ?? 0 : r?.AwayGoals ?? 0;
+            var them = f.HomeTeamId == myId ? r?.AwayGoals ?? 0 : r?.HomeGoals ?? 0;
+            var bg = r is null ? NeutralChip : us > them ? WinBrush : us == them ? DrawBrush : LossBrush;
+            Schedule.Add(new ScheduleRowVm(
+                MdLabel(f), OppLabel(f, myId), r is null ? "—" : $"{us}-{them}", bg, Brushes.White));
+        }
+
+        foreach (var f in mine.Where(f => !f.Played).Take(4))
+        {
+            Schedule.Add(new ScheduleRowVm(MdLabel(f), OppLabel(f, myId), "—", NeutralChip, DimBrush));
+        }
+    }
+
+    private string MdLabel(FixtureRow f) =>
+        ML.Core.Scheduling.SeasonCalendar.ShortLabel(_s.DateOfFixture(f));
+
+    private string OppLabel(FixtureRow f, int myId) =>
+        f.HomeTeamId == myId ? $"{_s.TeamName(f.AwayTeamId)} (H)" : $"{_s.TeamName(f.HomeTeamId)} (A)";
+
+    private void BuildMiniTable()
+    {
+        MiniTable.Clear();
+        var table = _s.Table();
+        var myId = _s.CurrentTeamId;
+
+        foreach (var r in table.Take(6)) MiniTable.Add(MiniRow(r, myId));
+
+        var me = table.FirstOrDefault(r => r.TeamId.Value == myId);
+        if (me is not null && me.Position > 6)
+        {
+            MiniTable.Add(new MiniRowVm(
+                "", "· · ·", "", "", "", Brushes.Transparent, DimBrush, FontWeight.Normal));
+            MiniTable.Add(MiniRow(me, myId));
+        }
+    }
+
+    private MiniRowVm MiniRow(LeagueTableRow r, int myId)
+    {
+        var you = r.TeamId.Value == myId;
+        return new MiniRowVm(
+            r.Position.ToString(),
+            _s.TeamName(r.TeamId.Value),
+            r.Played.ToString(),
+            r.GoalDifference.ToString("+#;-#;0"),
+            r.Points.ToString(),
+            you ? YouRowBg : Brushes.Transparent,
+            you ? YouRowFg : TextBrush,
+            you ? FontWeight.Bold : FontWeight.Normal);
+    }
+
+    [RelayCommand]
+    private async Task PlayMatch()
+    {
+        if (!HasNextMatch || IsCompiling) return;
+        IsCompiling = true;
+        MatchStatus = "";
+
+        // AI managers pick both matchday XIs from form/fatigue/availability before the compile.
+        // Selection failing (e.g. fresh DB without the condition table) must never brick the button.
+        try
+        {
+            _s.PrepareMatchday(_homeId, _awayId, _matchday);
+        }
+        catch (Exception ex)
+        {
+            MatchStatus = $"XI selection skipped: {ex.Message}";
+        }
+
+        void Log(string line) => Dispatcher.UIThread.Post(() =>
+            MatchStatus = string.IsNullOrEmpty(MatchStatus) ? line : $"{MatchStatus}\n{line}");
+        try
+        {
+            await MatchLauncher.PlayMatchAsync(_homeId, _awayId, _homeName, _awayName, Log);
+        }
+        finally
+        {
+            IsCompiling = false;
+        }
+    }
+
+    /// <summary>End the season: sim the rest, age squads, generate next season's fixtures.</summary>
+    [RelayCommand]
+    private void AdvanceSeason()
+    {
+        if (HasNextMatch) return;
+        var summary = _s.AdvanceToNextSeason();
+        LoadNextMatch();
+        MatchStatus = summary;   // after LoadNextMatch, so the rollover summary stays visible
+    }
+
+    /// <summary>Undo the most recently recorded of your results (typos happen).</summary>
+    [RelayCommand]
+    private void UndoResult()
+    {
+        try
+        {
+            var msg = _s.UndoLastResult();
+            LoadNextMatch();
+            MatchStatus = msg;
+        }
+        catch (Exception ex)
+        {
+            MatchStatus = $"Undo failed: {ex.Message}";
+        }
+    }
+
+    /// <summary>OCR the score off your latest eFootball screenshot into the result boxes.</summary>
+    [RelayCommand]
+    private void ImportScore()
+    {
+        var r = ScoreImport.FromLatestScreenshot();
+        if (r is null) { MatchStatus = "No screenshot found — press F12 in eFootball at full time."; return; }
+        HomeScore = r.Value.Home;
+        AwayScore = r.Value.Away;
+        MatchStatus = r.Value.Message;
+    }
+
+    /// <summary>Record the score you played in eFootball, then advance to the next fixture.</summary>
+    [RelayCommand]
+    private void RecordResult()
+    {
+        if (!HasNextMatch) return;
+        // Snapshot the gauges so the report can show what this result MOVED (P3).
+        int moraleBefore = 60, boardBefore = 58, fansBefore = 55;
+        try { moraleBefore = _s.SquadMoraleAverage(); } catch { }
+        try { boardBefore = _s.Board.Value; } catch { }
+        try { fansBefore = _s.FanHappiness(); } catch { }
+        FoldPicksIntoTexts();   // pickers beat typing (P3)
+        _s.Repo.RecordResult(new ResultRow
+        {
+            FixtureId = _fixtureId, HomeGoals = (int)HomeScore, AwayGoals = (int)AwayScore,
+        });
+        // Sim the rest of this matchday (the CPU games) so the league table moves with you,
+        // then move the cup along: sim the round's other ties and draw the next round when done.
+        // Cup midweeks share matchday numbers with league rounds — recording a cup tie must
+        // NOT play out that league round early, so the league pass only runs for league games.
+        var condNote = "";
+        var condNote2 = "";
+        if (_kind != "cup") _s.PlayOutMatchday(_matchday, _fixtureId);
+        try
+        {
+            _s.AdvanceCup(_matchday, _fixtureId);
+        }
+        catch (Exception ex)
+        {
+            condNote2 = $"\nCup update skipped: {ex.Message}";
+        }
+
+        // Your match's player stats become season stats: goals, assists, cards, ratings — the
+        // four things eFootball's post-match screens actually give.
+        var scorerNote = "";
+        try
+        {
+            _s.RecordAppearances(_fixtureId, _homeId, _awayId);
+            scorerNote = _s.RecordMatchStats(
+                _fixtureId, _homeId, _awayId, ScorersText, AssistsText, CardsText, RatingsText);
+            if (scorerNote.Length > 0) scorerNote = "\n" + scorerNote;
+        }
+        catch { /* stats never block recording */ }
+
+        // Apply fatigue/recovery, form and injuries. Cup days load only the two clubs involved;
+        // league days run the league-wide pass. Guarded so a missing table never blocks recording.
+        try
+        {
+            if (_kind == "cup")
+            {
+                _s.UpdateConditionsAfterCup(_homeId, _awayId, _matchday);
+            }
+            else
+            {
+                _s.UpdateConditionsAfterMatchday(_matchday);
+            }
+        }
+        catch (Exception ex)
+        {
+            condNote = $"\nCondition update skipped: {ex.Message}";
+        }
+
+        // Post-match mail: press reaction, medical report, training milestones, contract warnings.
+        try
+        {
+            _s.PostMatchInbox(_fixtureId, _homeId, _awayId, _matchday,
+                (int)HomeScore, (int)AwayScore, _kind);
+        }
+        catch { /* mail never blocks recording */ }
+
+        // The board, the fans and your reputation react — and the board can act (D2/P2).
+        try
+        {
+            _s.ApplyCareerAfterResult(_homeId, _awayId, (int)HomeScore, (int)AwayScore, _kind);
+        }
+        catch { /* the career layer never blocks recording */ }
+        try
+        {
+            _s.ApplyFansAfterResult(_homeId, _awayId, (int)HomeScore, (int)AwayScore, _kind);
+        }
+        catch { /* the fans never block recording */ }
+
+        // Facing a club teaches you their XI (P5 knowledge).
+        try
+        {
+            _s.LearnOpponentFromMatch(_homeId == _s.CurrentTeamId ? _awayId : _homeId);
+        }
+        catch { /* knowledge is additive */ }
+
+        // The full-time dressing room awaits your word (once, this fixture).
+        _lastFixtureId = _fixtureId;
+        _lastHomeId = _homeId;
+        _lastAwayId = _awayId;
+        var usG = (int)HomeScore;
+        var themG = (int)AwayScore;
+        if (_homeId != _s.CurrentTeamId) (usG, themG) = (themG, usG);
+        _lastOutcome = usG > themG ? 1 : usG == themG ? 0 : -1;
+        try { PostTalkVisible = _s.TalkAvailable(_lastFixtureId, preMatch: false); }
+        catch { PostTalkVisible = false; }
+
+        // The report needs the recorded fixture's identity — LoadNextMatch will overwrite it.
+        var repFixture = _fixtureId;
+        var repHome = _homeId;
+        var repAway = _awayId;
+        var repHg = (int)HomeScore;
+        var repAg = (int)AwayScore;
+        var repKind = _kind;
+
+        var recorded = $"Recorded {_homeName} {(int)HomeScore}–{(int)AwayScore} {_awayName}, " +
+                       "and simmed the rest of the matchday. Table updated — next match loaded."
+                       + scorerNote + condNote + condNote2;
+        HomeScore = 0;
+        AwayScore = 0;
+        ScorersText = "";
+        AssistsText = "";
+        CardsText = "";
+        RatingsText = "";
+        LoadNextMatch();
+        MatchStatus = recorded;   // after LoadNextMatch, so the confirmation stays visible
+        BuildPostMatchReport(repFixture, repHome, repAway, repHg, repAg, repKind,
+            moraleBefore, boardBefore, fansBefore);
+    }
+
+    private static string Ordinal(int n) => n switch
+    {
+        0 => "—",
+        11 or 12 or 13 => $"{n}th",
+        _ when n % 10 == 1 => $"{n}st",
+        _ when n % 10 == 2 => $"{n}nd",
+        _ when n % 10 == 3 => $"{n}rd",
+        _ => $"{n}th",
+    };
+}
+
+/// <summary>One picked match event: a player chosen from the two known XIs (P3).</summary>
+public sealed partial class EventPickRow : ObservableObject
+{
+    public EventPickRow(ObservableCollection<string> players) => Players = players;
+
+    public ObservableCollection<string> Players { get; }
+
+    [ObservableProperty] private string? _selected;
+}

@@ -1,0 +1,463 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             x:Class="ML.App.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+
+  <UserControl.Styles>
+    <!-- FM-portal chrome, local to the Office so other screens keep their own look -->
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="#1B222C"/>
+      <Setter Property="BorderBrush" Value="#242E3B"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="Padding" Value="18"/>
+    </Style>
+    <Style Selector="TextBlock.cardHead">
+      <Setter Property="Foreground" Value="#8A93A2"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="LetterSpacing" Value="1.4"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="Border.stat">
+      <Setter Property="Background" Value="#151A21"/>
+      <Setter Property="BorderBrush" Value="#242E3B"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="Padding" Value="16,13"/>
+    </Style>
+    <Style Selector="TextBlock.statLabel">
+      <Setter Property="Foreground" Value="#8A93A2"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="LetterSpacing" Value="1.2"/>
+    </Style>
+    <Style Selector="TextBlock.statValue">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontSize" Value="21"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Margin" Value="0,5,0,0"/>
+    </Style>
+    <Style Selector="ProgressBar.statBar">
+      <Setter Property="Height" Value="5"/>
+      <Setter Property="MinHeight" Value="5"/>
+      <Setter Property="Margin" Value="0,9,0,0"/>
+      <Setter Property="Background" Value="#232B36"/>
+      <Setter Property="CornerRadius" Value="3"/>
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer Padding="28" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="18">
+
+      <!-- Hero: club identity -->
+      <StackPanel Orientation="Horizontal" Spacing="16">
+        <Panel Width="60" Height="60" VerticalAlignment="Center">
+          <Border CornerRadius="30" Background="{Binding BadgeBrush}" BorderBrush="{Binding BadgeStroke}"
+                  BorderThickness="2" IsVisible="{Binding !HasLogo}">
+            <TextBlock Text="{Binding BadgeText}" Foreground="White" FontWeight="Bold" FontSize="21"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <Image Source="{Binding Logo}" Width="60" Height="60"/>
+        </Panel>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="{Binding ClubName}" FontSize="30" FontWeight="Bold" Foreground="White"/>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,-1,0,0">
+            <TextBlock Text="{Binding LeagueName}" FontSize="14" Foreground="#8A93A2"/>
+            <TextBlock Text="·" FontSize="14" Foreground="#3A4759"/>
+            <TextBlock Text="{Binding Position}" FontSize="14" Foreground="#C7CEDA" FontWeight="SemiBold"/>
+            <TextBlock Text="·" FontSize="14" Foreground="#3A4759"/>
+            <TextBlock Text="{Binding Tier}" FontSize="14" Foreground="#E0A526" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding Elo, StringFormat='ELO {0}'}" FontSize="14" Foreground="#8A93A2"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+            <TextBlock Text="{Binding ChairmanLine}" FontSize="12" Foreground="#8A93A2"/>
+            <TextBlock Text="·" FontSize="12" Foreground="#3A4759"/>
+            <TextBlock Text="{Binding FinanceLine}" FontSize="12" Foreground="#8A93A2"/>
+          </StackPanel>
+          <!-- the post-match report (P3): full time is a moment -->
+          <Border Background="{DynamicResource ThemePanelAltBrush}" BorderBrush="#2EC4A6" BorderThickness="1" CornerRadius="12"
+                  Padding="16" Margin="0,8,0,0" IsVisible="{Binding ReportVisible}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding ReportVerdict}" Foreground="{Binding ReportVerdictBrush}"
+                         FontSize="12" FontWeight="Bold" LetterSpacing="1.5"/>
+              <TextBlock Text="{Binding ReportScore}" Foreground="White" FontSize="24" FontWeight="Bold"/>
+              <TextBlock Text="{Binding ReportComp}" Foreground="#8A93A2" FontSize="12"/>
+              <Grid ColumnDefinitions="*,*">
+                <StackPanel Spacing="2" IsVisible="{Binding HasReportEvents}">
+                  <TextBlock Text="EVENTS" Foreground="#5E6875" FontSize="10" FontWeight="Bold"
+                             LetterSpacing="1.2"/>
+                  <ItemsControl ItemsSource="{Binding ReportEvents}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" Foreground="#C7CEDA" FontSize="12"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="2" IsVisible="{Binding HasReportRatings}">
+                  <TextBlock Text="RATINGS" Foreground="#5E6875" FontSize="10" FontWeight="Bold"
+                             LetterSpacing="1.2"/>
+                  <ItemsControl ItemsSource="{Binding ReportRatings}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" Foreground="#C7CEDA" FontSize="12"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Grid>
+              <TextBlock Text="{Binding ReportMoraleLine}" Foreground="#9FE6B4" FontSize="12"/>
+              <TextBlock Text="{Binding ReportBoardLine}" Foreground="#E0A526" FontSize="12"/>
+              <TextBlock Text="{Binding ReportDebrief}" Foreground="#8A93A2" FontSize="11"
+                         TextWrapping="Wrap" FontStyle="Italic" IsVisible="{Binding HasReportDebrief}"/>
+              <Button Content="Continue →" Command="{Binding CloseReportCommand}"
+                      Background="#232B36" Foreground="#C7CEDA" Padding="14,7" CornerRadius="7"
+                      FontSize="12" HorizontalAlignment="Right"/>
+            </StackPanel>
+          </Border>
+
+          <!-- deadline day banner (P5) -->
+          <Border Background="#FFD100" CornerRadius="8" Padding="10,6" Margin="0,6,0,0"
+                  IsVisible="{Binding DeadlineVisible}">
+            <TextBlock Text="🚨 DEADLINE DAY — the window slams shut after this matchday. Late bids and softened asks are live on the Market."
+                       Foreground="#111111" FontSize="12" FontWeight="Bold" TextWrapping="Wrap"/>
+          </Border>
+          <!-- board objectives at a glance (P2) -->
+          <ItemsControl ItemsSource="{Binding ObjectiveChips}" IsVisible="{Binding HasObjectiveChips}"
+                        Margin="0,4,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Text="{Binding}" FontSize="11" Foreground="#9FB8E6"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+
+      <!-- NEXT MATCH: compile the fixture into dt200, boot eFootball, record the score -->
+      <Border CornerRadius="12" Padding="20,18" Background="#14271B" BorderBrush="#1F7A3D"
+              BorderThickness="1" IsVisible="{Binding HasNextMatch}">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="cardHead" Text="NEXT MATCH" Foreground="#7FD79B" Margin="0,0,0,4"/>
+          <TextBlock Text="{Binding NextMatchLabel}" Foreground="White" FontSize="19"
+                     FontWeight="SemiBold" TextWrapping="Wrap"/>
+          <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,12,0,4">
+            <Button Content="▶  PLAY MATCH" Command="{Binding PlayMatchCommand}"
+                    IsEnabled="{Binding PlayEnabled}" VerticalAlignment="Center"
+                    FontSize="16" FontWeight="Bold" Padding="28,15" Foreground="White"
+                    Background="#1F9D4D" CornerRadius="8"/>
+            <Border Width="1" Background="#2A4A34" Margin="6,4"/>
+            <TextBlock Text="Result" Foreground="#7FD79B" VerticalAlignment="Center" FontSize="13"/>
+            <NumericUpDown Value="{Binding HomeScore}" Minimum="0" Maximum="20" Increment="1"
+                           FormatString="0" Width="110" VerticalAlignment="Center"/>
+            <TextBlock Text="–" Foreground="White" VerticalAlignment="Center" FontSize="18"/>
+            <NumericUpDown Value="{Binding AwayScore}" Minimum="0" Maximum="20" Increment="1"
+                           FormatString="0" Width="110" VerticalAlignment="Center"/>
+            <Button Content="📷 Import" Command="{Binding ImportScoreCommand}"
+                    IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
+                    Padding="14,12" Foreground="White" Background="#3A4759" CornerRadius="8"
+                    ToolTip.Tip="Read the score from your latest eFootball screenshot (F12)"/>
+            <Button Content="Record" Command="{Binding RecordResultCommand}"
+                    IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
+                    FontWeight="Bold" Padding="18,12" Foreground="White"
+                    Background="#2D7DD2" CornerRadius="8"/>
+          </StackPanel>
+          <!-- XI-driven event pickers (P3): pick players, never type names -->
+          <Grid ColumnDefinitions="*,*,*" Margin="0,8,0,0">
+            <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="4">
+              <Button Content="＋ ⚽ Goal" Command="{Binding AddGoalPickCommand}"
+                      Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6"
+                      FontSize="12"/>
+              <ItemsControl ItemsSource="{Binding GoalPicks}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:EventPickRow">
+                    <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}"
+                              HorizontalAlignment="Stretch" Margin="0,2"
+                              PlaceholderText="scorer…"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Margin="0,0,6,0" Spacing="4">
+              <Button Content="＋ 🅰 Assist" Command="{Binding AddAssistPickCommand}"
+                      Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6"
+                      FontSize="12"/>
+              <ItemsControl ItemsSource="{Binding AssistPicks}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:EventPickRow">
+                    <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}"
+                              HorizontalAlignment="Stretch" Margin="0,2"
+                              PlaceholderText="assister…"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Margin="0,0,6,0" Spacing="4">
+              <Button Content="＋ 🟨 Card" Command="{Binding AddCardPickCommand}"
+                      Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6"
+                      FontSize="12"/>
+              <ItemsControl ItemsSource="{Binding CardPicks}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:EventPickRow">
+                    <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}"
+                              HorizontalAlignment="Stretch" Margin="0,2"
+                              PlaceholderText="booked…"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+            <TextBox Grid.Column="0" Text="{Binding RatingsText}" Watermark="★ Ratings (optional): Saka 8.5, Rice 7"
+                     Margin="0,0,6,0" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="↩ Undo" Command="{Binding UndoResultCommand}"
+                    VerticalAlignment="Center" Padding="12,9" Foreground="#C7CEDA"
+                    Background="#232B36" CornerRadius="8" FontSize="12"
+                    ToolTip.Tip="Undo the most recently recorded result"/>
+          </Grid>
+          <!-- team talks: one say pre-match, one at full time -->
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0"
+                      IsVisible="{Binding PreTalkVisible}">
+            <TextBlock Text="🗣 Team talk:" Foreground="#7FD79B" FontSize="12" VerticalAlignment="Center"/>
+            <Button Content="Calm" Command="{Binding PreTalkCommand}" CommandParameter="Calm"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6" FontSize="11"/>
+            <Button Content="Encourage" Command="{Binding PreTalkCommand}" CommandParameter="Encourage"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6" FontSize="11"/>
+            <Button Content="Demand" Command="{Binding PreTalkCommand}" CommandParameter="Demand"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6" FontSize="11"/>
+            <TextBlock Text="{Binding TalkHintLine}" Foreground="#8A93A2" FontSize="11"
+                       FontStyle="Italic" VerticalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0"
+                      IsVisible="{Binding PostTalkVisible}">
+            <TextBlock Text="🗣 Full-time talk:" Foreground="#E0A526" FontSize="12" VerticalAlignment="Center"/>
+            <Button Content="Praise" Command="{Binding PostTalkCommand}" CommandParameter="Encourage"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6" FontSize="11"/>
+            <Button Content="Measured" Command="{Binding PostTalkCommand}" CommandParameter="Calm"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6" FontSize="11"/>
+            <Button Content="Hairdryer" Command="{Binding PostTalkCommand}" CommandParameter="Demand"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6" FontSize="11"/>
+            <Button Content="📊 Import stats" Command="{Binding ImportStatsCommand}"
+                    Background="#3A4759" Foreground="White" Padding="10,5" CornerRadius="6" FontSize="11"
+                    ToolTip.Tip="F12 on the game's STATS screen first — possession and shots go into the match report"/>
+          </StackPanel>
+          <TextBlock Text="{Binding JobLine}" Foreground="#E0A526" FontSize="12" FontWeight="SemiBold"
+                     TextWrapping="Wrap" Margin="0,6,0,0"/>
+          <TextBlock Text="{Binding MatchStatus}" Foreground="#9FE6B4" FontSize="12"
+                     TextWrapping="Wrap" Margin="0,6,0,0" FontFamily="Consolas"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Season complete: roll over to the next season -->
+      <Border CornerRadius="12" Padding="20,18" Background="#2A1F3D" BorderBrush="#6B4F9E"
+              BorderThickness="1" IsVisible="{Binding SeasonOver}">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="cardHead" Text="SEASON COMPLETE" Foreground="#C7A6F2" Margin="0,0,0,0"/>
+          <TextBlock Text="All fixtures played. Roll over: age &amp; develop squads, generate next season."
+                     Foreground="White" FontSize="15" TextWrapping="Wrap"/>
+          <Button Content="⏭  ADVANCE SEASON" Command="{Binding AdvanceSeasonCommand}"
+                  HorizontalAlignment="Left" Margin="0,6,0,0" FontSize="15" FontWeight="Bold"
+                  Padding="24,13" Foreground="White" Background="#6B4F9E" CornerRadius="8"/>
+          <TextBlock Text="{Binding MatchStatus}" Foreground="#C7A6F2" FontSize="12"
+                     TextWrapping="Wrap" Margin="0,4,0,0"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Portal: opposition report | schedule | mini table -->
+      <Grid ColumnDefinitions="*,*,*">
+
+        <!-- NEXT OPPOSITION -->
+        <Border Grid.Column="0" Classes="card" Margin="0,0,12,0">
+          <StackPanel>
+            <TextBlock Classes="cardHead" Text="NEXT OPPOSITION"/>
+            <StackPanel Spacing="14" IsVisible="{Binding HasOpposition}">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <Panel Width="48" Height="48" VerticalAlignment="Center">
+                  <Border CornerRadius="24" Background="{Binding OppBadgeBrush}"
+                          BorderBrush="{Binding OppBadgeStroke}" BorderThickness="2"
+                          IsVisible="{Binding !OppHasLogo}">
+                    <TextBlock Text="{Binding OppBadgeText}" Foreground="White" FontWeight="Bold"
+                               FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <Image Source="{Binding OppLogo}" Width="48" Height="48"/>
+                </Panel>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="{Binding OppName}" Foreground="White" FontSize="17"
+                             FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding OppPositionLine}" Foreground="#8A93A2" FontSize="12"
+                             Margin="0,1,0,0"/>
+                </StackPanel>
+              </StackPanel>
+              <StackPanel Spacing="7">
+                <TextBlock Text="RECENT FORM" Foreground="#8A93A2" FontSize="10"
+                           FontWeight="Bold" LetterSpacing="1.2"/>
+                <ItemsControl ItemsSource="{Binding OppForm}" IsVisible="{Binding HasOppForm}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Orientation="Horizontal" Spacing="6"/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FormChipVm">
+                      <Border Width="24" Height="24" CornerRadius="6" Background="{Binding Bg}">
+                        <TextBlock Text="{Binding Letter}" Foreground="White" FontWeight="Bold"
+                                   FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="No league matches played yet" Foreground="#8A93A2" FontSize="12"
+                           IsVisible="{Binding !HasOppForm}"/>
+              </StackPanel>
+              <TextBlock Text="{Binding OppShapeLine}" Foreground="#C7CEDA" FontSize="13"/>
+              <TextBlock Text="{Binding KeyPlayerLine}" Foreground="#C7CEDA" FontSize="13"/>
+
+              <!-- Match preview: W/D/L from ELO, as a split bar -->
+              <StackPanel Spacing="6">
+                <TextBlock Text="MATCH PREVIEW" Foreground="#8A93A2" FontSize="10"
+                           FontWeight="Bold" LetterSpacing="1.2"/>
+                <!-- 100px total: each segment's width is its percentage -->
+                <StackPanel Orientation="Horizontal" Spacing="0" Height="10" HorizontalAlignment="Left">
+                  <Border Background="#1F9D4D" Width="{Binding OddsWin}" CornerRadius="3,0,0,3"/>
+                  <Border Background="#3A4759" Width="{Binding OddsDraw}"/>
+                  <Border Background="#D64545" Width="{Binding OddsLoss}" CornerRadius="0,3,3,0"/>
+                </StackPanel>
+                <TextBlock Text="{Binding OddsLine}" Foreground="#C7CEDA" FontSize="12"/>
+              </StackPanel>
+              <TextBlock Text="{Binding AssistantLine}" Foreground="#9FE6B4" FontSize="12"
+                         FontStyle="Italic" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding BriefingSummary}" Foreground="#C7CEDA" FontSize="12"
+                         TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding BriefingSuggestion}" Foreground="#E0A526" FontSize="12"
+                         TextWrapping="Wrap"/>
+            </StackPanel>
+            <TextBlock Text="No fixture scheduled." Foreground="#8A93A2" FontSize="13"
+                       IsVisible="{Binding !HasOpposition}"/>
+          </StackPanel>
+        </Border>
+
+        <!-- SCHEDULE: last three results + next four fixtures -->
+        <Border Grid.Column="1" Classes="card" Margin="6,0,6,0">
+          <StackPanel>
+            <TextBlock Classes="cardHead" Text="SCHEDULE"/>
+            <ItemsControl ItemsSource="{Binding Schedule}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ScheduleRowVm">
+                  <Grid ColumnDefinitions="46,*,Auto" Margin="0,3">
+                    <TextBlock Text="{Binding Md}" Foreground="#8A93A2" FontSize="12"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Opponent}" Foreground="#C7CEDA"
+                               FontSize="13" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
+                    <Border Grid.Column="2" MinWidth="46" CornerRadius="6"
+                            Background="{Binding ChipBg}" Padding="8,3">
+                      <TextBlock Text="{Binding Chip}" Foreground="{Binding ChipFg}" FontSize="12"
+                                 FontWeight="Bold" HorizontalAlignment="Center"/>
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- MINI TABLE: top six + you -->
+        <Border Grid.Column="2" Classes="card" Margin="12,0,0,0">
+          <StackPanel>
+            <TextBlock Classes="cardHead" Text="LEAGUE TABLE"/>
+            <Grid ColumnDefinitions="24,*,30,38,34" Margin="7,0,7,5">
+              <TextBlock Text="#" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"/>
+              <TextBlock Grid.Column="1" Text="TEAM" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"/>
+              <TextBlock Grid.Column="2" Text="P" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
+                         HorizontalAlignment="Right"/>
+              <TextBlock Grid.Column="3" Text="GD" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
+                         HorizontalAlignment="Right"/>
+              <TextBlock Grid.Column="4" Text="PTS" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
+                         HorizontalAlignment="Right"/>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding MiniTable}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MiniRowVm">
+                  <Border Background="{Binding Bg}" CornerRadius="6" Padding="7,4" Margin="0,1">
+                    <Grid ColumnDefinitions="24,*,30,38,34">
+                      <TextBlock Text="{Binding Pos}" Foreground="{Binding Fg}" FontSize="12"
+                                 VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Team}" Foreground="{Binding Fg}"
+                                 FontSize="12" FontWeight="{Binding Weight}"
+                                 TextTrimming="CharacterEllipsis" Margin="0,0,6,0"
+                                 VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding P}" Foreground="{Binding Fg}"
+                                 FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="3" Text="{Binding Gd}" Foreground="{Binding Fg}"
+                                 FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="4" Text="{Binding Pts}" Foreground="{Binding Fg}"
+                                 FontSize="12" FontWeight="{Binding Weight}"
+                                 HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- Stat tiles: the three MFL gauges + money -->
+      <Grid ColumnDefinitions="*,*,*,*,*">
+        <Border Grid.Column="0" Classes="stat" Margin="0,0,9,0">
+          <StackPanel>
+            <TextBlock Classes="statLabel" Text="LEAGUE POSITION"/>
+            <TextBlock Classes="statValue" Text="{Binding Position}"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Classes="stat" Margin="9,0,9,0">
+          <StackPanel>
+            <TextBlock Classes="statLabel" Text="BOARD CONFIDENCE"/>
+            <TextBlock Classes="statValue" Text="{Binding BoardLabel}"/>
+            <ProgressBar Classes="statBar" Maximum="100" Value="{Binding BoardConfidence}"
+                         Foreground="#1F9D4D"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="stat" Margin="9,0,9,0">
+          <StackPanel>
+            <TextBlock Classes="statLabel" Text="SQUAD MORALE"/>
+            <TextBlock Classes="statValue" Text="{Binding MoraleLabel}"/>
+            <ProgressBar Classes="statBar" Maximum="100" Value="{Binding Morale}"
+                         Foreground="#2D7DD2"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="3" Classes="stat" Margin="9,0,9,0">
+          <StackPanel>
+            <TextBlock Classes="statLabel" Text="FANS FEELING"/>
+            <TextBlock Classes="statValue" Text="{Binding FansLabel}"/>
+            <ProgressBar Classes="statBar" Maximum="100" Value="{Binding Fans}"
+                         Foreground="#E0A526"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="4" Classes="stat" Margin="9,0,0,0">
+          <StackPanel>
+            <TextBlock Classes="statLabel" Text="BALANCE"/>
+            <TextBlock Classes="statValue" Text="{Binding Balance}"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- Market activity ticker -->
+      <Border Classes="card" IsVisible="{Binding HasTicker}">
+        <StackPanel>
+          <TextBlock Classes="cardHead" Text="MARKET ACTIVITY"/>
+          <ItemsControl ItemsSource="{Binding Ticker}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Text="{Binding}" Foreground="#C7CEDA" FontSize="13" Margin="0,2"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

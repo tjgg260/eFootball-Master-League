@@ -1,60 +1,55 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ML.App.ViewModels"
+        xmlns:app="using:ML.App"
+        xmlns:views="using:ML.App.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         x:Class="ML.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="Master League" Width="1180" Height="760"
-        Background="#0E1116" TransparencyLevelHint="Mica">
+        Title="Master League" Width="1640" Height="820"
+        Background="{DynamicResource ThemeBgBrush}" TransparencyLevelHint="Mica">
 
   <Window.DataTemplates>
     <!-- page templates: VM -> view -->
     <DataTemplate DataType="vm:DashboardViewModel">
-      <ScrollViewer Padding="28">
-        <StackPanel Spacing="20">
-          <TextBlock Text="{Binding ClubName}" FontSize="30" FontWeight="Bold" Foreground="White"/>
-          <TextBlock Text="{Binding LeagueName}" FontSize="15" Foreground="#8A93A2" Margin="0,-8,0,0"/>
-          <WrapPanel>
-            <Border Classes="tile"><StackPanel>
-              <TextBlock Classes="tileLabel" Text="LEAGUE POSITION"/>
-              <TextBlock Classes="tileBig" Text="{Binding Position}"/></StackPanel></Border>
-            <Border Classes="tile"><StackPanel>
-              <TextBlock Classes="tileLabel" Text="BOARD CONFIDENCE"/>
-              <TextBlock Classes="tileBig" Text="{Binding BoardLabel}"/>
-              <ProgressBar Maximum="100" Value="{Binding BoardConfidence}" Height="6" Margin="0,8,0,0"/></StackPanel></Border>
-            <Border Classes="tile"><StackPanel>
-              <TextBlock Classes="tileLabel" Text="SQUAD MORALE"/>
-              <TextBlock Classes="tileBig" Text="{Binding MoraleLabel}"/>
-              <ProgressBar Maximum="100" Value="{Binding Morale}" Height="6" Margin="0,8,0,0"/></StackPanel></Border>
-            <Border Classes="tile"><StackPanel>
-              <TextBlock Classes="tileLabel" Text="BALANCE"/>
-              <TextBlock Classes="tileBig" Text="{Binding Balance}"/></StackPanel></Border>
-          </WrapPanel>
-          <Grid ColumnDefinitions="*,*">
-            <Border Grid.Column="0" Classes="panel" Margin="0,0,10,0"><StackPanel>
-              <TextBlock Classes="panelHead" Text="Upcoming"/>
-              <ItemsControl ItemsSource="{Binding Upcoming}">
-                <ItemsControl.ItemTemplate><DataTemplate>
-                  <TextBlock Text="{Binding}" Foreground="#C7CEDA" Margin="0,4" FontSize="14"/>
-                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
-            <Border Grid.Column="1" Classes="panel" Margin="10,0,0,0"><StackPanel>
-              <TextBlock Classes="panelHead" Text="Recent form"/>
-              <ItemsControl ItemsSource="{Binding Form}">
-                <ItemsControl.ItemTemplate><DataTemplate>
-                  <TextBlock Text="{Binding}" Foreground="#C7CEDA" Margin="0,4" FontSize="14" FontFamily="Consolas"/>
-                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
-          </Grid>
-        </StackPanel>
-      </ScrollViewer>
+      <views:DashboardView/>
     </DataTemplate>
 
     <DataTemplate DataType="vm:TableViewModel">
-      <DataGrid Margin="20" ItemsSource="{Binding Rows}" IsReadOnly="True"
+      <DockPanel Margin="20">
+        <!-- the position worm (P6): lower is better, top line = 1st -->
+        <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,12"
+                IsVisible="{Binding WormVisible}">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding WormLabel}" Foreground="#8A93A2" FontSize="12"/>
+            <Panel Width="560" Height="84" HorizontalAlignment="Left">
+              <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Top" Margin="0,4,0,0"/>
+              <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
+              <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+              <Polyline Points="{Binding WormPoints}" Stroke="{DynamicResource ThemeAccentBrush}"
+                        StrokeThickness="2.5" StrokeJoin="Round"/>
+            </Panel>
+          </StackPanel>
+        </Border>
+        <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="True"
                 GridLinesVisibility="Horizontal" HeadersVisibility="Column">
         <DataGrid.Columns>
           <DataGridTextColumn Header="#" Binding="{Binding Pos}" Width="44"/>
+          <DataGridTemplateColumn Header="" Width="40">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:TableEntry">
+                <Panel Width="26" Height="26" Margin="4,3">
+                  <Border CornerRadius="13" Background="{Binding BadgeBrush}">
+                    <TextBlock Text="{Binding Badge}" FontSize="9" Foreground="White"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <Image Source="{Binding Logo}" Width="26" Height="26"/>
+                </Panel>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="*"/>
           <DataGridTextColumn Header="P" Binding="{Binding P}" Width="46"/>
           <DataGridTextColumn Header="W" Binding="{Binding W}" Width="46"/>
@@ -65,47 +60,239 @@
           <DataGridTextColumn Header="GD" Binding="{Binding GD}" Width="46"/>
           <DataGridTextColumn Header="Pts" Binding="{Binding Pts}" Width="56"/>
         </DataGrid.Columns>
-      </DataGrid>
+        </DataGrid>
+      </DockPanel>
     </DataTemplate>
 
     <DataTemplate DataType="vm:SquadViewModel">
-      <DataGrid Margin="20" ItemsSource="{Binding Rows}" IsReadOnly="True"
-                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-        <DataGrid.Columns>
-          <DataGridTextColumn Header="#" Binding="{Binding Number}" Width="50"/>
-          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
-          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="60"/>
-          <DataGridTextColumn Header="OVR" Binding="{Binding Rating}" Width="70"/>
-        </DataGrid.Columns>
-      </DataGrid>
-    </DataTemplate>
-
-    <DataTemplate DataType="vm:FixturesViewModel">
-      <DataGrid Margin="20" ItemsSource="{Binding Rows}" IsReadOnly="True"
-                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-        <DataGrid.Columns>
-          <DataGridTextColumn Header="" Binding="{Binding Matchday}" Width="70"/>
-          <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="*"/>
-          <DataGridTextColumn Header="" Binding="{Binding Score}" Width="70"/>
-          <DataGridTextColumn Header="Away" Binding="{Binding Away}" Width="*"/>
-        </DataGrid.Columns>
-      </DataGrid>
+      <views:SquadView/>
     </DataTemplate>
 
     <DataTemplate DataType="vm:MarketViewModel">
       <DockPanel Margin="20">
         <TextBlock DockPanel.Dock="Top" Text="{Binding Header}" FontSize="22" FontWeight="Bold"
-                   Foreground="White" Margin="0,0,0,14"/>
-        <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="True"
-                  GridLinesVisibility="Horizontal" HeadersVisibility="Column">
-          <DataGrid.Columns>
-            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-            <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
-            <DataGridTextColumn Header="OVR" Binding="{Binding Overall}" Width="70"/>
-            <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="100"/>
-          </DataGrid.Columns>
-        </DataGrid>
+                   Foreground="White" Margin="0,0,0,10"/>
+
+        <!-- offers from CPU clubs for YOUR players -->
+        <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,10" IsVisible="{Binding HasOffers}">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="panelHead" Text="📨 Offers for your players"/>
+            <ListBox ItemsSource="{Binding Offers}" SelectedItem="{Binding SelectedOffer}"
+                     Background="Transparent" BorderThickness="0" MaxHeight="90">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:OfferRow">
+                  <TextBlock Text="{Binding Line}" Foreground="#C7CEDA" FontSize="13"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Content="Accept — sell" Command="{Binding AcceptOfferCommand}"
+                      Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="14,8" CornerRadius="6"/>
+              <Button Content="Reject" Command="{Binding RejectOfferCommand}"
+                      Background="#3A4759" Foreground="White" Padding="14,8" CornerRadius="6"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <TextBlock DockPanel.Dock="Top" Text="{Binding WindowLine}" Foreground="#E0A526"
+                   FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+        <!-- filter bar: search · position · age · rating · value cap · free agents · sort -->
+        <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+          <WrapPanel.Styles>
+            <Style Selector="WrapPanel > :is(Control)">
+              <Setter Property="Margin" Value="0,0,10,8"/>
+            </Style>
+          </WrapPanel.Styles>
+          <TextBox Watermark="Search players…" Text="{Binding SearchText}" Width="200"/>
+          <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding PositionFilter}"
+                    Width="88" VerticalAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Max age" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+            <NumericUpDown Value="{Binding MaxAge}" Minimum="16" Maximum="45" Increment="1"
+                           FormatString="0" Width="105" VerticalAlignment="Center"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Min OVR" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+            <NumericUpDown Value="{Binding MinRating}" Minimum="40" Maximum="99" Increment="1"
+                           FormatString="0" Width="105" VerticalAlignment="Center"/>
+          </StackPanel>
+          <ComboBox ItemsSource="{Binding ValueCaps}" SelectedItem="{Binding ValueCap}"
+                    Width="110" VerticalAlignment="Center"/>
+          <CheckBox Content="Free agents" IsChecked="{Binding FreeAgentsOnly}"
+                    Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Sort" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+            <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SortBy}"
+                      Width="130" VerticalAlignment="Center"/>
+          </StackPanel>
+          <ComboBox ItemsSource="{Binding BidOptions}" SelectedItem="{Binding SelectedBid}"
+                    Width="145" VerticalAlignment="Center"
+                    ToolTip.Tip="Your offer vs market value — clubs want a premium, lowballs get countered"/>
+          <Button Content="＋ Bid" Command="{Binding SignCommand}"
+                  Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="20,8" CornerRadius="8"/>
+        </WrapPanel>
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding SignStatus}" Foreground="#9FE6B4"
+                   FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
+        <Grid ColumnDefinitions="*,330">
+          <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedPlayer}" IsReadOnly="True"
+                    GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="" Width="46">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MarketPlayer">
+                    <Border Width="32" Height="32" CornerRadius="16" ClipToBounds="True"
+                            Background="{Binding FaceBrush}" Margin="4,2">
+                      <Panel>
+                        <TextBlock Text="{Binding Mark}" Foreground="#FFFFFF" FontSize="9"
+                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" Opacity="0.85"/>
+                        <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                               IsVisible="{Binding HasPortrait}"/>
+                      </Panel>
+                    </Border>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+              <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="64"/>
+              <DataGridTemplateColumn Header="OVR" Width="60">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MarketPlayer">
+                    <TextBlock Text="{Binding Overall}" Foreground="{Binding RatingBrush}"
+                               FontWeight="Bold" VerticalAlignment="Center" Margin="4,0"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Header="Age" Binding="{Binding AgeLabel}" Width="56"/>
+              <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="105"/>
+              <DataGridTextColumn Header="Club" Binding="{Binding Club}" Width="150"/>
+            </DataGrid.Columns>
+          </DataGrid>
+
+          <!-- the profile card: click a row, see the player -->
+          <Border Grid.Column="1" Classes="panel" Margin="12,0,0,0" IsVisible="{Binding HasProfile}">
+            <ScrollViewer>
+              <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <Border Width="64" Height="64" CornerRadius="8" ClipToBounds="True"
+                          Background="{Binding ProfileFill}">
+                    <Panel>
+                      <TextBlock Text="{Binding ProfilePosition}" Foreground="White" FontSize="14"
+                                 FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      <Image Source="{Binding ProfilePortrait}" Stretch="UniformToFill"
+                             IsVisible="{Binding ProfileHasPortrait}"/>
+                    </Panel>
+                  </Border>
+                  <StackPanel VerticalAlignment="Center" Spacing="2">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding ProfilePosition}" Foreground="#8A93A2" FontSize="13"
+                                 FontWeight="Bold" VerticalAlignment="Bottom"/>
+                      <TextBlock Text="{Binding ProfileRating}" Foreground="{Binding ProfileRatingBrush}"
+                                 FontSize="26" FontWeight="Bold"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding ProfilePlaystyle}" Foreground="#E0A526" FontSize="11"/>
+                  </StackPanel>
+                </StackPanel>
+                <TextBlock Text="{Binding ProfileName}" Foreground="White" FontSize="17"
+                           FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding ProfileBio}" Foreground="#8A93A2" FontSize="12"/>
+                <TextBlock Text="{Binding ProfileValueLine}" Foreground="#9FE6B4" FontSize="13"
+                           FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding ProfileClub}" Foreground="#C7CEDA" FontSize="12"/>
+                <TextBlock Text="{Binding ProfileKnowledgeLine}" Foreground="#E0A526" FontSize="12"/>
+                <TextBlock Text="{Binding ProfileCoachLine}" Foreground="#8A93A2" FontSize="11"
+                           TextWrapping="Wrap"/>
+
+                <!-- hexagon radar, same maths as the Squad card -->
+                <Panel Width="200" Height="200" HorizontalAlignment="Center">
+                  <Ellipse Width="160" Height="160" Stroke="#242E3B" StrokeThickness="1"/>
+                  <Ellipse Width="106" Height="106" Stroke="#242E3B" StrokeThickness="1"/>
+                  <Ellipse Width="52" Height="52" Stroke="#242E3B" StrokeThickness="1"/>
+                  <Polygon Points="{Binding ProfileRadar}" Fill="#402EC4A6" Stroke="#2EC4A6"
+                           StrokeThickness="2"/>
+                  <TextBlock Text="SHO" Foreground="#5E6875" FontSize="9" HorizontalAlignment="Center"
+                             VerticalAlignment="Top"/>
+                  <TextBlock Text="DEF" Foreground="#5E6875" FontSize="9" HorizontalAlignment="Center"
+                             VerticalAlignment="Bottom"/>
+                </Panel>
+
+                <!-- negotiation v2 (P5): open talks, structure the package, close the deal -->
+                <Button Content="🤝 Open negotiation" Command="{Binding OpenTalksCommand}"
+                        Background="#1F9D4D" Foreground="White" FontWeight="Bold"
+                        Padding="14,9" CornerRadius="8" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"/>
+                <Border Background="#1B222C" CornerRadius="10" Padding="12"
+                        IsVisible="{Binding Negotiating}">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="{Binding NegStance}" Foreground="#E7D9B8" FontSize="12"
+                               FontStyle="Italic" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding NegLine}" Foreground="#C7CEDA" FontSize="12"
+                               TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="Fee £" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+                      <NumericUpDown Value="{Binding NegFee}" Increment="100000" Minimum="0"
+                                     FormatString="N0" Width="160"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                      <CheckBox Content="15% sell-on" IsChecked="{Binding NegSellOn}"
+                                Foreground="#C7CEDA" FontSize="12"/>
+                      <CheckBox Content="Instalments" IsChecked="{Binding NegInstalments}"
+                                Foreground="#C7CEDA" FontSize="12"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding LikelihoodLine}" Foreground="#8A93A2" FontSize="11"
+                               TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !DealAgreed}">
+                      <Button Content="Send offer" Command="{Binding SendOfferCommand}"
+                              Background="#1F9D4D" Foreground="White" FontWeight="Bold"
+                              Padding="14,7" CornerRadius="7" FontSize="12"/>
+                      <Button Content="Walk away" Command="{Binding WalkAwayCommand}"
+                              Background="#3A1418" Foreground="#F08A8A" Padding="14,7"
+                              CornerRadius="7" FontSize="12"/>
+                    </StackPanel>
+                    <!-- the agent's step: wages + years, then the deal is done -->
+                    <StackPanel Spacing="6" IsVisible="{Binding DealAgreed}">
+                      <TextBlock Text="AGENT'S TERMS" Foreground="#7C8698" FontSize="10"
+                                 FontWeight="Bold" LetterSpacing="1.2"/>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="£/wk" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+                        <NumericUpDown Value="{Binding NegWage}" Increment="1000" Minimum="500"
+                                       FormatString="N0" Width="130"/>
+                        <ComboBox ItemsSource="{Binding YearsOptions}" SelectedItem="{Binding NegYears}"
+                                  Width="66"/>
+                        <TextBlock Text="yrs" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+                      </StackPanel>
+                      <Button Content="✓ Complete signing" Command="{Binding CompleteDealCommand}"
+                              Background="#2438C8" Foreground="White" FontWeight="Bold"
+                              Padding="14,8" CornerRadius="7" FontSize="13"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding ProfileAbilities}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AbilityEntry">
+                      <Grid ColumnDefinitions="*,34" Margin="2,1">
+                        <TextBlock Text="{Binding Name}" Foreground="#8A93A2" FontSize="10"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <Panel Grid.Column="1" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Display}"
+                                     Foreground="{Binding ValueBrush}" FontSize="10" FontWeight="Bold"/>
+                          <Border Width="22" Height="8" CornerRadius="2"
+                                  Background="{Binding BandBrush}" IsVisible="{Binding ShowBand}"
+                                  HorizontalAlignment="Left"/>
+                        </Panel>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
       </DockPanel>
     </DataTemplate>
 
@@ -129,80 +316,807 @@
       </StackPanel>
     </DataTemplate>
 
-    <DataTemplate DataType="vm:InboxViewModel">
-      <ScrollViewer Padding="20">
-        <ItemsControl ItemsSource="{Binding Rows}">
-          <ItemsControl.ItemTemplate><DataTemplate>
-            <Border Classes="panel" Margin="0,0,0,12">
-              <StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Text="{Binding Icon}" FontSize="16"/>
-                  <TextBlock Text="{Binding Subject}" FontWeight="SemiBold" Foreground="White" FontSize="15"/>
+    <DataTemplate DataType="vm:BoardViewModel">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="28" Spacing="16">
+        <TextBlock Text="The Board" FontSize="24" FontWeight="Bold" Foreground="White"/>
+        <TextBlock Text="{Binding Summary}" Foreground="#A9B2C0" FontSize="15"/>
+        <WrapPanel>
+          <Border Classes="tile"><StackPanel>
+            <TextBlock Classes="tileLabel" Text="EXPECTATION"/>
+            <TextBlock Classes="tileBig" Text="{Binding Expectation}"/></StackPanel></Border>
+          <Border Classes="tile"><StackPanel>
+            <TextBlock Classes="tileLabel" Text="CONFIDENCE"/>
+            <TextBlock Classes="tileBig" Text="{Binding ConfidenceLabel}"/>
+            <ProgressBar Maximum="100" Value="{Binding Confidence}" Height="6" Margin="0,8,0,0"/></StackPanel></Border>
+        </WrapPanel>
+        <Border Classes="panel"><StackPanel>
+          <TextBlock Classes="panelHead" Text="Job security"/>
+          <TextBlock Text="{Binding JobSecurity}" Foreground="#C7CEDA" FontSize="15" TextWrapping="Wrap"/></StackPanel></Border>
+        <Border Classes="panel"><StackPanel>
+          <TextBlock Classes="panelHead" Text="Season objectives"/>
+          <ItemsControl ItemsSource="{Binding Objectives}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ObjectiveLine">
+                <Grid ColumnDefinitions="28,*,Auto,Auto" Margin="0,3">
+                  <TextBlock Text="{Binding Icon}" FontSize="13"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Description}" Foreground="#C7CEDA"
+                             FontSize="13" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Progress}" Foreground="#9FE6B4"
+                             FontSize="12" Margin="10,0" VerticalAlignment="Center"/>
+                  <Border Grid.Column="3" Background="#1B222C" CornerRadius="4" Padding="6,2"
+                          VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Importance}" Foreground="#8A93A2" FontSize="9"
+                               FontWeight="Bold"/>
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Text="{Binding FanLine}" Foreground="#E0A526" FontSize="13" Margin="0,8,0,0"/>
+        </StackPanel></Border>
+        <Border Classes="panel" IsVisible="{Binding EloTrendVisible}"><StackPanel Spacing="6">
+          <TextBlock Classes="panelHead" Text="Club trajectory"/>
+          <TextBlock Text="{Binding EloTrendLabel}" Foreground="#8A93A2" FontSize="12"/>
+          <Panel Width="520" Height="72" HorizontalAlignment="Left">
+            <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
+            <Polyline Points="{Binding EloPoints}" Stroke="{DynamicResource ThemeAccentBrush}"
+                      StrokeThickness="2" StrokeJoin="Round"/>
+          </Panel>
+        </StackPanel></Border>
+        <Border Classes="panel" IsVisible="{Binding Sacked}" Background="#2E3A1F24"><StackPanel>
+          <TextBlock Classes="panelHead" Text="You have been dismissed" Foreground="#F08A8A"/>
+          <TextBlock Text="{Binding Summary}" Foreground="#E0B3B3" FontSize="14" TextWrapping="Wrap"/>
+          <TextBlock Text="Accept an offer below to manage again — or start a new career from a fresh seed."
+                     Foreground="#C7CEDA" FontSize="13" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel></Border>
+        <WrapPanel>
+          <Border Classes="tile"><StackPanel>
+            <TextBlock Classes="tileLabel" Text="REPUTATION"/>
+            <TextBlock Classes="tileBig" Text="{Binding ReputationLabel}"/>
+            <ProgressBar Maximum="100" Value="{Binding Reputation}" Height="6" Margin="0,8,0,0"/></StackPanel></Border>
+          <Border Classes="tile"><StackPanel>
+            <TextBlock Classes="tileLabel" Text="CAREER"/>
+            <TextBlock Text="{Binding CareerLine}" Foreground="White" FontSize="14"
+                       TextWrapping="Wrap" MaxWidth="360" Margin="0,4,0,0"/></StackPanel></Border>
+        </WrapPanel>
+        <Border Classes="panel"><StackPanel>
+          <TextBlock Classes="panelHead" Text="Job offers"/>
+          <TextBlock Text="{Binding OffersNote}" Foreground="#8A93A2" FontSize="13"
+                     TextWrapping="Wrap" Margin="0,0,0,8"/>
+          <ItemsControl ItemsSource="{Binding Offers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:JobOfferRow">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                  <TextBlock Text="{Binding Line}" Foreground="#C7CEDA" FontSize="14"
+                             VerticalAlignment="Center"/>
+                  <Button Grid.Column="1" Content="Accept job" Background="#1F9D4D" Foreground="White"
+                          Padding="14,6" CornerRadius="8"
+                          Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).AcceptOfferCommand}"
+                          CommandParameter="{Binding}"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel></Border>
+      </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:CalendarViewModel">
+      <DockPanel Margin="20">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+          <Button Content="◀" Command="{Binding PrevMonthCommand}" Background="#232B36"
+                  Foreground="White" Padding="12,8" CornerRadius="8"/>
+          <TextBlock Grid.Column="1" Text="{Binding MonthTitle}" FontSize="22" FontWeight="Bold"
+                     Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          <Button Grid.Column="2" Content="▶" Command="{Binding NextMonthCommand}" Background="#232B36"
+                  Foreground="White" Padding="12,8" CornerRadius="8"/>
+        </Grid>
+        <UniformGrid DockPanel.Dock="Top" Columns="7" Margin="0,0,0,4">
+          <TextBlock Text="Mon" Foreground="#8A93A2" FontSize="11" HorizontalAlignment="Center"/>
+          <TextBlock Text="Tue" Foreground="#8A93A2" FontSize="11" HorizontalAlignment="Center"/>
+          <TextBlock Text="Wed" Foreground="#8A93A2" FontSize="11" HorizontalAlignment="Center"/>
+          <TextBlock Text="Thu" Foreground="#8A93A2" FontSize="11" HorizontalAlignment="Center"/>
+          <TextBlock Text="Fri" Foreground="#8A93A2" FontSize="11" HorizontalAlignment="Center"/>
+          <TextBlock Text="Sat" Foreground="#8A93A2" FontSize="11" HorizontalAlignment="Center"/>
+          <TextBlock Text="Sun" Foreground="#8A93A2" FontSize="11" HorizontalAlignment="Center"/>
+        </UniformGrid>
+        <ItemsControl ItemsSource="{Binding Cells}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><UniformGrid Columns="7"/></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:DayCell">
+              <Border Background="{Binding Bg}" CornerRadius="6" Margin="2" Padding="6" MinHeight="76">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding DayText}" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"/>
+                  <TextBlock Text="{Binding Line1}" Foreground="{Binding Fg}" FontSize="11"
+                             TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2"/>
+                  <TextBlock Text="{Binding Line2}" Foreground="#9FE6B4" FontSize="11" FontWeight="SemiBold"/>
                 </StackPanel>
-                <TextBlock Text="{Binding Body}" Foreground="#A9B2C0" TextWrapping="Wrap" Margin="0,6,0,0"/>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </DockPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:TacticsViewModel">
+      <views:TacticsView/>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:ScoutingViewModel">
+      <DockPanel Margin="20">
+        <TextBlock DockPanel.Dock="Top" Text="Scouting" FontSize="24" FontWeight="Bold"
+                   Foreground="White" Margin="0,0,0,4"/>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="14" Margin="0,0,0,10">
+          <TextBlock Text="{Binding ScoutLine}" Foreground="#C7CEDA" FontSize="13"/>
+          <TextBlock Text="{Binding MissionLine}" Foreground="#E0A526" FontSize="13"/>
+        </StackPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,24,*,Auto" Margin="0,0,0,10">
+          <ComboBox Grid.Column="0" ItemsSource="{Binding Clubs}" SelectedItem="{Binding SelectedClub}"
+                    Width="220" MaxDropDownHeight="380">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ScoutTargetClub">
+                <TextBlock Text="{Binding Name}"/>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <Button Grid.Column="1" Content="🔍 Scout club" Command="{Binding ScoutClubCommand}"
+                  Margin="8,0,0,0" Background="#2D7DD2" Foreground="White" FontWeight="SemiBold"
+                  Padding="14,8" CornerRadius="8"/>
+          <TextBox Grid.Column="3" Watermark="…or a player name" Text="{Binding PlayerSearch}"
+                   MaxWidth="240" HorizontalAlignment="Left"/>
+          <Button Grid.Column="4" Content="🔍 Scout player" Command="{Binding ScoutPlayerCommand}"
+                  Margin="8,0,0,0" Background="#2D7DD2" Foreground="White" FontWeight="SemiBold"
+                  Padding="14,8" CornerRadius="8"/>
+        </Grid>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12"
+                   TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <TextBlock DockPanel.Dock="Top" Foreground="#8A93A2" FontSize="12" IsVisible="{Binding Empty}"
+                   Text="No dossiers yet — send the scout out; reports take two matchdays."/>
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Reports}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ScoutReportRow">
+                <Border Classes="panel" Margin="0,0,0,10">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="White" FontSize="14"/>
+                    <TextBlock Text="{Binding Body}" Foreground="#C7CEDA" FontSize="12"
+                               FontFamily="Consolas" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:StaffViewModel">
+      <Grid Margin="20" ColumnDefinitions="*,*" RowDefinitions="Auto,*">
+        <TextBlock Grid.ColumnSpan="2" Text="Backroom Staff" FontSize="24" FontWeight="Bold"
+                   Foreground="White" Margin="0,0,0,12"/>
+        <Border Grid.Row="1" Grid.Column="0" Classes="panel" Margin="0,0,8,0">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="panelHead" Text="Your staff"/>
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StaffRow">
+                  <Grid ColumnDefinitions="110,*,70,90" Margin="0,5">
+                    <TextBlock Text="{Binding Role}" Foreground="#8A93A2" FontSize="13" FontWeight="Bold"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="#E6EAF0" FontSize="14"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Stars}" Foreground="#E0A526" FontSize="13"/>
+                    <TextBlock Grid.Column="3" Text="{Binding Wage}" Foreground="#8A93A2" FontSize="12"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="Release from role" Command="{Binding FireCommand}" Margin="0,10,0,0"
+                    Background="#3A2328" Foreground="#E08A8A" Padding="12,8" CornerRadius="6" FontSize="12"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Row="1" Grid.Column="1" Classes="panel" Margin="8,0,0,0">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="panelHead" Text="Hire"/>
+            <ComboBox ItemsSource="{Binding RoleOptions}" SelectedItem="{Binding SelectedRole}" Width="160"/>
+            <ListBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}"
+                     Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:StaffCandidateRow">
+                  <TextBlock Text="{Binding Line}" Foreground="#C7CEDA" FontSize="13" Margin="2,3"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Content="Hire selected" Command="{Binding HireCommand}"
+                    Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="16,9" CornerRadius="8"/>
+            <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:StatsViewModel">
+      <ScrollViewer Padding="20" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="16">
+          <Grid ColumnDefinitions="*,*,*">
+            <Border Grid.Column="0" Classes="panel" Margin="0,0,8,0"><StackPanel>
+              <TextBlock Classes="panelHead" Text="⚽ Top scorers"/>
+              <TextBlock Text="{Binding ScorersNote}" Foreground="#8A93A2" FontSize="12" TextWrapping="Wrap"/>
+              <DataGrid ItemsSource="{Binding TopScorers}" IsReadOnly="True" HeadersVisibility="None" Height="320">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
+                  <DataGridTextColumn Binding="{Binding Team}" Width="110"/>
+                  <DataGridTextColumn Binding="{Binding Goals}" Width="44"/>
+                </DataGrid.Columns></DataGrid></StackPanel></Border>
+            <Border Grid.Column="1" Classes="panel" Margin="4,0,4,0"><StackPanel>
+              <TextBlock Classes="panelHead" Text="🅰 Top assists"/>
+              <DataGrid ItemsSource="{Binding TopAssists}" IsReadOnly="True" HeadersVisibility="None" Height="320">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
+                  <DataGridTextColumn Binding="{Binding Team}" Width="110"/>
+                  <DataGridTextColumn Binding="{Binding Goals}" Width="44"/>
+                </DataGrid.Columns></DataGrid></StackPanel></Border>
+            <Border Grid.Column="2" Classes="panel" Margin="8,0,0,0"><StackPanel>
+              <TextBlock Classes="panelHead" Text="Best defence (goals against)"/>
+              <DataGrid ItemsSource="{Binding BestDefence}" IsReadOnly="True" HeadersVisibility="None" Height="320">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Binding="{Binding Team}" Width="*"/>
+                  <DataGridTextColumn Binding="{Binding Value}" Width="60"/>
+                </DataGrid.Columns></DataGrid></StackPanel></Border>
+          </Grid>
+          <Border Classes="panel"><StackPanel>
+            <TextBlock Classes="panelHead" Text="📊 Match reports"/>
+            <ItemsControl ItemsSource="{Binding MatchReports}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ReportRow">
+                  <Grid ColumnDefinitions="70,*,Auto" Margin="0,3">
+                    <TextBlock Text="{Binding When}" Foreground="#8A93A2" FontSize="13"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Line}" Foreground="#C7CEDA" FontSize="13"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Stats}" Foreground="#9FE6B4" FontSize="12"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel></Border>
+          <Border Classes="panel"><StackPanel>
+            <TextBlock Classes="panelHead" Text="🏆 Roll of Honour"/>
+            <TextBlock Text="{Binding HonoursNote}" Foreground="#8A93A2" FontSize="13"/>
+            <ItemsControl ItemsSource="{Binding Honours}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:HonourRow">
+                  <Grid ColumnDefinitions="70,*,*" Margin="0,3">
+                    <TextBlock Grid.Column="0" Text="{Binding Year}" Foreground="#8A93A2" FontSize="14"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Competition}" Foreground="#C7CEDA" FontSize="14"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Team}" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel></Border>
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:CupViewModel">
+      <ScrollViewer Padding="20" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Sections}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CupSection">
+              <StackPanel Spacing="14" Margin="0,0,0,26">
+                <TextBlock Text="{Binding Header}" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="13"/>
+                <!-- the BRACKET (P6): rounds as columns, ties centred — read left to right -->
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                  <ItemsControl ItemsSource="{Binding Rounds}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CupRound">
+                        <Border Classes="panel" Width="230" VerticalAlignment="Stretch">
+                          <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Classes="panelHead" Text="{Binding Name}"/>
+                            <ItemsControl ItemsSource="{Binding Ties}" VerticalAlignment="Center">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CupTie">
+                                  <Border CornerRadius="8" Padding="9,6" Margin="0,3"
+                                          Background="{Binding Bg}" BorderBrush="#242E3B"
+                                          BorderThickness="1">
+                                    <StackPanel Spacing="1">
+                                      <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="{Binding Home}" Foreground="#E6EAF0"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                      </Grid>
+                                      <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="{Binding Away}" Foreground="#C7CEDA"
+                                                   FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Score}"
+                                                   Foreground="#F5C044" FontWeight="Bold"
+                                                   FontSize="11" Margin="8,0,0,0"/>
+                                      </Grid>
+                                    </StackPanel>
+                                  </Border>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </DockPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
               </StackPanel>
-            </Border>
-          </DataTemplate></ItemsControl.ItemTemplate>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
     </DataTemplate>
-  </Window.DataTemplates>
 
-  <Window.Styles>
-    <Style Selector="Border.tile">
-      <Setter Property="Background" Value="#171C24"/>
-      <Setter Property="CornerRadius" Value="10"/>
-      <Setter Property="Padding" Value="18"/>
-      <Setter Property="Margin" Value="0,0,14,14"/>
-      <Setter Property="Width" Value="210"/>
-    </Style>
-    <Style Selector="Border.panel">
-      <Setter Property="Background" Value="#171C24"/>
-      <Setter Property="CornerRadius" Value="10"/>
-      <Setter Property="Padding" Value="18"/>
-    </Style>
-    <Style Selector="TextBlock.tileLabel">
-      <Setter Property="Foreground" Value="#7C8698"/>
-      <Setter Property="FontSize" Value="11"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-    </Style>
-    <Style Selector="TextBlock.tileBig">
-      <Setter Property="Foreground" Value="White"/>
-      <Setter Property="FontSize" Value="24"/>
-      <Setter Property="FontWeight" Value="Bold"/>
-      <Setter Property="Margin" Value="0,4,0,0"/>
-    </Style>
-    <Style Selector="TextBlock.panelHead">
-      <Setter Property="Foreground" Value="#7C8698"/>
-      <Setter Property="FontSize" Value="12"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Margin" Value="0,0,0,10"/>
-    </Style>
-    <Style Selector="Button.nav">
-      <Setter Property="HorizontalAlignment" Value="Stretch"/>
-      <Setter Property="HorizontalContentAlignment" Value="Left"/>
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Foreground" Value="#C7CEDA"/>
-      <Setter Property="Padding" Value="14,10"/>
-      <Setter Property="FontSize" Value="14"/>
-      <Setter Property="CornerRadius" Value="8"/>
-    </Style>
-    <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#1E2530"/>
-    </Style>
-  </Window.Styles>
+    <DataTemplate DataType="vm:HistoryViewModel">
+      <ScrollViewer Padding="20" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="14">
+          <Grid ColumnDefinitions="Auto,Auto,*">
+            <TextBlock Text="History" FontSize="24" FontWeight="Bold" Foreground="White"
+                       VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" Margin="18,0,0,0" MinWidth="140"
+                      ItemsSource="{Binding SeasonChoices}"
+                      SelectedItem="{Binding SelectedSeason}"/>
+            <TextBlock Grid.Column="2" Text="{Binding ArchiveNote}" Foreground="#8A93A2"
+                       FontSize="13" Margin="14,0,0,0" VerticalAlignment="Center"/>
+          </Grid>
+          <Grid ColumnDefinitions="3*,2*" >
+            <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,12,0">
+              <Border Classes="panel"><StackPanel>
+                <TextBlock Classes="panelHead" Text="{Binding TopTableName}"/>
+                <ItemsControl ItemsSource="{Binding TopTable}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ArchiveTableRow">
+                      <Grid ColumnDefinitions="34,*,40,34,34,34,44,44" Margin="0,1">
+                        <TextBlock Text="{Binding Pos}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Team}" FontSize="12"
+                                   Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding P}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="3" Text="{Binding W}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="4" Text="{Binding D}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="5" Text="{Binding L}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="6" Text="{Binding GD}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="7" Text="{Binding Pts}" Foreground="White"
+                                   FontWeight="Bold" FontSize="12"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel></Border>
+              <Border Classes="panel" IsVisible="{Binding HasSecondTable}"><StackPanel>
+                <TextBlock Classes="panelHead" Text="{Binding SecondTableName}"/>
+                <ItemsControl ItemsSource="{Binding SecondTable}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ArchiveTableRow">
+                      <Grid ColumnDefinitions="34,*,40,34,34,34,44,44" Margin="0,1">
+                        <TextBlock Text="{Binding Pos}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Team}" FontSize="12"
+                                   Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding P}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="3" Text="{Binding W}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="4" Text="{Binding D}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="5" Text="{Binding L}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="6" Text="{Binding GD}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="7" Text="{Binding Pts}" Foreground="White"
+                                   FontWeight="Bold" FontSize="12"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel></Border>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="12">
+              <Border Classes="panel"><StackPanel>
+                <TextBlock Classes="panelHead" Text="Honours"/>
+                <ItemsControl ItemsSource="{Binding SeasonHonours}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ArchiveHonourRow">
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                        <TextBlock Text="{Binding Competition}" Foreground="#8A93A2" FontSize="13"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Team}" Foreground="White"
+                                   FontWeight="Bold" FontSize="13"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel></Border>
+              <Border Classes="panel"><StackPanel>
+                <TextBlock Classes="panelHead" Text="Top scorers"/>
+                <ItemsControl ItemsSource="{Binding SeasonScorers}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ArchiveScorerRow">
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="{Binding Player}" Foreground="#C7CEDA" FontSize="13"/>
+                          <TextBlock Text="{Binding Team}" Foreground="#5E6875" FontSize="12"
+                                     VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding Goals}" Foreground="White"
+                                   FontWeight="Bold" FontSize="13"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel></Border>
+              <Border Classes="panel"><StackPanel>
+                <TextBlock Classes="panelHead" Text="Club records"/>
+                <TextBlock Text="{Binding RecordsNote}" Foreground="#8A93A2" FontSize="12"/>
+                <ItemsControl ItemsSource="{Binding Records}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="app:ClubRecordRow">
+                      <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+                        <TextBlock Text="{Binding Record}" Foreground="#8A93A2" FontSize="13"
+                                   Width="150"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Holder}" Foreground="White"
+                                   FontSize="13" TextWrapping="Wrap"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel></Border>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:SettingsViewModel">
+      <ScrollViewer>
+      <StackPanel Margin="28" Spacing="14" MaxWidth="1100" HorizontalAlignment="Left">
+        <TextBlock Text="Settings" FontSize="24" FontWeight="Bold" Foreground="White"/>
+        <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"/>
+        <WrapPanel>
+
+        <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+          <TextBlock Classes="panelHead" Text="Display"/>
+          <TextBlock Text="UI skin" Foreground="#8A93A2" FontSize="12"/>
+          <ComboBox ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedSkin}"
+                    HorizontalAlignment="Stretch"/>
+          <CheckBox IsChecked="{Binding FmAttributes}" Foreground="#C7CEDA"
+                    Content="FM view — colour bands, unscouted players hidden"/>
+          <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+                     Text="Bands: red poor · amber average · green good · blue elite. Knowledge grows by facing clubs and scouting; coach, scout and analyst reports are always on."/>
+        </StackPanel></Border>
+
+        <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+          <TextBlock Classes="panelHead" Text="Realism"/>
+          <TextBlock Text="Attribute masking" Foreground="#8A93A2" FontSize="12"/>
+          <ComboBox ItemsSource="{Binding MaskOptions}" SelectedItem="{Binding MaskStrict}"
+                    HorizontalAlignment="Stretch"/>
+          <TextBlock Text="Transfer difficulty" Foreground="#8A93A2" FontSize="12"/>
+          <ComboBox ItemsSource="{Binding DifficultyOptions}" SelectedItem="{Binding TransferDifficulty}"
+                    HorizontalAlignment="Stretch"/>
+          <TextBlock Text="Injury frequency" Foreground="#8A93A2" FontSize="12"/>
+          <ComboBox ItemsSource="{Binding InjuryOptions}" SelectedItem="{Binding InjuryFreq}"
+                    HorizontalAlignment="Stretch"/>
+          <TextBlock Text="Board patience" Foreground="#8A93A2" FontSize="12"/>
+          <ComboBox ItemsSource="{Binding SackOptions}" SelectedItem="{Binding SackLeniency}"
+                    HorizontalAlignment="Stretch"/>
+        </StackPanel></Border>
+
+        <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+          <TextBlock Classes="panelHead" Text="Matchday &amp; world"/>
+          <CheckBox IsChecked="{Binding AutoBoot}" Foreground="#C7CEDA"
+                    Content="Boot eFootball automatically on Play Match"/>
+          <CheckBox IsChecked="{Binding RealNames}" Foreground="#C7CEDA"
+                    Content="Real club names in-game (next compile)"/>
+          <TextBlock Text="{Binding WorldSeedLine}" Foreground="#8A93A2" FontSize="11"
+                     TextWrapping="Wrap"/>
+        </StackPanel></Border>
+
+        <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+          <TextBlock Classes="panelHead" Text="Screenshot OCR (Steam)"/>
+          <TextBlock Text="Steam folder" Foreground="#8A93A2" FontSize="12"/>
+          <TextBox Text="{Binding SteamRoot}"/>
+          <TextBlock Text="Steam user id" Foreground="#8A93A2" FontSize="12"/>
+          <TextBox Text="{Binding SteamUserId}"/>
+          <Button Content="Save paths" Command="{Binding SaveSettingsCommand}" Background="#1F9D4D"
+                  Foreground="White" FontWeight="Bold" Padding="18,8" CornerRadius="8"/>
+        </StackPanel></Border>
+
+        <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+          <TextBlock Classes="panelHead" Text="Data"/>
+          <Button Content="💾 Backup now" Command="{Binding BackupNowCommand}" Background="#232B36"
+                  Foreground="#C7CEDA" Padding="14,8" CornerRadius="8"/>
+          <TextBlock Text="Restore a backup (applies at next launch)" Foreground="#8A93A2" FontSize="12"/>
+          <ComboBox ItemsSource="{Binding Backups}" SelectedItem="{Binding SelectedBackup}"
+                    HorizontalAlignment="Stretch"/>
+          <Button Content="↩ Restore selected" Command="{Binding RestoreBackupCommand}" Background="#3A2A10"
+                  Foreground="#E0A526" Padding="14,8" CornerRadius="8"/>
+        </StackPanel></Border>
+
+        </WrapPanel>
+      </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:AcademyViewModel">
+      <DockPanel Margin="20">
+        <TextBlock DockPanel.Dock="Top" Text="Academy" FontSize="24" FontWeight="Bold"
+                   Foreground="White" Margin="0,0,0,6"/>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Note}" Foreground="#8A93A2"
+                   FontSize="13" Margin="0,0,0,10"/>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="14" Margin="0,12,0,0">
+          <Button Content="Promote to senior squad" Command="{Binding PromoteCommand}"
+                  Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="18,10" CornerRadius="8"/>
+          <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="13" VerticalAlignment="Center"/>
+        </StackPanel>
+        <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" IsReadOnly="True"
+                  GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+          <DataGrid.Columns>
+            <DataGridTemplateColumn Header="" Width="46">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:AcademyEntry">
+                  <Border Width="32" Height="32" CornerRadius="16" Background="{Binding FaceBrush}"
+                          Margin="4,2">
+                    <TextBlock Text="{Binding Mark}" Foreground="#20262E" FontSize="10"
+                               FontWeight="Bold" HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                  </Border>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+            <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
+            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="60"/>
+            <DataGridTemplateColumn Header="OVR" Width="70">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:AcademyEntry">
+                  <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                             FontWeight="Bold" VerticalAlignment="Center" Margin="8,0"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Potential" Width="110">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:AcademyEntry">
+                  <TextBlock Text="{Binding Potential}" Foreground="#E0A526"
+                             VerticalAlignment="Center" Margin="8,0"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:BankViewModel">
+      <StackPanel Margin="28" Spacing="16" MaxWidth="640" HorizontalAlignment="Left">
+        <TextBlock Text="The Bank" FontSize="24" FontWeight="Bold" Foreground="White"/>
+        <Border Classes="tile"><StackPanel>
+          <TextBlock Classes="tileLabel" Text="BALANCE"/>
+          <TextBlock Classes="tileBig" Text="{Binding Balance}"/></StackPanel></Border>
+        <Border Classes="panel"><StackPanel Spacing="10">
+          <TextBlock Classes="panelHead" Text="Loans"/>
+          <TextBlock Text="{Binding LoanLine}" Foreground="#C7CEDA" FontSize="14" TextWrapping="Wrap"/>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Button Content="Borrow £250k" Command="{Binding BorrowCommand}" CommandParameter="250000"
+                    IsEnabled="{Binding CanBorrow}" Background="#2D7DD2" Foreground="White" Padding="14,8" CornerRadius="6"/>
+            <Button Content="Borrow £500k" Command="{Binding BorrowCommand}" CommandParameter="500000"
+                    IsEnabled="{Binding CanBorrow}" Background="#2D7DD2" Foreground="White" Padding="14,8" CornerRadius="6"/>
+            <Button Content="Borrow £1m" Command="{Binding BorrowCommand}" CommandParameter="1000000"
+                    IsEnabled="{Binding CanBorrow}" Background="#2D7DD2" Foreground="White" Padding="14,8" CornerRadius="6"/>
+          </StackPanel>
+          <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="13" TextWrapping="Wrap"/>
+        </StackPanel></Border>
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:TrainingViewModel">
+      <DockPanel Margin="20">
+        <TextBlock DockPanel.Dock="Top" Text="Training Ground" FontSize="24" FontWeight="Bold"
+                   Foreground="White" Margin="0,0,0,8"/>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+          <TextBlock Text="FOCUS" Foreground="#7C8698" FontSize="11" FontWeight="Bold"
+                     VerticalAlignment="Center"/>
+          <ComboBox ItemsSource="{Binding FocusOptions}" SelectedItem="{Binding SelectedFocus}"
+                    Width="170" MaxDropDownHeight="380"/>
+          <Button Content="Assign to selected player" Command="{Binding AssignCommand}"
+                  Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="16,9" CornerRadius="8"/>
+          <TextBlock Text="SKILL" Foreground="#7C8698" FontSize="11" FontWeight="Bold"
+                     VerticalAlignment="Center" Margin="18,0,0,0"/>
+          <ComboBox ItemsSource="{Binding LearnableSkills}" SelectedItem="{Binding SelectedSkill}"
+                    Width="180" MaxDropDownHeight="380"
+                    PlaceholderText="What can he learn?"/>
+          <Button Content="Start skill training" Command="{Binding StartSkillCommand}"
+                  Background="#2D7DD2" Foreground="White" FontWeight="Bold" Padding="16,9" CornerRadius="8"/>
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding SkillNote}" Foreground="#8A93A2"
+                   FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
+        <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,10" IsVisible="{Binding HasSkillWork}">
+          <StackPanel>
+            <TextBlock Classes="panelHead" Text="On the training pitch"/>
+            <ItemsControl ItemsSource="{Binding SkillWork}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SkillProgressRow">
+                  <TextBlock Text="{Binding Line}" Foreground="#C7CEDA" FontSize="12" Margin="0,1"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" Foreground="#9FE6B4"
+                   FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
+        <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" IsReadOnly="True"
+                  GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+            <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="100"/>
+            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52"/>
+            <DataGridTemplateColumn Header="OVR" Width="60">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:TrainingRow">
+                  <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                             FontWeight="Bold" VerticalAlignment="Center" Margin="8,0"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="Personality" Binding="{Binding Personality}" Width="130"/>
+            <DataGridTextColumn Header="Det" Binding="{Binding Determination}" Width="52"/>
+            <DataGridTextColumn Header="Focus" Binding="{Binding Focus}" Width="120"/>
+            <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="80"/>
+            <DataGridTextColumn Header="Skills" Binding="{Binding Skills}" Width="220"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="vm:InboxViewModel">
+      <DockPanel Margin="20">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+          <TextBlock Text="{Binding Header}" FontSize="22" FontWeight="Bold" Foreground="White"/>
+          <Button Grid.Column="1" Content="Mark all read" Command="{Binding MarkAllReadCommand}"
+                  Background="#232B36" Foreground="#C7CEDA" Padding="12,8" CornerRadius="8" FontSize="12"/>
+        </Grid>
+        <TextBlock DockPanel.Dock="Top" Text="Nothing on the wire yet — play a match."
+                   Foreground="#8A93A2" IsVisible="{Binding Empty}"/>
+
+        <!-- ticker rail: AROUND THE MARKET with faces (Sky-style) -->
+        <Border DockPanel.Dock="Right" Width="250" Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="12"
+                Padding="14" Margin="14,0,0,0" IsVisible="{Binding HasTicker}">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="AROUND THE MARKET" Foreground="#5E6875"
+                       FontSize="10" FontWeight="Bold" LetterSpacing="1.4" Margin="0,0,0,10"/>
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding Ticker}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TickerEntry">
+                    <Grid ColumnDefinitions="40,*" Margin="0,4">
+                      <Border Width="32" Height="32" CornerRadius="16" ClipToBounds="True"
+                              Background="#1B2430">
+                        <Panel>
+                          <TextBlock Text="{Binding Mark}" Foreground="#8A93A2" FontSize="9"
+                                     FontWeight="Bold" HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+                          <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                                 IsVisible="{Binding HasPortrait}"/>
+                        </Panel>
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Player}" Foreground="White" FontSize="12"
+                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Line}" Foreground="#E0A526" FontSize="10"/>
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+
+        <ScrollViewer>
+          <StackPanel>
+            <!-- DONE DEAL hero: the latest paid move, Sky-style -->
+            <Border CornerRadius="14" Padding="18" Margin="0,0,0,14" IsVisible="{Binding HeroVisible}"
+                    BorderBrush="#2E1F9D4D" BorderThickness="1">
+              <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                  <GradientStop Color="#0E2A1C" Offset="0"/>
+                  <GradientStop Color="#10151D" Offset="0.7"/>
+                </LinearGradientBrush>
+              </Border.Background>
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <Border Width="76" Height="76" CornerRadius="38" ClipToBounds="True"
+                        Background="#1B2430" BorderBrush="#1F9D4D" BorderThickness="2">
+                  <Panel>
+                    <TextBlock Text="⚽" FontSize="26" HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                    <Image Source="{Binding HeroPortrait}" Stretch="UniformToFill"
+                           IsVisible="{Binding HasHeroPortrait}"/>
+                  </Panel>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center" Spacing="2">
+                  <Border Background="#1F9D4D" CornerRadius="4" Padding="7,2" HorizontalAlignment="Left">
+                    <TextBlock Text="✓ DONE DEAL" Foreground="#04150B" FontSize="10" FontWeight="Bold"
+                               LetterSpacing="1.5"/>
+                  </Border>
+                  <TextBlock Text="{Binding HeroName}" Foreground="White" FontSize="22" FontWeight="Bold"/>
+                  <TextBlock Text="{Binding HeroLine}" Foreground="#8A93A2" FontSize="13"/>
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding HeroFee}" Foreground="#F5C044"
+                           FontSize="22" FontWeight="Bold" VerticalAlignment="Center"/>
+              </Grid>
+            </Border>
+
+            <!-- the feed: accent-barred cards with faces -->
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NewsEntry">
+                  <Border Classes="panel" Margin="0,0,0,10" BorderThickness="3,0,0,0"
+                          BorderBrush="{Binding AccentBrush}">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <Border Width="44" Height="44" CornerRadius="22" ClipToBounds="True"
+                              Background="#1B2430" VerticalAlignment="Top" Margin="0,2,12,0">
+                        <Panel>
+                          <TextBlock Text="{Binding Icon}" FontSize="17" HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+                          <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                                 IsVisible="{Binding HasPortrait}"/>
+                        </Panel>
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <Grid ColumnDefinitions="*,Auto,Auto">
+                          <TextBlock Text="{Binding Subject}" FontWeight="SemiBold"
+                                     Foreground="{Binding SubjectBrush}" FontSize="15"
+                                     TextTrimming="CharacterEllipsis"/>
+                          <Border Grid.Column="1" Background="#1F9D4D" CornerRadius="4" Padding="6,1"
+                                  Margin="8,0" IsVisible="{Binding ShowNew}" VerticalAlignment="Center">
+                            <TextBlock Text="NEW" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                          </Border>
+                          <TextBlock Grid.Column="2" Text="{Binding When}" Foreground="#5E6774"
+                                     FontSize="11" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="{Binding Body}" Foreground="{Binding BodyBrush}"
+                                   TextWrapping="Wrap" Margin="0,5,0,0" FontSize="13"/>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </DataTemplate>
+  </Window.DataTemplates>
 
   <Grid ColumnDefinitions="230,*">
     <!-- sidebar -->
-    <Border Grid.Column="0" Background="#12161C">
+    <Border Grid.Column="0" Background="{DynamicResource ThemePanelAltBrush}">
       <DockPanel Margin="16">
-        <StackPanel DockPanel.Dock="Top" Margin="6,10,6,20">
-          <TextBlock Text="{Binding ClubName}" Foreground="White" FontSize="18" FontWeight="Bold" TextWrapping="Wrap"/>
-          <TextBlock Text="{Binding LeagueName}" Foreground="#7C8698" FontSize="12"/>
+        <StackPanel DockPanel.Dock="Top" Margin="6,10,6,14">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Image Source="{Binding Crest}" Width="40" Height="40" IsVisible="{Binding HasCrest}"
+                   VerticalAlignment="Center"/>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding ClubName}" Foreground="White" FontSize="16"
+                         FontWeight="Bold" TextWrapping="Wrap" MaxWidth="140"/>
+              <TextBlock Text="{Binding LeagueName}" Foreground="#7C8698" FontSize="11"/>
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Text="{Binding DateLine}" Foreground="#9FE6B4" FontSize="11"
+                     FontWeight="SemiBold" Margin="0,10,0,0"/>
+          <TextBlock Text="{Binding UnreadBadge}" Foreground="#E0A526" FontSize="11"
+                     Margin="0,4,0,0" IsVisible="{Binding HasUnread}"/>
+          <TextBlock Text="{Binding ActionsLine}" Foreground="#F08A8A" FontSize="11"
+                     FontWeight="SemiBold" Margin="0,3,0,0" IsVisible="{Binding HasActions}"
+                     TextWrapping="Wrap"/>
+          <Button Content="Continue →" Command="{Binding ContinueToOfficeCommand}"
+                  Background="{DynamicResource ThemeAccentBrush}" Foreground="White"
+                  FontWeight="Bold" Padding="0,8" CornerRadius="8" FontSize="12"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  Margin="0,12,0,0"/>
         </StackPanel>
         <ItemsControl ItemsSource="{Binding Pages}">
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:PageViewModel">
+            <DataTemplate x:DataType="vm:NavItem">
               <Button Classes="nav"
                       Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NavigateCommand}"
                       CommandParameter="{Binding}">

@@ -14,10 +14,26 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
+            // Fast resume: ML_RESUME=1 skips the picker and opens the saved career directly
+            // (used by tooling/screenshot runs; harmless if no career is seeded — falls through).
+            if (Environment.GetEnvironmentVariable("ML_RESUME") == "1" && CareerLoader.TryLoad() is Session s)
             {
-                DataContext = new MainWindowViewModel(SampleData.Build()),
+                desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel(s) };
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+
+            // Start on the New Career picker: choose any club, and its real league is built and opened.
+            var picker = new NewCareerViewModel();
+            var window = new NewCareerWindow { DataContext = picker };
+            picker.CareerStarted += session =>
+            {
+                var main = new MainWindow { DataContext = new MainWindowViewModel(session) };
+                desktop.MainWindow = main;
+                main.Show();
+                window.Close();
             };
+            desktop.MainWindow = window;
         }
 
         base.OnFrameworkInitializationCompleted();
