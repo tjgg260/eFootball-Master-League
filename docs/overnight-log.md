@@ -390,3 +390,22 @@ Gates: build 0, tests 168/168, smoke + Squad screenshot OK.
 - **Weekly club history** (`club_history`): balance/fans/board/ELO snapshot per matchweek —
   money trend chart on Finances, fan-mood sparkline on Board.
 - Gates: build 0 errors · tests 168/168 · ML_RESUME smoke on Board OK.
+
+## Block: research passes — hair bits (item 7), kit colours (item 10), portraits (item 9)
+
+- **Hair colour bits (item 7): honest negative.** No RFS↔native dual-source players exist
+  (hair_color only covers RFS-authored records), so the label source is portrait top-strip
+  pixels — and those labels are too noisy: best candidate bit field scores MI 0.06 against
+  0.91 bits of label entropy, indistinguishable from the noise floor (the *known* skin field
+  scores 0.026 vs the same labels). Parked until a cleaner label source appears.
+- **Kit colours (item 10): format mapped, write gate NOT passed.** Per-team kit configs live
+  at `common/etc/uniform/team/<id>/<id>_DEF_{1st,2nd,3rd,GK1st}_realUni.bin` — small WESYS
+  containers (~92-byte payload): shirt/sleeve RGB triplets, a float block, and a texture ref
+  string (e.g. `u0101p1`). One zlib parameterization (level 4, memLevel 1, Z_FIXED) rebuilt a
+  sample byte-exactly but only 6/400 files match — Konami's deflate isn't reproducible by
+  Python zlib in general, so `prove_round_trip` fails and **no kit write ships**. TeamColor.bin
+  (menu colours) also decoded: 20-byte records, team id + 3 RGB-ish triplets.
+- **Native portrait pack (item 9): still blocked** — no legal asset source for real player
+  portraits beyond the 12.8k already imported from RFS. Nothing to build.
+- Item 12 (toast unification / full view-split) remains partially done from the earlier token
+  sweep; SquadView/TacticsView/DashboardView are split out, the rest still inline.
