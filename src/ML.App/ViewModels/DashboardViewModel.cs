@@ -348,6 +348,23 @@ public sealed partial class DashboardViewModel : PageViewModel
     public ObservableCollection<EventPickRow> AssistPicks { get; } = new();
     public ObservableCollection<EventPickRow> CardPicks { get; } = new();
 
+    // --- read team stats + player ratings from the game's live memory (read-only) -----------
+
+    [RelayCommand]
+    private void ReadStatsFromGame()
+    {
+        if (_fixtureId == 0) { MatchStatus = "No fixture to attach stats to."; return; }
+        Log(_s.ReadMatchStatsFromMemory(_fixtureId));
+        // prefill the rating pickers/entry from what we just read (home = your XI order).
+        try
+        {
+            var homeRatings = _s.PlayerRatingsFor(_fixtureId, _homeId == _s.CurrentTeamId ? "home" : "away");
+            if (homeRatings.Count > 0)
+                RatingsText = string.Join(",", homeRatings.Select(r => r.ToString("0.0")));
+        }
+        catch { /* prefill is best-effort */ }
+    }
+
     // --- match video analysis: OBS recording → goals with minutes + scorer suggestions -----
 
     [ObservableProperty] private bool _analyzing;

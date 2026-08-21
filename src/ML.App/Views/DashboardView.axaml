@@ -163,6 +163,10 @@
                     IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
                     Padding="14,12" Foreground="White" Background="#3A4759" CornerRadius="8"
                     ToolTip.Tip="Mine the OBS recording of the match: goals, minutes and scorer suggestions"/>
+            <Button Content="📊 Read stats from game" Command="{Binding ReadStatsFromGameCommand}"
+                    IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
+                    Padding="14,12" Foreground="White" Background="#3A4759" CornerRadius="8"
+                    ToolTip.Tip="At the full-time results screen: read team stats (pass completion, tackles…) and player ratings from the game's live memory"/>
             <Button Content="Record" Command="{Binding RecordResultCommand}"
                     IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
                     FontWeight="Bold" Padding="18,12" Foreground="White"

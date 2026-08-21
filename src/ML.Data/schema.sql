@@ -385,6 +385,15 @@ CREATE TABLE IF NOT EXISTS match_team_stats (
     PRIMARY KEY (fixture_id, side, stat)
 );
 
+-- Per-player match ratings read from live memory (read-only). Ordered by the results screen.
+CREATE TABLE IF NOT EXISTS match_player_ratings (
+    fixture_id INTEGER NOT NULL REFERENCES fixtures(id),
+    side       TEXT    NOT NULL,           -- 'home' | 'away'
+    slot       INTEGER NOT NULL,           -- 0-based position in the results list
+    rating     REAL    NOT NULL,
+    PRIMARY KEY (fixture_id, side, slot)
+);
+
 -- The staff DATABASE (FM-style): persistent individual people with 1-20 attributes and
 -- tactical preferences. team_id NULL = free agent. One person per (team, role) is enforced
 -- in code; firing returns the person to the pool rather than deleting them.
