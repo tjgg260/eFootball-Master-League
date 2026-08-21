@@ -600,11 +600,28 @@ public sealed partial class TacticsViewModel : PageViewModel
             var xi = _s.Repo.Squad(oppId).Where(m => m.Slot is >= 0 and <= 10)
                 .OrderBy(m => m.Slot).ToList();
             var players = _s.Repo.SquadPlayers(oppId).ToDictionary(p => p.Id);
+            var xiPlayers = xi.Select(m => players.GetValueOrDefault(m.PlayerId))
+                .Where(p => p is not null).Cast<PlayerRow>().ToList();
+            // Assign players to slots by POSITION so a keeper never appears at RB: the GK fills
+            // the GK slot; outfielders fill outfield slots matched by category (DEF/MID/FWD).
+            var gk = xiPlayers.FirstOrDefault(p => Visuals.PositionCategory(p.Position) == "GK");
+            static int Cat(string pos) => Visuals.PositionCategory(pos) switch
+            { "DEF" => 0, "MID" => 1, _ => 2 };
+            string SlotLabel(int i) => Visuals.RoleCodeLabel(slots[i].Position);
+            bool SlotIsGk(int i) => Visuals.PositionCategory(SlotLabel(i)) == "GK";
+            var outfield = new Queue<PlayerRow>(xiPlayers.Where(p => !ReferenceEquals(p, gk))
+                .OrderBy(p => Cat(p.Position)).ThenByDescending(p => p.OverallRating ?? 0));
+            var slotOrder = Enumerable.Range(0, slots.Count).Where(i => !SlotIsGk(i))
+                .OrderBy(i => Cat(SlotLabel(i))).ToList();
+            var assign = new PlayerRow?[slots.Count];
+            for (var k = 0; k < slotOrder.Count && outfield.Count > 0; k++)
+                assign[slotOrder[k]] = outfield.Dequeue();
             for (var i = 0; i < slots.Count; i++)
             {
                 var (left, top) = MirrorPos(slots[i].X, slots[i].Y);
+                var slotIsGk = SlotIsGk(i);
+                var pl = slotIsGk ? gk : assign[i];
                 var pos = Visuals.RoleCodeLabel(slots[i].Position);
-                PlayerRow? pl = i < xi.Count && players.TryGetValue(xi[i].PlayerId, out var p) ? p : null;
                 var name = pl?.Name ?? "—";
                 var surname = name.Contains(' ') ? name[(name.LastIndexOf(' ') + 1)..] : name;
                 Opponents.Add(new OppToken(left, top, pos, pl?.OverallRating ?? 0, surname,
@@ -616,48 +633,63 @@ public sealed partial class TacticsViewModel : PageViewModel
         catch { /* no opponent preview is fine (preseason, season end) */ }
     }
 
-    // --- eFootball-style swapping: click one player, click another, they trade places ---
+    // --- selecting vs swapping are now SEPARATE actions ---------------------------------
+    // A single click only SELECTS a player (to edit his position/playstyle) — it never swaps.
+    // Swapping is explicit: press "⇄ Swap" to arm the selected player, then click his partner.
+    // This kills the accidental-swap-while-editing problem.
 
     private bool _swapping;
     private PitchPlayer? _pendingXi;
 
     [ObservableProperty] private PitchPlayer? _pickXi;
     [ObservableProperty] private BenchEntry? _pickBench;
+    [ObservableProperty] private bool _swapArmed;
 
     partial void OnPickXiChanged(PitchPlayer? value)
     {
         if (_swapping || value is null) return;
-        SelectedPlayer = value;   // keep the roles panel in step
-        if (PickBench is not null)
-        {
-            DoBenchSwap(value, PickBench);
-        }
-        else if (_pendingXi is not null && !ReferenceEquals(_pendingXi, value))
+        SelectedPlayer = value;                       // single click = select/edit, always
+        if (SwapArmed && _pendingXi is not null && !ReferenceEquals(_pendingXi, value))
         {
             DoXiSwap(_pendingXi, value);
+            DisarmSwap();
         }
-        else
-        {
-            _pendingXi = value;
-            SaveStatus = $"{value.Name} picked — now click who he swaps with (XI or bench).";
-        }
+        // not armed → just selected, no swap happens
     }
 
     partial void OnPickBenchChanged(BenchEntry? value)
     {
         if (_swapping || value is null) return;
-        if (_pendingXi is not null)
+        if (SwapArmed && _pendingXi is not null)
         {
-            DoBenchSwap(_pendingXi, value);
-        }
-        else if (PickXi is not null)
-        {
-            DoBenchSwap(PickXi, value);
+            DoBenchSwap(_pendingXi, value);           // armed starter ↔ this bench player
+            DisarmSwap();
         }
         else
         {
-            SaveStatus = $"{value.Name} picked — now click the starter he replaces.";
+            SaveStatus = $"{value.Name} selected. To bring him on: pick a starter, press ⇄ Swap, " +
+                         "then click him.";
         }
+    }
+
+    /// <summary>Arm the currently-selected starter for a swap; the next click completes it.</summary>
+    [RelayCommand]
+    private void ArmSwap()
+    {
+        if (SelectedPlayer is null || SelectedPlayer.PlayerId == 0)
+        {
+            SaveStatus = "Pick a starter first, then press ⇄ Swap.";
+            return;
+        }
+        SwapArmed = true;
+        _pendingXi = SelectedPlayer;
+        SaveStatus = $"⇄ {SelectedPlayer.Name} armed — click who he swaps with (a starter or a sub).";
+    }
+
+    private void DisarmSwap()
+    {
+        SwapArmed = false;
+        _pendingXi = null;
     }
 
     private void ClearPicks()
@@ -666,6 +698,7 @@ public sealed partial class TacticsViewModel : PageViewModel
         PickXi = null;
         PickBench = null;
         _pendingXi = null;
+        SwapArmed = false;
         _swapping = false;
     }
 
