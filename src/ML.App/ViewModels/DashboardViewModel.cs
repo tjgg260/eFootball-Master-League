@@ -481,6 +481,9 @@ public sealed partial class DashboardViewModel : PageViewModel
             _awayId = next.AwayTeamId;
             _homeName = _s.TeamName(_homeId);
             _awayName = _s.TeamName(_awayId);
+            // The AI opponent fields its best XI + a tactic to beat you before this match.
+            var oppId = _homeId == _s.CurrentTeamId ? _awayId : _homeId;
+            try { _s.PickBestXiAndTactic(oppId, _s.CurrentTeamId); } catch { /* never blocks load */ }
             LoadMatchPlayers();   // both XIs feed the event pickers (P3)
             var kind = next.Kind switch
             {

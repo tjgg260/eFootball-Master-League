@@ -291,6 +291,14 @@ public sealed partial class TacticsViewModel : PageViewModel
             "An attacking full-back who enjoys joining the attack in high central areas.\n" +
             "Compatible positions: RB/LB",
             new[] { "RB", "LB" }),
+        new("Offensive Goalkeeper",
+            "A goalkeeper who stops shots and also proactively moves out of his area to sweep up " +
+            "loose balls and start attacks.\nCompatible positions: GK",
+            new[] { "GK" }),
+        new("Defensive Goalkeeper",
+            "A goalkeeper who stays back on his line and focuses purely on shot-stopping.\n" +
+            "Compatible positions: GK",
+            new[] { "GK" }),
     };
 
     private readonly Session _s;
@@ -593,6 +601,8 @@ public sealed partial class TacticsViewModel : PageViewModel
             var next = _s.NextFixture();
             if (next is null) return;
             var oppId = next.HomeTeamId == _s.CurrentTeamId ? next.AwayTeamId : next.HomeTeamId;
+            // The AI manager fields its strongest position-correct XI + a tactic to beat you.
+            try { _s.PickBestXiAndTactic(oppId, _s.CurrentTeamId); } catch { /* preview is additive */ }
             var fid = _s.Repo.TeamTactics(oppId).FirstOrDefault(t => t.Phase == 0)?.FormationId;
             if (fid is null) return;
             var slots = _s.Repo.FormationSlots(fid.Value).OrderBy(sl => sl.SlotIndex).ToList();

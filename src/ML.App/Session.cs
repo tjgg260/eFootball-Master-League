@@ -54,6 +54,7 @@ public sealed partial class Session
         if (GetMeta("video_dir") is { Length: > 0 } vd) VideoCapture.VideoDir = vd;
         Theme.Apply(GetMeta("ui_skin") ?? "Midnight", PrimaryColor);
         HealLegacyFormationOwnership();
+        try { RepairInvalidXis(); } catch { /* XI repair never blocks load */ }
         EnsureCup();
         try { EnsureObjectives(); } catch { /* objectives are additive */ }
         BackupCareer();       // your save survives anything — last five kept in build/backups

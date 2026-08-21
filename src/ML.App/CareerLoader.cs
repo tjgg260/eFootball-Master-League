@@ -70,14 +70,22 @@ public static class CareerLoader
 
     private static string? FindMasterDb()
     {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        // A shipped package can drop master.db right next to the exe (or in build/ under it);
+        // a dev checkout keeps it in the repo's build/. Check the simple spots first, then walk up.
+        var baseDir = AppContext.BaseDirectory;
+        foreach (var direct in new[]
+                 {
+                     Path.Combine(baseDir, "master.db"),
+                     Path.Combine(baseDir, "build", "master.db"),
+                 })
+        {
+            if (File.Exists(direct)) return direct;
+        }
+        var dir = new DirectoryInfo(baseDir);
         while (dir is not null)
         {
             var candidate = Path.Combine(dir.FullName, "build", "master.db");
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
+            if (File.Exists(candidate)) return candidate;
             dir = dir.Parent;
         }
         return null;
