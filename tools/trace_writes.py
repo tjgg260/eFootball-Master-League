@@ -268,6 +268,7 @@ def main():
                                   ", ".join(f"{r}=0x{v:x}" for r, v in ptrs))
                             # CAPTURE each pointer's memory NOW (process is frozen at the BP) —
                             # survives the anti-tamper delayed kill. Hunt small-int arrays.
+                            follows = 0
                             for r, v in ptrs:
                                 if v in dumped:
                                     continue
@@ -283,6 +284,25 @@ def main():
                                 if len(small) >= 8:
                                     print(f"         ^ {len(small)} small ints, sum(0..200)="
                                           f"{sum(small)} — possible per-player array")
+                                # FOLLOW one level: dereference 64-bit heap pointers in this
+                                # region — a pointer table leads to the per-player structs.
+                                for k in range(0, 184, 8):
+                                    if follows >= 16:
+                                        break
+                                    pv = int.from_bytes(d[k:k+8], "little")
+                                    if not (0x10000 < pv < 0x7FFFFFFFFFFF) or pv in dumped:
+                                        continue
+                                    dd = _read(ph, pv, 96)
+                                    if len(dd) < 96:
+                                        continue
+                                    dumped.add(pv)
+                                    follows += 1
+                                    dv = [int.from_bytes(dd[j:j+4], "little", signed=True)
+                                          for j in range(0, 96, 4)]
+                                    sm = [x for x in dv if 0 <= x <= 200]
+                                    tag = f"  <== {len(sm)} small, sum={sum(sm)}" if len(sm) >= 6 else ""
+                                    print(f"         ->*+{k} 0x{pv:x}: " +
+                                          " ".join(str(x) for x in dv) + tag)
                     ctx.Dr6 = 0
                     ctx.ContextFlags = CTX_FLAGS
                     k32.SetThreadContext(h, ctypes.byref(ctx))
