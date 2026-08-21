@@ -1,0 +1,130 @@
+# Master League — Playtester Guide
+
+Thanks for testing! This is a **companion app** that turns eFootball into a persistent Football-
+Manager-style career: you run the club (squad, tactics, transfers, board, staff, youth), the app
+sims the rest of the league, and you play *your* fixture — in eFootball if you want, or just by
+entering the score. Your save is the app's database; eFootball is only the pitch.
+
+It's an early build. The **management sim is solid**; the **auto-capture from eFootball is
+experimental**. This guide covers the easy path first, then the advanced integration.
+
+---
+
+## 1. What you need
+
+**To run the app and play a career (everyone):**
+- Windows 10/11
+- **.NET 8 Desktop Runtime** — https://dotnet.microsoft.com/download/dotnet/8.0 (pick
+  *".NET Desktop Runtime 8.x → Windows x64"*). If you'll build from source instead, install the
+  **.NET 8 SDK**.
+- The app itself (either a published build, or the source repo — see step 2).
+
+**Only for the full eFootball integration (optional, advanced):**
+- eFootball on Steam (PC)
+- Python 3.11+ with `numpy` and `pycryptodome`
+- OBS Studio + ffmpeg (for match-video capture)
+- These are **not needed** to play a career by entering results yourself.
+
+---
+
+## 2. Get it running
+
+**Option A — published build (easiest):**
+1. Unzip the release folder anywhere (e.g. `Documents\MasterLeague`).
+2. Double-click **`ML.App.exe`**.
+3. If Windows SmartScreen warns "unknown publisher", click *More info → Run anyway* (it's an
+   unsigned playtest build).
+
+**Option B — from source:**
+1. Install the .NET 8 **SDK**.
+2. In the repo folder, run:
+   ```bash
+   dotnet run --project src/ML.App
+   ```
+
+Either way, the app opens on the **Office** (dashboard) screen with a career already seeded
+(a Premier League club). Your save lives in `build/master.db` — back that file up to keep a save.
+
+---
+
+## 3. Playing a season (the core loop)
+
+1. **Office** shows your next fixture. Set your lineup and tactics first (see below).
+2. Hit **▶ Play Match**.
+   - *Without eFootball:* just type the **Result** (e.g. `2 – 1`), optionally add goalscorers,
+     assists, cards and ratings with the pickers, then **Record**.
+   - *With eFootball:* it compiles your squad into the game and boots it — play the match, then
+     come back and enter/capture the result (see §5).
+3. **Record** saves your result, sims every other match in the round, updates the table, and
+   loads your next fixture.
+4. Repeat through the season. At season end the app handles promotion/relegation, awards,
+   retirements, youth intake, the board's verdict, and rolls you into the next campaign.
+
+**Screens to explore** (left sidebar): Squad, Game Plan (tactics), Transfer Market, Staff,
+Board, Finances, Calendar, News, Stats, Table, Settings.
+
+---
+
+## 4. Tactics & squad (please stress-test this)
+
+- **Squad / Game Plan**: click a player to **select** him — his position and playstyle editors
+  appear. Clicking only selects; it never moves anyone.
+- **To swap two players**: select one, press **⇄ Swap**, then click his partner (a starter or a
+  sub). This is deliberate so you can't swap by accident while editing.
+- Set formation, team instructions, set-piece takers, captain. **Suggest XI** auto-picks.
+
+---
+
+## 5. eFootball integration (optional, experimental — expect rough edges)
+
+If you play the match *in eFootball* and want stats/score captured instead of typing them:
+
+1. In **Settings → Match video**, point the app at OBS (WebSocket) and your recordings folder,
+   and set your ffmpeg path. Turn on "Record every match".
+2. **Play Match** boots eFootball and starts an OBS recording.
+3. After full time, back in the app:
+   - **📷 Import** — reads the score from your latest F12 screenshot.
+   - **🎞 Analyse recording** — mines the OBS recording for goals + minutes.
+   - **📊 Read stats from game** — reads team stats (pass completion, tackles…) and player
+     ratings straight from the game's memory while you're on the full-time results screen.
+   - Then review and **Record**.
+
+**Known issues here (help us test these):**
+- The video scoreboard OCR ships with generic 16:9 regions and **needs calibrating to your HUD**
+  or it can misread the score (see `docs/video-capture.md`). Until calibrated, **type the score
+  yourself** — it's the reliable path.
+- "Read stats from game" reads stats + ratings but **not the score** yet; enter the score
+  separately.
+- These three capture steps will be merged into one automatic "import on match end" flow in a
+  future build — for now they're separate buttons.
+
+**For a smooth playtest, we recommend: play in eFootball, then just type the score + a few
+ratings and hit Record.** The management depth is the thing to test.
+
+---
+
+## 6. What to test & how to report
+
+Please poke at: season progression, transfers & negotiations, the board/objectives, staff
+hiring & delegation, youth intake, tactics UX, and anything that feels off or crashes.
+
+When reporting, include:
+- What you did (which screen, which button)
+- What you expected vs what happened
+- A screenshot if you can
+- Your `build/master.db` if it's a save-specific bug (zip it)
+
+Back up `build/master.db` before long sessions so a bad state doesn't cost you a career.
+
+---
+
+## 7. Honest status
+
+- ✅ **Solid**: the management sim — squads, tactics, league/cup sim, transfers, board, staff,
+  youth, finances, news, season rollover.
+- ⚠️ **Experimental**: eFootball auto-capture (score/goals/stats from screenshots, recordings,
+  memory). Works on the dev setup; may need calibration on yours. Type results if in doubt.
+- 🧪 **Dev-only for now**: the game-file writeback (compiling squads into eFootball, custom
+  team names) needs Python + your own eFootball extraction and isn't part of the basic playtest.
+
+Thanks for helping shape it!
