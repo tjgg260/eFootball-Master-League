@@ -183,11 +183,12 @@ def main():
     if "--team-passes" in a:
         targets.append(locate_team_passes(a[a.index("--team-passes") + 1]))
     if "--ratings" in a:
-        # watch the first 4 players' rating fields — a rating write reads that player's stats
-        rats = locate_rating_array(find_pid(), want=4)
+        # watch a couple of players' rating fields — a rating write reads that player's stats.
+        # 2 slots so a team-passes pair can share the trace (4 DR registers total).
+        rats = locate_rating_array(find_pid(), want=2)
         if not rats:
-            sys.exit("rating array not found — is a match live with ratings in memory?")
-        print(f"rating array: {len(rats)} players, watching player[0..3] ratings")
+            sys.exit("rating array not found — must be on the full-time results ratings page.")
+        print(f"rating array found — watching player[0..{len(rats)-1}] ratings")
         for r in rats:
             print(f"  0x{r:x}")
         targets += rats
