@@ -140,12 +140,14 @@ def locate_rating_array(pid, want=4):
             if n < 4 * 6 * 8:
                 continue
             a = np.frombuffer(data[:n], dtype="<i4")
-            m1 = (a == -1)
-            mk = (a == 12032)
-            L = len(a) - 5
+            af = np.frombuffer(data[:n], dtype="<f4")
+            m1 = (a == -1)                               # sentinel at record +12
+            L = len(a) - 3
             if L <= 0:
                 continue
-            valid = m1[3:3 + L] & mk[5:5 + L]           # record start k is valid
+            with np.errstate(invalid="ignore"):
+                rating_ok = np.isfinite(af[:L]) & (af[:L] > 0.5) & (af[:L] < 10.0)
+            valid = rating_ok & m1[3:3 + L]             # rating float @+0 AND -1 @+12
             for k in np.nonzero(valid)[0]:
                 run = 0
                 while k + run * 6 < len(valid) and valid[k + run * 6]:
