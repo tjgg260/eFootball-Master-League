@@ -273,14 +273,14 @@ def main():
                                 if v in dumped:
                                     continue
                                 dumped.add(v)
-                                d = _read(ph, v, 192)
-                                if len(d) < 192:
+                                d = _read(ph, v, 256)
+                                if len(d) < 64:
                                     continue
                                 vals = [int.from_bytes(d[k:k+4], "little", signed=True)
-                                        for k in range(0, 192, 4)]
+                                        for k in range(0, len(d) - len(d) % 4, 4)]
                                 small = [x for x in vals if 0 <= x <= 200]
                                 print(f"      [{r} 0x{v:x}] ints: " +
-                                      " ".join(str(x) for x in vals[:24]))
+                                      " ".join(str(x) for x in vals))
                                 if len(small) >= 8:
                                     print(f"         ^ {len(small)} small ints, sum(0..200)="
                                           f"{sum(small)} — possible per-player array")
@@ -292,13 +292,13 @@ def main():
                                     pv = int.from_bytes(d[k:k+8], "little")
                                     if not (0x10000 < pv < 0x7FFFFFFFFFFF) or pv in dumped:
                                         continue
-                                    dd = _read(ph, pv, 96)
-                                    if len(dd) < 96:
+                                    dd = _read(ph, pv, 160)
+                                    if len(dd) < 64:
                                         continue
                                     dumped.add(pv)
                                     follows += 1
                                     dv = [int.from_bytes(dd[j:j+4], "little", signed=True)
-                                          for j in range(0, 96, 4)]
+                                          for j in range(0, len(dd) - len(dd) % 4, 4)]
                                     sm = [x for x in dv if 0 <= x <= 200]
                                     tag = f"  <== {len(sm)} small, sum={sum(sm)}" if len(sm) >= 6 else ""
                                     print(f"         ->*+{k} 0x{pv:x}: " +
