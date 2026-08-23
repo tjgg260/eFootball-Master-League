@@ -5,6 +5,14 @@
 @inject MatchdayEngine Engine
 @implements IDisposable
 
+@* ML.Web is frozen (roadmap item 3) — ML.App is the app. This banner must stay first in the
+   layout so it shows on every screen; do not remove it while ML.Web remains in the repo. *@
+<div style="background:#7f1d1d;color:#fecaca;border-bottom:2px solid #ef4444;padding:10px 16px;
+            text-align:center;font-weight:600;position:sticky;top:0;z-index:1000">
+    ⚠ DEPRECATED — ML.Web is frozen. Recording results here uses a shallow engine and will
+    desync your career. Use ML.App (Play Master League.bat).
+</div>
+
 <div class="shell">
     <nav class="rail">
         <div class="crest">@State.Crest</div>

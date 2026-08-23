@@ -8,6 +8,10 @@ entering the score. Your save is the app's database; eFootball is only the pitch
 It's an early build. The **management sim is solid**; the **auto-capture from eFootball is
 experimental**. This guide covers the easy path first, then the advanced integration.
 
+> **ML.App is the only supported app.** Launch it with **`Play Master League.bat`** (or
+> `ML.App.exe`). The older browser UI (`ML.Web`) is **deprecated and frozen** — recording
+> results there uses a shallow engine and will desync your career. Don't use it.
+
 ---
 
 ## 1. What you need
@@ -114,7 +118,14 @@ When reporting, include:
 - A screenshot if you can
 - Your `build/master.db` if it's a save-specific bug (zip it)
 
-Back up `build/master.db` before long sessions so a bad state doesn't cost you a career.
+Back up your career before long sessions so a bad state doesn't cost you one — either copy
+`build/master.db`, or (from source) export just the career as a small standalone save file:
+
+```bash
+python tools/career_snapshot.py save        # -> careers/<club>_<date>.db
+python tools/career_snapshot.py list        # show saves
+python tools/career_snapshot.py restore careers/<file>.db
+```
 
 ---
 

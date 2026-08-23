@@ -52,6 +52,13 @@ def main() -> int:
         for name, cmds in STAGES:
             print(f"{name}: " + " ; ".join(" ".join(c) for c in cmds))
         return 0
+    # ── career-save guard (roadmap item 7): the stages rewrite build/master.db in place, and
+    # that file is also the live career save. Refuse while a played career exists, unless
+    # ML_CONFIRM_RESEED=1 (which snapshots the career to /careers automatically first).
+    sys.path.insert(0, str(TOOLS))
+    from career_snapshot import guard_reseed
+    if not guard_reseed(TOOLS.parent / "build" / "master.db", action="world rebuild"):
+        return 2
     start = 0
     if "--from" in sys.argv:
         want = sys.argv[sys.argv.index("--from") + 1]

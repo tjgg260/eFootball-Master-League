@@ -207,6 +207,13 @@ def main() -> int:
     ap.add_argument("--db", default=str(REPO / "build" / "master.db"))
     args = ap.parse_args()
 
+    # ── career-save guard (roadmap item 7): a reseed DELETES the current career's id ranges.
+    # guard_reseed refuses while a played career exists, unless ML_CONFIRM_RESEED=1 — and then
+    # it snapshots the career to /careers first. Must stay ahead of any DB write.
+    from career_snapshot import guard_reseed
+    if not guard_reseed(Path(args.db), action="career reseed"):
+        return 2
+
     if not CATALOG.exists():
         sys.exit("build/catalog.json missing — run tools/build_catalog.py first")
     catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
