@@ -90,7 +90,7 @@ public sealed partial class Session
         {
             PostInbox("Board", "Final warning",
                 $"Chairman {Chairman()} has seen enough. Without an immediate upturn in results, " +
-                "the board will make a change.");
+                "the board will make a change.", NextFixture()?.Matchday);
         }
     }
 
@@ -107,7 +107,8 @@ public sealed partial class Session
         PostInbox("Board", "You have been dismissed",
             $"Chairman {Chairman()} thanks you for your service, but results have fallen short of the " +
             $"board's expectations and {CurrentTeamName} will seek a new direction. " +
-            "Offers from other clubs — if any come — will arrive here. See the Board screen.");
+            "Offers from other clubs — if any come — will arrive here. See the Board screen.",
+            NextFixture()?.Matchday);
         GenerateJobOffers(desperation: true);
     }
 
@@ -161,11 +162,12 @@ public sealed partial class Session
         var rng = new SeededRandom((SeasonId * 8929 + Reputation * 31 + (desperation ? 7 : 0)) ^ WorldSeed);
         var picked = eligible.OrderBy(_ => rng.Next(1_000_000)).Take(2).Select(x => x.Team.Id).ToList();
         SetMeta("job_offers", string.Join(",", picked));
+        var stampMd = NextFixture()?.Matchday;
         foreach (var tid in picked)
         {
             PostInbox("Board", $"Job offer: {TeamName(tid)}",
                 $"{TeamName(tid)} have approached you about their vacant manager's position. " +
-                "Accept from the Board screen — your current post ends the moment you do.");
+                "Accept from the Board screen — your current post ends the moment you do.", stampMd);
         }
     }
 
@@ -198,7 +200,7 @@ public sealed partial class Session
         SetMeta("board_threat_streak", "0");
         PostInbox("Board", $"Welcome to {TeamName(teamId)}",
             $"The {TeamName(teamId)} board welcomes you as their new manager. " +
-            "The squad, the academy and the training ground are yours.");
+            "The squad, the academy and the training ground are yours.", NextFixture()?.Matchday);
     }
 
     /// <summary>Season rollover: the big rep swing, a fresh board slate, and new suitors.</summary>

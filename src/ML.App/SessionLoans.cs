@@ -49,7 +49,7 @@ public sealed partial class Session
         PostInbox("Transfer", $"Loan: {p.Name} → {host.Name}",
             $"{p.Name} joins {host.Name} on loan until the end of the season. Regular minutes " +
             "there will do his development good; a recall opens with the January window.",
-            playerId: playerId);
+            NextFixture()?.Matchday, playerId: playerId);
         _teamCache = null;
         _shooterPool = null;
         return $"{p.Name} loaned to {host.Name} until June — recall from January.";
@@ -74,7 +74,7 @@ public sealed partial class Session
         RecordLoan(playerId, owner.Value.TeamId, CurrentTeamId, "in");
         PostInbox("Transfer", $"Loan signing: {name}",
             $"{name} ({rating}) arrives from {owner.Value.Name} until June — £{fee:N0} loan fee. " +
-            "He goes back in the summer.", playerId: playerId);
+            "He goes back in the summer.", NextFixture()?.Matchday, playerId: playerId);
         _teamCache = null;
         _shooterPool = null;
         SyncBudget();
@@ -111,6 +111,7 @@ public sealed partial class Session
         {
             while (r.Read()) rows.Add((r.GetInt64(0), r.GetInt32(1), r.GetInt32(2), r.GetString(3)));
         }
+        var stampMd = NextFixture()?.Matchday;
         foreach (var (pid, owner, host, dir) in rows)
         {
             var at = dir == "out" ? host : CurrentTeamId;
@@ -127,7 +128,7 @@ public sealed partial class Session
                 {
                     PostInbox("Player", $"{PlayerNameOf(pid)} returns from loan sharper",
                         "A season of real minutes has done him good — he comes back a better player.",
-                        playerId: pid);
+                        stampMd, playerId: pid);
                 }
             }
             DeleteLoan(pid);

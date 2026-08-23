@@ -16,7 +16,11 @@
                 Width="220" MaxDropDownHeight="380">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:ScoutTargetClub">
-            <TextBlock Text="{Binding Name}"/>
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <!-- fixed-size slot keeps names aligned when a club has no crest art -->
+              <Image Source="{Binding Crest}" Width="16" Height="16" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+            </StackPanel>
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
@@ -37,7 +41,17 @@
           <DataTemplate x:DataType="vm:ScoutReportRow">
             <Border Classes="ml-card" Margin="0,0,0,10">
               <StackPanel>
-                <TextBlock Text="{Binding Title}" Classes="ml-h2"/>
+                <!-- the dossier's subject gets its face: club crest, or the player's portrait
+                     when one resolves (no portrait -> just the name, no placeholder) -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Image Source="{Binding Crest}" Width="20" Height="20"
+                         VerticalAlignment="Center" IsVisible="{Binding HasCrest}"/>
+                  <Border Width="24" Height="24" CornerRadius="12" ClipToBounds="True"
+                          VerticalAlignment="Center" IsVisible="{Binding HasFace}">
+                    <Image Source="{Binding Face}" Stretch="UniformToFill"/>
+                  </Border>
+                  <TextBlock Text="{Binding Title}" Classes="ml-h2" VerticalAlignment="Center"/>
+                </StackPanel>
                 <TextBlock Text="{Binding Body}" Classes="ml-body"
                            TextWrapping="Wrap" Margin="0,6,0,0" LineHeight="19"/>
               </StackPanel>

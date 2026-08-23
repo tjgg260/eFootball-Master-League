@@ -11,6 +11,8 @@
                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
       <Button Grid.Column="2" Content="▶" Command="{Binding NextMonthCommand}" Classes="ml-secondary"/>
     </Grid>
+    <TextBlock DockPanel.Dock="Top" Classes="ml-muted" Margin="0,0,0,8" TextWrapping="Wrap"
+               Text="Green — your fixtures · grey — played · amber — season events (windows, intake, breaks) · blue ring — next matchday"/>
     <UniformGrid DockPanel.Dock="Top" Columns="7" Margin="0,0,0,4">
       <TextBlock Text="Mon" Classes="ml-muted" HorizontalAlignment="Center"/>
       <TextBlock Text="Tue" Classes="ml-muted" HorizontalAlignment="Center"/>
@@ -26,7 +28,8 @@
       </ItemsControl.ItemsPanel>
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:DayCell">
-          <Border Background="{Binding Bg}" CornerRadius="6" Margin="2" Padding="6" MinHeight="76">
+          <Border Background="{Binding Bg}" BorderBrush="{Binding Ring}" BorderThickness="2"
+                  CornerRadius="6" Margin="2" Padding="6" MinHeight="76">
             <StackPanel Spacing="2">
               <DockPanel>
                 <Image DockPanel.Dock="Right" Source="{Binding Crest}" Width="16" Height="16"/>
@@ -34,7 +37,8 @@
               </DockPanel>
               <TextBlock Text="{Binding Line1}" Classes="ml-muted" Foreground="{Binding Fg}"
                          TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2"/>
-              <TextBlock Text="{Binding Line2}" Foreground="#9FE6B4" FontSize="11" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding Line2}" Foreground="{StaticResource MlSuccessText}"
+                         FontSize="11" FontWeight="SemiBold"/>
             </StackPanel>
           </Border>
         </DataTemplate>

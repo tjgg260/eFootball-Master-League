@@ -355,16 +355,17 @@ public sealed partial class Session
         // Continental football for the top two — a flag and a headline, honestly no fixtures.
         var europe = top.Take(2).Select(r => r.TeamId.Value).ToList();
         SetMeta($"continental_{SeasonId + 1}", string.Join(",", europe));
+        var md = NextFixture()?.Matchday;
         if (europe.Contains(CurrentTeamId))
         {
             PostInbox("Board", "CONTINENTAL FOOTBALL!",
                 "A top-two finish takes the club into continental competition next season — " +
-                "prestige, and the board's expectations rise with it.");
+                "prestige, and the board's expectations rise with it.", md);
         }
         if (mine > 0)
         {
             PostInbox("Board", "Season prize money",
-                $"£{mine:N0} banked from league position and cup runs. It's in the budget.");
+                $"£{mine:N0} banked from league position and cup runs. It's in the budget.", md);
         }
     }
 
@@ -443,7 +444,7 @@ public sealed partial class Session
         if (lines.Count > 0)
         {
             PostInbox("Media", $"End-of-season awards {SeasonYear}/{(SeasonYear + 1) % 100:00}",
-                string.Join("\n", lines), playerId: potsFace);
+                string.Join("\n", lines), NextFixture()?.Matchday, playerId: potsFace);
         }
     }
 
@@ -570,7 +571,8 @@ public sealed partial class Session
         if (bigMoves.Count > 0)
         {
             PostInbox("Transfer", "Around the market",
-                "The moves everyone is talking about:\n" + string.Join("\n", bigMoves.Take(5)));
+                "The moves everyone is talking about:\n" + string.Join("\n", bigMoves.Take(5)),
+                NextFixture()?.Matchday);
         }
     }
 
@@ -604,6 +606,7 @@ public sealed partial class Session
     {
         var rng = new SeededRandom((SeasonId * 30011 + 13) ^ WorldSeed);
         var notable = new List<string>();
+        var stampMd = NextFixture()?.Matchday;   // one lookup for the whole pass
         foreach (var club in Repo.Teams().Where(t => t.LeagueId is TopFlight or Division2).ToList())
         {
             foreach (var p in Repo.SquadPlayers(club.Id).ToList())
@@ -621,7 +624,7 @@ public sealed partial class Session
                     {
                         PostInbox("Player", $"{p.Name} retires",
                             $"At {age}, {p.Name} has hung up his boots. The dressing room gives " +
-                            "him a send-off; his shirt number is free.", playerId: p.Id);
+                            "him a send-off; his shirt number is free.", stampMd, playerId: p.Id);
                     }
                     else if ((p.OverallRating ?? 0) >= 78)
                     {
@@ -633,7 +636,8 @@ public sealed partial class Session
         if (notable.Count > 0)
         {
             PostInbox("Media", "End of an era",
-                "Calling time on their careers this summer: " + string.Join(", ", notable.Take(6)) + ".");
+                "Calling time on their careers this summer: " + string.Join(", ", notable.Take(6)) + ".",
+                stampMd);
         }
 
         // YOUR out-of-contract players walk (the mails warned you from matchday 30).
@@ -661,7 +665,7 @@ public sealed partial class Session
         {
             PostInbox("Transfer", "Departures on free transfers",
                 $"Out of contract and gone: {string.Join(", ", gone)}. Renew earlier from the " +
-                "Squad screen if you want to keep the next batch.");
+                "Squad screen if you want to keep the next batch.", stampMd);
         }
     }
 
@@ -780,7 +784,8 @@ public sealed partial class Session
                     : "A thin year — don't expect first-teamers from this class.";
                 PostInbox("Player", $"Youth intake day — {report.Count} join the academy",
                     $"{verdict}\n\n{string.Join("\n", report)}\n\nPotential stars are the youth " +
-                    "coach's read of each lad's ceiling — development chases it from now on.");
+                    "coach's read of each lad's ceiling — development chases it from now on.",
+                    NextFixture()?.Matchday);
             }
 
             // CPU clubs bring their best prospect through when the squad runs short.
@@ -1505,7 +1510,8 @@ public sealed partial class Session
         _shooterPool = null;
         var from = seller is { } s2 ? $" from {s2.Name}" : "";
         PostInbox("Transfer", $"Signed: {name}",
-            $"{name} ({rating}) joins{from} for £{bid:N0}. Squad number {shirt}.", playerId: playerId);
+            $"{name} ({rating}) joins{from} for £{bid:N0}. Squad number {shirt}.",
+            NextFixture()?.Matchday, playerId: playerId);
         return $"Signed {name} ({rating}){from} for £{bid:N0} — squad number {shirt}.";
     }
 
@@ -1602,7 +1608,8 @@ public sealed partial class Session
                 pay.ExecuteNonQuery();
                 SetMeta($"sellon_{playerId}", "");
                 PostInbox("Transfer", $"Sell-on clause honoured: {offer.PlayerName}",
-                    $"{TeamName(holder)}'s {pct}% sell-on takes £{cut:N0} out of the £{offer.Fee:N0} fee.");
+                    $"{TeamName(holder)}'s {pct}% sell-on takes £{cut:N0} out of the £{offer.Fee:N0} fee.",
+                    NextFixture()?.Matchday);
             }
         }
         Finances.ReceiveTransferFee(net);
@@ -1629,7 +1636,8 @@ public sealed partial class Session
         _teamCache = null;
         _shooterPool = null;
         PostInbox("Transfer", $"Sold: {offer.PlayerName}",
-            $"{offer.PlayerName} joins {offer.FromTeam} for £{offer.Fee:N0}. The fee is in the balance.");
+            $"{offer.PlayerName} joins {offer.FromTeam} for £{offer.Fee:N0}. The fee is in the balance.",
+            NextFixture()?.Matchday);
         return $"Sold {offer.PlayerName} to {offer.FromTeam} for £{offer.Fee:N0}.";
     }
 

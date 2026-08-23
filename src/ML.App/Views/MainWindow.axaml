@@ -11,6 +11,18 @@
         Title="Master League" Width="1640" Height="820"
         Background="{DynamicResource ThemeBgBrush}" TransparencyLevelHint="Mica">
 
+  <Window.Styles>
+    <!-- monochrome nav glyphs: muted at rest, heading-white on the active row -->
+    <Style Selector="Button.nav TextBlock.navIcon">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+    </Style>
+    <Style Selector="Button.nav.active TextBlock.navIcon">
+      <Setter Property="Foreground" Value="{StaticResource MlTextHeading}"/>
+    </Style>
+  </Window.Styles>
+
   <Window.DataTemplates>
     <!-- page templates: VM -> view -->
     <DataTemplate DataType="vm:DashboardViewModel">
@@ -92,36 +104,69 @@
             <Image Source="{Binding Crest}" Width="40" Height="40" IsVisible="{Binding HasCrest}"
                    VerticalAlignment="Center"/>
             <StackPanel VerticalAlignment="Center">
-              <TextBlock Text="{Binding ClubName}" Foreground="White" FontSize="16"
-                         FontWeight="Bold" TextWrapping="Wrap" MaxWidth="140"/>
-              <TextBlock Text="{Binding LeagueName}" Foreground="#7C8698" FontSize="11"/>
+              <TextBlock Classes="ml-h2" Text="{Binding ClubName}"
+                         TextWrapping="Wrap" MaxWidth="140"/>
+              <TextBlock Classes="ml-muted" Text="{Binding LeagueName}"/>
             </StackPanel>
           </StackPanel>
-          <TextBlock Text="{Binding DateLine}" Foreground="#9FE6B4" FontSize="11"
-                     FontWeight="SemiBold" Margin="0,10,0,0"/>
-          <TextBlock Text="{Binding UnreadBadge}" Foreground="#E0A526" FontSize="11"
-                     Margin="0,4,0,0" IsVisible="{Binding HasUnread}"/>
-          <TextBlock Text="{Binding ActionsLine}" Foreground="#F08A8A" FontSize="11"
-                     FontWeight="SemiBold" Margin="0,3,0,0" IsVisible="{Binding HasActions}"
-                     TextWrapping="Wrap"/>
-          <Button Content="Continue →" Command="{Binding ContinueToOfficeCommand}"
-                  Background="{DynamicResource ThemeAccentBrush}" Foreground="White"
-                  FontWeight="Bold" Padding="0,8" CornerRadius="8" FontSize="12"
+          <TextBlock Classes="ml-label" Text="{Binding DateLine}"
+                     Foreground="{StaticResource MlSuccessText}" Margin="0,10,0,0"/>
+          <TextBlock Classes="ml-label" Text="{Binding ActionsLine}"
+                     Foreground="{StaticResource MlDanger}" Margin="0,4,0,0"
+                     IsVisible="{Binding HasActions}" TextWrapping="Wrap"/>
+          <Button Classes="ml-primary ml-go" Content="Continue →"
+                  Command="{Binding ContinueToOfficeCommand}"
+                  FontSize="12" FontWeight="Bold"
                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                   Margin="0,12,0,0"/>
         </StackPanel>
+
+        <!-- Settings pinned at the foot, outside the scroll -->
+        <Button DockPanel.Dock="Bottom" Classes="nav" Margin="0,8,0,0"
+                Classes.active="{Binding SettingsItem.IsActive}"
+                HorizontalContentAlignment="Stretch"
+                Command="{Binding NavigateCommand}"
+                CommandParameter="{Binding SettingsItem}">
+          <Grid ColumnDefinitions="18,*">
+            <TextBlock Grid.Column="0" Classes="navIcon" Text="{Binding SettingsItem.Icon}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" Text="{Binding SettingsItem.Title}"
+                       Margin="12,0,0,0" VerticalAlignment="Center"/>
+          </Grid>
+        </Button>
+
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <ItemsControl ItemsSource="{Binding Pages}">
+          <ItemsControl ItemsSource="{Binding Sections}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:NavItem">
-                <Button Classes="nav" Classes.active="{Binding IsActive}"
-                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NavigateCommand}"
-                        CommandParameter="{Binding}">
-                  <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock Text="{Binding Icon}" FontSize="16"/>
-                    <TextBlock Text="{Binding Title}"/>
-                  </StackPanel>
-                </Button>
+              <DataTemplate x:DataType="vm:NavSection">
+                <StackPanel Margin="0,0,0,10">
+                  <TextBlock Classes="ml-label" Text="{Binding Header}"
+                             LetterSpacing="1" Margin="14,0,0,4"/>
+                  <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:NavItem">
+                        <Button Classes="nav" Classes.active="{Binding IsActive}"
+                                HorizontalContentAlignment="Stretch"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NavigateCommand}"
+                                CommandParameter="{Binding}">
+                          <Grid ColumnDefinitions="18,*,Auto">
+                            <TextBlock Grid.Column="0" Classes="navIcon" Text="{Binding Icon}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Title}"
+                                       Margin="12,0,0,0" VerticalAlignment="Center"/>
+                            <!-- unread pill (News) -->
+                            <Border Grid.Column="2" Background="{StaticResource MlPrimary}"
+                                    CornerRadius="9" Padding="6,1" MinWidth="18"
+                                    IsVisible="{Binding HasBadge}" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding BadgeCount}" FontSize="10" FontWeight="Bold"
+                                         Foreground="White" HorizontalAlignment="Center"/>
+                            </Border>
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

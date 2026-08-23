@@ -23,10 +23,27 @@
     <TextBlock DockPanel.Dock="Top" Classes="ml-muted" Margin="0,0,0,8"
                Text="No standings yet — the table fills in once the season kicks off."
                IsVisible="{Binding !Rows.Count}"/>
+    <!-- zone legend, in words (counts come from league data, so lines only name real zones) -->
+    <TextBlock DockPanel.Dock="Bottom" Classes="ml-muted" Margin="4,8,0,0"
+               Text="{Binding LegendText}" IsVisible="{Binding LegendVisible}"/>
     <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="True"
             GridLinesVisibility="Horizontal" HeadersVisibility="Column">
     <DataGrid.Columns>
-      <DataGridTextColumn Header="#" Binding="{Binding Pos}" Width="44"/>
+      <!-- zone band + position + movement vs last matchday -->
+      <DataGridTemplateColumn Header="#" Width="64">
+        <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate x:DataType="vm:TableEntry">
+            <Grid ColumnDefinitions="8,26,Auto">
+              <Border Width="3" HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                      CornerRadius="1.5" Background="{Binding ZoneBrush}"/>
+              <TextBlock Grid.Column="1" Text="{Binding Pos}" VerticalAlignment="Center"
+                         Foreground="{Binding PosBrush}" FontWeight="{Binding Weight}"/>
+              <TextBlock Grid.Column="2" Text="{Binding Movement}" FontSize="9"
+                         VerticalAlignment="Center" Foreground="{Binding MovementBrush}"/>
+            </Grid>
+          </DataTemplate>
+        </DataGridTemplateColumn.CellTemplate>
+      </DataGridTemplateColumn>
       <DataGridTemplateColumn Header="" Width="40">
         <DataGridTemplateColumn.CellTemplate>
           <DataTemplate x:DataType="vm:TableEntry">
@@ -40,7 +57,15 @@
           </DataTemplate>
         </DataGridTemplateColumn.CellTemplate>
       </DataGridTemplateColumn>
-      <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="*"/>
+      <!-- your row reads bold; everyone else stays regular -->
+      <DataGridTemplateColumn Header="Team" Width="*">
+        <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate x:DataType="vm:TableEntry">
+            <TextBlock Text="{Binding Team}" VerticalAlignment="Center" Margin="12,0,0,0"
+                       FontWeight="{Binding Weight}"/>
+          </DataTemplate>
+        </DataGridTemplateColumn.CellTemplate>
+      </DataGridTemplateColumn>
       <DataGridTextColumn Header="P" Binding="{Binding P}" Width="46"/>
       <DataGridTextColumn Header="W" Binding="{Binding W}" Width="46"/>
       <DataGridTextColumn Header="D" Binding="{Binding D}" Width="46"/>

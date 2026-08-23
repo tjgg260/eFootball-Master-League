@@ -4,12 +4,42 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace ML.App.ViewModels;
 
+/// <summary>
+/// Stable, name-keyed avatar brush for people who will never have portrait art (staff,
+/// chairmen). Deterministic hash so the same person keeps the same colour across runs.
+/// Belongs in Visuals eventually; lives here until that file is open for edits.
+/// </summary>
+internal static class NameAvatar
+{
+    private static readonly string[] Palette =
+    {
+        "#3E7CB1", "#7A5FA0", "#2E8F83", "#B3703C",
+        "#4E8A3C", "#A8556E", "#5C6DBF", "#8A7A2E",
+    };
+
+    public static Avalonia.Media.IBrush For(string name)
+    {
+        var h = 0;
+        foreach (var c in name) h = (h * 31 + c) & 0x7FFFFFFF;
+        return Visuals.Brush(Palette[h % Palette.Length]);
+    }
+}
+
 public sealed record BackroomCard(
     long Id, string Role, string Name, string AgeLine, string Stars, string Wage,
-    string StyleLine, string AttrLine, bool Filled);
+    string StyleLine, string AttrLine, bool Filled)
+{
+    // No staff photos exist anywhere in the pipeline — the initials avatar IS the treatment.
+    public Avalonia.Media.IBrush AvatarBrush => NameAvatar.For(Name);
+    public string Mark => Filled ? Visuals.Initials(Name) : "";
+}
 
 public sealed record StaffMarketRow(
-    long Id, string Name, string Age, string Stars, string KeyAttrs, string Style, string Wage);
+    long Id, string Name, string Age, string Stars, string KeyAttrs, string Style, string Wage)
+{
+    public Avalonia.Media.IBrush AvatarBrush => NameAvatar.For(Name);
+    public string Mark => Visuals.Initials(Name);
+}
 
 public sealed partial class DelegationToggle : ObservableObject
 {

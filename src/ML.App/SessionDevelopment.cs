@@ -151,7 +151,7 @@ public sealed partial class Session
                 notes.Add($"{t.Player} has mastered {t.Skill}!");
                 PostInbox("Player", $"{t.Player} learned {t.Skill}",
                     $"The coaches confirm it: {t.Skill} is now part of {t.Player}'s game.",
-                    playerId: t.PlayerId);
+                    NextFixture()?.Matchday, playerId: t.PlayerId);
             }
             else
             {

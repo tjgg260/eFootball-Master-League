@@ -95,6 +95,16 @@
           </DataGridTemplateColumn>
           <DataGridTextColumn Header="#" Binding="{Binding Number}" Width="48"/>
           <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+          <!-- slim nationality-flag column (empty header, 34px) -->
+          <DataGridTemplateColumn Header="" Width="34">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:SquadEntry">
+                <Image Source="{Binding Flag}" Height="13" Stretch="Uniform"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding HasFlag}" ToolTip.Tip="{Binding Nationality}"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="66"/>
           <DataGridTextColumn Header="Playstyle" Binding="{Binding Playstyle}" Width="120"/>
           <DataGridTemplateColumn Header="Morale" Width="86">
@@ -160,11 +170,16 @@
               <StackPanel Grid.Column="0" Spacing="6">
                 <TextBlock Text="{Binding Selected.Name}" FontSize="22" FontWeight="Bold"
                            Foreground="{DynamicResource MlTextHeading}" TextWrapping="Wrap"/>
-                <Border Background="{Binding Selected.MarkBrush}" CornerRadius="4" Padding="8,2"
-                        HorizontalAlignment="Left">
-                  <TextBlock Text="{Binding Selected.Position}" FontSize="11" FontWeight="Bold"
-                             Foreground="White"/>
-                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
+                  <Border Background="{Binding Selected.MarkBrush}" CornerRadius="4" Padding="8,2">
+                    <TextBlock Text="{Binding Selected.Position}" FontSize="11" FontWeight="Bold"
+                               Foreground="White"/>
+                  </Border>
+                  <!-- nationality flag (16px, dvx flag pack via flag_map.json) -->
+                  <Image Source="{Binding Selected.Flag}" Height="16" Stretch="Uniform"
+                         IsVisible="{Binding Selected.HasFlag}" VerticalAlignment="Center"
+                         ToolTip.Tip="{Binding Selected.Nationality}"/>
+                </StackPanel>
               </StackPanel>
               <TextBlock Grid.Column="1" Text="{Binding Selected.Grade}" FontSize="34" FontWeight="Bold"
                          Foreground="{Binding Selected.RatingBrush}" Margin="10,0,0,0"

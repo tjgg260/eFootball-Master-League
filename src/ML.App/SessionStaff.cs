@@ -303,7 +303,8 @@ public sealed partial class Session
         PostInbox("Club", $"New {p.Role.ToLowerInvariant()}: {p.Name}",
             $"{p.Name} ({p.Age}) joins the backroom — {new string('★', p.Stars)} · " +
             $"{p.StyleLine} · £{p.Wage:N0}/week." +
-            (incumbent is not null ? $" {incumbent.Name} leaves to make room." : ""));
+            (incumbent is not null ? $" {incumbent.Name} leaves to make room." : ""),
+            NextFixture()?.Matchday);
         return $"{p.Name} hired as {p.Role} — £{p.Wage:N0}/week joins the bill.";
     }
 
@@ -324,7 +325,7 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$id", staffId);
         cmd.ExecuteNonQuery();
         if (!quiet) PostInbox("Club", $"{name} released",
-            $"{name} leaves the club and returns to the market.");
+            $"{name} leaves the club and returns to the market.", NextFixture()?.Matchday);
         return $"{name} released.";
     }
 

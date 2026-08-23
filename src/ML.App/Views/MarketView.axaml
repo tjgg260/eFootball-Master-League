@@ -108,7 +108,19 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Club" Binding="{Binding Club}" Width="150"/>
+            <DataGridTemplateColumn Header="Club" Width="170">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:MarketPlayer">
+                  <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                              Margin="4,0">
+                    <Image Source="{Binding ClubCrest}" Width="18" Height="18" Stretch="Uniform"
+                           IsVisible="{Binding HasClubCrest}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Club}" Classes="ml-body" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
           </DataGrid.Columns>
         </DataGrid>
         <!-- empty states (P6): a filtered-out world and a broken query are different problems -->
@@ -153,7 +165,12 @@
               <TextBlock Text="{Binding ProfileBio}" Classes="ml-muted" FontSize="12"/>
               <TextBlock Text="{Binding ProfileValueLine}" Classes="ml-body"
                          Foreground="#9FE6B4" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding ProfileClub}" Classes="ml-body" FontSize="12"/>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Image Source="{Binding ProfileCrest}" Width="16" Height="16" Stretch="Uniform"
+                       IsVisible="{Binding ProfileHasCrest}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ProfileClub}" Classes="ml-body" FontSize="12"
+                           VerticalAlignment="Center"/>
+              </StackPanel>
               <TextBlock Text="{Binding ProfileKnowledgeLine}" Classes="ml-muted" FontSize="12"
                          Foreground="{StaticResource MlWarn}"/>
               <TextBlock Text="{Binding ProfileCoachLine}" Classes="ml-muted" TextWrapping="Wrap"/>

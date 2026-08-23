@@ -8,7 +8,7 @@ namespace ML.App.ViewModels;
 
 // --- Board (board confidence, job security, manager career + job offers) ----------
 
-public sealed record JobOfferRow(int TeamId, string Line);
+public sealed record JobOfferRow(int TeamId, string Line, Avalonia.Media.Imaging.Bitmap? Crest);
 
 public sealed record ObjectiveLine(string Icon, string Description, string Progress, string Importance);
 
@@ -92,9 +92,14 @@ public sealed partial class BoardViewModel : PageViewModel
         }
         catch { FanTrendVisible = false; }
 
+        // The chairman gets a face on his own screen — the generated initials avatar (no
+        // photo art exists for board members; same treatment as staff).
+        try { ChairmanName = s.Chairman(); } catch { ChairmanName = ""; }
+
         Offers = new ObservableCollection<JobOfferRow>(
             s.JobOffers().Select(o => new JobOfferRow(o.TeamId,
-                $"{o.Club}  ·  {o.League}  ·  {ML.Core.Development.AttributeKnowledge.Grade(o.SquadRating)} squad")));
+                $"{o.Club}  ·  {o.League}  ·  {ML.Core.Development.AttributeKnowledge.Grade(o.SquadRating)} squad",
+                Visuals.LoadBitmap(s.TeamLogoPath(o.TeamId)))));
         RefreshFacilities();
         OffersNote = Offers.Count > 0
             ? "Accepting ends your current post immediately and reopens the app at your new club."
@@ -118,6 +123,11 @@ public sealed partial class BoardViewModel : PageViewModel
     public string CareerLine { get; }
     public ObservableCollection<JobOfferRow> Offers { get; }
     public string OffersNote { get; }
+    public string ChairmanName { get; } = "";
+    public string ChairmanLine => $"Chairman · {ChairmanName}";
+    public string ChairmanMark => Visuals.Initials(ChairmanName);
+    public Avalonia.Media.IBrush ChairmanBrush => NameAvatar.For(ChairmanName);
+    public bool HasChairman => ChairmanName.Length > 0;
     public ObservableCollection<ObjectiveLine> Objectives { get; } = new();
     public string FanLine { get; } = "";
     public Avalonia.Points EloPoints { get; } = new();

@@ -12,7 +12,7 @@ namespace ML.App.ViewModels;
 public sealed record MarketPlayer(
     long Id, string Name, string Position, int Overall, int? Age, long ValueRaw, string Club,
     string? PortraitPath = null, int? SkinTone = null, int Knowledge = 100,
-    string? TransferStatus = null)
+    string? TransferStatus = null, string? ClubLogoPath = null)
 {
     public string StatusLabel => TransferStatus switch
     {
@@ -39,6 +39,9 @@ public sealed record MarketPlayer(
     public bool HasPortrait => Portrait is not null;
     public string Mark => Visuals.PlayerMark(Name);
     public Avalonia.Media.IBrush FaceBrush => Visuals.SkinBrush(SkinTone);
+    // Lazily evaluated at bind time — i.e. on the UI thread, never in the background query.
+    public Avalonia.Media.Imaging.Bitmap? ClubCrest => Visuals.LoadBitmap(ClubLogoPath);
+    public bool HasClubCrest => ClubCrest is not null;
 }
 
 public sealed record OfferRow(long PlayerId, string Line);
@@ -245,7 +248,9 @@ public sealed partial class MarketViewModel : PageViewModel
             "(SELECT t.name FROM squad_members s JOIN teams t ON t.id=s.team_id " +
             " WHERE s.player_id=p.id LIMIT 1), " +
             "(SELECT transfer_status FROM player_market m WHERE m.player_id=p.id), " +
-            "COALESCE((SELECT value FROM player_market m WHERE m.player_id=p.id), 0) " +
+            "COALESCE((SELECT value FROM player_market m WHERE m.player_id=p.id), 0), " +
+            "(SELECT t.logo_path FROM squad_members s JOIN teams t ON t.id=s.team_id " +
+            " WHERE s.player_id=p.id LIMIT 1) " +
             "FROM players p " +
             (where.Count > 0 ? "WHERE " + string.Join(" AND ", where) + " " : "") +
             "ORDER BY " + order + " LIMIT 4000";
@@ -255,7 +260,7 @@ public sealed partial class MarketViewModel : PageViewModel
         if (q.MinRating > 40) cmd.Parameters.AddWithValue("$min", q.MinRating);
 
         var found = new List<(long Id, string Name, string Pos, int Rating, int? Age, long Value,
-            string Club, string? Portrait, int? Skin, string? Status)>();
+            string Club, string? Portrait, int? Skin, string? Status, string? ClubLogo)>();
         using (var r = cmd.ExecuteReader())
         {
             while (r.Read())
@@ -272,11 +277,12 @@ public sealed partial class MarketViewModel : PageViewModel
                 if (value > q.Cap) continue;
                 found.Add((id, r.GetString(1), r.GetString(2), rating, age, value, club,
                     r.IsDBNull(5) ? null : r.GetString(5), r.IsDBNull(6) ? null : r.GetInt32(6),
-                    r.IsDBNull(8) ? null : r.GetString(8)));
+                    r.IsDBNull(8) ? null : r.GetString(8),
+                    r.IsDBNull(10) ? null : r.GetString(10)));
             }
         }
         IEnumerable<(long Id, string Name, string Pos, int Rating, int? Age, long Value,
-            string Club, string? Portrait, int? Skin, string? Status)> sorted = q.SortBy switch
+            string Club, string? Portrait, int? Skin, string? Status, string? ClubLogo)> sorted = q.SortBy switch
         {
             "Youngest" => found.OrderBy(p => p.Age ?? 99).ThenByDescending(p => p.Rating),
             "Name A–Z" => found.OrderBy(p => p.Name),
@@ -288,7 +294,7 @@ public sealed partial class MarketViewModel : PageViewModel
         foreach (var p in sorted.Take(300))
         {
             result.Add(new MarketPlayer(p.Id, p.Name, p.Pos, p.Rating, p.Age, p.Value, p.Club,
-                p.Portrait, p.Skin, 100, p.Status));
+                p.Portrait, p.Skin, 100, p.Status, p.ClubLogo));
         }
         return result;
     }
@@ -312,6 +318,8 @@ public sealed partial class MarketViewModel : PageViewModel
     [ObservableProperty] private string _profileBio = "";
     [ObservableProperty] private string _profileValueLine = "";
     [ObservableProperty] private string _profileClub = "";
+    [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _profileCrest;
+    [ObservableProperty] private bool _profileHasCrest;
     [ObservableProperty] private string _profilePlaystyle = "";
     [ObservableProperty] private Points _profileRadar = new();
     [ObservableProperty] private IReadOnlyList<AbilityEntry> _profileAbilities = Array.Empty<AbilityEntry>();
@@ -329,6 +337,8 @@ public sealed partial class MarketViewModel : PageViewModel
             ProfileRatingBrush = value.RatingBrush;
             ProfileFill = Visuals.PositionBrush(value.Position);
             ProfileClub = value.Club;
+            ProfileCrest = value.ClubCrest;         // UI thread — selection change
+            ProfileHasCrest = ProfileCrest is not null;
             ProfileValueLine = $"Market value {value.Value}" +
                                (value.HasStatus ? $"   ·   {value.StatusLabel}" : "");
 

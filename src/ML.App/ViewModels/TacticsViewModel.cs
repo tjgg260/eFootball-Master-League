@@ -697,6 +697,12 @@ public sealed partial class TacticsViewModel : PageViewModel
     [NotifyPropertyChangedFor(nameof(HasOpponentLabel))]
     private string _opponentLabel = "";
     public bool HasOpponentLabel => OpponentLabel.Length > 0;
+
+    /// <summary>The next opponent's crest for the right-half header (null = no art, image hidden).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOpponentLogo))]
+    private Avalonia.Media.Imaging.Bitmap? _opponentLogo;
+    public bool HasOpponentLogo => OpponentLogo is not null;
     [ObservableProperty] private string _opponentShape = "";
 
     /// <summary>Why the right half is dark ("" when the opponent preview is populated).</summary>
@@ -715,6 +721,7 @@ public sealed partial class TacticsViewModel : PageViewModel
         Opponents.Clear();
         OpponentNote = "";
         OpponentShape = "";
+        OpponentLogo = null;
         try
         {
             var next = _s.NextFixture();
@@ -726,6 +733,7 @@ public sealed partial class TacticsViewModel : PageViewModel
             }
             var oppId = next.HomeTeamId == _s.CurrentTeamId ? next.AwayTeamId : next.HomeTeamId;
             OpponentLabel = _s.TeamName(oppId);
+            try { OpponentLogo = Visuals.LoadBitmap(_s.TeamLogoPath(oppId)); } catch { OpponentLogo = null; }
             // The AI manager fields its strongest position-correct XI + a tactic to beat you.
             try { _s.PickBestXiAndTactic(oppId, _s.CurrentTeamId); } catch { /* preview is additive */ }
             var fid = _s.Repo.TeamTactics(oppId).FirstOrDefault(t => t.Phase == 0)?.FormationId;

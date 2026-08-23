@@ -9,7 +9,7 @@ namespace ML.App.ViewModels;
 // --- Calendar (FM-style month grid over real season dates) ------------------------
 
 public sealed record DayCell(string DayText, string Line1, string Line2, IBrush Bg, IBrush Fg,
-    Avalonia.Media.Imaging.Bitmap? Crest = null);
+    Avalonia.Media.Imaging.Bitmap? Crest = null, IBrush? Ring = null);
 
 /// <summary>The season on a real calendar: league Saturdays, cup Wednesdays, Aug → May.</summary>
 public sealed partial class CalendarViewModel : PageViewModel
@@ -18,6 +18,11 @@ public sealed partial class CalendarViewModel : PageViewModel
     private static readonly IBrush DayBg = Visuals.Brush("#1B222C");
     private static readonly IBrush MineBg = Visuals.Brush("#14351F");
     private static readonly IBrush PlayedBg = Visuals.Brush("#232B36");
+    // Event-only days (window opens/closes, intake, breaks): a subtle MlWarn-tinted ground,
+    // distinct from the green fixture tint.
+    private static readonly IBrush EventBg = Visuals.Brush("#2C2410");
+    // The next-fixture ring — MlPrimary (#2D7DD2 in the token sheet).
+    private static readonly IBrush FocusRing = Visuals.Brush("#2D7DD2");
     private static readonly IBrush Fg = Visuals.Brush("#C7CEDA");
     private static readonly IBrush Dim = Visuals.Brush("#5E6774");
 
@@ -25,6 +30,7 @@ public sealed partial class CalendarViewModel : PageViewModel
     private readonly Dictionary<DateOnly, (string L1, string L2, bool Mine, bool Played,
         Avalonia.Media.Imaging.Bitmap? Crest)> _days = new();
     private DateOnly _month;
+    private DateOnly? _focus;   // the next fixture's date — ringed in the grid
 
     public CalendarViewModel(Session s)
     {
@@ -72,6 +78,7 @@ public sealed partial class CalendarViewModel : PageViewModel
 
         var next = s.NextFixture();
         var focus = next is not null ? s.DateOfFixture(next) : SeasonCalendar.FirstLeagueSaturday(s.SeasonYear);
+        _focus = next is not null ? focus : null;
         _month = new DateOnly(focus.Year, focus.Month, 1);
         BuildMonth();
     }
@@ -102,14 +109,16 @@ public sealed partial class CalendarViewModel : PageViewModel
                 Cells.Add(new DayCell("", "", "", Blank, Dim));
                 continue;
             }
+            var ring = d == _focus ? FocusRing : null;
             if (_days.TryGetValue(d, out var e))
             {
-                Cells.Add(new DayCell(d.Day.ToString(), e.L1, e.L2,
-                    e.Played ? PlayedBg : MineBg, Fg, e.Crest));
+                // Fixture days keep the green/grey tints; event-only days get the amber tint.
+                var bg = e.Played ? PlayedBg : e.Mine ? MineBg : EventBg;
+                Cells.Add(new DayCell(d.Day.ToString(), e.L1, e.L2, bg, Fg, e.Crest, ring));
             }
             else
             {
-                Cells.Add(new DayCell(d.Day.ToString(), "", "", DayBg, Dim));
+                Cells.Add(new DayCell(d.Day.ToString(), "", "", DayBg, Dim, null, ring));
             }
         }
     }

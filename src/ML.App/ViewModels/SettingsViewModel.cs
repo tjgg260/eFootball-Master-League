@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -45,7 +46,11 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         _s.SetSetting("ui_skin", value);
         Theme.Apply(value, _s.PrimaryColor);
-        Status = $"Skin: {value}. (Full per-screen theming lands with the design-polish pass.)";
+        // Honest scope: the skin swaps the Theme* dynamic brushes (window ground, nav rail,
+        // nav hover, accent). Panels/cards/text now sit on the fixed Ml* palette.
+        Status = $"Skin: {value} — recolours the window ground, nav and accent. " +
+                 "Panels and text keep the app palette.";
+        FlashSaved();
     }
 
     [ObservableProperty] private bool _fmAttributes;
@@ -56,6 +61,7 @@ public sealed partial class SettingsViewModel : PageViewModel
             ? "FM view ON — colour bands (red poor · amber average · green good · blue elite), " +
               "unscouted players hidden. Reports stay on."
             : "FM view OFF — raw attribute numbers everywhere.";
+        FlashSaved();
     }
 
     // ---------------------------------------------------------------- realism
@@ -88,6 +94,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         _s.SetSetting("auto_boot", value ? "1" : "0");
         MatchLauncher.AutoBoot = value;
         Status = value ? "Play Match boots eFootball automatically." : "Play Match compiles only — you boot the game.";
+        FlashSaved();
     }
 
     [ObservableProperty] private bool _realNames;
@@ -107,25 +114,42 @@ public sealed partial class SettingsViewModel : PageViewModel
         Status = value
             ? "Matches record via OBS (needs OBS running with WebSocket server on). Analyse from the Dashboard."
             : "Match recording off.";
+        FlashSaved();
     }
 
-    [ObservableProperty] private string _obsUrl;
-    [ObservableProperty] private string _obsPassword;
-    [ObservableProperty] private string _ffmpegPath;
-    [ObservableProperty] private string _videoDir;
+    // Text fields autosave as they change (a tiny settings write per edit) — no Save button,
+    // no "did I save?" ambiguity. The quiet "Saved." flash confirms each persist.
 
-    [RelayCommand]
-    private void SaveVideoSettings()
+    [ObservableProperty] private string _obsUrl;
+    partial void OnObsUrlChanged(string value)
     {
-        _s.SetSetting("obs_url", ObsUrl.Trim());
-        _s.SetSetting("obs_password", ObsPassword.Trim());
-        _s.SetSetting("ffmpeg_path", FfmpegPath.Trim());
-        _s.SetSetting("video_dir", VideoDir.Trim());
-        VideoCapture.ObsUrl = ObsUrl.Trim();
-        VideoCapture.ObsPassword = ObsPassword.Trim();
-        VideoCapture.FfmpegPath = FfmpegPath.Trim();
-        VideoCapture.VideoDir = VideoDir.Trim();
-        Status = "Match video settings saved.";
+        _s.SetSetting("obs_url", value.Trim());
+        VideoCapture.ObsUrl = value.Trim();
+        FlashSaved();
+    }
+
+    [ObservableProperty] private string _obsPassword;
+    partial void OnObsPasswordChanged(string value)
+    {
+        _s.SetSetting("obs_password", value.Trim());
+        VideoCapture.ObsPassword = value.Trim();
+        FlashSaved();
+    }
+
+    [ObservableProperty] private string _ffmpegPath;
+    partial void OnFfmpegPathChanged(string value)
+    {
+        _s.SetSetting("ffmpeg_path", value.Trim());
+        VideoCapture.FfmpegPath = value.Trim();
+        FlashSaved();
+    }
+
+    [ObservableProperty] private string _videoDir;
+    partial void OnVideoDirChanged(string value)
+    {
+        _s.SetSetting("video_dir", value.Trim());
+        VideoCapture.VideoDir = value.Trim();
+        FlashSaved();
     }
 
     [ObservableProperty] private string _managerName;
@@ -134,21 +158,25 @@ public sealed partial class SettingsViewModel : PageViewModel
         if (string.IsNullOrWhiteSpace(value)) return;
         _s.ManagerName = value;
         Status = $"You are {_s.ManagerName} — the press and the board use this name.";
+        FlashSaved();
     }
 
     // ---------------------------------------------------------------- OCR paths
 
     [ObservableProperty] private string _steamRoot;
-    [ObservableProperty] private string _steamUserId;
-
-    [RelayCommand]
-    private void SaveSettings()
+    partial void OnSteamRootChanged(string value)
     {
-        _s.SetSetting("steam_root", SteamRoot.Trim());
-        _s.SetSetting("steam_user_id", SteamUserId.Trim());
-        ScoreImport.SteamRoot = SteamRoot.Trim();
-        ScoreImport.SteamUserId = SteamUserId.Trim();
-        Status = "Saved — the next 📷 Import uses these paths.";
+        _s.SetSetting("steam_root", value.Trim());
+        ScoreImport.SteamRoot = value.Trim();
+        FlashSaved();
+    }
+
+    [ObservableProperty] private string _steamUserId;
+    partial void OnSteamUserIdChanged(string value)
+    {
+        _s.SetSetting("steam_user_id", value.Trim());
+        ScoreImport.SteamUserId = value.Trim();
+        FlashSaved();
     }
 
     // ---------------------------------------------------------------- data care-taking
@@ -206,12 +234,30 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     [ObservableProperty]
     private string _status =
-        "Everything here saves instantly to the career. Skins recolour the app chrome; realism " +
-        "options bite from the next matchday.";
+        "Everything on this page saves the moment you change it — no Save buttons. Skins " +
+        "recolour the window chrome; realism options bite from the next matchday.";
+
+    /// <summary>The quiet confirmation: "Saved." appears for a couple of seconds per persist.</summary>
+    [ObservableProperty] private string _savedFlash = "";
+
+    private DispatcherTimer? _flashTimer;
+
+    private void FlashSaved()
+    {
+        SavedFlash = "Saved.";
+        if (_flashTimer is null)
+        {
+            _flashTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.2) };
+            _flashTimer.Tick += (_, _) => { SavedFlash = ""; _flashTimer!.Stop(); };
+        }
+        _flashTimer.Stop();
+        _flashTimer.Start();
+    }
 
     private void Save(string key, string value, string what)
     {
         _s.SetSetting(key, value);
         Status = $"{what}  →  {value}.";
+        FlashSaved();
     }
 }

@@ -123,7 +123,8 @@ public sealed partial class Session
             case ClubNegotiation.Verdict.WalkedAway:
                 SetNegotiationState(playerId, "dead");
                 PostInbox("Transfer", $"Talks collapse: {n.PlayerName}",
-                    $"{n.SellerName} have ended negotiations. They will not reopen them this window.");
+                    $"{n.SellerName} have ended negotiations. They will not reopen them this window.",
+                    NextFixture()?.Matchday);
                 return ($"{n.SellerName} walk away — talks are over this window.", false, true);
             default:
                 using (var upd = Db.Connection.CreateCommand())
@@ -229,7 +230,7 @@ public sealed partial class Session
                     (instalments ? " (half now, half next summer)" : "");
         PostInbox("Transfer", $"Signed: {name}",
             $"{name} ({rating}) joins for {terms} on £{weeklyWage:N0}/wk × {years} years. Shirt {shirt}.",
-            playerId: playerId);
+            NextFixture()?.Matchday, playerId: playerId);
         return $"DONE DEAL — {name} signs for {terms}, £{weeklyWage:N0}/wk × {years} yrs. Shirt {shirt}.";
     }
 
@@ -257,7 +258,8 @@ public sealed partial class Session
         SetMeta($"sellon_{playerId}", "");
         var name = PlayerNameOf(playerId);
         PostInbox("Transfer", $"Sell-on clause pays out: {name}",
-            $"{name} has moved again — your {pct}% sell-on banks £{cut:N0}.", playerId: playerId);
+            $"{name} has moved again — your {pct}% sell-on banks £{cut:N0}.",
+            NextFixture()?.Matchday, playerId: playerId);
     }
 
     // ------------------------------------------------------------------ deadline day (P5)

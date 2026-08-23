@@ -10,14 +10,17 @@ namespace ML.App.ViewModels;
 
 public sealed record NewsEntry(
     long Id, string Icon, string Category, string Subject, string Body, string When, bool Unread,
-    Bitmap? Portrait, bool IsBreaking)
+    Bitmap? Portrait, bool IsBreaking, Bitmap? Crest = null)
 {
     public IBrush SubjectBrush => Visuals.Brush(Unread ? "#FFFFFF" : "#8A93A2");
     public IBrush BodyBrush => Visuals.Brush(Unread ? "#C7CEDA" : "#5E6774");
     public FontWeight SubjectWeight => Unread ? FontWeight.Bold : FontWeight.Normal;
     public bool ShowNew => Unread;
     public bool HasPortrait => Portrait is not null;
-    public IBrush AccentBrush => Visuals.Brush(Category switch
+    /// <summary>Club crest in the avatar slot — only when there is no player face.</summary>
+    public bool HasCrest => Crest is not null && Portrait is null;
+    // Breaking news takes the danger bar regardless of category.
+    public IBrush AccentBrush => Visuals.Brush(IsBreaking ? "#D64545" : Category switch
     {
         "Transfer" => "#F5C044",
         "Board" => "#5AA7F0",
@@ -58,9 +61,16 @@ public sealed partial class InboxViewModel : PageViewModel
                 }
                 catch { /* faceless news is fine */ }
             }
+            // No face? A club crest fills the avatar slot when the message carries a team.
+            Bitmap? crest = null;
+            if (face is null && m.TeamId is { } tid)
+            {
+                try { crest = Visuals.LoadBitmap(_s.TeamLogoPath(tid)); }
+                catch { /* crestless news is fine too */ }
+            }
             Rows.Add(new NewsEntry(m.Id, IconFor(m.Category), m.Category, m.Subject, m.Body,
                 m.Matchday is { } md and > 0 ? $"MD{md}" : "", !m.IsRead, face,
-                m.Subject.Contains("DEADLINE DAY")));
+                m.Subject.Contains("DEADLINE DAY"), crest));
         }
         Header = $"News — {Rows.Count(r => r.Unread)} unread";
         Empty = Rows.Count == 0;

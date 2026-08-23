@@ -2,7 +2,7 @@ using System.Text;
 
 namespace ML.App;
 
-public sealed record ScoutJob(long Id, string Kind, int TargetId, int ReadyMd, bool Done);
+public sealed record ScoutJob(long Id, string Kind, long TargetId, int ReadyMd, bool Done);
 
 /// <summary>
 /// Scouting (FM phase A2): assign your scout to a club or a player; the report is ready two
@@ -20,7 +20,7 @@ public sealed partial class Session
                           "WHERE done=0 ORDER BY id DESC LIMIT 1";
         using var r = cmd.ExecuteReader();
         return r.Read()
-            ? new ScoutJob(r.GetInt64(0), r.GetString(1), r.GetInt32(2), r.GetInt32(3), false)
+            ? new ScoutJob(r.GetInt64(0), r.GetString(1), r.GetInt64(2), r.GetInt32(3), false)
             : null;
     }
 
@@ -34,13 +34,13 @@ public sealed partial class Session
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
-            jobs.Add(new ScoutJob(r.GetInt64(0), r.GetString(1), r.GetInt32(2), r.GetInt32(3), true));
+            jobs.Add(new ScoutJob(r.GetInt64(0), r.GetString(1), r.GetInt64(2), r.GetInt32(3), true));
         }
         return jobs;
     }
 
     /// <summary>Send the scout out. One mission at a time; needs a scout on the books.</summary>
-    public string StartScoutJob(string kind, int targetId, string targetName)
+    public string StartScoutJob(string kind, long targetId, string targetName)
     {
         if (StaffFor("Scout") is null)
         {
@@ -65,13 +65,13 @@ public sealed partial class Session
     /// <summary>Mature due missions (called from the matchday pass) — report lands in the inbox.</summary>
     public void CheckScoutJobs(int matchday)
     {
-        var due = new List<(long Id, string Kind, int Target)>();
+        var due = new List<(long Id, string Kind, long Target)>();
         using (var q = Db.Connection.CreateCommand())
         {
             q.CommandText = "SELECT id, kind, target_id FROM scout_jobs WHERE done=0 AND ready_md<=$m";
             q.Parameters.AddWithValue("$m", matchday);
             using var r = q.ExecuteReader();
-            while (r.Read()) due.Add((r.GetInt64(0), r.GetString(1), r.GetInt32(2)));
+            while (r.Read()) due.Add((r.GetInt64(0), r.GetString(1), r.GetInt64(2)));
         }
         foreach (var (id, kind, target) in due)
         {
@@ -81,7 +81,7 @@ public sealed partial class Session
                 u.Parameters.AddWithValue("$id", id);
                 u.ExecuteNonQuery();
             }
-            var name = kind == "club" ? TeamName(target) : PlayerNameOf(target);
+            var name = kind == "club" ? TeamName((int)target) : PlayerNameOf(target);
             // Scouting IS knowledge (P5): a player dossier reveals him; a club dossier
             // part-reveals their whole squad.
             try
@@ -92,7 +92,7 @@ public sealed partial class Session
                 }
                 else
                 {
-                    foreach (var m in Repo.Squad(target)) BumpKnowledge(m.PlayerId, 60);
+                    foreach (var m in Repo.Squad((int)target)) BumpKnowledge(m.PlayerId, 60);
                 }
             }
             catch { /* knowledge is additive */ }

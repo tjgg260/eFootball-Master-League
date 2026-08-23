@@ -7,7 +7,11 @@
   <ScrollViewer>
   <StackPanel Margin="28" Spacing="14" MaxWidth="1100" HorizontalAlignment="Left">
     <TextBlock Classes="ml-h1" Text="Settings"/>
-    <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"/>
+    <TextBlock Text="{Binding Status}" Foreground="{StaticResource MlSuccessText}" FontSize="12"
+               TextWrapping="Wrap"/>
+    <TextBlock Text="{Binding SavedFlash}" Foreground="{StaticResource MlSuccessText}" FontSize="12"
+               FontWeight="SemiBold"
+               IsVisible="{Binding SavedFlash, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
     <WrapPanel>
 
     <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
@@ -60,10 +64,8 @@
       <TextBox Text="{Binding FfmpegPath}" Watermark="ffmpeg"/>
       <TextBlock Classes="ml-muted" Text="Recordings folder (OBS output)"/>
       <TextBox Text="{Binding VideoDir}" Watermark="C:\Users\you\Videos"/>
-      <Button Classes="ml-secondary" Content="Save video settings"
-              Command="{Binding SaveVideoSettingsCommand}" FontSize="12"/>
       <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                 Text="Play Match starts the recording; 🎞 Analyse recording on the Dashboard stops it and mines goals, minutes and scorer suggestions. Setup: docs/video-capture.md."/>
+                 Text="Saves as you type. Play Match starts the recording; 🎞 Analyse recording on the Dashboard stops it and mines goals, minutes and scorer suggestions. Setup: docs/video-capture.md."/>
     </StackPanel></Border>
 
     <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
@@ -72,9 +74,8 @@
       <TextBox Text="{Binding SteamRoot}"/>
       <TextBlock Classes="ml-muted" Text="Steam user id"/>
       <TextBox Text="{Binding SteamUserId}"/>
-      <Button Classes="ml-primary" Content="Save paths" Command="{Binding SaveSettingsCommand}"/>
       <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                 Text="While the Office is open, every new F12 screenshot in this folder is OCR'd automatically and lands as a pre-filled score for you to confirm."/>
+                 Text="Paths save as you type — the next 📷 Import uses them. While the Office is open, every new F12 screenshot in this folder is OCR'd automatically and lands as a pre-filled score for you to confirm."/>
     </StackPanel></Border>
 
     <Border Classes="ml-panel" Width="700" Margin="0,0,14,14"><StackPanel Spacing="8">
@@ -117,8 +118,8 @@
         <Button Classes="ml-secondary" Content="Reset to defaults"
                 Command="{Binding ResetOcrRegionsCommand}" FontSize="12"/>
       </StackPanel>
-      <TextBlock Text="{Binding OcrResultLine}" Foreground="#9FE6B4" FontSize="12"
-                 TextWrapping="Wrap" FontFamily="Consolas"/>
+      <TextBlock Text="{Binding OcrResultLine}" Foreground="{StaticResource MlSuccessText}"
+                 FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"/>
       <StackPanel Orientation="Horizontal" Spacing="14">
         <StackPanel Spacing="4">
           <TextBlock Classes="ml-muted" Text="Home score crop"/>

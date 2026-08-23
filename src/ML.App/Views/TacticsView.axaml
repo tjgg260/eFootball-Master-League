@@ -354,6 +354,13 @@
 
     <!-- ── centre: the horizontal Game Plan pitch, your half left, opponent right ── -->
     <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Spacing="6">
+      <!-- Viewbox: the pitch scales UP on big windows (audit: fixed 724px on 2560px displays)
+           but never shrinks below its natural size (MinWidth = natural width, so small windows
+           behave exactly as before). Drag stays correct: the code-behind reads pointer positions
+           via e.GetPosition(Pitch), which transforms through the Viewbox's scale into the
+           Canvas's own 720x430 space — coordinates are scale-independent by construction. -->
+      <Viewbox Stretch="Uniform" MinWidth="724" MaxWidth="1100" MaxHeight="660"
+               HorizontalAlignment="Center">
       <Panel>
         <Border Width="724" Height="434" CornerRadius="8" ClipToBounds="True"
                 BorderBrush="#1F7A3D" BorderThickness="2">
@@ -495,10 +502,17 @@
                        Foreground="White" FontSize="16" FontWeight="Bold" IsHitTestVisible="False"/>
             <TextBlock Canvas.Left="640" Canvas.Top="400" Text="{Binding OpponentShape}"
                        Foreground="White" FontSize="16" FontWeight="Bold" IsHitTestVisible="False"/>
-            <Border Canvas.Left="540" Canvas.Top="6" Background="#B0000000" CornerRadius="4"
-                    Padding="8,3" IsHitTestVisible="False" IsVisible="{Binding HasOpponentLabel}">
-              <TextBlock Text="{Binding OpponentLabel}" Foreground="{StaticResource MlTextBody}"
-                         FontSize="11"/>
+            <!-- opponent half header: crest + name, anchored to the top-right corner -->
+            <Border Canvas.Right="8" Canvas.Top="6" Background="#B0000000" CornerRadius="4"
+                    Padding="8,3" MaxWidth="280" IsHitTestVisible="False"
+                    IsVisible="{Binding HasOpponentLabel}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Image Source="{Binding OpponentLogo}" Width="18" Height="18"
+                       IsVisible="{Binding HasOpponentLogo}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding OpponentLabel}" Foreground="{StaticResource MlTextBody}"
+                           FontSize="11" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
             </Border>
 
             <!-- why the right half is dark (no fixture / no dossier) — never a silent void -->
@@ -511,6 +525,7 @@
           </Canvas>
         </Border>
       </Panel>
+      </Viewbox>
 
       <!-- the game's caption line under the pitch -->
       <TextBlock Text="{Binding PitchCaption}" Classes="ml-muted"

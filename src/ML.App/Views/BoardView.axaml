@@ -8,6 +8,16 @@
   <StackPanel Margin="28" Spacing="16">
     <TextBlock Text="The Board" Classes="ml-h1"/>
     <TextBlock Text="{Binding Summary}" Classes="ml-body"/>
+    <!-- the man behind the demands: initials avatar (no photo art exists for board members) -->
+    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,-6,0,0"
+                IsVisible="{Binding HasChairman}">
+      <Border Width="26" Height="26" CornerRadius="13" Background="{Binding ChairmanBrush}">
+        <TextBlock Text="{Binding ChairmanMark}" Foreground="White" FontSize="10"
+                   FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Border>
+      <TextBlock Classes="ml-muted" FontSize="12" Text="{Binding ChairmanLine}"
+                 VerticalAlignment="Center"/>
+    </StackPanel>
     <WrapPanel>
       <Border Classes="ml-card" Width="210" Margin="0,0,14,14"><StackPanel>
         <TextBlock Classes="ml-label" Text="EXPECTATION"/>
@@ -90,10 +100,13 @@
       <ItemsControl ItemsSource="{Binding Offers}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:JobOfferRow">
-            <Grid ColumnDefinitions="*,Auto" Margin="0,3">
-              <TextBlock Text="{Binding Line}" Classes="ml-body"
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,3">
+              <!-- fixed-size slot keeps rows aligned even when a club has no crest art -->
+              <Image Source="{Binding Crest}" Width="22" Height="22" Margin="0,0,8,0"
+                     VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="1" Text="{Binding Line}" Classes="ml-body"
                          VerticalAlignment="Center"/>
-              <Button Grid.Column="1" Content="Accept job" Classes="ml-primary ml-go"
+              <Button Grid.Column="2" Content="Accept job" Classes="ml-primary ml-go"
                       Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).AcceptOfferCommand}"
                       CommandParameter="{Binding}"/>
             </Grid>

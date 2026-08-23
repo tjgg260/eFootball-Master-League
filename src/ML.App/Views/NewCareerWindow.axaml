@@ -1,166 +1,266 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ML.App.ViewModels"
-        xmlns:app="using:ML.App"
         x:Class="ML.App.Views.NewCareerWindow"
         x:DataType="vm:NewCareerViewModel"
-        Title="New Career" Width="1040" Height="720"
-        Background="#0A0E14" WindowStartupLocation="CenterScreen">
+        Title="New Career" Width="1200" Height="780"
+        Background="{StaticResource MlSurfaceApp}" WindowStartupLocation="CenterScreen">
 
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Panel>
+    <!-- content column: capped at ~1200 so a 2560px monitor doesn't stretch cards absurdly -->
+    <Grid RowDefinitions="Auto,*,Auto" MaxWidth="1200">
 
-    <!-- header: back + title + breadcrumb -->
-    <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="24,20,24,8">
-      <Button Grid.Column="0" Content="‹ Back" Command="{Binding BackCommand}"
-              IsVisible="{Binding CanGoBack}" Margin="0,0,14,0" VerticalAlignment="Center"
-              Background="#1A222C" Foreground="#C7CEDA" Padding="14,8" CornerRadius="8" FontSize="13"/>
-      <StackPanel Grid.Column="1">
-        <TextBlock Text="Choose your world" FontSize="26" FontWeight="Bold" Foreground="White"/>
-        <TextBlock Text="{Binding Breadcrumb}" Foreground="#6EA8FF" FontSize="13" Margin="0,3,0,0"/>
-      </StackPanel>
-    </Grid>
+      <!-- header: back + title + breadcrumb -->
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="24,20,24,8">
+        <Button Grid.Column="0" Classes="ml-secondary" Content="‹ Back" Command="{Binding BackCommand}"
+                IsVisible="{Binding CanGoBack}" Margin="0,0,14,0" VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="1">
+          <TextBlock Classes="ml-h1" Text="Choose your world"/>
+          <TextBlock Classes="ml-body" Foreground="{StaticResource MlLink}"
+                     Text="{Binding Breadcrumb}" Margin="0,3,0,0"/>
+        </StackPanel>
+      </Grid>
 
-    <!-- stage content -->
-    <Border Grid.Row="1" Margin="24,6,24,6" CornerRadius="14"
-            Background="#0E141C">
-      <Border.Styles>
-        <Style Selector="Button.tile">
-          <Setter Property="Background" Value="Transparent"/>
-          <Setter Property="BorderThickness" Value="0"/>
-          <Setter Property="Padding" Value="0"/>
-          <Setter Property="Margin" Value="9"/>
-        </Style>
-      </Border.Styles>
+      <!-- stage content -->
+      <Border Grid.Row="1" Classes="ml-panel" Margin="24,6,24,6" Padding="8">
+        <Border.Styles>
+          <Style Selector="Button.tile">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="9"/>
+          </Style>
+        </Border.Styles>
 
-      <Panel>
-        <!-- STAGE 1: continents (stylized world) -->
-        <ScrollViewer IsVisible="{Binding ShowContinents}">
-          <StackPanel Margin="18" Spacing="6">
-            <TextBlock Text="🌍  Pick a continent" Foreground="#8A93A2" FontSize="14"
-                       HorizontalAlignment="Center" Margin="0,4,0,10"/>
-            <ItemsControl ItemsSource="{Binding Continents}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Columns="3" HorizontalAlignment="Center"/></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
+        <Panel>
+          <!-- STAGE 1: continents (stylized world) -->
+          <ScrollViewer IsVisible="{Binding ShowContinents}">
+            <StackPanel Margin="18" Spacing="6">
+              <TextBlock Classes="ml-body" Foreground="{StaticResource MlTextMuted}"
+                         Text="🌍  Pick a continent" HorizontalAlignment="Center" Margin="0,4,0,10"/>
+              <ItemsControl ItemsSource="{Binding Continents}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Columns="3" HorizontalAlignment="Center"/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ContinentOption">
+                    <Button Classes="tile"
+                            Command="{Binding $parent[Window].((vm:NewCareerViewModel)DataContext).PickContinentCommand}"
+                            CommandParameter="{Binding}">
+                      <Border Width="278" Height="164" CornerRadius="{StaticResource MlRadiusCard}"
+                              Background="{StaticResource MlSurfaceCard}"
+                              BorderBrush="{Binding Accent}" BorderThickness="2">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="7">
+                          <TextBlock Text="{Binding Glyph}" FontSize="48" HorizontalAlignment="Center"/>
+                          <TextBlock Classes="ml-h2" Text="{Binding Name}" HorizontalAlignment="Center"/>
+                          <TextBlock Classes="ml-muted" Text="{Binding Summary}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                      </Border>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- STAGE 2: countries -->
+          <ScrollViewer IsVisible="{Binding ShowCountries}">
+            <ItemsControl ItemsSource="{Binding Countries}" Margin="14">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:ContinentOption">
+                <DataTemplate x:DataType="vm:CountryOption">
                   <Button Classes="tile"
-                          Command="{Binding $parent[Window].((vm:NewCareerViewModel)DataContext).PickContinentCommand}"
+                          Command="{Binding $parent[Window].((vm:NewCareerViewModel)DataContext).PickCountryCommand}"
                           CommandParameter="{Binding}">
-                    <Border Width="278" Height="164" CornerRadius="16" Background="#161E28"
-                            BorderBrush="{Binding Accent}" BorderThickness="2">
-                      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="7">
-                        <TextBlock Text="{Binding Glyph}" FontSize="48" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="21" FontWeight="Bold"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="{Binding Summary}" Foreground="#8A93A2" FontSize="12"
-                                   HorizontalAlignment="Center"/>
-                      </StackPanel>
+                    <Border Width="196" Height="92" CornerRadius="{StaticResource MlRadiusCard}"
+                            Background="{StaticResource MlSurfaceCard}"
+                            BorderBrush="{StaticResource MlBorder}" BorderThickness="1" Padding="12">
+                      <Grid ColumnDefinitions="Auto,*">
+                        <Border Grid.Column="0" Width="44" Height="32" CornerRadius="4" ClipToBounds="True"
+                                VerticalAlignment="Center" Margin="0,0,10,0"
+                                IsVisible="{Binding HasFlag}">
+                          <Image Source="{Binding Flag}" Stretch="Uniform"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                          <TextBlock Classes="ml-body" FontWeight="SemiBold"
+                                     Foreground="{StaticResource MlTextHeading}"
+                                     Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Classes="ml-muted" Text="{Binding Summary}"/>
+                        </StackPanel>
+                      </Grid>
                     </Border>
                   </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-          </StackPanel>
-        </ScrollViewer>
+          </ScrollViewer>
 
-        <!-- STAGE 2: countries -->
-        <ScrollViewer IsVisible="{Binding ShowCountries}">
-          <ItemsControl ItemsSource="{Binding Countries}" Margin="14">
-            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:CountryOption">
-                <Button Classes="tile"
-                        Command="{Binding $parent[Window].((vm:NewCareerViewModel)DataContext).PickCountryCommand}"
-                        CommandParameter="{Binding}">
-                  <Border Width="196" Height="92" CornerRadius="12" Background="#161E28"
-                          BorderBrush="#26313F" BorderThickness="1" Padding="12">
-                    <Grid ColumnDefinitions="Auto,*">
-                      <Border Grid.Column="0" Width="44" Height="32" CornerRadius="4" ClipToBounds="True"
-                              VerticalAlignment="Center" Margin="0,0,10,0"
-                              IsVisible="{Binding HasFlag}">
-                        <Image Source="{Binding Flag}" Stretch="Uniform"/>
-                      </Border>
-                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
-                        <TextBlock Text="{Binding Name}" Foreground="White" FontSize="15" FontWeight="SemiBold"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding Summary}" Foreground="#8A93A2" FontSize="11"/>
+          <!-- STAGE 3: leagues -->
+          <ScrollViewer IsVisible="{Binding ShowLeagues}">
+            <ItemsControl ItemsSource="{Binding Leagues}" Margin="16">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LeagueOption">
+                  <Button Classes="tile" HorizontalAlignment="Stretch"
+                          Command="{Binding $parent[Window].((vm:NewCareerViewModel)DataContext).PickLeagueCommand}"
+                          CommandParameter="{Binding}">
+                    <Border Classes="ml-card" Padding="16,12" Margin="0,0,0,2">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Panel Grid.Column="0" Width="40" Height="40" VerticalAlignment="Center"
+                               Margin="0,0,14,0">
+                          <Border Width="34" Height="34" CornerRadius="17"
+                                  Background="{StaticResource MlSurfaceControl}">
+                            <TextBlock Text="{Binding Tier}" Foreground="{StaticResource MlLink}"
+                                       FontWeight="Bold" FontSize="15"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Border>
+                          <Image Source="{Binding CompLogoBitmap}" Stretch="Uniform"
+                                 IsVisible="{Binding HasCompLogo}"/>
+                        </Panel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                                    VerticalAlignment="Center">
+                          <TextBlock Classes="ml-h2" Text="{Binding Display}" VerticalAlignment="Center"/>
+                          <Border Classes="ml-chip" IsVisible="{Binding IsSimulated}">
+                            <TextBlock Text="simulated"/>
+                          </Border>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Classes="ml-muted" Text="{Binding Summary}"
+                                   VerticalAlignment="Center"/>
+                      </Grid>
+                    </Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <!-- STAGE 4: teams + club preview -->
+          <Grid IsVisible="{Binding ShowTeams}" ColumnDefinitions="*,320">
+            <ScrollViewer Grid.Column="0">
+              <ListBox ItemsSource="{Binding Teams}" SelectedItem="{Binding SelectedTeam}"
+                       Background="Transparent" BorderThickness="0" Margin="10">
+                <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CareerTeamOption">
+                    <Border Width="152" Height="128" Margin="6" CornerRadius="{StaticResource MlRadiusCard}"
+                            Background="{StaticResource MlSurfaceCard}">
+                      <StackPanel Margin="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Panel Width="58" Height="58" HorizontalAlignment="Center">
+                          <Border CornerRadius="29" Background="{Binding BadgeBrush}">
+                            <TextBlock Text="{Binding Badge}" Foreground="White" FontWeight="Bold"
+                                       FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                          </Border>
+                          <Image Source="{Binding Logo}" Width="58" Height="58"/>
+                        </Panel>
+                        <TextBlock Classes="ml-muted" Foreground="{StaticResource MlTextHeading}"
+                                   FontSize="12" Text="{Binding Name}" TextAlignment="Center"
+                                   TextWrapping="Wrap" MaxLines="2" Margin="0,6,0,0"/>
                       </StackPanel>
-                    </Grid>
-                  </Border>
-                </Button>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </ScrollViewer>
 
-        <!-- STAGE 3: leagues -->
-        <ScrollViewer IsVisible="{Binding ShowLeagues}">
-          <ItemsControl ItemsSource="{Binding Leagues}" Margin="16" >
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="app:CatalogLeague">
-                <Button Classes="tile" HorizontalAlignment="Stretch"
-                        Command="{Binding $parent[Window].((vm:NewCareerViewModel)DataContext).PickLeagueCommand}"
-                        CommandParameter="{Binding}">
-                  <Border CornerRadius="12" Background="#161E28" BorderBrush="#26313F" BorderThickness="1"
-                          Padding="16,12" Margin="0,0,0,2">
-                    <Grid ColumnDefinitions="Auto,*,Auto">
-                      <Panel Grid.Column="0" Width="40" Height="40" VerticalAlignment="Center"
-                             Margin="0,0,14,0">
-                        <Border Width="34" Height="34" CornerRadius="17" Background="#22304A">
-                          <TextBlock Text="{Binding Tier}" Foreground="#8FB6FF" FontWeight="Bold" FontSize="15"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <Image Source="{Binding CompLogoBitmap}" Stretch="Uniform"
-                               IsVisible="{Binding HasCompLogo}"/>
-                      </Panel>
-                      <TextBlock Grid.Column="1" Text="{Binding Display}" Foreground="White" FontSize="17"
-                                 FontWeight="SemiBold" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="2" Text="{Binding Summary}" Foreground="#8A93A2" FontSize="12"
-                                 VerticalAlignment="Center"/>
-                    </Grid>
-                  </Border>
-                </Button>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
-
-        <!-- STAGE 4: teams -->
-        <ScrollViewer IsVisible="{Binding ShowTeams}">
-          <ListBox ItemsSource="{Binding Teams}" SelectedItem="{Binding SelectedTeam}"
-                   Background="Transparent" BorderThickness="0" Margin="10">
-            <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="vm:CareerTeamOption">
-                <Border Width="152" Height="128" Margin="6" CornerRadius="12" Background="#161E28">
-                  <StackPanel Margin="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Panel Width="58" Height="58" HorizontalAlignment="Center">
-                      <Border CornerRadius="29" Background="{Binding BadgeBrush}">
-                        <TextBlock Text="{Binding Badge}" Foreground="White" FontWeight="Bold"
-                                   FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <!-- preview: selection made visible before commitment -->
+            <Panel Grid.Column="1" Margin="8,10,10,10">
+              <TextBlock Classes="ml-empty" Text="Click a club to preview it before you commit."
+                         IsVisible="{Binding !HasTeamPreview}" MaxWidth="220"/>
+              <Border Classes="ml-card" Padding="18" VerticalAlignment="Top"
+                      IsVisible="{Binding HasTeamPreview}">
+                <StackPanel Spacing="12">
+                  <Panel Width="96" Height="96" HorizontalAlignment="Center">
+                    <Border CornerRadius="48" Background="{Binding SelectedTeam.BadgeBrush}">
+                      <TextBlock Text="{Binding SelectedTeam.Badge}" Foreground="White" FontWeight="Bold"
+                                 FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Image Source="{Binding SelectedTeam.Logo}" Width="96" Height="96"/>
+                  </Panel>
+                  <TextBlock Classes="ml-h2" Text="{Binding SelectedTeam.Name}"
+                             TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"/>
+                  <TextBlock Classes="ml-muted" Text="{Binding SelectedLeagueDisplay}"
+                             HorizontalAlignment="Center"/>
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="24">
+                    <StackPanel Spacing="4" IsVisible="{Binding SelectedTeam.HasSquad}">
+                      <TextBlock Classes="ml-label" Text="SQUAD" HorizontalAlignment="Center"/>
+                      <TextBlock Classes="ml-body" Text="{Binding SelectedTeam.SquadLabel}"
+                                 HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                      <TextBlock Classes="ml-label" Text="CALIBRE" HorizontalAlignment="Center"/>
+                      <Border Classes="ml-grade">
+                        <TextBlock Text="{Binding SelectedTeam.Grade}"
+                                   Foreground="{StaticResource MlTextHeading}"/>
                       </Border>
-                      <Image Source="{Binding Logo}" Width="58" Height="58"/>
-                    </Panel>
-                    <TextBlock Text="{Binding Name}" Foreground="White" FontSize="12" TextAlignment="Center"
-                               TextWrapping="Wrap" MaxLines="2" Margin="0,6,0,0"/>
+                    </StackPanel>
                   </StackPanel>
-                </Border>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </ScrollViewer>
-      </Panel>
-    </Border>
+                  <Button Classes="ml-primary" Content="Confirm club ✓"
+                          Command="{Binding ConfirmTeamCommand}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                          Margin="0,6,0,0"/>
+                </StackPanel>
+              </Border>
+            </Panel>
+          </Grid>
 
-    <!-- footer: status + start -->
-    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="24,8,24,20">
-      <TextBlock Grid.Column="0" Text="{Binding Status}" Foreground="#9FE6B4" FontSize="13"
-                 VerticalAlignment="Center" TextWrapping="Wrap"/>
-      <Button Grid.Column="1" Content="Start Career  ▶" Command="{Binding StartCareerCommand}"
-              IsEnabled="{Binding !Busy}" IsVisible="{Binding ShowTeams}"
-              FontSize="16" FontWeight="Bold" Padding="26,14"
-              Background="#1F9D4D" Foreground="White" CornerRadius="8"/>
+          <!-- STAGE 5: manager identity -->
+          <Panel IsVisible="{Binding ShowManager}">
+            <StackPanel MaxWidth="440" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14">
+              <Border Classes="ml-card" Padding="22">
+                <StackPanel Spacing="14">
+                  <TextBlock Classes="ml-h2" Text="Who's taking the job?"/>
+                  <TextBlock Classes="ml-muted" Text="{Binding ManagerBlurb}" TextWrapping="Wrap"/>
+                  <StackPanel Spacing="5">
+                    <TextBlock Classes="ml-label" Text="MANAGER NAME"/>
+                    <TextBox Text="{Binding ManagerNameInput}" Watermark="The Gaffer"/>
+                  </StackPanel>
+                  <StackPanel Spacing="5">
+                    <TextBlock Classes="ml-label" Text="NATIONALITY (OPTIONAL)"/>
+                    <TextBox Text="{Binding ManagerNationality}" Watermark="e.g. Scotland"/>
+                  </StackPanel>
+                  <Button Classes="ml-primary ml-go" Content="Start Career  ▶"
+                          Command="{Binding StartCareerCommand}"
+                          FontSize="15" Padding="20,12" Margin="0,4,0,0"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+                </StackPanel>
+              </Border>
+
+              <!-- build failure: plain words first, the raw tail behind a fold -->
+              <Border Classes="ml-card" Padding="16" BorderBrush="{StaticResource MlDanger}"
+                      IsVisible="{Binding HasBuildError}">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="ml-body" Foreground="{StaticResource MlDanger}"
+                             Text="{Binding BuildError}" TextWrapping="Wrap"/>
+                  <Expander Header="Details">
+                    <ScrollViewer MaxHeight="160">
+                      <TextBlock Classes="ml-muted" Text="{Binding BuildErrorDetail}"
+                                 TextWrapping="Wrap" FontFamily="Consolas,Courier New,monospace"/>
+                    </ScrollViewer>
+                  </Expander>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Panel>
+        </Panel>
+      </Border>
+
+      <!-- footer: status line -->
+      <TextBlock Grid.Row="2" Classes="ml-body" Foreground="{StaticResource MlSuccessText}"
+                 Text="{Binding Status}" TextWrapping="Wrap" Margin="24,8,24,20"/>
     </Grid>
-  </Grid>
+
+    <!-- build lock: full-window overlay; everything behind it is inert while the seed runs -->
+    <Panel IsVisible="{Binding IsBuilding}" ZIndex="10">
+      <Border Background="{StaticResource MlSurfaceApp}" Opacity="0.93"/>
+      <Border Classes="ml-card" MinWidth="420" MaxWidth="560" Padding="24"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="ml-h2" Text="Building your career…"/>
+          <TextBlock Classes="ml-body" Text="{Binding Status}" TextWrapping="Wrap"/>
+          <ProgressBar IsIndeterminate="True" Height="4" Foreground="{StaticResource MlPrimary}"/>
+          <TextBlock Classes="ml-muted" TextWrapping="Wrap"
+                     Text="Squads, tactics and fixtures are being written. This can take a minute — the window will unlock when it's done."/>
+        </StackPanel>
+      </Border>
+    </Panel>
+  </Panel>
 </Window>

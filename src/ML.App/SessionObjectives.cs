@@ -62,7 +62,8 @@ public sealed partial class Session
         PostInbox("Board", "The board sets this season's objectives",
             $"Chairman {Chairman()} lays it out:\n" +
             string.Join("\n", Objectives().Select(o => $"• {o.Description}  [{o.Importance}]")) +
-            "\nA mid-season review comes at matchday 19; the final verdict at the season's end.");
+            "\nA mid-season review comes at matchday 19; the final verdict at the season's end.",
+            NextFixture()?.Matchday);
     }
 
     // ------------------------------------------------------------------ reading + progress
@@ -247,7 +248,7 @@ public sealed partial class Session
                 ? $"\n\nThe board is delighted — £{backing:N0} of extra backing lands in the budget."
                 : failedCritical
                     ? "\n\nThe critical objective was missed. Patience is not infinite."
-                    : "\n\nA mixed year. The bar does not move."));
+                    : "\n\nA mixed year. The bar does not move."), NextFixture()?.Matchday);
     }
 
     // ------------------------------------------------------------------ the fans (P2)

@@ -4,9 +4,14 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace ML.App.ViewModels;
 
-public sealed record ScoutTargetClub(int TeamId, string Name);
+public sealed record ScoutTargetClub(int TeamId, string Name, Avalonia.Media.Imaging.Bitmap? Crest);
 
-public sealed record ScoutReportRow(string Title, string Body);
+public sealed record ScoutReportRow(string Title, string Body,
+    Avalonia.Media.Imaging.Bitmap? Crest = null, Avalonia.Media.Imaging.Bitmap? Face = null)
+{
+    public bool HasCrest => Crest is not null;
+    public bool HasFace => Face is not null;
+}
 
 /// <summary>Scouting missions + finished dossiers (FM phase A2).</summary>
 public sealed partial class ScoutingViewModel : PageViewModel
@@ -18,7 +23,7 @@ public sealed partial class ScoutingViewModel : PageViewModel
         _s = s;
         foreach (var t in s.LeagueTeams().Where(t => t.Id != s.CurrentTeamId).OrderBy(t => t.Name))
         {
-            Clubs.Add(new ScoutTargetClub(t.Id, t.Name));
+            Clubs.Add(new ScoutTargetClub(t.Id, t.Name, Visuals.LoadBitmap(s.TeamLogoPath(t.Id))));
         }
         // Default the club picker to your next opponent — the report you usually want.
         var next = s.NextFixture();
@@ -47,16 +52,25 @@ public sealed partial class ScoutingViewModel : PageViewModel
             try
             {
                 Reports.Add(job.Kind == "club"
-                    ? new ScoutReportRow($"Club: {_s.TeamName(job.TargetId)}", _s.ClubScoutReport(job.TargetId))
-                    : new ScoutReportRow($"Player: {PlayerName(job.TargetId)}", _s.PlayerScoutReport(job.TargetId)));
+                    ? new ScoutReportRow($"Club: {_s.TeamName((int)job.TargetId)}", _s.ClubScoutReport((int)job.TargetId),
+                        Crest: Visuals.LoadBitmap(_s.TeamLogoPath((int)job.TargetId)))
+                    : new ScoutReportRow($"Player: {PlayerName(job.TargetId)}", _s.PlayerScoutReport(job.TargetId),
+                        Face: FaceFor(job.TargetId)));
             }
             catch { /* target may have left the world */ }
         }
         Empty = Reports.Count == 0;
     }
 
+    /// <summary>The dossier's face: the player's portrait where one resolves, nothing where not.</summary>
+    private Avalonia.Media.Imaging.Bitmap? FaceFor(long playerId)
+    {
+        try { return _s.PortraitFor(playerId).Image; }
+        catch { return null; }
+    }
+
     /// <summary>Dossier title lookup — the card header names the player, not "Player report".</summary>
-    private string PlayerName(int playerId)
+    private string PlayerName(long playerId)
     {
         using var cmd = _s.Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT name FROM players WHERE id=$p";

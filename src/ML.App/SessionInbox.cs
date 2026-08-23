@@ -4,7 +4,7 @@ namespace ML.App;
 
 public sealed record InboxMessage(
     long Id, int? Matchday, string Category, string Subject, string Body, bool IsRead,
-    long? PlayerId);
+    long? PlayerId, int? TeamId = null);
 
 /// <summary>
 /// The persistent, event-driven inbox: messages are written into the DB the moment something
@@ -13,29 +13,49 @@ public sealed record InboxMessage(
 /// </summary>
 public sealed partial class Session
 {
-    /// <summary>Write one message into the inbox; a player id lets the news feed show his face.</summary>
-    public void PostInbox(string category, string subject, string body, int? matchday = null,
-                          long? playerId = null)
+    // team_id arrived after careers already existed — add the column lazily, once,
+    // before the first read or write that names it. The ALTER failing means it's there.
+    private bool _inboxTeamIdEnsured;
+    private void EnsureInboxTeamIdColumn()
     {
+        if (_inboxTeamIdEnsured) return;
+        _inboxTeamIdEnsured = true;
+        try
+        {
+            using var cmd = Db.Connection.CreateCommand();
+            cmd.CommandText = "ALTER TABLE inbox ADD COLUMN team_id INTEGER";
+            cmd.ExecuteNonQuery();
+        }
+        catch { /* column already exists — exactly what we want */ }
+    }
+
+    /// <summary>Write one message into the inbox; a player id lets the news feed show his face,
+    /// a team id lets it show a club crest when there is no face.</summary>
+    public void PostInbox(string category, string subject, string body, int? matchday = null,
+                          long? playerId = null, int? teamId = null)
+    {
+        EnsureInboxTeamIdColumn();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
-            "INSERT INTO inbox(season_id,matchday,category,subject,body,is_read,requires_action,player_id) " +
-            "VALUES($s,$m,$c,$subj,$b,0,0,$p)";
+            "INSERT INTO inbox(season_id,matchday,category,subject,body,is_read,requires_action,player_id,team_id) " +
+            "VALUES($s,$m,$c,$subj,$b,0,0,$p,$t)";
         cmd.Parameters.AddWithValue("$s", SeasonId);
         cmd.Parameters.AddWithValue("$m", (object?)matchday ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$c", category);
         cmd.Parameters.AddWithValue("$subj", subject);
         cmd.Parameters.AddWithValue("$b", body);
         cmd.Parameters.AddWithValue("$p", (object?)playerId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$t", (object?)teamId ?? DBNull.Value);
         cmd.ExecuteNonQuery();
     }
 
     public IReadOnlyList<InboxMessage> InboxMessages(int count = 60)
     {
+        EnsureInboxTeamIdColumn();
         var rows = new List<InboxMessage>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
-            "SELECT id, matchday, category, subject, body, is_read, player_id FROM inbox " +
+            "SELECT id, matchday, category, subject, body, is_read, player_id, team_id FROM inbox " +
             "ORDER BY id DESC LIMIT $n";
         cmd.Parameters.AddWithValue("$n", count);
         using var r = cmd.ExecuteReader();
@@ -44,7 +64,8 @@ public sealed partial class Session
             rows.Add(new InboxMessage(
                 r.GetInt64(0), r.IsDBNull(1) ? null : r.GetInt32(1),
                 r.GetString(2), r.GetString(3), r.GetString(4), r.GetInt32(5) == 1,
-                r.IsDBNull(6) ? null : r.GetInt64(6)));
+                r.IsDBNull(6) ? null : r.GetInt64(6),
+                r.IsDBNull(7) ? null : r.GetInt32(7)));
         }
         return rows;
     }
@@ -108,7 +129,8 @@ public sealed partial class Session
         }
         PostInbox("Board", $"Welcome to {CurrentTeamName}",
             $"Chairman {Chairman()} welcomes you. The board expects a {Board.Expectation} finish in " +
-            $"the {LeagueName}. The squad, the academy and the training ground are yours.");
+            $"the {LeagueName}. The squad, the academy and the training ground are yours.",
+            teamId: CurrentTeamId);
         PostInbox("Media", $"{CupName} draw made",
             "The cup bracket is set — check the Cup screen for your road to the final.");
     }
@@ -136,7 +158,8 @@ public sealed partial class Session
             ? "The press praise a professional performance. The dressing room is up."
             : us == them ? "Points shared. The papers call it \"a fair result\"."
             : "The back pages are not kind. A response is expected next time out.";
-        PostInbox("Media", $"{comp}: {headline}", body, matchday);
+        PostInbox("Media", $"{comp}: {headline}", body, matchday,
+            teamId: youAreHome ? awayId : homeId);   // the opponent's crest fronts the story
 
         // New injuries from this matchweek (rows whose comeback lies ahead).
         var hurt = Repo.ConditionsFor(CurrentTeamId)
@@ -148,13 +171,13 @@ public sealed partial class Session
                 $"{names.GetValueOrDefault(c.PlayerId, "A player")} (back ~MD{c.InjuredUntilMd})");
             PostInbox("Player", "Medical report",
                 $"In the treatment room: {string.Join(", ", lines)}. The AI team sheet works around them.",
-                matchday);
+                matchday, teamId: CurrentTeamId);
         }
 
         // Training milestones surfaced by this matchweek's session.
         foreach (var note in LastTrainingNotes.Where(n => n.Contains("learned")))
         {
-            PostInbox("Player", "Training ground report", note, matchday);
+            PostInbox("Player", "Training ground report", note, matchday, teamId: CurrentTeamId);
         }
 
         // The assistant's tactical debrief (only when one is on the books).
@@ -163,7 +186,7 @@ public sealed partial class Session
             var debrief = AssistantDebrief(fixtureId, homeId, awayId);
             if (debrief.Length > 0)
             {
-                PostInbox("Media", "Assistant's debrief", debrief, matchday);
+                PostInbox("Media", "Assistant's debrief", debrief, matchday, teamId: CurrentTeamId);
             }
         }
         catch { /* the debrief is a bonus, never a blocker */ }
@@ -178,7 +201,7 @@ public sealed partial class Session
             {
                 PostInbox("Board", "Contracts expiring",
                     $"Out of contract this summer: {string.Join(", ", expiring)}. Renew them from the " +
-                    "Squad screen or lose them on frees.", matchday);
+                    "Squad screen or lose them on frees.", matchday, teamId: CurrentTeamId);
                 SetMeta($"warn_contracts_{SeasonId}", "1");
             }
         }
@@ -197,7 +220,8 @@ public sealed partial class Session
         }
         PostInbox("Board", $"Season review — you finished {Ordinal(finalPosition)}",
             $"{champion} were champions. {golden} {cup}{movement} " +
-            "The market has moved, the academy intake has arrived, and offers are on your desk.");
+            "The market has moved, the academy intake has arrived, and offers are on your desk.",
+            teamId: CurrentTeamId);
     }
 
     private static string Ordinal(int n) => n switch

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using ML.Data;
 
 namespace ML.App.ViewModels;
 
@@ -8,7 +9,8 @@ namespace ML.App.ViewModels;
 
 public sealed record ArchiveTableRow(
     int Pos, string Team, int P, int W, int D, int L, int GD, int Pts,
-    IBrush TeamBrush, FontWeight TeamWeight, Avalonia.Media.Imaging.Bitmap? Crest = null);
+    IBrush TeamBrush, FontWeight TeamWeight, Avalonia.Media.Imaging.Bitmap? Crest = null,
+    string Trophy = "");
 
 public sealed record ArchiveScorerRow(string Player, string Team, int Goals);
 
@@ -19,12 +21,32 @@ public sealed partial class HistoryViewModel : PageViewModel
 {
     private readonly Session _s;
 
+    // Divisions resolved from league data by tier (1 = top flight, 2 = second division),
+    // not hardwired ids; Session's own TopFlight/Division2 consts are private, so the
+    // 9000/9001 fallbacks only cover a DB with no league rows at all.
+    private readonly int _topFlightId;
+    private readonly int _division2Id;
+    private readonly Dictionary<int, LeagueRow> _leaguesById;
+
+    private static readonly IBrush GoldText = Visuals.Brush("#D4AC0D");
+    private static readonly IBrush GreenText = Visuals.Brush("#9FE6B4");
+    private static readonly IBrush RedText = Visuals.Brush("#D64545");
+    private static readonly IBrush BodyText = Visuals.Brush("#C7CEDA");
+
     public HistoryViewModel(Session s)
     {
         _s = s;
+        var leagues = s.Repo.Leagues();
+        _leaguesById = leagues.ToDictionary(l => l.Id);
+        _topFlightId = leagues.FirstOrDefault(l => l.Tier == 1)?.Id ?? 9000;
+        _division2Id = leagues.FirstOrDefault(l => l.Tier == 2)?.Id ?? 9001;
+
         foreach (var season in s.ArchiveSeasons())
         {
-            SeasonChoices.Add($"{2026 + (season - 9000)}/{(2027 + (season - 9000)) % 100:00}");
+            // Season ids and years march in step, so a past season's year is the current
+            // year minus how many seasons back it sits (no 2026/9000 base-year literals).
+            var year = s.SeasonYear - (s.SeasonId - season);
+            SeasonChoices.Add($"{year}/{(year + 1) % 100:00}");
             _seasonIds.Add(season);
         }
         Records = new ObservableCollection<ClubRecordRow>(s.ClubRecords());
@@ -71,10 +93,10 @@ public sealed partial class HistoryViewModel : PageViewModel
         SeasonScorers.Clear();
         try
         {
-            Fill(TopTable, season, 9000);
-            Fill(SecondTable, season, 9001);
-            TopTableName = TopTable.Count > 0 ? _s.ArchiveLeagueName(9000) : "";
-            SecondTableName = SecondTable.Count > 0 ? _s.ArchiveLeagueName(9001) : "";
+            Fill(TopTable, season, _topFlightId);
+            Fill(SecondTable, season, _division2Id);
+            TopTableName = TopTable.Count > 0 ? _s.ArchiveLeagueName(_topFlightId) : "";
+            SecondTableName = SecondTable.Count > 0 ? _s.ArchiveLeagueName(_division2Id) : "";
             foreach (var (comp, team, teamId) in _s.HonoursIn(season))
             {
                 SeasonHonours.Add(new ArchiveHonourRow(comp, team,
@@ -94,15 +116,29 @@ public sealed partial class HistoryViewModel : PageViewModel
 
     private void Fill(ObservableCollection<ArchiveTableRow> into, int season, int leagueId)
     {
-        foreach (var r in _s.TableForSeason(season, leagueId))
+        // Zone sizes come from the same league rows the rollover uses — nothing hardcoded.
+        var promo = _leaguesById.TryGetValue(leagueId, out var lg) ? lg.PromotionPlaces : 0;
+        var releg = lg?.RelegationPlaces ?? 0;
+        var complete = season != _s.SeasonId; // archived seasons are finished; the live one isn't
+        var rows = _s.TableForSeason(season, leagueId).ToList();
+        foreach (var r in rows)
         {
             var mine = r.TeamId.Value == _s.CurrentTeamId;
+            var champion = complete && r.Position == 1;
+            var promoted = r.Position <= promo;
+            var relegated = releg > 0 && r.Position > rows.Count - releg;
+            var brush = champion ? GoldText
+                : relegated ? RedText
+                : promoted ? GreenText
+                : mine ? GreenText
+                : BodyText;
             into.Add(new ArchiveTableRow(
                 r.Position, _s.TeamName(r.TeamId.Value), r.Played, r.Won, r.Drawn, r.Lost,
                 r.GoalDifference, r.Points,
-                mine ? Visuals.Brush("#9FE6B4") : Visuals.Brush("#C7CEDA"),
+                brush,
                 mine ? FontWeight.Bold : FontWeight.Normal,
-                Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value))));
+                Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value)),
+                champion ? "🏆" : ""));
         }
     }
 }

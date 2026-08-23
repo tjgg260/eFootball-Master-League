@@ -38,8 +38,12 @@
                     <TextBlock Text="{Binding Pos}" Foreground="{DynamicResource MlTextMuted}" FontSize="12"/>
                     <Image Grid.Column="1" Source="{Binding Crest}" Width="14" Height="14"
                            VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Team}" FontSize="12" Margin="4,0,0,0"
-                               Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
+                      <TextBlock Text="{Binding Team}" FontSize="12"
+                                 Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
+                      <TextBlock Text="{Binding Trophy}" FontSize="10" Margin="4,0,0,0"
+                                 VerticalAlignment="Center" IsVisible="{Binding !!Trophy.Length}"/>
+                    </StackPanel>
                     <TextBlock Grid.Column="3" Text="{Binding P}" Foreground="{DynamicResource MlTextMuted}" FontSize="12"/>
                     <TextBlock Grid.Column="4" Text="{Binding W}" Foreground="{DynamicResource MlTextMuted}" FontSize="12"/>
                     <TextBlock Grid.Column="5" Text="{Binding D}" Foreground="{DynamicResource MlTextMuted}" FontSize="12"/>
@@ -71,8 +75,12 @@
                     <TextBlock Text="{Binding Pos}" Foreground="{DynamicResource MlTextMuted}" FontSize="12"/>
                     <Image Grid.Column="1" Source="{Binding Crest}" Width="14" Height="14"
                            VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Team}" FontSize="12" Margin="4,0,0,0"
-                               Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="4,0,0,0">
+                      <TextBlock Text="{Binding Team}" FontSize="12"
+                                 Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
+                      <TextBlock Text="{Binding Trophy}" FontSize="10" Margin="4,0,0,0"
+                                 VerticalAlignment="Center" IsVisible="{Binding !!Trophy.Length}"/>
+                    </StackPanel>
                     <TextBlock Grid.Column="3" Text="{Binding P}" Foreground="{DynamicResource MlTextMuted}" FontSize="12"/>
                     <TextBlock Grid.Column="4" Text="{Binding W}" Foreground="{DynamicResource MlTextMuted}" FontSize="12"/>
                     <TextBlock Grid.Column="5" Text="{Binding D}" Foreground="{DynamicResource MlTextMuted}" FontSize="12"/>
