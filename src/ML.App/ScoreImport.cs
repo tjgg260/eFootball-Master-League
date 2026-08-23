@@ -65,9 +65,10 @@ public static class ScoreImport
 
     /// <summary>
     /// The screenshot folder: configured values first, then auto-discovery — any user id under
-    /// Steam userdata that has an eFootball screenshot folder wins.
+    /// Steam userdata that has an eFootball screenshot folder wins. Public so the capture
+    /// watcher (CaptureService) points at the same folder the import buttons read.
     /// </summary>
-    private static string ScreenshotDir()
+    public static string ResolveScreenshotDir()
     {
         var configured = ScreenshotWatcher.SteamScreenshotDir(SteamRoot, SteamUserId, EFootballAppId);
         if (Directory.Exists(configured)) return configured;
@@ -84,20 +85,57 @@ public static class ScoreImport
         return configured;   // let the caller report "no folder yet"
     }
 
+    /// <summary>
+    /// The newest screenshot in <paramref name="dir"/>. Steam writes .jpg (F12 default) — the
+    /// old "*.png" glob matched NOTHING on a stock install. Top-level only, so Steam's
+    /// thumbnails/ subfolder never wins.
+    /// </summary>
+    internal static FileInfo? LatestScreenshot(string? dir = null)
+    {
+        dir ??= ResolveScreenshotDir();
+        if (!Directory.Exists(dir)) return null;
+        return new DirectoryInfo(dir)
+            .EnumerateFiles("*", SearchOption.TopDirectoryOnly)
+            .Where(f => f.Extension.ToLowerInvariant() is ".jpg" or ".jpeg" or ".png")
+            .OrderByDescending(f => f.LastWriteTime)
+            .FirstOrDefault();
+    }
+
+    internal static string? TessdataDir() => FindTessdata();
+
     public static (int Home, int Away, bool Confident, string Message)? FromLatestScreenshot()
     {
         try
         {
-            var dir = ScreenshotDir();
+            var dir = ResolveScreenshotDir();
             if (!Directory.Exists(dir))
             {
                 return (0, 0, false, "No screenshot folder yet — press F12 in eFootball on the result screen.");
             }
-            var latest = new DirectoryInfo(dir).GetFiles("*.png")
-                .OrderByDescending(f => f.LastWriteTime).FirstOrDefault();
+            var latest = LatestScreenshot(dir);
             if (latest is null)
             {
                 return (0, 0, false, "No screenshots found — press F12 on the full-time screen.");
+            }
+            return FromScreenshot(latest.FullName);
+        }
+        catch (Exception ex)
+        {
+            return (0, 0, false, $"OCR failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// OCR the score off ONE specific screenshot (the watcher hands each new F12 capture here).
+    /// Uses the calibrated score regions from Settings, applied to the file's actual dimensions.
+    /// </summary>
+    public static (int Home, int Away, bool Confident, string Message)? FromScreenshot(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return (0, 0, false, $"Screenshot not found: {path}");
             }
 
             var tessdata = FindTessdata();
@@ -107,9 +145,10 @@ public static class ScoreImport
             }
 
             using var ocr = new StatOcr(tessdata);
-            var stats = ocr.Read(latest.FullName, CalibrationProfile.Default1080p());
+            var stats = ocr.Read(path, CaptureSettings.Current.ScoreProfile());
             var confident = stats.HomeScore.IsConfident() && stats.AwayScore.IsConfident();
-            var msg = $"Read {latest.Name}: {stats.HomeScore.Value}–{stats.AwayScore.Value}" +
+            var name = Path.GetFileName(path);
+            var msg = $"Read {name}: {stats.HomeScore.Value}–{stats.AwayScore.Value}" +
                       (confident ? " — looks clean." : " — LOW confidence, double-check the digits.");
             return (stats.HomeScore.Value, stats.AwayScore.Value, confident, msg);
         }
@@ -128,10 +167,7 @@ public static class ScoreImport
     {
         try
         {
-            var dir = ScreenshotDir();
-            var latest = Directory.Exists(dir)
-                ? new DirectoryInfo(dir).GetFiles("*.png").OrderByDescending(f => f.LastWriteTime).FirstOrDefault()
-                : null;
+            var latest = LatestScreenshot();
             if (latest is null)
             {
                 return (null, null, null, null, "No screenshot — press F12 on the match STATS screen.");

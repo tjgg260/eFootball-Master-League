@@ -1,17 +1,56 @@
 namespace ML.Ingest;
 
 /// <summary>
+/// How normalised (0..1) region coordinates map onto a real screenshot. The game on this machine
+/// renders NATIVE 16:10 at 2560x1600 (verified against a real F12 capture: the full-time banner
+/// spans the full frame), so Native is the default. Letterbox16x9 is for setups that render a
+/// 16:9 frame with bars inside a taller/wider screenshot.
+/// </summary>
+public enum AspectMode
+{
+    /// <summary>Normalised coordinates apply to the full image, whatever its aspect.</summary>
+    Native,
+
+    /// <summary>
+    /// Normalised coordinates apply to a centred 16:9 content box inside the image
+    /// (black bars top/bottom on 16:10, pillarboxed on ultrawide).
+    /// </summary>
+    Letterbox16x9,
+}
+
+/// <summary>
 /// A stat field's location on the full-time screen, stored in NORMALISED coordinates (0..1) so a
 /// profile calibrated at one resolution keeps working at another. Kind drives the OCR settings —
 /// numeric fields get a digit whitelist, which is the single biggest accuracy win.
 /// </summary>
 public sealed record StatRegion(string Field, RegionKind Kind, double X, double Y, double W, double H)
 {
-    public (int X, int Y, int W, int H) ToPixels(int imageW, int imageH) => (
-        (int)Math.Round(X * imageW),
-        (int)Math.Round(Y * imageH),
-        (int)Math.Round(W * imageW),
-        (int)Math.Round(H * imageH));
+    public (int X, int Y, int W, int H) ToPixels(int imageW, int imageH) =>
+        ToPixels(imageW, imageH, AspectMode.Native);
+
+    /// <summary>
+    /// Resolution-aware mapping: the normalised rect is applied to the ACTUAL image dimensions
+    /// (or to the centred 16:9 content box when the profile says the game letterboxes).
+    /// </summary>
+    public (int X, int Y, int W, int H) ToPixels(int imageW, int imageH, AspectMode aspect)
+    {
+        var (cx, cy, cw, ch) = ContentRect(imageW, imageH, aspect);
+        return (
+            (int)Math.Round(cx + X * cw),
+            (int)Math.Round(cy + Y * ch),
+            (int)Math.Round(W * cw),
+            (int)Math.Round(H * ch));
+    }
+
+    /// <summary>The pixel box the normalised coordinates are relative to.</summary>
+    public static (double X, double Y, double W, double H) ContentRect(int imageW, int imageH, AspectMode aspect)
+    {
+        if (aspect != AspectMode.Letterbox16x9) return (0, 0, imageW, imageH);
+        var targetH = imageW * 9.0 / 16.0;
+        if (targetH <= imageH) return (0, (imageH - targetH) / 2.0, imageW, targetH);   // bars top/bottom
+        var targetW = imageH * 16.0 / 9.0;
+        return ((imageW - targetW) / 2.0, 0, targetW, imageH);                          // pillarboxed
+    }
 }
 
 public enum RegionKind
@@ -37,6 +76,35 @@ public sealed class CalibrationProfile
     public required int Width { get; init; }
     public required int Height { get; init; }
     public required IReadOnlyList<StatRegion> Regions { get; init; }
+
+    /// <summary>How this profile's normalised coordinates map onto a screenshot (per-profile).</summary>
+    public AspectMode Aspect { get; init; } = AspectMode.Native;
+
+    // Score-box positions measured off a REAL 2560x1600 (16:10) full-time capture — the banner
+    // scales with the frame, so the same fractions hold at 1080p. [x, y, w, h] normalised.
+    // Deliberately INSIDE the yellow score boxes: a sliver of the navy banner at the crop edge
+    // binarises into a bar that Tesseract happily reads as a "1".
+    public static readonly double[] DefaultHomeScoreRegion = { 0.442, 0.203, 0.030, 0.045 };
+    public static readonly double[] DefaultAwayScoreRegion = { 0.522, 0.203, 0.030, 0.045 };
+
+    /// <summary>
+    /// A minimal profile that reads ONLY the two score boxes — the score-import path. Two OCR
+    /// passes instead of forty makes the F12 capture feel instant, and it is the profile the
+    /// Settings calibration screen edits.
+    /// </summary>
+    public static CalibrationProfile ScoreOnly(
+        double[] home, double[] away, AspectMode aspect = AspectMode.Native) => new()
+    {
+        Name = "eFootball full-time score",
+        Width = 2560,
+        Height = 1600,
+        Aspect = aspect,
+        Regions = new List<StatRegion>
+        {
+            new("home_score", RegionKind.Number, home[0], home[1], home[2], home[3]),
+            new("away_score", RegionKind.Number, away[0], away[1], away[2], away[3]),
+        },
+    };
 
     /// <summary>
     /// The full eFootball full-time stat table, in the order the game lists it. Every stat has a
@@ -75,8 +143,13 @@ public sealed class CalibrationProfile
     {
         var regions = new List<StatRegion>
         {
-            new("home_score", RegionKind.Number, 0.42, 0.10, 0.05, 0.08),
-            new("away_score", RegionKind.Number, 0.53, 0.10, 0.05, 0.08),
+            // Measured off a real capture (the old 0.10 band sat ABOVE the banner and read air).
+            new("home_score", RegionKind.Number,
+                DefaultHomeScoreRegion[0], DefaultHomeScoreRegion[1],
+                DefaultHomeScoreRegion[2], DefaultHomeScoreRegion[3]),
+            new("away_score", RegionKind.Number,
+                DefaultAwayScoreRegion[0], DefaultAwayScoreRegion[1],
+                DefaultAwayScoreRegion[2], DefaultAwayScoreRegion[3]),
         };
 
         // The stat table occupies a vertical band; distribute the rows evenly down it. Home

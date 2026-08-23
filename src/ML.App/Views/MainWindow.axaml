@@ -950,6 +950,73 @@
           <TextBox Text="{Binding SteamUserId}"/>
           <Button Content="Save paths" Command="{Binding SaveSettingsCommand}" Background="#1F9D4D"
                   Foreground="White" FontWeight="Bold" Padding="18,8" CornerRadius="8"/>
+          <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+                     Text="While the Office is open, every new F12 screenshot in this folder is OCR'd automatically and lands as a pre-filled score for you to confirm."/>
+        </StackPanel></Border>
+
+        <Border Classes="panel" Width="700" Margin="0,0,14,14"><StackPanel Spacing="8">
+          <TextBlock Classes="panelHead" Text="OCR calibration (score regions)"/>
+          <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+                     Text="Where the two full-time score boxes sit, as fractions (0–1) of the screenshot. Defaults were measured off a real 2560x1600 capture. Changes re-run OCR live against the loaded screenshot and save instantly."/>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="Aspect mapping" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+            <ComboBox ItemsSource="{Binding OcrAspectOptions}" SelectedItem="{Binding OcrAspect}"
+                      Width="300"/>
+          </StackPanel>
+          <Grid ColumnDefinitions="52,120,120,120,120" RowDefinitions="Auto,Auto,Auto">
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="x" Foreground="#8A93A2" FontSize="11" Margin="4,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="y" Foreground="#8A93A2" FontSize="11" Margin="4,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="3" Text="w" Foreground="#8A93A2" FontSize="11" Margin="4,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="4" Text="h" Foreground="#8A93A2" FontSize="11" Margin="4,0"/>
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Home" Foreground="#C7CEDA" FontSize="12"
+                       VerticalAlignment="Center"/>
+            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding OcrHomeX}" Minimum="0" Maximum="1"
+                           Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
+            <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding OcrHomeY}" Minimum="0" Maximum="1"
+                           Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
+            <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding OcrHomeW}" Minimum="0" Maximum="1"
+                           Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
+            <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding OcrHomeH}" Minimum="0" Maximum="1"
+                           Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Away" Foreground="#C7CEDA" FontSize="12"
+                       VerticalAlignment="Center"/>
+            <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding OcrAwayX}" Minimum="0" Maximum="1"
+                           Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
+            <NumericUpDown Grid.Row="2" Grid.Column="2" Value="{Binding OcrAwayY}" Minimum="0" Maximum="1"
+                           Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
+            <NumericUpDown Grid.Row="2" Grid.Column="3" Value="{Binding OcrAwayW}" Minimum="0" Maximum="1"
+                           Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
+            <NumericUpDown Grid.Row="2" Grid.Column="4" Value="{Binding OcrAwayH}" Minimum="0" Maximum="1"
+                           Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Button Content="🧪 Test OCR now" Command="{Binding TestOcrCommand}" Background="#1F9D4D"
+                    Foreground="White" FontWeight="Bold" Padding="16,8" CornerRadius="8"/>
+            <Button Content="Reset to defaults" Command="{Binding ResetOcrRegionsCommand}"
+                    Background="#232B36" Foreground="#C7CEDA" Padding="12,8" CornerRadius="8" FontSize="12"/>
+          </StackPanel>
+          <TextBlock Text="{Binding OcrResultLine}" Foreground="#9FE6B4" FontSize="12"
+                     TextWrapping="Wrap" FontFamily="Consolas"/>
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Home score crop" Foreground="#8A93A2" FontSize="11"/>
+              <Border Background="#0E131A" BorderBrush="#3A4759" BorderThickness="1" CornerRadius="4"
+                      Padding="4">
+                <Image Source="{Binding OcrHomeCrop}" Width="150" Stretch="Uniform"/>
+              </Border>
+            </StackPanel>
+            <StackPanel Spacing="4">
+              <TextBlock Text="Away score crop" Foreground="#8A93A2" FontSize="11"/>
+              <Border Background="#0E131A" BorderBrush="#3A4759" BorderThickness="1" CornerRadius="4"
+                      Padding="4">
+                <Image Source="{Binding OcrAwayCrop}" Width="150" Stretch="Uniform"/>
+              </Border>
+            </StackPanel>
+          </StackPanel>
+          <Border Background="#0E131A" BorderBrush="#3A4759" BorderThickness="1" CornerRadius="4"
+                  Padding="4" HorizontalAlignment="Left">
+            <Image Source="{Binding OcrScreenshot}" MaxWidth="640" Stretch="Uniform"/>
+          </Border>
         </StackPanel></Border>
 
         <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">

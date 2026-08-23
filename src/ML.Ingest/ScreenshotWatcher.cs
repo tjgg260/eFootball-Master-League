@@ -20,11 +20,16 @@ public sealed class ScreenshotWatcher : IDisposable
             Directory.CreateDirectory(screenshotDir);
         }
 
+        // Steam writes .jpg by default (uncompressed copies are .png); watch both. Subdirectories
+        // are NOT watched, which keeps the thumbnails/ folder Steam maintains out of the stream.
         _watcher = new FileSystemWatcher(screenshotDir)
         {
-            Filter = "*.jpg",
             NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+            IncludeSubdirectories = false,
         };
+        _watcher.Filters.Add("*.jpg");
+        _watcher.Filters.Add("*.jpeg");
+        _watcher.Filters.Add("*.png");
         _watcher.Created += OnCreated;
     }
 
@@ -38,6 +43,11 @@ public sealed class ScreenshotWatcher : IDisposable
 
     private void OnCreated(object sender, FileSystemEventArgs e)
     {
+        // Belt-and-braces: never surface Steam's thumbnail copies even if the watcher is ever
+        // pointed at a parent folder or subdirectory watching is switched on.
+        var parent = Path.GetFileName(Path.GetDirectoryName(e.FullPath) ?? "");
+        if (string.Equals(parent, "thumbnails", StringComparison.OrdinalIgnoreCase)) return;
+
         // Steam writes the file then flushes; wait for the handle to free before OCR reads it.
         WaitForFile(e.FullPath);
         ScreenshotAdded?.Invoke(this, e.FullPath);
