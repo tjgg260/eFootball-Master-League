@@ -48,11 +48,20 @@ public sealed partial class ScoutingViewModel : PageViewModel
             {
                 Reports.Add(job.Kind == "club"
                     ? new ScoutReportRow($"Club: {_s.TeamName(job.TargetId)}", _s.ClubScoutReport(job.TargetId))
-                    : new ScoutReportRow("Player report", _s.PlayerScoutReport(job.TargetId)));
+                    : new ScoutReportRow($"Player: {PlayerName(job.TargetId)}", _s.PlayerScoutReport(job.TargetId)));
             }
             catch { /* target may have left the world */ }
         }
         Empty = Reports.Count == 0;
+    }
+
+    /// <summary>Dossier title lookup — the card header names the player, not "Player report".</summary>
+    private string PlayerName(int playerId)
+    {
+        using var cmd = _s.Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT name FROM players WHERE id=$p";
+        cmd.Parameters.AddWithValue("$p", playerId);
+        return cmd.ExecuteScalar() as string ?? "Unknown player";
     }
 
     public override string Title => "Scouting";

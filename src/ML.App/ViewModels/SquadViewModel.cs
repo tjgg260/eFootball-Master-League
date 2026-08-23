@@ -131,6 +131,17 @@ public static class PlayerCard
 
 public sealed record LoanRowVm(long PlayerId, string Line, bool IsOut);
 
+/// <summary>
+/// A roster filter chip. IsActive drives the pressed look (Classes.active in the view) so the
+/// selected filter is visible on the chip itself.
+/// </summary>
+public sealed partial class FilterChipVm : ObservableObject
+{
+    public FilterChipVm(string name) => Name = name;
+    public string Name { get; }
+    [ObservableProperty] private bool _isActive;
+}
+
 public sealed partial class SquadViewModel : PageViewModel
 {
     private readonly Session _s;
@@ -266,16 +277,22 @@ public sealed partial class SquadViewModel : PageViewModel
     private readonly List<SquadEntry> _all = new();
     private readonly int _nextMd;
 
-    public IReadOnlyList<string> FilterChips { get; } =
-        new[] { "All", "GK", "DEF", "MID", "FWD", "Injured", "Tired", "Unhappy", "Listed" };
+    public IReadOnlyList<FilterChipVm> FilterChips { get; } =
+        new[] { "All", "GK", "DEF", "MID", "FWD", "Injured", "Tired", "Unhappy", "Listed" }
+            .Select(n => new FilterChipVm(n) { IsActive = n == "All" }).ToList();
 
     [ObservableProperty] private string _squadSearch = "";
     [ObservableProperty] private string _activeChip = "All";
 
     partial void OnSquadSearchChanged(string value) => ApplyFilter();
-    partial void OnActiveChipChanged(string value) => ApplyFilter();
 
-    [RelayCommand] private void SetChip(string chip) => ActiveChip = chip;
+    partial void OnActiveChipChanged(string value)
+    {
+        foreach (var c in FilterChips) c.IsActive = c.Name == value;
+        ApplyFilter();
+    }
+
+    [RelayCommand] private void SetChip(FilterChipVm chip) => ActiveChip = chip.Name;
 
     // Loans (P-next): out from the card, recalls from the loans strip.
     public ObservableCollection<LoanRowVm> Loans { get; } = new();
@@ -301,7 +318,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void LoanOut()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         var pid = Selected.PlayerId;
         SquadStatus = _s.LoanOut(pid);
         // If the loan went through he's no longer in the squad — drop the row.
@@ -350,6 +367,18 @@ public sealed partial class SquadViewModel : PageViewModel
     [ObservableProperty] private IReadOnlyList<AbilityEntry> _abilities = Array.Empty<AbilityEntry>();
     [ObservableProperty] private Points _radarPoints = new();
 
+    // Radar axis labels follow the player: GK axes are gk_* abilities (Visuals.GkRadarGroups),
+    // so outfield SHO/PAS/... labels would lie on a keeper's card. Order matches the groups.
+    private static readonly IReadOnlyList<string> OutfieldRadarLabels =
+        new[] { "SHO", "PAS", "DRI", "SPD", "DEF", "STR" };
+    private static readonly IReadOnlyList<string> GkRadarLabels =
+        new[] { "AWR", "PAS", "HAN", "REF", "PAR", "REA" };
+    [ObservableProperty] private IReadOnlyList<string> _radarLabels =
+        new[] { "SHO", "PAS", "DRI", "SPD", "DEF", "STR" };
+
+    /// <summary>A barely-scouted player (knowledge &lt; 45) shows no radar polygon.</summary>
+    [ObservableProperty] private bool _radarMasked;
+
     // Season stats + contract + management state for the selected player.
     [ObservableProperty] private string _seasonLine = "";
     [ObservableProperty] private string _contractLine = "";
@@ -371,13 +400,19 @@ public sealed partial class SquadViewModel : PageViewModel
         {
             Abilities = Array.Empty<AbilityEntry>();
             RadarPoints = new Points();
+            RadarMasked = false;
+            RadarLabels = OutfieldRadarLabels;
             SeasonLine = "";
             ContractLine = "";
             return;
         }
         var abilities = _s.Repo.Attributes(value.PlayerId);
         var isGk = value.Position == "GK";
-        RadarPoints = BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
+        RadarLabels = isGk ? GkRadarLabels : OutfieldRadarLabels;
+        // Knowledge gate (P6): same 45 threshold as the Market profile — below it the radar
+        // would be a guess dressed up as data, so it hides behind a scout-him note.
+        RadarMasked = value.Knowledge < 45;
+        RadarPoints = RadarMasked ? new Points() : BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
         // Knowledge-gated: your club is fully known, a browsed club only as deep as scouted.
         Abilities = BuildAbilityList(abilities, isGk, FmMode, value.Knowledge, value.PlayerId);
 
@@ -491,7 +526,9 @@ public sealed partial class SquadViewModel : PageViewModel
 
     partial void OnSelectedPtStatusChanged(string? value)
     {
-        if (_syncingPt || value is null || Selected is null) return;
+        // IsOwnClub: the picker is hidden in scouting view, but the sync when browsing another
+        // roster must never write a play-time promise into someone else's squad.
+        if (_syncingPt || value is null || Selected is null || !IsOwnClub) return;
         SquadStatus = _s.SetPlayTimeStatus(Selected.PlayerId, value);
         RefreshPlayTimeLine(Selected.PlayerId, value);
     }
@@ -548,7 +585,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void OpenNegotiation()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         _round = 1;
         var (demand, line) = _s.ContractDemand(Selected.PlayerId, int.Parse(SelectedYears), SelectedStatus);
         WageOffer = demand;
@@ -559,7 +596,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void MakeOffer()
     {
-        if (Selected is null || !Negotiating) return;
+        if (Selected is null || !Negotiating || NotYourClub()) return;
         var (accepted, over, message) = _s.OfferContract(
             Selected.PlayerId, (long)WageOffer, int.Parse(SelectedYears), SelectedStatus, _round);
         NegotiationLine = message;
@@ -584,21 +621,21 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void Praise()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         SquadStatus = _s.TalkTo(Selected.PlayerId, Selected.Name, praise: true);
     }
 
     [RelayCommand]
     private void Criticise()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         SquadStatus = _s.TalkTo(Selected.PlayerId, Selected.Name, praise: false);
     }
 
     [RelayCommand]
     private void PromiseStarts()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         SquadStatus = _s.MakePromise(Selected.PlayerId, Selected.Name, "starts");
         PromiseLine = _s.PromiseLine(Selected.PlayerId);
     }
@@ -606,7 +643,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void PromiseContract()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         SquadStatus = _s.MakePromise(Selected.PlayerId, Selected.Name, "contract");
         PromiseLine = _s.PromiseLine(Selected.PlayerId);
     }
@@ -614,7 +651,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void MakeCaptain()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         _s.Captain = Selected.PlayerId;
         IsCaptain = true;
         SquadStatus = $"{Selected.Name} is your captain.";
@@ -623,7 +660,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void ToggleList()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         var now = !_s.IsTransferListed(Selected.PlayerId);
         _s.SetTransferListed(Selected.PlayerId, now);
         ListLabel = now ? "Un-list" : "Transfer-list";
@@ -649,7 +686,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void Renew()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         SquadStatus = _s.RenewContract(Selected.PlayerId);
         ContractLine = $"Contract until {_s.ContractYear(Selected.PlayerId)}";
     }

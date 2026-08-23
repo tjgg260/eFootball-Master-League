@@ -273,7 +273,11 @@ public sealed partial class DashboardViewModel : PageViewModel
     }
 
     [RelayCommand]
-    private void CloseReport() => ReportVisible = false;
+    private void CloseReport()
+    {
+        ReportVisible = false;
+        FtVisible = false;    // the moment ends together: banner + report leave as one
+    }
 
     // Team talks (C2): one pre-match and one post-match say per fixture.
     [ObservableProperty] private bool _preTalkVisible;
@@ -561,7 +565,9 @@ public sealed partial class DashboardViewModel : PageViewModel
             catch { PreTalkVisible = false; }
             HasNextMatch = true;
             ResultEntryOpen = false;          // a fresh fixture always opens on the OCCASION
-            FtVisible = false;
+            // NOTE: FtVisible is NOT reset here — RecordResult raises the banner and then
+            // loads the next fixture; clearing it here killed the moment before one frame
+            // rendered (the audit's "dead banner"). It clears with the report, or on kickoff.
             try
             {
                 var opp = _homeId == _s.CurrentTeamId ? _awayId : _homeId;
@@ -797,6 +803,8 @@ public sealed partial class DashboardViewModel : PageViewModel
     {
         if (!HasNextMatch || IsCompiling) return;
         IsCompiling = true;
+        FtVisible = false;       // kickoff of the next one ends the last result's moment
+        ReportVisible = false;
         MatchStatus = "";
 
         // AI managers pick both matchday XIs from form/fatigue/availability before the compile.

@@ -6,19 +6,23 @@
              x:DataType="vm:TableViewModel">
   <DockPanel Margin="20">
     <!-- the position worm (P6): lower is better, top line = 1st -->
-    <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,12"
+    <Border DockPanel.Dock="Top" Classes="ml-panel" Margin="0,0,0,12"
             IsVisible="{Binding WormVisible}">
       <StackPanel Spacing="6">
-        <TextBlock Text="{Binding WormLabel}" Foreground="#8A93A2" FontSize="12"/>
+        <TextBlock Classes="ml-muted" Text="{Binding WormLabel}"/>
         <Panel Width="560" Height="84" HorizontalAlignment="Left">
-          <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Top" Margin="0,4,0,0"/>
-          <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
-          <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
-          <Polyline Points="{Binding WormPoints}" Stroke="{DynamicResource ThemeAccentBrush}"
+          <Rectangle Height="1" Fill="{DynamicResource MlBorder}" VerticalAlignment="Top" Margin="0,4,0,0"/>
+          <Rectangle Height="1" Fill="{DynamicResource MlBorder}" VerticalAlignment="Center"/>
+          <Rectangle Height="1" Fill="{DynamicResource MlBorder}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+          <Polyline Points="{Binding WormPoints}" Stroke="{DynamicResource MlPrimary}"
                     StrokeThickness="2.5" StrokeJoin="Round"/>
         </Panel>
       </StackPanel>
     </Border>
+    <!-- empty state: a table with no rows is a void, say why -->
+    <TextBlock DockPanel.Dock="Top" Classes="ml-muted" Margin="0,0,0,8"
+               Text="No standings yet — the table fills in once the season kicks off."
+               IsVisible="{Binding !Rows.Count}"/>
     <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="True"
             GridLinesVisibility="Horizontal" HeadersVisibility="Column">
     <DataGrid.Columns>

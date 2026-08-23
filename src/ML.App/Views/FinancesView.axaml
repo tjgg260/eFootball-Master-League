@@ -1,33 +1,129 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ML.App.ViewModels"
-             xmlns:app="using:ML.App"
              x:Class="ML.App.Views.FinancesView"
              x:DataType="vm:FinancesViewModel">
-  <StackPanel Margin="28" Spacing="16">
-    <TextBlock Text="Finances" FontSize="24" FontWeight="Bold" Foreground="White"/>
-    <WrapPanel>
-      <Border Classes="tile"><StackPanel>
-        <TextBlock Classes="tileLabel" Text="BALANCE"/>
-        <TextBlock Classes="tileBig" Text="{Binding Balance}"/></StackPanel></Border>
-      <Border Classes="tile"><StackPanel>
-        <TextBlock Classes="tileLabel" Text="WAGE BILL"/>
-        <TextBlock Classes="tileBig" Text="{Binding WageBill}"/></StackPanel></Border>
-      <Border Classes="tile"><StackPanel>
-        <TextBlock Classes="tileLabel" Text="SEASON INCOME"/>
-        <TextBlock Classes="tileBig" Text="{Binding SeasonIncome}"/></StackPanel></Border>
-      <Border Classes="tile"><StackPanel>
-        <TextBlock Classes="tileLabel" Text="SEASON SPEND"/>
-        <TextBlock Classes="tileBig" Text="{Binding SeasonExpenditure}"/></StackPanel></Border>
-    </WrapPanel>
-    <Border Classes="panel" IsVisible="{Binding TrendVisible}"><StackPanel Spacing="6">
-      <TextBlock Classes="panelHead" Text="Money over time"/>
-      <TextBlock Text="{Binding TrendLabel}" Foreground="#8A93A2" FontSize="12"/>
-      <Panel Width="640" Height="96" HorizontalAlignment="Left">
-        <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
-        <Polyline Points="{Binding BalancePoints}" Stroke="{DynamicResource ThemeAccentBrush}"
-                  StrokeThickness="2" StrokeJoin="Round"/>
-      </Panel>
-    </StackPanel></Border>
-  </StackPanel>
+
+  <UserControl.Styles>
+    <!-- local: the big tile number (no shared stat-value class yet — see wants) -->
+    <Style Selector="TextBlock.statValue">
+      <Setter Property="FontSize" Value="21"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="{StaticResource MlTextHeading}"/>
+      <Setter Property="Margin" Value="0,5,0,0"/>
+    </Style>
+    <!-- a money line turns danger-red when the club is in the red (P6) -->
+    <Style Selector="TextBlock.in-red">
+      <Setter Property="Foreground" Value="{StaticResource MlDanger}"/>
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer Padding="28" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16">
+      <TextBlock Classes="ml-h1" Text="Finances"/>
+
+      <!-- headline tiles -->
+      <Grid ColumnDefinitions="*,*,*,*">
+        <Border Grid.Column="0" Classes="ml-card" Margin="0,0,9,0">
+          <StackPanel>
+            <TextBlock Classes="ml-label" Text="BALANCE"/>
+            <TextBlock Classes="statValue" Classes.in-red="{Binding InTheRed}"
+                       Text="{Binding Balance}"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Classes="ml-card" Margin="9,0,9,0">
+          <StackPanel>
+            <TextBlock Classes="ml-label" Text="WAGE BILL"/>
+            <TextBlock Classes="statValue" Text="{Binding WageBill}"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="ml-card" Margin="9,0,9,0">
+          <StackPanel>
+            <TextBlock Classes="ml-label" Text="SEASON INCOME"/>
+            <TextBlock Classes="statValue" Text="{Binding SeasonIncome}"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="3" Classes="ml-card" Margin="9,0,0,0">
+          <StackPanel>
+            <TextBlock Classes="ml-label" Text="SEASON SPEND"/>
+            <TextBlock Classes="statValue" Text="{Binding SeasonExpenditure}"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- in the red: say it in plain words, not just a minus sign (P6) -->
+      <Border Classes="ml-card" BorderBrush="{StaticResource MlDanger}"
+              IsVisible="{Binding InTheRed}">
+        <TextBlock Classes="ml-body in-red" TextWrapping="Wrap"
+                   Text="The club is in the red — spending money it does not have. Sell a player, trim the wage bill, or take a bank loan to get back above zero."/>
+      </Border>
+
+      <Grid ColumnDefinitions="*,*">
+
+        <!-- season ledger: in vs out, financing on its own line (P6) -->
+        <Border Grid.Column="0" Classes="ml-card" Margin="0,0,9,0" VerticalAlignment="Top">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="ml-label" Text="SEASON LEDGER"/>
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="ml-body" Margin="0,2"
+                         Text="Money in — gate receipts, prize money, player sales"/>
+              <TextBlock Grid.Row="0" Grid.Column="1" Classes="ml-body" Margin="12,2,0,2"
+                         FontWeight="SemiBold" Text="{Binding SeasonIncome}"/>
+              <TextBlock Grid.Row="1" Classes="ml-body" Margin="0,2"
+                         Text="Money out — wages, transfers, loan instalments"/>
+              <TextBlock Grid.Row="1" Grid.Column="1" Classes="ml-body" Margin="12,2,0,2"
+                         FontWeight="SemiBold" Text="{Binding SeasonExpenditure}"/>
+              <TextBlock Grid.Row="2" Classes="ml-body" Margin="0,2"
+                         Text="Financing — loan cash received (not income)"/>
+              <TextBlock Grid.Row="2" Grid.Column="1" Classes="ml-body" Margin="12,2,0,2"
+                         FontWeight="SemiBold" Text="{Binding FinancingIn}"/>
+              <TextBlock Grid.Row="3" Classes="ml-body" Margin="0,2"
+                         FontWeight="SemiBold" Text="Net this season"/>
+              <TextBlock Grid.Row="3" Grid.Column="1" Classes="ml-body" Margin="12,2,0,2"
+                         FontWeight="SemiBold" Classes.in-red="{Binding NetNegative}"
+                         Text="{Binding NetLine}"/>
+            </Grid>
+            <TextBlock Classes="ml-muted" TextWrapping="Wrap"
+                       Text="In and out are running season totals — the club's books do not keep a per-category split."/>
+          </StackPanel>
+        </Border>
+
+        <!-- financing: the bank, folded in (P6) -->
+        <Border Grid.Column="1" Classes="ml-card" Margin="9,0,0,0" VerticalAlignment="Top">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="ml-label" Text="FINANCING"/>
+            <TextBlock Classes="ml-body" TextWrapping="Wrap" Text="{Binding LoanLine}"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="ml-secondary" Content="Borrow £250k" IsEnabled="{Binding CanBorrow}"
+                      Command="{Binding BorrowCommand}" CommandParameter="250000"/>
+              <Button Classes="ml-secondary" Content="Borrow £500k" IsEnabled="{Binding CanBorrow}"
+                      Command="{Binding BorrowCommand}" CommandParameter="500000"/>
+              <Button Classes="ml-secondary" Content="Borrow £1m" IsEnabled="{Binding CanBorrow}"
+                      Command="{Binding BorrowCommand}" CommandParameter="1000000"/>
+            </StackPanel>
+            <TextBlock Classes="ml-muted" TextWrapping="Wrap" Text="{Binding Status}"
+                       IsVisible="{Binding HasStatus}"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- money over time -->
+      <Border Classes="ml-card">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="ml-label" Text="MONEY OVER TIME"/>
+          <StackPanel Spacing="6" IsVisible="{Binding TrendVisible}">
+            <TextBlock Classes="ml-muted" Text="{Binding TrendLabel}"/>
+            <Panel Width="640" Height="96" HorizontalAlignment="Left">
+              <Rectangle Height="1" Fill="{StaticResource MlBorder}" VerticalAlignment="Center"/>
+              <Polyline Points="{Binding BalancePoints}" Stroke="{StaticResource MlPrimary}"
+                        StrokeThickness="2" StrokeJoin="Round"/>
+            </Panel>
+          </StackPanel>
+          <TextBlock Classes="ml-muted" IsVisible="{Binding !TrendVisible}"
+                     Text="The balance line draws itself once three matchweeks of history are in the books."/>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

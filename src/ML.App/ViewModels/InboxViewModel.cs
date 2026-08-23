@@ -9,11 +9,12 @@ namespace ML.App.ViewModels;
 // --- News (the Sky-style feed the inbox always wanted to be) ----------------------
 
 public sealed record NewsEntry(
-    string Icon, string Category, string Subject, string Body, string When, bool Unread,
+    long Id, string Icon, string Category, string Subject, string Body, string When, bool Unread,
     Bitmap? Portrait, bool IsBreaking)
 {
     public IBrush SubjectBrush => Visuals.Brush(Unread ? "#FFFFFF" : "#8A93A2");
     public IBrush BodyBrush => Visuals.Brush(Unread ? "#C7CEDA" : "#5E6774");
+    public FontWeight SubjectWeight => Unread ? FontWeight.Bold : FontWeight.Normal;
     public bool ShowNew => Unread;
     public bool HasPortrait => Portrait is not null;
     public IBrush AccentBrush => Visuals.Brush(Category switch
@@ -57,7 +58,7 @@ public sealed partial class InboxViewModel : PageViewModel
                 }
                 catch { /* faceless news is fine */ }
             }
-            Rows.Add(new NewsEntry(IconFor(m.Category), m.Category, m.Subject, m.Body,
+            Rows.Add(new NewsEntry(m.Id, IconFor(m.Category), m.Category, m.Subject, m.Body,
                 m.Matchday is { } md and > 0 ? $"MD{md}" : "", !m.IsRead, face,
                 m.Subject.Contains("DEADLINE DAY")));
         }
@@ -112,6 +113,22 @@ public sealed partial class InboxViewModel : PageViewModel
     {
         _s.MarkInboxRead();
         Reload();
+    }
+
+    /// <summary>Clicking a message marks that one message read (P6).</summary>
+    [RelayCommand]
+    private void MarkRead(NewsEntry? entry)
+    {
+        if (entry is null || !entry.Unread) return;
+        using (var cmd = _s.Db.Connection.CreateCommand())
+        {
+            cmd.CommandText = "UPDATE inbox SET is_read=1 WHERE id=$id";
+            cmd.Parameters.AddWithValue("$id", entry.Id);
+            cmd.ExecuteNonQuery();
+        }
+        var i = Rows.IndexOf(entry);
+        if (i >= 0) Rows[i] = entry with { Unread = false };
+        Header = $"News — {Rows.Count(r => r.Unread)} unread";
     }
 
     private static string IconFor(string c) => c switch

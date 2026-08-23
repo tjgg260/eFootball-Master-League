@@ -46,9 +46,14 @@ public sealed partial class StaffViewModel : PageViewModel
         s.EnsureStaffPool();
         foreach (var r in Session.StaffRoles) RoleOptions.Add(r);
         SelectedRole = RoleOptions.FirstOrDefault();
-        foreach (var (key, label) in Session.Delegations)
-            Toggles.Add(new DelegationToggle(s, key, label));
         Reload();
+    }
+
+    /// <summary>Five-slot star line, Academy-style: ★ filled, ☆ padding (P6).</summary>
+    private static string StarLine(int stars)
+    {
+        var n = Math.Clamp(stars, 0, 5);
+        return new string('★', n) + new string('☆', 5 - n);
     }
 
     // A 1-20 attribute as a word (UX P4): the desk card reads like a reference, not a spreadsheet.
@@ -81,25 +86,35 @@ public sealed partial class StaffViewModel : PageViewModel
         foreach (var role in Session.StaffRoles)
         {
             Backroom.Add(mine.TryGetValue(role, out var p)
-                ? new BackroomCard(p.Id, role, p.Name, $"{p.Age} yrs", new string('★', p.Stars),
+                ? new BackroomCard(p.Id, role, p.Name, $"{p.Age} yrs", StarLine(p.Stars),
                     $"£{p.Wage:N0}/wk", $"prefers {p.PrefFormation} · {StylesSummary(p)}",
                     AttrSummary(p), true)
                 : new BackroomCard(0, role, "— vacant —", "", "", "", "", "", false));
         }
         WageLine = $"Backroom wage bill: £{_s.StaffWages():N0}/week across {mine.Count} of 9 desks";
+
+        // Toggles snapshot RoleFilled/Hint at construction, so rebuild them on every
+        // reload — hiring or releasing a desk must refresh hints and enablement (P6).
+        Toggles.Clear();
+        foreach (var (key, label) in Session.Delegations)
+            Toggles.Add(new DelegationToggle(_s, key, label));
+
         ReloadMarket();
     }
 
     private void ReloadMarket()
     {
         Market.Clear();
-        if (SelectedRole is null) return;
-        foreach (var p in _s.StaffMarket(SelectedRole))
+        if (SelectedRole is not null)
         {
-            Market.Add(new StaffMarketRow(p.Id, p.Name, p.Age.ToString(),
-                new string('★', p.Stars), AttrSummary(p),
-                $"prefers {p.PrefFormation} · {StylesSummary(p)}", $"£{p.Wage:N0}/wk"));
+            foreach (var p in _s.StaffMarket(SelectedRole))
+            {
+                Market.Add(new StaffMarketRow(p.Id, p.Name, p.Age.ToString(),
+                    StarLine(p.Stars), AttrSummary(p),
+                    $"prefers {p.PrefFormation} · {StylesSummary(p)}", $"£{p.Wage:N0}/wk"));
+            }
         }
+        HasMarket = Market.Count > 0;
         SelectedCandidate = Market.FirstOrDefault();
     }
 
@@ -114,6 +129,7 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private string? _selectedRole;
     [ObservableProperty] private StaffMarketRow? _selectedCandidate;
     [ObservableProperty] private string _wageLine = "";
+    [ObservableProperty] private bool _hasMarket;
 
     [ObservableProperty]
     private string _status = "Every desk has a real effect: an excellent Coach speeds training · " +
@@ -129,6 +145,11 @@ public sealed partial class StaffViewModel : PageViewModel
         Status = _s.HireStaffPerson(SelectedCandidate.Id);
         Reload();
     }
+
+    // Clicking a desk card points the market picker at that desk's role (P6) — the
+    // natural next move on a vacant desk is "show me who I could hire for it".
+    [RelayCommand]
+    private void SelectDesk(BackroomCard card) => SelectedRole = card.Role;
 
     [RelayCommand]
     private void Release(BackroomCard card)

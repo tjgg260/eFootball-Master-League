@@ -842,6 +842,10 @@ public sealed partial class Session
     /// <summary>Weekly repayment while a loan is outstanding (34 instalments at 5% interest).</summary>
     public long LoanWeekly => long.TryParse(GetMeta($"loan_wk_{CurrentTeamId}"), out var v) ? v : 0;
 
+    /// <summary>Loan principal received this season — the "Financing" ledger line. Borrowed
+    /// cash raises the balance but is NOT income (P6); it gets its own line on the screen.</summary>
+    public long SeasonLoanIn => long.TryParse(GetMeta($"fin_loan_in_{SeasonId}"), out var v) ? v : 0;
+
     /// <summary>Take a bank loan: cash now, 34 weekly instalments at 5%. One loan at a time.</summary>
     public string TakeLoan(long amount)
     {
@@ -850,7 +854,12 @@ public sealed partial class Session
         var total = (long)(amount * 1.05);
         SetMeta($"loan_{CurrentTeamId}", total.ToString());
         SetMeta($"loan_wk_{CurrentTeamId}", (total / 34).ToString());
-        Finances.ReceivePrize(amount);   // cash in: balance up, counted as season income
+        // Financing, NOT income (P6): credit the balance, then take the principal straight back
+        // OUT of the season-income tally so the ledger shows borrowed cash on its own line.
+        // (Repayments stay inside season spend, where the weekly instalment already lands.)
+        Finances.ReceivePrize(amount);
+        Finances.RestoreSeasonTallies(Finances.SeasonIncome - amount, Finances.SeasonExpenditure);
+        SetMeta($"fin_loan_in_{SeasonId}", (SeasonLoanIn + amount).ToString());
         AdjustBudget(amount);
         return $"Loan agreed: £{amount:N0} received. Repaying £{total / 34:N0}/week over 34 weeks (5% interest).";
     }

@@ -40,6 +40,8 @@ public sealed record BenchEntry(
     public Avalonia.Media.IBrush CondBrush =>
         Visuals.Brush(Injured ? "#D64545" : Fatigue < 20 ? "#1F9D4D" : Fatigue < 40 ? "#E0A526" : "#D64545");
     public string Tag => Injured ? "INJ" : Fatigue >= 40 ? "TIRED" : "";
+    /// <summary>Amber bench flag: leggy but not injured (injury outranks tiredness).</summary>
+    public bool IsTired => !Injured && Fatigue >= 40;
     public Avalonia.Media.Imaging.Bitmap? Portrait => Visuals.LoadBitmap(PortraitPath);
     public bool HasPortrait => Portrait is not null;
     public string Mark => Visuals.PlayerMark(Name);
@@ -399,6 +401,8 @@ public sealed partial class TacticsViewModel : PageViewModel
         _defence2 = s.InstructionOf("defence2");
         LoadOpponent();
         UpdateYourShape();
+        Bench.CollectionChanged += (_, _) => OnPropertyChanged(nameof(BenchEmpty));
+        Templates.CollectionChanged += (_, _) => OnPropertyChanged(nameof(NoTemplates));
     }
 
     /// <summary>The armband (compiled into PlayerAssignment like the takers).</summary>
@@ -460,6 +464,10 @@ public sealed partial class TacticsViewModel : PageViewModel
     public ObservableCollection<PitchPlayer> Players { get; } = new();
     public ObservableCollection<BenchEntry> Bench { get; } = new();
 
+    /// <summary>Empty-state lines (a blank list must explain itself, never show a void).</summary>
+    public bool BenchEmpty => Bench.Count == 0;
+    public bool NoTemplates => Templates.Count == 0;
+
     [ObservableProperty] private FormationOption? _selectedTemplate;
     [ObservableProperty] private StyleOption? _selectedStyle;
     [ObservableProperty] private RoleOption? _selectedRole;
@@ -487,6 +495,65 @@ public sealed partial class TacticsViewModel : PageViewModel
         TakerCkl = ById(_s.TakerOf("ckl"));
         TakerCkr = ById(_s.TakerOf("ckr"));
     }
+
+    /// <summary>
+    /// The XI changed — the armband and set-piece duties must belong to players still on the
+    /// pitch. Duties are remapped onto the (possibly rebuilt) starter tokens; a benched captain
+    /// hands the armband to the highest-rated starter, a benched taker simply loses the duty.
+    /// Returns a status note describing what changed ("" when nothing did) so callers can
+    /// append it to SaveStatus.
+    /// </summary>
+    private string RevalidateInMatchRoles()
+    {
+        var notes = new List<string>();
+        PitchPlayer? Live(PitchPlayer? cur) =>
+            cur is null || cur.PlayerId <= 0
+                ? null
+                : Players.FirstOrDefault(p => p.PlayerId == cur.PlayerId);
+
+        if (Captain is not null)
+        {
+            var live = Live(Captain);
+            if (live is null)
+            {
+                var heir = Players.Where(p => p.PlayerId > 0)
+                    .OrderByDescending(p => p.EffectiveRating).FirstOrDefault();
+                if (Captain.PlayerId > 0)
+                {
+                    notes.Add(heir is not null
+                        ? $"{Captain.Surname} no longer starts — the armband passes to {heir.Surname}"
+                        : $"{Captain.Surname} no longer starts — the armband is vacant");
+                }
+                Captain = heir;
+            }
+            else if (!ReferenceEquals(live, Captain))
+            {
+                Captain = live;   // same player, fresh token after a swap — follow him silently
+            }
+        }
+
+        void Fix(PitchPlayer? cur, string duty, Action<PitchPlayer?> set)
+        {
+            if (cur is null) return;
+            var live = Live(cur);
+            if (live is null)
+            {
+                if (cur.PlayerId > 0) notes.Add($"{cur.Surname} no longer takes {duty}");
+                set(null);
+            }
+            else if (!ReferenceEquals(live, cur))
+            {
+                set(live);
+            }
+        }
+        Fix(TakerFk, "free kicks", v => TakerFk = v);
+        Fix(TakerPk, "penalties", v => TakerPk = v);
+        Fix(TakerCkl, "left corners", v => TakerCkl = v);
+        Fix(TakerCkr, "right corners", v => TakerCkr = v);
+
+        return notes.Count == 0 ? "" : "  ⚠ " + string.Join("; ", notes) + ".";
+    }
+
     [ObservableProperty] private BenchEntry? _selectedBench;
 
     // --- top pill tabs, the game's own three: Lineup | Tactics | Team ------------------
@@ -516,7 +583,7 @@ public sealed partial class TacticsViewModel : PageViewModel
     public Avalonia.Media.IBrush Tab1Fg => SectionFg(1);
     public Avalonia.Media.IBrush Tab2Fg => SectionFg(2);
     private Avalonia.Media.IBrush SectionBrush(int i) =>
-        Visuals.Brush(Section == i ? "#F2F4F7" : "#22262D");
+        Visuals.Brush(Section == i ? "#F2F4F7" : "#1A222C");   // inactive = MlSurfaceControl
     private Avalonia.Media.IBrush SectionFg(int i) =>
         Visuals.Brush(Section == i ? "#12161C" : "#C7CEDA");
 
@@ -626,27 +693,72 @@ public sealed partial class TacticsViewModel : PageViewModel
     // --- the opponent's mirrored half (the game shows your next opponent's plan) --------
 
     public ObservableCollection<OppToken> Opponents { get; } = new();
-    [ObservableProperty] private string _opponentLabel = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOpponentLabel))]
+    private string _opponentLabel = "";
+    public bool HasOpponentLabel => OpponentLabel.Length > 0;
     [ObservableProperty] private string _opponentShape = "";
+
+    /// <summary>Why the right half is dark ("" when the opponent preview is populated).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOpponentNote))]
+    private string _opponentNote = "";
+    public bool HasOpponentNote => OpponentNote.Length > 0;
+
+    private const string NoDossierNote =
+        "No dossier on the next opponent — their half stays dark until your scout reports.";
 
     private void LoadOpponent()
     {
+        // Every early exit must LEAVE A VISIBLE TRACE (OpponentNote) — a silently empty half
+        // reads as a bug, and did: at MD1 unseeded clubs have no team_tactics row yet.
+        Opponents.Clear();
+        OpponentNote = "";
+        OpponentShape = "";
         try
         {
             var next = _s.NextFixture();
-            if (next is null) return;
+            if (next is null)
+            {
+                OpponentLabel = "";
+                OpponentNote = "No fixture ahead — the opponent half fills in once a match is scheduled.";
+                return;
+            }
             var oppId = next.HomeTeamId == _s.CurrentTeamId ? next.AwayTeamId : next.HomeTeamId;
+            OpponentLabel = _s.TeamName(oppId);
             // The AI manager fields its strongest position-correct XI + a tactic to beat you.
             try { _s.PickBestXiAndTactic(oppId, _s.CurrentTeamId); } catch { /* preview is additive */ }
             var fid = _s.Repo.TeamTactics(oppId).FirstOrDefault(t => t.Phase == 0)?.FormationId;
-            if (fid is null) return;
-            var slots = _s.Repo.FormationSlots(fid.Value).OrderBy(sl => sl.SlotIndex).ToList();
-            if (slots.Count == 0) return;
+            var slots = fid is int f
+                ? _s.Repo.FormationSlots(f).OrderBy(sl => sl.SlotIndex).ToList()
+                : new List<FormationSlotRow>();
+            if (slots.Count == 0)
+            {
+                // MD1 / unseeded club: no tactics row (or empty geometry). Borrow a standard
+                // shape for the PREVIEW only — nothing is written back to the opponent.
+                var borrowed = _s.FormationOptions().FirstOrDefault();
+                if (borrowed.Id != 0)
+                    slots = _s.Repo.FormationSlots(borrowed.Id).OrderBy(sl => sl.SlotIndex).ToList();
+            }
+            var players = _s.Repo.SquadPlayers(oppId).ToDictionary(p => p.Id);
+            if (slots.Count == 0 || players.Count == 0)
+            {
+                OpponentNote = NoDossierNote;
+                return;
+            }
             var xi = _s.Repo.Squad(oppId).Where(m => m.Slot is >= 0 and <= 10)
                 .OrderBy(m => m.Slot).ToList();
-            var players = _s.Repo.SquadPlayers(oppId).ToDictionary(p => p.Id);
             var xiPlayers = xi.Select(m => players.GetValueOrDefault(m.PlayerId))
                 .Where(p => p is not null).Cast<PlayerRow>().ToList();
+            if (xiPlayers.Count == 0)
+            {
+                // Squad exists but no XI slots are set (fresh season, AI pick failed):
+                // preview their best GK + ten best-rated outfielders instead of a dark half.
+                var byRating = players.Values.OrderByDescending(p => p.OverallRating ?? 0).ToList();
+                var bestGk = byRating.FirstOrDefault(p => Visuals.PositionCategory(p.Position) == "GK");
+                xiPlayers = byRating.Where(p => !ReferenceEquals(p, bestGk)).Take(10).ToList();
+                if (bestGk is not null) xiPlayers.Insert(0, bestGk);
+            }
             // Assign players to slots by POSITION so a keeper never appears at RB: the GK fills
             // the GK slot; outfielders fill outfield slots matched by category (DEF/MID/FWD).
             var gk = xiPlayers.FirstOrDefault(p => Visuals.PositionCategory(p.Position) == "GK");
@@ -678,10 +790,15 @@ public sealed partial class TacticsViewModel : PageViewModel
                 Opponents.Add(new OppToken(left, top, pos, pl?.OverallRating ?? 0, surname,
                     Visuals.LoadBitmap(pl?.PortraitPath), knowledge));
             }
-            OpponentLabel = _s.TeamName(oppId);
             OpponentShape = Formations.ShapeOf(slots.Select(sl => sl.Y));
         }
-        catch { /* no opponent preview is fine (preseason, season end) */ }
+        catch
+        {
+            // A broken read must not crash the screen — but it must be SEEN, not swallowed.
+            Opponents.Clear();
+            OpponentShape = "";
+            OpponentNote = NoDossierNote;
+        }
     }
 
     // --- selecting vs swapping are now SEPARATE actions ---------------------------------
@@ -793,7 +910,8 @@ public sealed partial class TacticsViewModel : PageViewModel
         SelectedPlayer = token;
         _swapping = false;
         ClearPicks();
-        SaveStatus = $"⇄ {incoming.Name} starts, {outgoing.Name} drops to the bench — Save to lock it in.";
+        var roleNote = RevalidateInMatchRoles();
+        SaveStatus = $"⇄ {incoming.Name} starts, {outgoing.Name} drops to the bench — Save to lock it in.{roleNote}";
     }
 
     /// <summary>Starter ↔ starter: the two players trade formation slots (roles travel with them).</summary>
@@ -808,7 +926,8 @@ public sealed partial class TacticsViewModel : PageViewModel
         PitchPlayer At(PitchPlayer identity, PitchPlayer slot) =>
             new(identity.PlayerId, identity.Number, identity.Name, identity.Rating,
                 identity.PortraitPath, slot.Position, identity.Role, slot.Left, slot.Top,
-                identity.RegisteredPosition, identity.Learned, identity.Fatigue, identity.Injured);
+                identity.RegisteredPosition, identity.Learned, identity.Fatigue, identity.Injured,
+                identity.Abilities ?? AttrsOf(identity.PlayerId));
 
         var newA = At(b, a);
         var newB = At(a, b);
@@ -822,7 +941,8 @@ public sealed partial class TacticsViewModel : PageViewModel
         SelectedPlayer = newB;
         _swapping = false;
         ClearPicks();
-        SaveStatus = $"⇄ {a.Name} and {b.Name} trade places — Save to lock it in.";
+        var roleNote = RevalidateInMatchRoles();   // duties follow the players onto their new tokens
+        SaveStatus = $"⇄ {a.Name} and {b.Name} trade places — Save to lock it in.{roleNote}";
     }
 
     /// <summary>A player's abilities for position-adjusted grades; null degrades to native rating.</summary>
@@ -866,28 +986,35 @@ public sealed partial class TacticsViewModel : PageViewModel
                 c?.InjuredUntilMd is int u2 && u2 >= md, _s.LearnedPositions(player.Id)));
         }
         SelectedPlayer = Players.FirstOrDefault();
+        var roleNote = RevalidateInMatchRoles();   // a benched captain/taker must not keep the duty
         var note = "";
         try { note = _s.AssistantNote(_s.NextFixture()?.Matchday ?? 0); } catch { /* optional */ }
         SaveStatus = "AI suggestion loaded (form, fatigue, fit and injuries considered) — " +
-                     "edit as you like, then Save." + (note.Length > 0 ? $"\n{note}" : "");
+                     "edit as you like, then Save." + roleNote + (note.Length > 0 ? $"\n{note}" : "");
     }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MainTabBrush))]
     [NotifyPropertyChangedFor(nameof(SubTabBrush))]
+    [NotifyPropertyChangedFor(nameof(MainTabFg))]
+    [NotifyPropertyChangedFor(nameof(SubTabFg))]
     [NotifyPropertyChangedFor(nameof(PhaseBanner))]
     [NotifyPropertyChangedFor(nameof(PhaseBrush))]
     [NotifyPropertyChangedFor(nameof(PitchCaption))]
     private int _activeTab;   // 0 = Attacking Formation, 1 = Defensive Formation
 
     [ObservableProperty]
-    private string _saveStatus = "Drag players to reposition, set each one's position & role, then Save.";
+    private string _saveStatus = "Set your XI, positions and roles, then Save to lock them in.";
 
     public Avalonia.Media.IBrush MainTabBrush => TabBrush(0);
     public Avalonia.Media.IBrush SubTabBrush => TabBrush(1);
+    public Avalonia.Media.IBrush MainTabFg => TabFg(0);
+    public Avalonia.Media.IBrush SubTabFg => TabFg(1);
 
     private Avalonia.Media.IBrush TabBrush(int tab) =>
-        Visuals.Brush(ActiveTab == tab ? "#F2F4F7" : "#22262D");
+        Visuals.Brush(ActiveTab == tab ? "#F2F4F7" : "#1A222C");
+    private Avalonia.Media.IBrush TabFg(int tab) =>
+        Visuals.Brush(ActiveTab == tab ? "#12161C" : "#C7CEDA");
 
     // The game's phase banner on the pitch: pink "Attack" / teal "Defence".
     public string PhaseBanner => ActiveTab == 0 ? "Attack" : "Defence";
@@ -1111,7 +1238,9 @@ public sealed partial class TacticsViewModel : PageViewModel
             .Concat(Bench.Select(b => b.PlayerId)).ToList();
         _s.SaveSquadOrder(order, manual: true);
 
-        // In-Match Roles travel with the save (armband + takers compile into the game).
+        // In-Match Roles travel with the save (armband + takers compile into the game) — but
+        // only STARTERS may hold them: a player moved to the bench must not keep the armband.
+        var roleNote = RevalidateInMatchRoles();
         _s.Captain = Captain?.PlayerId;
         _s.SetTaker("fk", TakerFk?.PlayerId);
         _s.SetTaker("pk", TakerPk?.PlayerId);
@@ -1124,7 +1253,7 @@ public sealed partial class TacticsViewModel : PageViewModel
             ? $"  ⚠ {misfits} player(s) out of position (red ring) — they'll struggle there."
             : "";
         SaveStatus = $"Saved {shape}, {SelectedStyle?.Name}{(Fluid ? " + Sub shape" : "")} and YOUR " +
-                     $"XI — applies in-game on the next compile.{warn}";
+                     $"XI — applies in-game on the next compile.{warn}{roleNote}";
     }
 
     private List<(int Index, long PlayerId, string Position, string Role, int X, int Y)> SlotsFor(int phase)

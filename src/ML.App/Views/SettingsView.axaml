@@ -6,95 +6,93 @@
              x:DataType="vm:SettingsViewModel">
   <ScrollViewer>
   <StackPanel Margin="28" Spacing="14" MaxWidth="1100" HorizontalAlignment="Left">
-    <TextBlock Text="Settings" FontSize="24" FontWeight="Bold" Foreground="White"/>
+    <TextBlock Classes="ml-h1" Text="Settings"/>
     <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"/>
     <WrapPanel>
 
-    <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="panelHead" Text="Display"/>
-      <TextBlock Text="UI skin" Foreground="#8A93A2" FontSize="12"/>
+    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="Display"/>
+      <TextBlock Classes="ml-muted" Text="UI skin"/>
       <ComboBox ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedSkin}"
                 HorizontalAlignment="Stretch"/>
-      <CheckBox IsChecked="{Binding FmAttributes}" Foreground="#C7CEDA"
+      <CheckBox IsChecked="{Binding FmAttributes}" Foreground="{StaticResource MlTextBody}"
                 Content="FM view — colour bands, unscouted players hidden"/>
-      <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+      <TextBlock Classes="ml-muted" TextWrapping="Wrap"
                  Text="Bands: red poor · amber average · green good · blue elite. Knowledge grows by facing clubs and scouting; coach, scout and analyst reports are always on."/>
     </StackPanel></Border>
 
-    <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="panelHead" Text="Realism"/>
-      <TextBlock Text="Attribute masking" Foreground="#8A93A2" FontSize="12"/>
+    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="Realism"/>
+      <TextBlock Classes="ml-muted" Text="Attribute masking"/>
       <ComboBox ItemsSource="{Binding MaskOptions}" SelectedItem="{Binding MaskStrict}"
                 HorizontalAlignment="Stretch"/>
-      <TextBlock Text="Transfer difficulty" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="Transfer difficulty"/>
       <ComboBox ItemsSource="{Binding DifficultyOptions}" SelectedItem="{Binding TransferDifficulty}"
                 HorizontalAlignment="Stretch"/>
-      <TextBlock Text="Injury frequency" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="Injury frequency"/>
       <ComboBox ItemsSource="{Binding InjuryOptions}" SelectedItem="{Binding InjuryFreq}"
                 HorizontalAlignment="Stretch"/>
-      <TextBlock Text="Board patience" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="Board patience"/>
       <ComboBox ItemsSource="{Binding SackOptions}" SelectedItem="{Binding SackLeniency}"
                 HorizontalAlignment="Stretch"/>
     </StackPanel></Border>
 
-    <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="panelHead" Text="Matchday &amp; world"/>
-      <CheckBox IsChecked="{Binding AutoBoot}" Foreground="#C7CEDA"
+    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="Matchday &amp; world"/>
+      <CheckBox IsChecked="{Binding AutoBoot}" Foreground="{StaticResource MlTextBody}"
                 Content="Boot eFootball automatically on Play Match"/>
-      <CheckBox IsChecked="{Binding RealNames}" Foreground="#C7CEDA"
+      <CheckBox IsChecked="{Binding RealNames}" Foreground="{StaticResource MlTextBody}"
                 Content="Real club names in-game (next compile)"/>
-      <TextBlock Text="Your manager name" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="Your manager name"/>
       <TextBox Text="{Binding ManagerName}" Watermark="The Gaffer"/>
-      <TextBlock Text="{Binding WorldSeedLine}" Foreground="#8A93A2" FontSize="11"
-                 TextWrapping="Wrap"/>
+      <TextBlock Classes="ml-muted" Text="{Binding WorldSeedLine}" TextWrapping="Wrap"/>
     </StackPanel></Border>
 
-    <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="panelHead" Text="Match video (OBS + ffmpeg)"/>
-      <CheckBox IsChecked="{Binding RecordMatches}" Foreground="#C7CEDA"
+    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="Match video (OBS + ffmpeg)"/>
+      <CheckBox IsChecked="{Binding RecordMatches}" Foreground="{StaticResource MlTextBody}"
                 Content="Record every match via OBS"/>
-      <TextBlock Text="OBS WebSocket URL" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="OBS WebSocket URL"/>
       <TextBox Text="{Binding ObsUrl}" Watermark="ws://127.0.0.1:4455"/>
-      <TextBlock Text="OBS WebSocket password (blank if auth off)" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="OBS WebSocket password (blank if auth off)"/>
       <TextBox Text="{Binding ObsPassword}" PasswordChar="•"/>
-      <TextBlock Text="ffmpeg path" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="ffmpeg path"/>
       <TextBox Text="{Binding FfmpegPath}" Watermark="ffmpeg"/>
-      <TextBlock Text="Recordings folder (OBS output)" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="Recordings folder (OBS output)"/>
       <TextBox Text="{Binding VideoDir}" Watermark="C:\Users\you\Videos"/>
-      <Button Content="Save video settings" Command="{Binding SaveVideoSettingsCommand}"
-              Background="#232B36" Foreground="#C7CEDA" Padding="12,7" CornerRadius="7" FontSize="12"/>
-      <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+      <Button Classes="ml-secondary" Content="Save video settings"
+              Command="{Binding SaveVideoSettingsCommand}" FontSize="12"/>
+      <TextBlock Classes="ml-muted" TextWrapping="Wrap"
                  Text="Play Match starts the recording; 🎞 Analyse recording on the Dashboard stops it and mines goals, minutes and scorer suggestions. Setup: docs/video-capture.md."/>
     </StackPanel></Border>
 
-    <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="panelHead" Text="Screenshot OCR (Steam)"/>
-      <TextBlock Text="Steam folder" Foreground="#8A93A2" FontSize="12"/>
+    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="Screenshot OCR (Steam)"/>
+      <TextBlock Classes="ml-muted" Text="Steam folder"/>
       <TextBox Text="{Binding SteamRoot}"/>
-      <TextBlock Text="Steam user id" Foreground="#8A93A2" FontSize="12"/>
+      <TextBlock Classes="ml-muted" Text="Steam user id"/>
       <TextBox Text="{Binding SteamUserId}"/>
-      <Button Content="Save paths" Command="{Binding SaveSettingsCommand}" Background="#1F9D4D"
-              Foreground="White" FontWeight="Bold" Padding="18,8" CornerRadius="8"/>
-      <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+      <Button Classes="ml-primary" Content="Save paths" Command="{Binding SaveSettingsCommand}"/>
+      <TextBlock Classes="ml-muted" TextWrapping="Wrap"
                  Text="While the Office is open, every new F12 screenshot in this folder is OCR'd automatically and lands as a pre-filled score for you to confirm."/>
     </StackPanel></Border>
 
-    <Border Classes="panel" Width="700" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="panelHead" Text="OCR calibration (score regions)"/>
-      <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+    <Border Classes="ml-panel" Width="700" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="OCR calibration (score regions)"/>
+      <TextBlock Classes="ml-muted" TextWrapping="Wrap"
                  Text="Where the two full-time score boxes sit, as fractions (0–1) of the screenshot. Defaults were measured off a real 2560x1600 capture. Changes re-run OCR live against the loaded screenshot and save instantly."/>
       <StackPanel Orientation="Horizontal" Spacing="10">
-        <TextBlock Text="Aspect mapping" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+        <TextBlock Classes="ml-muted" Text="Aspect mapping" VerticalAlignment="Center"/>
         <ComboBox ItemsSource="{Binding OcrAspectOptions}" SelectedItem="{Binding OcrAspect}"
                   Width="300"/>
       </StackPanel>
       <Grid ColumnDefinitions="52,120,120,120,120" RowDefinitions="Auto,Auto,Auto">
-        <TextBlock Grid.Row="0" Grid.Column="1" Text="x" Foreground="#8A93A2" FontSize="11" Margin="4,0"/>
-        <TextBlock Grid.Row="0" Grid.Column="2" Text="y" Foreground="#8A93A2" FontSize="11" Margin="4,0"/>
-        <TextBlock Grid.Row="0" Grid.Column="3" Text="w" Foreground="#8A93A2" FontSize="11" Margin="4,0"/>
-        <TextBlock Grid.Row="0" Grid.Column="4" Text="h" Foreground="#8A93A2" FontSize="11" Margin="4,0"/>
-        <TextBlock Grid.Row="1" Grid.Column="0" Text="Home" Foreground="#C7CEDA" FontSize="12"
-                   VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="0" Grid.Column="1" Classes="ml-muted" Text="x" Margin="4,0"/>
+        <TextBlock Grid.Row="0" Grid.Column="2" Classes="ml-muted" Text="y" Margin="4,0"/>
+        <TextBlock Grid.Row="0" Grid.Column="3" Classes="ml-muted" Text="w" Margin="4,0"/>
+        <TextBlock Grid.Row="0" Grid.Column="4" Classes="ml-muted" Text="h" Margin="4,0"/>
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="Home" Foreground="{StaticResource MlTextBody}"
+                   FontSize="12" VerticalAlignment="Center"/>
         <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding OcrHomeX}" Minimum="0" Maximum="1"
                        Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
         <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding OcrHomeY}" Minimum="0" Maximum="1"
@@ -103,8 +101,8 @@
                        Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
         <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding OcrHomeH}" Minimum="0" Maximum="1"
                        Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-        <TextBlock Grid.Row="2" Grid.Column="0" Text="Away" Foreground="#C7CEDA" FontSize="12"
-                   VerticalAlignment="Center"/>
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Away" Foreground="{StaticResource MlTextBody}"
+                   FontSize="12" VerticalAlignment="Center"/>
         <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding OcrAwayX}" Minimum="0" Maximum="1"
                        Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
         <NumericUpDown Grid.Row="2" Grid.Column="2" Value="{Binding OcrAwayY}" Minimum="0" Maximum="1"
@@ -115,44 +113,45 @@
                        Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
       </Grid>
       <StackPanel Orientation="Horizontal" Spacing="10">
-        <Button Content="🧪 Test OCR now" Command="{Binding TestOcrCommand}" Background="#1F9D4D"
-                Foreground="White" FontWeight="Bold" Padding="16,8" CornerRadius="8"/>
-        <Button Content="Reset to defaults" Command="{Binding ResetOcrRegionsCommand}"
-                Background="#232B36" Foreground="#C7CEDA" Padding="12,8" CornerRadius="8" FontSize="12"/>
+        <Button Classes="ml-primary" Content="🧪 Test OCR now" Command="{Binding TestOcrCommand}"/>
+        <Button Classes="ml-secondary" Content="Reset to defaults"
+                Command="{Binding ResetOcrRegionsCommand}" FontSize="12"/>
       </StackPanel>
       <TextBlock Text="{Binding OcrResultLine}" Foreground="#9FE6B4" FontSize="12"
                  TextWrapping="Wrap" FontFamily="Consolas"/>
       <StackPanel Orientation="Horizontal" Spacing="14">
         <StackPanel Spacing="4">
-          <TextBlock Text="Home score crop" Foreground="#8A93A2" FontSize="11"/>
-          <Border Background="#0E131A" BorderBrush="#3A4759" BorderThickness="1" CornerRadius="4"
-                  Padding="4">
+          <TextBlock Classes="ml-muted" Text="Home score crop"/>
+          <Border Background="{StaticResource MlSurfaceApp}" BorderBrush="{StaticResource MlBorder}"
+                  BorderThickness="1" CornerRadius="4" Padding="4">
             <Image Source="{Binding OcrHomeCrop}" Width="150" Stretch="Uniform"/>
           </Border>
         </StackPanel>
         <StackPanel Spacing="4">
-          <TextBlock Text="Away score crop" Foreground="#8A93A2" FontSize="11"/>
-          <Border Background="#0E131A" BorderBrush="#3A4759" BorderThickness="1" CornerRadius="4"
-                  Padding="4">
+          <TextBlock Classes="ml-muted" Text="Away score crop"/>
+          <Border Background="{StaticResource MlSurfaceApp}" BorderBrush="{StaticResource MlBorder}"
+                  BorderThickness="1" CornerRadius="4" Padding="4">
             <Image Source="{Binding OcrAwayCrop}" Width="150" Stretch="Uniform"/>
           </Border>
         </StackPanel>
       </StackPanel>
-      <Border Background="#0E131A" BorderBrush="#3A4759" BorderThickness="1" CornerRadius="4"
-              Padding="4" HorizontalAlignment="Left">
+      <Border Background="{StaticResource MlSurfaceApp}" BorderBrush="{StaticResource MlBorder}"
+              BorderThickness="1" CornerRadius="4" Padding="4" HorizontalAlignment="Left">
         <Image Source="{Binding OcrScreenshot}" MaxWidth="640" Stretch="Uniform"/>
       </Border>
     </StackPanel></Border>
 
-    <Border Classes="panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="panelHead" Text="Data"/>
-      <Button Content="💾 Backup now" Command="{Binding BackupNowCommand}" Background="#232B36"
-              Foreground="#C7CEDA" Padding="14,8" CornerRadius="8"/>
-      <TextBlock Text="Restore a backup (applies at next launch)" Foreground="#8A93A2" FontSize="12"/>
+    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="Data"/>
+      <Button Classes="ml-secondary" Content="💾 Backup now" Command="{Binding BackupNowCommand}"/>
+      <TextBlock Classes="ml-muted" Text="Restore a backup (applies at next launch)"/>
       <ComboBox ItemsSource="{Binding Backups}" SelectedItem="{Binding SelectedBackup}"
                 HorizontalAlignment="Stretch"/>
-      <Button Content="↩ Restore selected" Command="{Binding RestoreBackupCommand}" Background="#3A2A10"
-              Foreground="#E0A526" Padding="14,8" CornerRadius="8"/>
+      <TextBlock Classes="ml-muted" Text="No backups yet — take one and it lands here."
+                 IsVisible="{Binding !Backups.Count}"/>
+      <Button Content="↩ Restore selected" Command="{Binding RestoreBackupCommand}"
+              Background="#3A2A10" Foreground="{StaticResource MlWarn}" Padding="14,8"
+              CornerRadius="{StaticResource MlRadiusControl}"/>
     </StackPanel></Border>
 
     </WrapPanel>

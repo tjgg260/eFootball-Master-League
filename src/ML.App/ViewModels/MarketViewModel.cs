@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using Avalonia;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -52,6 +53,9 @@ public sealed partial class MarketViewModel : PageViewModel
     public MarketViewModel(Session s)
     {
         _s = s;
+        // P6: typing must not requery 376k rows per keystroke — restartable 300ms debounce.
+        _searchDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _searchDebounce.Tick += (_, _) => { _searchDebounce.Stop(); Requery(); };
         var masterDb = FindMasterDb();
         if (masterDb is not null)
         {
@@ -105,7 +109,13 @@ public sealed partial class MarketViewModel : PageViewModel
 
     [ObservableProperty] private string _sortBy = "Most valuable";
 
-    partial void OnSearchTextChanged(string value) => Requery();
+    private readonly DispatcherTimer _searchDebounce;
+
+    partial void OnSearchTextChanged(string value)
+    {
+        _searchDebounce.Stop();     // restart pattern: only 300ms of silence fires the query
+        _searchDebounce.Start();
+    }
     partial void OnPositionFilterChanged(string value) => Requery();
     partial void OnMaxAgeChanged(decimal value) => Requery();
     partial void OnGradeFloorChanged(string value) => Requery();
@@ -134,33 +144,93 @@ public sealed partial class MarketViewModel : PageViewModel
     [ObservableProperty] private string _signStatus =
         "Search the world's players — click one for the full profile. Fees are real.";
 
+    // --- async requery (P6): the 376k-row read happens off the UI thread ------------
+    // Rows only ever mutate on the UI thread; a generation counter drops stale results
+    // when a newer query has been issued while an older one was still running.
+
+    [ObservableProperty] private bool _isSearching;
+    [ObservableProperty] private bool _queryFailed;
+    private int _queryGeneration;   // only incremented on the UI thread
+
+    /// <summary>The grid's empty overlay: searching / no db / nothing matches.</summary>
+    public bool ShowEmpty => Rows.Count == 0 && !QueryFailed;
+    public string EmptyLine => IsSearching
+        ? "Searching…"
+        : TotalPlayers == 0
+            ? "No master.db found — build the reference world to browse the market."
+            : "0 players match these filters — loosen the calibre, age or value cap.";
+
+    partial void OnIsSearchingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowEmpty));
+        OnPropertyChanged(nameof(EmptyLine));
+    }
+    partial void OnQueryFailedChanged(bool value) => OnPropertyChanged(nameof(ShowEmpty));
+
+    /// <summary>Everything the background query needs, snapshotted on the UI thread.</summary>
+    private sealed record QuerySnapshot(
+        string Search, string Position, int MaxAge, int MinRating,
+        bool FreeAgentsOnly, long Cap, string SortBy);
+
     private void Requery()
     {
-        try { RequeryCore(); }
-        catch (Exception ex) { Program.Log("Market.Requery", ex); }
+        var gen = System.Threading.Interlocked.Increment(ref _queryGeneration);
+        try { WindowLine = _s.TransferWindowLabel(); } catch { WindowLine = ""; }
+        var snapshot = new QuerySnapshot(SearchText, PositionFilter, (int)MaxAge, (int)MinRating,
+            FreeAgentsOnly, CapOf(ValueCap), SortBy);
+        IsSearching = true;
+        Task.Run(() =>
+        {
+            try
+            {
+                var rows = QueryRows(snapshot);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (gen != _queryGeneration) return;    // superseded — drop the stale result
+                    Rows.Clear();
+                    // Knowledge masking resolves HERE, on the UI thread: KnowledgeOf reads the
+                    // shared career Session connection, which the background thread must never
+                    // touch. Only the 300 shown rows pay the lookup.
+                    foreach (var row in rows) Rows.Add(row with { Knowledge = KnowledgeSafe(row.Id) });
+                    QueryFailed = false;
+                    IsSearching = false;                    // last: re-evaluates ShowEmpty with the new rows
+                });
+            }
+            catch (Exception ex)
+            {
+                Program.Log("Market.Requery", ex);          // and P6: no longer swallowed silently —
+                Dispatcher.UIThread.Post(() =>              // the grid shows the failure line below
+                {
+                    if (gen != _queryGeneration) return;
+                    Rows.Clear();
+                    QueryFailed = true;
+                    IsSearching = false;
+                });
+            }
+        });
     }
 
-    private void RequeryCore()
+    /// <summary>Runs on a background thread. Touches only local connections and the Session
+    /// value/knowledge lookups; it must NOT touch Rows or any other UI-bound state.</summary>
+    private List<MarketPlayer> QueryRows(QuerySnapshot q)
     {
+        var result = new List<MarketPlayer>();
         var masterDb = FindMasterDb();
-        if (masterDb is null) return;
+        if (masterDb is null) return result;
         using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={masterDb};Mode=ReadOnly");
         con.Open();
 
-        try { WindowLine = _s.TransferWindowLabel(); } catch { WindowLine = ""; }
-
-        Rows.Clear();
         using var cmd = con.CreateCommand();
         var where = new List<string>();
-        if (!string.IsNullOrWhiteSpace(SearchText)) where.Add("p.name LIKE $q");
-        if (PositionFilter != "All") where.Add("p.position = $pos");
-        if (MaxAge < 45) where.Add("COALESCE(p.age, 25) <= $age");
-        if (MinRating > 40) where.Add("COALESCE(p.overall_rating, 0) >= $min");
+        if (!string.IsNullOrWhiteSpace(q.Search)) where.Add("p.name LIKE $q");
+        if (q.Position != "All") where.Add("p.position = $pos");
+        if (q.MaxAge < 45) where.Add("COALESCE(p.age, 25) <= $age");
+        if (q.MinRating > 40) where.Add("COALESCE(p.overall_rating, 0) >= $min");
         // The candidate pool is ordered by the chosen sort so "Most valuable" surfaces the world's
         // priciest players, not the highest-rated. A player's club is his ACTUAL team (any league,
         // not just the career divisions) — so the reference world reads as real clubs, and only a
         // genuinely unattached player is a free agent.
-        var order = SortBy switch
+        var order = q.SortBy switch
         {
             "Most valuable" => "COALESCE((SELECT value FROM player_market WHERE player_id=p.id),0) DESC, " +
                                "p.overall_rating DESC",
@@ -174,16 +244,16 @@ public sealed partial class MarketViewModel : PageViewModel
             "(SELECT skin_tone FROM player_appearance a WHERE a.player_id=p.id), " +
             "(SELECT t.name FROM squad_members s JOIN teams t ON t.id=s.team_id " +
             " WHERE s.player_id=p.id LIMIT 1), " +
-            "(SELECT transfer_status FROM player_market m WHERE m.player_id=p.id) " +
+            "(SELECT transfer_status FROM player_market m WHERE m.player_id=p.id), " +
+            "COALESCE((SELECT value FROM player_market m WHERE m.player_id=p.id), 0) " +
             "FROM players p " +
             (where.Count > 0 ? "WHERE " + string.Join(" AND ", where) + " " : "") +
             "ORDER BY " + order + " LIMIT 4000";
-        if (!string.IsNullOrWhiteSpace(SearchText)) cmd.Parameters.AddWithValue("$q", $"%{SearchText.Trim()}%");
-        if (PositionFilter != "All") cmd.Parameters.AddWithValue("$pos", PositionFilter);
-        if (MaxAge < 45) cmd.Parameters.AddWithValue("$age", (int)MaxAge);
-        if (MinRating > 40) cmd.Parameters.AddWithValue("$min", (int)MinRating);
+        if (!string.IsNullOrWhiteSpace(q.Search)) cmd.Parameters.AddWithValue("$q", $"%{q.Search.Trim()}%");
+        if (q.Position != "All") cmd.Parameters.AddWithValue("$pos", q.Position);
+        if (q.MaxAge < 45) cmd.Parameters.AddWithValue("$age", q.MaxAge);
+        if (q.MinRating > 40) cmd.Parameters.AddWithValue("$min", q.MinRating);
 
-        var cap = CapOf(ValueCap);
         var found = new List<(long Id, string Name, string Pos, int Rating, int? Age, long Value,
             string Club, string? Portrait, int? Skin, string? Status)>();
         using (var r = cmd.ExecuteReader())
@@ -194,29 +264,33 @@ public sealed partial class MarketViewModel : PageViewModel
                 int? age = r.IsDBNull(4) ? null : r.GetInt32(4);
                 var id = r.GetInt64(0);           // player ids run past Int32 (curated/generated bands)
                 var club = r.IsDBNull(7) ? "Free agent" : r.GetString(7);
-                if (FreeAgentsOnly && club != "Free agent") continue;
-                var value = _s.MarketValueOf(id, rating, age);
-                if (value > cap) continue;
+                if (q.FreeAgentsOnly && club != "Free agent") continue;
+                // Value comes from THIS master connection (thread-safety: the background query
+                // must never touch the shared career Session connection); model fallback is pure.
+                var stored = r.GetInt64(9);
+                var value = stored > 0 ? stored : Session.ValuationOf(rating, age);
+                if (value > q.Cap) continue;
                 found.Add((id, r.GetString(1), r.GetString(2), rating, age, value, club,
                     r.IsDBNull(5) ? null : r.GetString(5), r.IsDBNull(6) ? null : r.GetInt32(6),
                     r.IsDBNull(8) ? null : r.GetString(8)));
             }
         }
         IEnumerable<(long Id, string Name, string Pos, int Rating, int? Age, long Value,
-            string Club, string? Portrait, int? Skin, string? Status)> sorted = SortBy switch
+            string Club, string? Portrait, int? Skin, string? Status)> sorted = q.SortBy switch
         {
             "Youngest" => found.OrderBy(p => p.Age ?? 99).ThenByDescending(p => p.Rating),
             "Name A–Z" => found.OrderBy(p => p.Name),
             "Best rated" => found.OrderByDescending(p => p.Rating),
             _ => found.OrderByDescending(p => p.Value).ThenByDescending(p => p.Rating),  // Most valuable
         };
-        // Knowledge is only looked up for the 300 shown, so the grade masking costs nothing extra.
+        // Knowledge stays at the placeholder here — the UI-thread marshal fills it in
+        // (KnowledgeOf uses the shared career connection; this thread must not).
         foreach (var p in sorted.Take(300))
         {
-            var knowledge = KnowledgeSafe(p.Id);
-            Rows.Add(new MarketPlayer(p.Id, p.Name, p.Pos, p.Rating, p.Age, p.Value, p.Club,
-                p.Portrait, p.Skin, knowledge, p.Status));
+            result.Add(new MarketPlayer(p.Id, p.Name, p.Pos, p.Rating, p.Age, p.Value, p.Club,
+                p.Portrait, p.Skin, 100, p.Status));
         }
+        return result;
     }
 
     private int KnowledgeSafe(long id)

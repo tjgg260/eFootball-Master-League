@@ -6,38 +6,38 @@
              x:DataType="vm:InboxViewModel">
   <DockPanel Margin="20">
     <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-      <TextBlock Text="{Binding Header}" FontSize="22" FontWeight="Bold" Foreground="White"/>
-      <Button Grid.Column="1" Content="Mark all read" Command="{Binding MarkAllReadCommand}"
-              Background="#232B36" Foreground="#C7CEDA" Padding="12,8" CornerRadius="8" FontSize="12"/>
+      <TextBlock Classes="ml-h1" Text="{Binding Header}"/>
+      <Button Grid.Column="1" Classes="ml-secondary" Content="Mark all read"
+              Command="{Binding MarkAllReadCommand}" FontSize="12" VerticalAlignment="Center"/>
     </Grid>
-    <TextBlock DockPanel.Dock="Top" Text="Nothing on the wire yet — play a match."
-               Foreground="#8A93A2" IsVisible="{Binding Empty}"/>
+    <TextBlock DockPanel.Dock="Top" Classes="ml-muted" IsVisible="{Binding Empty}"
+               Text="Nothing on the wire yet — play a match and the news will follow."/>
 
     <!-- ticker rail: AROUND THE MARKET with faces (Sky-style) -->
-    <Border DockPanel.Dock="Right" Width="250" Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="12"
-            Padding="14" Margin="14,0,0,0" IsVisible="{Binding HasTicker}">
+    <Border DockPanel.Dock="Right" Classes="ml-panel" Width="250" Margin="14,0,0,0"
+            IsVisible="{Binding HasTicker}">
       <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="AROUND THE MARKET" Foreground="#5E6875"
-                   FontSize="10" FontWeight="Bold" LetterSpacing="1.4" Margin="0,0,0,10"/>
+        <TextBlock DockPanel.Dock="Top" Classes="ml-label" Text="AROUND THE MARKET"
+                   LetterSpacing="1.4" Margin="0,0,0,10"/>
         <ScrollViewer>
           <ItemsControl ItemsSource="{Binding Ticker}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TickerEntry">
                 <Grid ColumnDefinitions="40,*" Margin="0,4">
                   <Border Width="32" Height="32" CornerRadius="16" ClipToBounds="True"
-                          Background="#1B2430">
+                          Background="{StaticResource MlSurfaceControl}">
                     <Panel>
-                      <TextBlock Text="{Binding Mark}" Foreground="#8A93A2" FontSize="9"
-                                 FontWeight="Bold" HorizontalAlignment="Center"
+                      <TextBlock Text="{Binding Mark}" Foreground="{StaticResource MlTextMuted}"
+                                 FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"
                                  VerticalAlignment="Center"/>
                       <Image Source="{Binding Portrait}" Stretch="UniformToFill"
                              IsVisible="{Binding HasPortrait}"/>
                     </Panel>
                   </Border>
                   <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Player}" Foreground="White" FontSize="12"
-                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding Line}" Foreground="#E0A526" FontSize="10"/>
+                    <TextBlock Text="{Binding Player}" Foreground="{StaticResource MlTextHeading}"
+                               FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Line}" Foreground="{StaticResource MlWarn}" FontSize="10"/>
                   </StackPanel>
                 </Grid>
               </DataTemplate>
@@ -49,9 +49,9 @@
 
     <ScrollViewer>
       <StackPanel>
-        <!-- DONE DEAL hero: the latest paid move, Sky-style -->
+        <!-- DONE DEAL hero: the latest paid move, Sky-style (bespoke moment — gradient stays) -->
         <Border CornerRadius="14" Padding="18" Margin="0,0,0,14" IsVisible="{Binding HeroVisible}"
-                BorderBrush="#2E1F9D4D" BorderThickness="1">
+                BorderBrush="{StaticResource MlSuccess}" BorderThickness="1">
           <Border.Background>
             <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
               <GradientStop Color="#0E2A1C" Offset="0"/>
@@ -60,7 +60,8 @@
           </Border.Background>
           <Grid ColumnDefinitions="Auto,*,Auto">
             <Border Width="76" Height="76" CornerRadius="38" ClipToBounds="True"
-                    Background="#1B2430" BorderBrush="#1F9D4D" BorderThickness="2">
+                    Background="{StaticResource MlSurfaceControl}"
+                    BorderBrush="{StaticResource MlSuccess}" BorderThickness="2">
               <Panel>
                 <TextBlock Text="⚽" FontSize="26" HorizontalAlignment="Center"
                            VerticalAlignment="Center"/>
@@ -69,51 +70,60 @@
               </Panel>
             </Border>
             <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center" Spacing="2">
-              <Border Background="#1F9D4D" CornerRadius="4" Padding="7,2" HorizontalAlignment="Left">
-                <TextBlock Text="✓ DONE DEAL" Foreground="#04150B" FontSize="10" FontWeight="Bold"
-                           LetterSpacing="1.5"/>
+              <Border Classes="ml-chip ml-success" HorizontalAlignment="Left">
+                <TextBlock Text="✓ DONE DEAL" LetterSpacing="1.5"/>
               </Border>
-              <TextBlock Text="{Binding HeroName}" Foreground="White" FontSize="22" FontWeight="Bold"/>
-              <TextBlock Text="{Binding HeroLine}" Foreground="#8A93A2" FontSize="13"/>
+              <TextBlock Text="{Binding HeroName}" Foreground="{StaticResource MlTextHeading}"
+                         FontSize="22" FontWeight="Bold"/>
+              <TextBlock Text="{Binding HeroLine}" Foreground="{StaticResource MlTextMuted}"
+                         FontSize="13"/>
             </StackPanel>
-            <TextBlock Grid.Column="2" Text="{Binding HeroFee}" Foreground="#F5C044"
+            <TextBlock Grid.Column="2" Text="{Binding HeroFee}" Foreground="{StaticResource MlGold}"
                        FontSize="22" FontWeight="Bold" VerticalAlignment="Center"/>
           </Grid>
         </Border>
 
-        <!-- the feed: accent-barred cards with faces -->
+        <!-- the feed: accent-barred cards with faces; click a message to mark it read (P6) -->
         <ItemsControl ItemsSource="{Binding Rows}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:NewsEntry">
-              <Border Classes="panel" Margin="0,0,0,10" BorderThickness="3,0,0,0"
-                      BorderBrush="{Binding AccentBrush}">
-                <Grid ColumnDefinitions="Auto,*">
-                  <Border Width="44" Height="44" CornerRadius="22" ClipToBounds="True"
-                          Background="#1B2430" VerticalAlignment="Top" Margin="0,2,12,0">
-                    <Panel>
-                      <TextBlock Text="{Binding Icon}" FontSize="17" HorizontalAlignment="Center"
-                                 VerticalAlignment="Center"/>
-                      <Image Source="{Binding Portrait}" Stretch="UniformToFill"
-                             IsVisible="{Binding HasPortrait}"/>
-                    </Panel>
-                  </Border>
-                  <StackPanel Grid.Column="1">
-                    <Grid ColumnDefinitions="*,Auto,Auto">
-                      <TextBlock Text="{Binding Subject}" FontWeight="SemiBold"
-                                 Foreground="{Binding SubjectBrush}" FontSize="15"
-                                 TextTrimming="CharacterEllipsis"/>
-                      <Border Grid.Column="1" Background="#1F9D4D" CornerRadius="4" Padding="6,1"
-                              Margin="8,0" IsVisible="{Binding ShowNew}" VerticalAlignment="Center">
-                        <TextBlock Text="NEW" Foreground="White" FontSize="9" FontWeight="Bold"/>
-                      </Border>
-                      <TextBlock Grid.Column="2" Text="{Binding When}" Foreground="#5E6774"
-                                 FontSize="11" VerticalAlignment="Center"/>
-                    </Grid>
-                    <TextBlock Text="{Binding Body}" Foreground="{Binding BodyBrush}"
-                               TextWrapping="Wrap" Margin="0,5,0,0" FontSize="13"/>
-                  </StackPanel>
-                </Grid>
-              </Border>
+              <Button Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,0,10"
+                      HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                      Cursor="Hand"
+                      Command="{Binding $parent[ItemsControl].((vm:InboxViewModel)DataContext).MarkReadCommand}"
+                      CommandParameter="{Binding}">
+                <Border Classes="ml-card" BorderThickness="3,0,0,0"
+                        BorderBrush="{Binding AccentBrush}">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <Border Width="44" Height="44" CornerRadius="22" ClipToBounds="True"
+                            Background="{StaticResource MlSurfaceControl}" VerticalAlignment="Top"
+                            Margin="0,2,12,0">
+                      <Panel>
+                        <TextBlock Text="{Binding Icon}" FontSize="17" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                               IsVisible="{Binding HasPortrait}"/>
+                      </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <!-- unread dot (P6): bold subject + dot; read rows go muted -->
+                        <Ellipse Width="8" Height="8" Fill="{StaticResource MlPrimary}"
+                                 Margin="0,0,8,0" VerticalAlignment="Center"
+                                 IsVisible="{Binding ShowNew}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Subject}"
+                                   FontWeight="{Binding SubjectWeight}"
+                                   Foreground="{Binding SubjectBrush}" FontSize="15"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="2" Text="{Binding When}" Classes="ml-muted"
+                                   Margin="8,0,0,0" VerticalAlignment="Center"/>
+                      </Grid>
+                      <TextBlock Text="{Binding Body}" Foreground="{Binding BodyBrush}"
+                                 TextWrapping="Wrap" Margin="0,5,0,0" FontSize="13"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

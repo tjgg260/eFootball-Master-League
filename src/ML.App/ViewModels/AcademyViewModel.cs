@@ -27,6 +27,7 @@ public sealed partial class AcademyViewModel : PageViewModel
 
     private void Reload()
     {
+        Selected = null;
         Rows.Clear();
         foreach (var p in _s.AcademyPlayers())
         {
@@ -46,10 +47,12 @@ public sealed partial class AcademyViewModel : PageViewModel
                 Visuals.RatingBrush(rating), new string('★', stars) + new string('☆', 5 - stars),
                 Visuals.SkinBrush(tone), face));
         }
-        Note = Rows.Count == 0
-            ? "No prospects yet — the academy produces a new intake every preseason."
-            : "★ is the youth coach's read of each lad's real ceiling — development chases it. " +
-              "Young players develop fastest before 24; promote them when a squad place opens.";
+        HasProspects = Rows.Count > 0;
+        // When there are no prospects the view shows its own empty state; no note needed.
+        Note = HasProspects
+            ? "★ is the youth coach's read of each lad's real ceiling — development chases it. " +
+              "Young players develop fastest before 24; promote them when a squad place opens."
+            : "";
     }
 
     public override string Title => "Academy";
@@ -57,7 +60,11 @@ public sealed partial class AcademyViewModel : PageViewModel
     public ObservableCollection<AcademyEntry> Rows { get; } = new();
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PromoteCommand))]
     private AcademyEntry? _selected;
+
+    [ObservableProperty]
+    private bool _hasProspects;
 
     [ObservableProperty]
     private string _note = "";
@@ -65,14 +72,13 @@ public sealed partial class AcademyViewModel : PageViewModel
     [ObservableProperty]
     private string _status = "";
 
-    [RelayCommand]
+    // P6: the button is DISABLED until a prospect is picked — no more silent no-op.
+    private bool CanPromote() => Selected is not null;
+
+    [RelayCommand(CanExecute = nameof(CanPromote))]
     private void Promote()
     {
-        if (Selected is null)
-        {
-            Status = "Select a prospect first.";
-            return;
-        }
+        if (Selected is null) return;   // belt-and-braces; CanExecute already gates this
         Status = $"{Selected.Name}: {_s.PromoteAcademy(Selected.PlayerId)}";
         Reload();
     }

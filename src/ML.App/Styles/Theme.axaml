@@ -23,6 +23,8 @@
       <SolidColorBrush x:Key="MlTextHeading">#FFFFFF</SolidColorBrush>
       <SolidColorBrush x:Key="MlTextBody">#C7CEDA</SolidColorBrush>
       <SolidColorBrush x:Key="MlTextMuted">#8A93A2</SolidColorBrush>
+      <!-- the assistant-voice green: positive readouts, status lines (agents' most-wanted token) -->
+      <SolidColorBrush x:Key="MlSuccessText">#9FE6B4</SolidColorBrush>
       <SolidColorBrush x:Key="MlPrimary">#2D7DD2</SolidColorBrush>
       <SolidColorBrush x:Key="MlSuccess">#1F9D4D</SolidColorBrush>
       <SolidColorBrush x:Key="MlWarn">#E0A526</SolidColorBrush>
@@ -127,6 +129,16 @@
     <Setter Property="FontSize" Value="11"/>
     <Setter Property="FontWeight" Value="Bold"/>
     <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+  </Style>
+
+  <!-- ── empty state: the one voice for "nothing here yet" ──────────────────────── -->
+  <Style Selector="TextBlock.ml-empty">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="Margin" Value="0,18"/>
   </Style>
 
   <!-- ── DataGrid (P5): headers that fit, selection on-palette ──────────────────── -->

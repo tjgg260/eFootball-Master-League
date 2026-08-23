@@ -6,8 +6,9 @@
 
   <!-- The Game Plan replica: pill bar (Lineup / Tactics / Team), left context menu, one
        horizontal pitch with YOUR half editable and the next opponent mirrored on the right,
-       crest + Substitutes rail. Layout, journey and wording copied from the game's own
-       screens (video-frame reference, 2026-08-20). -->
+       crest rail. Layout, journey and wording copied from the game's own screens
+       (video-frame reference, 2026-08-20). Chrome sits on the ml-* design system; the pill
+       bar, menu tree and pitch graphics stay local (game-replica anatomy with no ml class). -->
 
   <UserControl.Styles>
     <Style Selector="Button.pill">
@@ -17,25 +18,20 @@
       <Setter Property="CornerRadius" Value="18"/>
     </Style>
     <Style Selector="Button.menuItem">
-      <Setter Property="Background" Value="#22262D"/>
-      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Background" Value="{StaticResource MlSurfaceControl}"/>
+      <Setter Property="Foreground" Value="{StaticResource MlTextBody}"/>
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="Padding" Value="14,10"/>
       <Setter Property="CornerRadius" Value="8"/>
       <Setter Property="HorizontalAlignment" Value="Stretch"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
     </Style>
+    <!-- the game's yellow context title — a deliberate replica accent, not chrome -->
     <Style Selector="TextBlock.menuTitle">
       <Setter Property="Foreground" Value="#F5E642"/>
       <Setter Property="FontSize" Value="15"/>
       <Setter Property="FontWeight" Value="Bold"/>
       <Setter Property="Margin" Value="2,0,0,10"/>
-    </Style>
-    <Style Selector="Border.slotCard">
-      <Setter Property="Background" Value="#22262D"/>
-      <Setter Property="CornerRadius" Value="8"/>
-      <Setter Property="Padding" Value="12,8"/>
-      <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
   </UserControl.Styles>
 
@@ -43,8 +39,8 @@
 
     <!-- ── top: the game's pill tab bar + Save (its Done button) ─────────────────── -->
     <Grid DockPanel.Dock="Top" ColumnDefinitions="220,*,220" Margin="0,0,0,10">
-      <Border Grid.Column="1" Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="22" Padding="4"
-              HorizontalAlignment="Center">
+      <Border Grid.Column="1" Background="{StaticResource MlSurfacePanel}" CornerRadius="22"
+              Padding="4" HorizontalAlignment="Center">
         <StackPanel Orientation="Horizontal" Spacing="4">
           <Button Classes="pill" Content="Lineup" Command="{Binding SetSectionCommand}"
                   CommandParameter="0" Background="{Binding Tab0Brush}" Foreground="{Binding Tab0Fg}"/>
@@ -55,54 +51,25 @@
         </StackPanel>
       </Border>
       <Button Grid.Column="2" Content="Save" Command="{Binding SaveTacticsCommand}"
-              Background="#2438C8" Foreground="White" FontWeight="Bold" Padding="34,10"
-              CornerRadius="8" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+              Classes="ml-primary" FontWeight="Bold" Padding="34,10"
+              HorizontalAlignment="Right" VerticalAlignment="Center"/>
     </Grid>
 
     <!-- ── bottom: status toast (the game's centre-pitch toasts land here) ───────── -->
     <TextBlock DockPanel.Dock="Bottom" Text="{Binding SaveStatus}" Foreground="#9FE6B4"
                FontSize="12" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,8,0,0"/>
 
-    <!-- ── right rail: crest + Substitutes (always visible, like the game) ───────── -->
+    <!-- ── right rail: crest, exactly as the game frames it ──────────────────────── -->
     <StackPanel DockPanel.Dock="Right" Width="185" Margin="12,0,0,0" Spacing="8">
       <Image Source="{Binding ClubLogo}" Width="86" Height="86" IsVisible="{Binding HasClubLogo}"
              HorizontalAlignment="Center"/>
-      <TextBlock Text="{Binding ClubName}" Foreground="White" FontSize="13" FontWeight="Bold"
-                 HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
-      <TextBlock Text="Substitutes" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"
-                 Margin="2,6,0,0"/>
-      <ScrollViewer MaxHeight="380">
-        <ItemsControl ItemsSource="{Binding Bench}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:BenchEntry">
-              <Border BorderBrush="#242B35" BorderThickness="0,0,0,1" Padding="2,4">
-                <Grid ColumnDefinitions="30,38,*">
-                  <Border Width="24" Height="24" CornerRadius="12" ClipToBounds="True"
-                          Background="{Binding MarkBrush}">
-                    <Panel>
-                      <TextBlock Text="{Binding Mark}" Foreground="White" FontSize="8"
-                                 FontWeight="Bold" HorizontalAlignment="Center"
-                                 VerticalAlignment="Center"/>
-                      <Image Source="{Binding Portrait}" Stretch="UniformToFill"
-                             IsVisible="{Binding HasPortrait}"/>
-                    </Panel>
-                  </Border>
-                  <TextBlock Grid.Column="1" Text="{Binding Position}" Foreground="#8A93A2" FontSize="11"
-                             FontWeight="Bold" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                  <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="#E6EAF0"
-                             FontSize="12" VerticalAlignment="Center"
-                             TextTrimming="CharacterEllipsis"/>
-                </Grid>
-              </Border>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </ScrollViewer>
+      <TextBlock Text="{Binding ClubName}" Classes="ml-body" FontWeight="Bold"
+                 Foreground="{StaticResource MlTextHeading}" HorizontalAlignment="Center"
+                 TextAlignment="Center" TextWrapping="Wrap"/>
     </StackPanel>
 
     <!-- ── left rail: context panel (the game's dark-blue diagonal column) ───────── -->
-    <Border DockPanel.Dock="Left" Width="252" Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="10"
-            Padding="12" Margin="0,0,12,0">
+    <Border DockPanel.Dock="Left" Classes="ml-panel" Width="252" Padding="12" Margin="0,0,12,0">
       <Panel>
 
         <!-- LINEUP: selected player mini-card + swap flow + Player Details editors -->
@@ -121,8 +88,9 @@
               </Border>
               <StackPanel VerticalAlignment="Center" Spacing="2">
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Text="{Binding SelectedPlayer.Position}" Foreground="White"
-                             FontSize="14" FontWeight="Bold" VerticalAlignment="Bottom"/>
+                  <TextBlock Text="{Binding SelectedPlayer.Position}" Classes="ml-body"
+                             Foreground="{StaticResource MlTextHeading}" FontWeight="Bold"
+                             VerticalAlignment="Bottom"/>
                   <TextBlock Text="{Binding SelectedPlayer.Grade}"
                              Foreground="{Binding SelectedPlayer.RatingBrush}"
                              FontSize="26" FontWeight="Bold"/>
@@ -130,28 +98,27 @@
                 <Rectangle Height="3" Fill="#2EC4A6" Width="86" HorizontalAlignment="Left"/>
               </StackPanel>
             </StackPanel>
-            <TextBlock Text="{Binding SelectedPlayer.Name}" Foreground="White" FontSize="16"
-                       FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SelectedPlayer.Name}" Classes="ml-h2" TextWrapping="Wrap"/>
 
             <StackPanel Orientation="Horizontal" Spacing="6">
               <Button Content="✨ Suggest XI" Command="{Binding SuggestXiCommand}"
-                      Background="#2D7DD2" Foreground="White" FontWeight="SemiBold"
-                      Padding="12,7" CornerRadius="6" FontSize="12"/>
+                      Classes="ml-primary" FontSize="12" Padding="12,7"/>
               <!-- explicit swap: arms the selected player; next click completes it -->
               <Button Content="⇄ Swap" Command="{Binding ArmSwapCommand}"
-                      Padding="12,7" CornerRadius="6" FontSize="12" FontWeight="SemiBold"
-                      Foreground="White" Background="#3A4759"/>
+                      Classes="ml-secondary" FontSize="12" FontWeight="SemiBold" Padding="12,7"/>
             </StackPanel>
-            <TextBlock Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"
+            <TextBlock Classes="ml-muted" TextWrapping="Wrap"
                        Text="Click a player to edit his position &amp; playstyle below. To move players, select one, press ⇄ Swap, then click his partner."/>
 
-            <!-- bench as a click-to-swap list (the game's Substitutes panel) -->
-            <TextBlock Text="Substitutes" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"/>
+            <!-- the ONE Substitutes list: click-to-swap, INJ/TIRED flagged, never clipped -->
+            <TextBlock Text="Substitutes" Classes="ml-label"/>
+            <TextBlock Classes="ml-muted" Text="No substitutes — every fit player is already in the XI."
+                       IsVisible="{Binding BenchEmpty}" TextWrapping="Wrap"/>
             <ListBox ItemsSource="{Binding Bench}" SelectedItem="{Binding PickBench}"
-                     Background="Transparent" BorderThickness="0" MaxHeight="180">
+                     Background="Transparent" BorderThickness="0">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:BenchEntry">
-                  <Grid ColumnDefinitions="30,30,*,30" Margin="0,1">
+                  <Grid ColumnDefinitions="30,30,*,Auto,30" Margin="0,1">
                     <Border Width="24" Height="24" CornerRadius="12" ClipToBounds="True"
                             Background="{Binding MarkBrush}">
                       <Panel>
@@ -162,12 +129,20 @@
                                IsVisible="{Binding HasPortrait}"/>
                       </Panel>
                     </Border>
-                    <TextBlock Grid.Column="1" Text="{Binding Position}" Foreground="#8A93A2"
-                               FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="#C7CEDA"
+                    <TextBlock Grid.Column="1" Text="{Binding Position}" Classes="ml-label"
+                               FontSize="10" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Name}" Classes="ml-body"
                                FontSize="12" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Grid.Column="3" Text="{Binding Grade}"
+                    <Border Grid.Column="3" Classes="ml-chip ml-danger" Margin="0,0,4,0"
+                            IsVisible="{Binding Injured}">
+                      <TextBlock Text="INJ"/>
+                    </Border>
+                    <Border Grid.Column="3" Classes="ml-chip ml-warn" Margin="0,0,4,0"
+                            IsVisible="{Binding IsTired}">
+                      <TextBlock Text="TIRED"/>
+                    </Border>
+                    <TextBlock Grid.Column="4" Text="{Binding Grade}"
                                Foreground="{Binding RatingBrush}" FontSize="12" FontWeight="Bold"
                                VerticalAlignment="Center"/>
                   </Grid>
@@ -176,12 +151,11 @@
             </ListBox>
 
             <!-- Player Details (the game's Y-button card): position + playing style -->
-            <TextBlock Text="Player Details" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"
-                       Margin="0,4,0,0"/>
-            <TextBlock Text="Registered position" Foreground="#7C8698" FontSize="10"/>
+            <TextBlock Text="Player Details" Classes="ml-label" Margin="0,4,0,0"/>
+            <TextBlock Text="Registered position" Classes="ml-muted" FontSize="10"/>
             <ComboBox ItemsSource="{Binding PositionChoices}"
                       SelectedItem="{Binding SelectedPosition}" HorizontalAlignment="Stretch"/>
-            <TextBlock Text="In possession · playstyle (★ = suits his abilities)" Foreground="#7C8698"
+            <TextBlock Text="In possession · playstyle (★ = suits his abilities)" Classes="ml-muted"
                        FontSize="10"/>
             <ListBox ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}"
                      Background="Transparent" BorderThickness="0" MaxHeight="200">
@@ -189,22 +163,23 @@
                 <DataTemplate x:DataType="vm:RoleOption">
                   <StackPanel Spacing="1" Margin="2">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                      <TextBlock Text="{Binding Name}" Foreground="White" FontSize="12"
-                                 FontWeight="SemiBold"/>
-                      <TextBlock Text="{Binding Stars}" Foreground="#E0A526" FontSize="11"/>
+                      <TextBlock Text="{Binding Name}" Classes="ml-body" FontSize="12"
+                                 FontWeight="SemiBold" Foreground="{StaticResource MlTextHeading}"/>
+                      <TextBlock Text="{Binding Stars}" Foreground="{StaticResource MlWarn}"
+                                 FontSize="11"/>
                     </StackPanel>
-                    <TextBlock Text="{Binding Description}" Foreground="#8A93A2" FontSize="10"
+                    <TextBlock Text="{Binding Description}" Classes="ml-muted" FontSize="10"
                                TextWrapping="Wrap"/>
                   </StackPanel>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
-            <TextBlock Text="Out of possession · defensive role" Foreground="#7C8698" FontSize="10"
+            <TextBlock Text="Out of possession · defensive role" Classes="ml-muted" FontSize="10"
                        Margin="0,6,0,0"/>
             <ComboBox ItemsSource="{Binding SecondaryRoles}"
                       SelectedItem="{Binding SelectedSecondaryRole}" HorizontalAlignment="Stretch"/>
             <Button Content="⚡ Auto-assign roles (AI)" Command="{Binding AutoAssignRolesCommand}"
-                    HorizontalAlignment="Stretch" Margin="0,8,0,2"
+                    Classes="ml-secondary" HorizontalAlignment="Stretch" Margin="0,8,0,2"
                     ToolTip.Tip="Fills every player's in- and out-of-possession role from their attributes and your team playstyle."/>
           </StackPanel>
         </ScrollViewer>
@@ -227,32 +202,35 @@
 
           <!-- Set Formation -->
           <StackPanel IsVisible="{Binding ShowSetFormation}" Spacing="8">
-            <Border Classes="slotCard">
+            <Border Classes="ml-card">
               <StackPanel Spacing="3">
-                <TextBlock Text="Fluid Formation" Foreground="White" FontSize="14"
-                           FontWeight="SemiBold"/>
-                <CheckBox IsChecked="{Binding Fluid}" Foreground="#8A93A2" Content="On"
-                          FontSize="12"/>
+                <TextBlock Text="Fluid Formation" Classes="ml-label"/>
+                <CheckBox IsChecked="{Binding Fluid}" Foreground="{StaticResource MlTextMuted}"
+                          Content="On" FontSize="12"/>
               </StackPanel>
             </Border>
             <Button Classes="menuItem" Content="Attacking Formation"
-                    Command="{Binding ShowMainCommand}" Background="{Binding MainTabBrush}"/>
+                    Command="{Binding ShowMainCommand}" Background="{Binding MainTabBrush}"
+                    Foreground="{Binding MainTabFg}"/>
             <Button Classes="menuItem" Content="Defensive Formation"
                     Command="{Binding ShowSubCommand}" IsEnabled="{Binding Fluid}"
-                    Background="{Binding SubTabBrush}"/>
-            <TextBlock Text="Formation" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"
-                       Margin="2,6,0,0"/>
+                    Background="{Binding SubTabBrush}" Foreground="{Binding SubTabFg}"/>
+            <TextBlock Text="Formation" Classes="ml-label" Margin="2,6,0,0"/>
+            <TextBlock Classes="ml-muted" Text="No formation shapes found in the database."
+                       IsVisible="{Binding NoTemplates}" TextWrapping="Wrap"/>
             <ListBox ItemsSource="{Binding Templates}" SelectedItem="{Binding SelectedTemplate}"
                      Background="Transparent" BorderThickness="0" MaxHeight="280">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:FormationOption">
-                  <TextBlock Text="{Binding Shape}" Foreground="White" FontSize="13"
-                             FontWeight="SemiBold" Margin="4,3"/>
+                  <TextBlock Text="{Binding Shape}" Classes="ml-body" FontWeight="SemiBold"
+                             Foreground="{StaticResource MlTextHeading}" Margin="4,3"/>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
+            <!-- the drag hint only appears while dragging is actually enabled -->
             <TextBlock Text="Drag players on the pitch to edit positions. The shape saves to YOUR club's own formation records."
-                       Foreground="#5E6774" FontSize="10" TextWrapping="Wrap"/>
+                       Classes="ml-muted" FontSize="10" TextWrapping="Wrap"
+                       IsVisible="{Binding DragEnabled}"/>
             <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
           </StackPanel>
 
@@ -262,8 +240,8 @@
                      Background="Transparent" BorderThickness="0">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:StyleOption">
-                  <TextBlock Text="{Binding Name}" Foreground="White" FontSize="13"
-                             FontWeight="SemiBold" Margin="4,5"/>
+                  <TextBlock Text="{Binding Name}" Classes="ml-body" FontWeight="SemiBold"
+                             Foreground="{StaticResource MlTextHeading}" Margin="4,5"/>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
@@ -272,40 +250,39 @@
 
           <!-- Individual Instructions -->
           <StackPanel IsVisible="{Binding ShowInstructions}" Spacing="4">
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="Attack1" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="Attack1" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding AttackInstrNames}" SelectedItem="{Binding Attack1}"
                         HorizontalAlignment="Stretch"/></StackPanel></Border>
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="Attack2" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="Attack2" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding AttackInstrNames}" SelectedItem="{Binding Attack2}"
                         HorizontalAlignment="Stretch"/></StackPanel></Border>
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="Defence1" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="Defence1" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding DefenceInstrNames}" SelectedItem="{Binding Defence1}"
                         HorizontalAlignment="Stretch"/></StackPanel></Border>
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="Defence2" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="Defence2" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding DefenceInstrNames}" SelectedItem="{Binding Defence2}"
                         HorizontalAlignment="Stretch"/></StackPanel></Border>
-            <TextBlock Text="{x:Static vm:TacticsViewModel.InstrNote}" Foreground="#5E6774"
+            <TextBlock Text="{x:Static vm:TacticsViewModel.InstrNote}" Classes="ml-muted"
                        FontSize="10" TextWrapping="Wrap"/>
             <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
           </StackPanel>
 
           <!-- Sub-Tactic -->
           <StackPanel IsVisible="{Binding ShowSubTactic}" Spacing="8">
-            <Border Classes="slotCard">
+            <Border Classes="ml-card">
               <StackPanel Spacing="4">
-                <TextBlock Text="Fluid Formation" Foreground="White" FontSize="14"
-                           FontWeight="SemiBold"/>
+                <TextBlock Text="Fluid Formation" Classes="ml-label"/>
                 <!-- verbatim, all.str [5706] -->
                 <TextBlock Text="A formation that changes positioning when attacking or defending can now be used."
-                           Foreground="#8A93A2" FontSize="11" TextWrapping="Wrap"/>
+                           Classes="ml-muted" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
             <TextBlock Text="The in-game 'Use Sub-Tactic' switch lives in your Game Plan save, not in team data — flip it on the pause menu in eFootball. Your Defensive Formation shape compiles either way."
-                       Foreground="#5E6774" FontSize="10" TextWrapping="Wrap"/>
+                       Classes="ml-muted" FontSize="10" TextWrapping="Wrap"/>
             <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
           </StackPanel>
         </StackPanel>
@@ -314,8 +291,8 @@
         <ScrollViewer IsVisible="{Binding ShowTeam}">
           <StackPanel Spacing="4">
             <TextBlock Classes="menuTitle" Text="In-Match Roles"/>
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="Captain" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="Captain" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Captain}"
                         HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate>
@@ -324,8 +301,8 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox></StackPanel></Border>
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="FK Taker" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="FK Taker" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding TakerFk}"
                         HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate>
@@ -334,8 +311,8 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox></StackPanel></Border>
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="Left CK Taker" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="Left CK Taker" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding TakerCkl}"
                         HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate>
@@ -344,8 +321,8 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox></StackPanel></Border>
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="Right CK Taker" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="Right CK Taker" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding TakerCkr}"
                         HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate>
@@ -354,8 +331,8 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox></StackPanel></Border>
-            <Border Classes="slotCard"><StackPanel Spacing="3">
-              <TextBlock Text="PK Taker" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+            <Border Classes="ml-card"><StackPanel Spacing="3">
+              <TextBlock Text="PK Taker" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding TakerPk}"
                         HorizontalAlignment="Stretch">
                 <ComboBox.ItemTemplate>
@@ -364,13 +341,12 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox></StackPanel></Border>
-            <Border Classes="slotCard" Opacity="0.55"><StackPanel Spacing="2">
-              <TextBlock Text="Player to Join Attack 1–3" Foreground="White" FontSize="13"
-                         FontWeight="SemiBold"/>
+            <Border Classes="ml-card" Opacity="0.55"><StackPanel Spacing="2">
+              <TextBlock Text="Player to Join Attack 1–3" Classes="ml-label"/>
               <TextBlock Text="None — 🔒 stored in the in-game save (write-bits unknown); set these in eFootball before kick-off."
-                         Foreground="#8A93A2" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border>
-            <TextBlock Text="Captain and all four takers compile into PlayerAssignment on the next Play Match."
-                       Foreground="#5E6774" FontSize="10" TextWrapping="Wrap"/>
+                         Classes="ml-muted" FontSize="10" TextWrapping="Wrap"/></StackPanel></Border>
+            <TextBlock Text="Captain and all four takers compile into PlayerAssignment on the next Play Match. Anyone who drops out of the XI hands his duty over when you Save."
+                       Classes="ml-muted" FontSize="10" TextWrapping="Wrap"/>
           </StackPanel>
         </ScrollViewer>
       </Panel>
@@ -520,32 +496,39 @@
             <TextBlock Canvas.Left="640" Canvas.Top="400" Text="{Binding OpponentShape}"
                        Foreground="White" FontSize="16" FontWeight="Bold" IsHitTestVisible="False"/>
             <Border Canvas.Left="540" Canvas.Top="6" Background="#B0000000" CornerRadius="4"
-                    Padding="8,3" IsHitTestVisible="False">
-              <TextBlock Text="{Binding OpponentLabel}" Foreground="#C7CEDA" FontSize="11"/>
+                    Padding="8,3" IsHitTestVisible="False" IsVisible="{Binding HasOpponentLabel}">
+              <TextBlock Text="{Binding OpponentLabel}" Foreground="{StaticResource MlTextBody}"
+                         FontSize="11"/>
+            </Border>
+
+            <!-- why the right half is dark (no fixture / no dossier) — never a silent void -->
+            <Border Canvas.Left="392" Canvas.Top="176" Width="296" Background="#B0000000"
+                    CornerRadius="6" Padding="14,10" IsVisible="{Binding HasOpponentNote}"
+                    IsHitTestVisible="False">
+              <TextBlock Classes="ml-muted" Text="{Binding OpponentNote}" TextWrapping="Wrap"
+                         TextAlignment="Center"/>
             </Border>
           </Canvas>
         </Border>
       </Panel>
 
       <!-- the game's caption line under the pitch -->
-      <TextBlock Text="{Binding PitchCaption}" Foreground="#8A93A2" FontSize="11"
+      <TextBlock Text="{Binding PitchCaption}" Classes="ml-muted"
                  HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
 
       <!-- Team Playstyle detail: the game's "Player Movement" pages, verbatim -->
-      <Border Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="10" Padding="14" MaxWidth="724"
-              IsVisible="{Binding ShowPlaystyle}">
+      <Border Classes="ml-panel" Padding="14" MaxWidth="724" IsVisible="{Binding ShowPlaystyle}">
         <ScrollViewer MaxHeight="180">
           <StackPanel Spacing="8">
-            <TextBlock Text="{x:Static vm:TacticsViewModel.StyleIntro}" Foreground="#8A93A2"
-                       FontSize="11" TextWrapping="Wrap"/>
-            <TextBlock Text="{Binding SelectedStyle.Name}" Foreground="White" FontSize="18"
-                       FontWeight="Bold"/>
+            <TextBlock Text="{x:Static vm:TacticsViewModel.StyleIntro}" Classes="ml-muted"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SelectedStyle.Name}" Classes="ml-h2"/>
             <ItemsControl ItemsSource="{Binding SelectedStyle.Pages}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="x:String">
-                  <Border Background="#1B222C" CornerRadius="6" Padding="10" Margin="0,0,0,6">
-                    <TextBlock Text="{Binding}" Foreground="#C7CEDA" FontSize="12"
-                               TextWrapping="Wrap" LineHeight="18"/>
+                  <Border Classes="ml-card" Padding="10" Margin="0,0,0,6">
+                    <TextBlock Text="{Binding}" Classes="ml-body" TextWrapping="Wrap"
+                               LineHeight="18"/>
                   </Border>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
