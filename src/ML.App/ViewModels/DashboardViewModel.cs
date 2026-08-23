@@ -124,7 +124,42 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PlayEnabled))]
     [NotifyPropertyChangedFor(nameof(SeasonOver))]
+    [NotifyPropertyChangedFor(nameof(ShowPreMatch))]
+    [NotifyPropertyChangedFor(nameof(ShowResultEntry))]
     private bool _hasNextMatch;
+
+    // ── matchday theatre (UX P1): the card is an OCCASION before kickoff and an entry desk
+    // only after — never eleven controls and a 0-0 stepper staring at you pre-match.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPreMatch))]
+    [NotifyPropertyChangedFor(nameof(ShowResultEntry))]
+    private bool _resultEntryOpen;
+
+    public bool ShowPreMatch => HasNextMatch && !ResultEntryOpen;
+    public bool ShowResultEntry => HasNextMatch && ResultEntryOpen;
+
+    /// <summary>The narrative line of the pre-match card ("In the other dugout: …").</summary>
+    [ObservableProperty]
+    private string _dugoutLine = "";
+
+    // full-time banner: the result gets a MOMENT, not a clause in a status string
+    [ObservableProperty] private bool _ftVisible;
+    [ObservableProperty] private string _ftLine = "";
+    [ObservableProperty] private IBrush _ftBrush = Brushes.Gray;
+
+    // celebration overlay: titles and promotions deserve confetti, not 12px green text
+    [ObservableProperty] private bool _celebrationVisible;
+    [ObservableProperty] private string _celebrationTitle = "";
+    [ObservableProperty] private string _celebrationSub = "";
+
+    [RelayCommand]
+    private void OpenResultEntry() => ResultEntryOpen = true;
+
+    [RelayCommand]
+    private void BackToPreMatch() => ResultEntryOpen = false;
+
+    [RelayCommand]
+    private void CloseCelebration() => CelebrationVisible = false;
 
     [ObservableProperty]
     private string _nextMatchLabel = "No match scheduled";
@@ -504,14 +539,15 @@ public sealed partial class DashboardViewModel : PageViewModel
             }
             catch { PreTalkVisible = false; }
             HasNextMatch = true;
-            var oppMgr = "";
+            ResultEntryOpen = false;          // a fresh fixture always opens on the OCCASION
+            FtVisible = false;
             try
             {
                 var opp = _homeId == _s.CurrentTeamId ? _awayId : _homeId;
-                oppMgr = $" In the other dugout: {_s.ManagerNameOf(opp)}.";
+                DugoutLine = $"In the other dugout: {_s.ManagerNameOf(opp)}";
             }
-            catch { /* names are additive */ }
-            MatchStatus = "Play Match to build dt200 + boot eFootball, then enter the score." + oppMgr;
+            catch { DugoutLine = ""; }
+            MatchStatus = "";                 // no pipeline jargon in the hero card (UX audit)
         }
         else
         {
@@ -530,7 +566,8 @@ public sealed partial class DashboardViewModel : PageViewModel
     private void RefreshPortal()
     {
         try { Position = Ordinal(_s.CurrentPosition()); } catch { /* card-only */ }
-        try { BuildOpposition(); } catch { HasOpposition = false; }
+        try { BuildOpposition(); }
+        catch (Exception ex) { HasOpposition = false; Program.Log("BuildOpposition", ex); }
         try { BuildSchedule(); } catch { /* card-only */ }
         try { BuildMiniTable(); } catch { /* card-only */ }
         try
@@ -546,6 +583,13 @@ public sealed partial class DashboardViewModel : PageViewModel
         catch { /* card-only */ }
     }
 
+    /// <summary>Knowledge gate for opponent players shown on the Office (letters, never numbers).</summary>
+    private int OppKnowledgeOf(int playerId)
+    {
+        try { return _s.FmAttributeMode ? _s.KnowledgeOf(playerId) : 100; }
+        catch { return 100; }
+    }
+
     private void BuildOpposition()
     {
         OppForm.Clear();
@@ -556,55 +600,84 @@ public sealed partial class DashboardViewModel : PageViewModel
             return;
         }
 
+        // The panel must NEVER contradict the hero ("No fixture scheduled" under "vs Arsenal" —
+        // UX audit, glaring): the core identity is established first and HasOpposition set EARLY,
+        // so a failure in any enrichment below degrades one line, not the whole panel.
         var oppId = _homeId == _s.CurrentTeamId ? _awayId : _homeId;
         OppName = _s.TeamName(oppId);
         OppBadgeText = Visuals.Initials(OppName);
-        OppBadgeBrush = Visuals.Brush(_s.TeamColor(oppId));
-        OppBadgeStroke = Visuals.Brush(_s.TeamSecondary(oppId));
-        OppLogo = Visuals.LoadBitmap(_s.TeamLogoPath(oppId));
+        try
+        {
+            OppBadgeBrush = Visuals.Brush(_s.TeamColor(oppId));
+            OppBadgeStroke = Visuals.Brush(_s.TeamSecondary(oppId));
+        }
+        catch { OppBadgeBrush = Visuals.Brush(null); OppBadgeStroke = Visuals.Brush(null); }
+        try { OppLogo = Visuals.LoadBitmap(_s.TeamLogoPath(oppId)); } catch { OppLogo = null; }
+        HasOpposition = true;
 
-        var row = _s.Table().FirstOrDefault(r => r.TeamId.Value == oppId);
-        OppPositionLine = row is null ? _s.LeagueName : $"{Ordinal(row.Position)} in {_s.LeagueName}";
+        try
+        {
+            var row = _s.Table().FirstOrDefault(r => r.TeamId.Value == oppId);
+            OppPositionLine = row is null ? _s.LeagueName : $"{Ordinal(row.Position)} in {_s.LeagueName}";
+        }
+        catch { OppPositionLine = ""; }
 
         // Last five league results, oldest → newest, from the opponent's point of view.
-        var played = _s.Repo.Fixtures(_s.SeasonId)
-            .Where(f => f.Kind == "league" && f.Played
-                        && (f.HomeTeamId == oppId || f.AwayTeamId == oppId))
-            .OrderBy(f => f.Matchday).ThenBy(f => f.Id)
-            .ToList();
-        foreach (var f in played.TakeLast(5))
+        try
         {
-            var r = _s.ResultFor(f.Id);
-            if (r is null) continue;
-            var us = f.HomeTeamId == oppId ? r.HomeGoals : r.AwayGoals;
-            var them = f.HomeTeamId == oppId ? r.AwayGoals : r.HomeGoals;
-            OppForm.Add(us > them ? new FormChipVm("W", WinBrush)
-                : us == them ? new FormChipVm("D", DrawBrush)
-                : new FormChipVm("L", LossBrush));
+            var played = _s.Repo.Fixtures(_s.SeasonId)
+                .Where(f => f.Kind == "league" && f.Played
+                            && (f.HomeTeamId == oppId || f.AwayTeamId == oppId))
+                .OrderBy(f => f.Matchday).ThenBy(f => f.Id)
+                .ToList();
+            foreach (var f in played.TakeLast(5))
+            {
+                var r = _s.ResultFor(f.Id);
+                if (r is null) continue;
+                var us = f.HomeTeamId == oppId ? r.HomeGoals : r.AwayGoals;
+                var them = f.HomeTeamId == oppId ? r.AwayGoals : r.HomeGoals;
+                OppForm.Add(us > them ? new FormChipVm("W", WinBrush)
+                    : us == them ? new FormChipVm("D", DrawBrush)
+                    : new FormChipVm("L", LossBrush));
+            }
         }
+        catch { /* a fresh season has no form to show */ }
         HasOppForm = OppForm.Count > 0;
 
         // Preferred shape: the opponent's own phase-0 formation geometry, clustered into lines.
-        var fid = _s.Repo.TeamTactics(oppId).FirstOrDefault(t => t.Phase == 0)?.FormationId;
-        var shape = fid is int f0
-            ? Formations.ShapeOf(_s.Repo.FormationSlots(f0).Select(sl => sl.Y))
-            : "—";
-        OppShapeLine = $"Preferred shape: {shape}  ·  ELO {_s.EloOf(oppId)}";
+        try
+        {
+            var fid = _s.Repo.TeamTactics(oppId).FirstOrDefault(t => t.Phase == 0)?.FormationId;
+            var shape = fid is int f0
+                ? Formations.ShapeOf(_s.Repo.FormationSlots(f0).Select(sl => sl.Y))
+                : "—";
+            OppShapeLine = $"Preferred shape: {shape}  ·  ELO {_s.EloOf(oppId)}";
+        }
+        catch { OppShapeLine = ""; }
 
         // Match preview from ELO — always phrased from YOUR point of view.
-        var youAreHome = _homeId == _s.CurrentTeamId;
-        var odds = _s.MatchOdds(_homeId, _awayId);
-        var (win, draw, loss) = youAreHome
-            ? (odds.HomePercent, odds.DrawPercent, odds.AwayPercent)
-            : (odds.AwayPercent, odds.DrawPercent, odds.HomePercent);
-        OddsLine = $"Win {win}%  ·  Draw {draw}%  ·  Loss {loss}%";
-        OddsWin = win;
-        OddsDraw = draw;
-        OddsLoss = loss;
+        try
+        {
+            var youAreHome = _homeId == _s.CurrentTeamId;
+            var odds = _s.MatchOdds(_homeId, _awayId);
+            var (win, draw, loss) = youAreHome
+                ? (odds.HomePercent, odds.DrawPercent, odds.AwayPercent)
+                : (odds.AwayPercent, odds.DrawPercent, odds.HomePercent);
+            OddsLine = $"Win {win}%  ·  Draw {draw}%  ·  Loss {loss}%";
+            OddsWin = win;
+            OddsDraw = draw;
+            OddsLoss = loss;
+        }
+        catch { OddsLine = ""; }
 
-        var key = _s.KeyPlayer(oppId);
-        KeyPlayerLine = key is null ? ""
-            : $"Key player: {key.Name}  ({key.Position} {key.OverallRating ?? 0})";
+        try
+        {
+            var key = _s.KeyPlayer(oppId);
+            KeyPlayerLine = key is null ? ""
+                : $"Key player: {key.Name}  ({key.Position} " +
+                  $"{ML.Core.Development.AttributeKnowledge.GradeMasked(key.OverallRating ?? 0, OppKnowledgeOf(key.Id))})";
+        }
+        catch { KeyPlayerLine = ""; }
 
         try { AssistantLine = _s.AssistantNote(_matchday); } catch { AssistantLine = ""; }
 
@@ -708,11 +781,44 @@ public sealed partial class DashboardViewModel : PageViewModel
         try
         {
             await MatchLauncher.PlayMatchAsync(_homeId, _awayId, _homeName, _awayName, Log);
+            ResultEntryOpen = true;   // the game is up — the card becomes the entry desk
         }
         finally
         {
             IsCompiling = false;
         }
+    }
+
+    /// <summary>Titles and promotions get the full-screen moment they deserve (UX P1) — fired
+    /// when the season's last fixture is recorded, before the rollover button appears.</summary>
+    private void CheckForCelebration()
+    {
+        try
+        {
+            if (!(_s.SeasonComplete())) return;
+            var table = _s.Table();
+            var pos = 0;
+            for (var i = 0; i < table.Count; i++)
+            {
+                if (table[i].TeamId.Value == _s.CurrentTeamId) { pos = i + 1; break; }
+            }
+            if (pos <= 0) return;
+            var clubName = _s.TeamName(_s.CurrentTeamId);
+            var inTopFlight = _s.LeagueId == 9000;
+            if (pos == 1 && inTopFlight)
+            {
+                CelebrationTitle = "🏆  CHAMPIONS!";
+                CelebrationSub = $"{clubName} are champions. The whole city is yours tonight.";
+                CelebrationVisible = true;
+            }
+            else if (!inTopFlight && pos <= 3)
+            {
+                CelebrationTitle = pos == 1 ? "🏆  CHAMPIONS — PROMOTED!" : "📈  PROMOTED!";
+                CelebrationSub = $"{clubName} are going up. Top-flight football next season.";
+                CelebrationVisible = true;
+            }
+        }
+        catch { /* celebration is additive — never blocks recording */ }
     }
 
     /// <summary>End the season: sim the rest, age squads, generate next season's fixtures.</summary>
@@ -860,6 +966,14 @@ public sealed partial class DashboardViewModel : PageViewModel
         var repHg = (int)HomeScore;
         var repAg = (int)AwayScore;
         var repKind = _kind;
+
+        // FULL TIME gets a MOMENT: a coloured banner in your result's honour — win green,
+        // draw slate, defeat red — instead of one clause in the status string (UX P1).
+        FtLine = $"FULL TIME   {_homeName} {(int)HomeScore} – {(int)AwayScore} {_awayName}";
+        FtBrush = new SolidColorBrush(Color.Parse(
+            _lastOutcome > 0 ? "#1F9D4D" : _lastOutcome == 0 ? "#3A4759" : "#D64545"));
+        FtVisible = true;
+        CheckForCelebration();
 
         var recorded = $"Recorded {_homeName} {(int)HomeScore}–{(int)AwayScore} {_awayName}, " +
                        "and simmed the rest of the matchday. Table updated — next match loaded."

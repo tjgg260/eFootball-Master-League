@@ -48,6 +48,7 @@
     </Style>
   </UserControl.Styles>
 
+  <Panel>
   <ScrollViewer Padding="28" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Spacing="18">
 
@@ -136,44 +137,64 @@
         </StackPanel>
       </StackPanel>
 
-      <!-- NEXT MATCH: compile the fixture into dt200, boot eFootball, record the score -->
+      <!-- FULL TIME banner: the result is a MOMENT in your colours, not a status clause -->
+      <Border CornerRadius="10" Padding="18,12" Background="{Binding FtBrush}"
+              IsVisible="{Binding FtVisible}">
+        <TextBlock Text="{Binding FtLine}" Foreground="White" FontSize="18" FontWeight="Bold"/>
+      </Border>
+
+      <!-- NEXT MATCH — an OCCASION before kickoff, an entry desk only after (UX P1) -->
       <Border CornerRadius="12" Padding="20,18" Background="#14271B" BorderBrush="#1F7A3D"
               BorderThickness="1" IsVisible="{Binding HasNextMatch}">
         <StackPanel Spacing="4">
           <TextBlock Classes="cardHead" Text="NEXT MATCH" Foreground="#7FD79B" Margin="0,0,0,4"/>
-          <TextBlock Text="{Binding NextMatchLabel}" Foreground="White" FontSize="19"
-                     FontWeight="SemiBold" TextWrapping="Wrap"/>
-          <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,12,0,4">
-            <Button Content="▶  PLAY MATCH" Command="{Binding PlayMatchCommand}"
-                    IsEnabled="{Binding PlayEnabled}" VerticalAlignment="Center"
-                    FontSize="16" FontWeight="Bold" Padding="28,15" Foreground="White"
-                    Background="#1F9D4D" CornerRadius="8"/>
-            <Border Width="1" Background="#2A4A34" Margin="6,4"/>
-            <TextBlock Text="Result" Foreground="#7FD79B" VerticalAlignment="Center" FontSize="13"/>
-            <NumericUpDown Value="{Binding HomeScore}" Minimum="0" Maximum="20" Increment="1"
-                           FormatString="0" Width="110" VerticalAlignment="Center"/>
-            <TextBlock Text="–" Foreground="White" VerticalAlignment="Center" FontSize="18"/>
-            <NumericUpDown Value="{Binding AwayScore}" Minimum="0" Maximum="20" Increment="1"
-                           FormatString="0" Width="110" VerticalAlignment="Center"/>
-            <Button Content="📷 Import" Command="{Binding ImportScoreCommand}"
-                    IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
-                    Padding="14,12" Foreground="White" Background="#3A4759" CornerRadius="8"
-                    ToolTip.Tip="Read the score from your latest eFootball screenshot (F12)"/>
-            <Button Content="🎞 Analyse recording" Command="{Binding AnalyzeRecordingCommand}"
-                    IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
-                    Padding="14,12" Foreground="White" Background="#3A4759" CornerRadius="8"
-                    ToolTip.Tip="Mine the OBS recording of the match: goals, minutes and scorer suggestions"/>
-            <Button Content="📊 Read stats from game" Command="{Binding ReadStatsFromGameCommand}"
-                    IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
-                    Padding="14,12" Foreground="White" Background="#3A4759" CornerRadius="8"
-                    ToolTip.Tip="At the full-time results screen: read team stats (pass completion, tackles…) and player ratings from the game's live memory"/>
-            <Button Content="Record" Command="{Binding RecordResultCommand}"
-                    IsEnabled="{Binding HasNextMatch}" VerticalAlignment="Center"
-                    FontWeight="Bold" Padding="18,12" Foreground="White"
-                    Background="#2D7DD2" CornerRadius="8"/>
+          <TextBlock Text="{Binding NextMatchLabel}" Foreground="White" FontSize="22"
+                     FontWeight="Bold" TextWrapping="Wrap"/>
+          <TextBlock Text="{Binding DugoutLine}" Classes="ml-body" Foreground="#9FD8B0"
+                     Margin="0,2,0,0"/>
+
+          <!-- ── PRE-MATCH: the occasion ─────────────────────────────────────────── -->
+          <StackPanel IsVisible="{Binding ShowPreMatch}" Spacing="8" Margin="0,10,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Button Content="▶  PLAY MATCH" Command="{Binding PlayMatchCommand}"
+                      IsEnabled="{Binding PlayEnabled}" Classes="ml-primary ml-go"
+                      FontSize="16" Padding="28,15"/>
+              <Button Content="✍  Enter result" Command="{Binding OpenResultEntryCommand}"
+                      Classes="ml-ghost" VerticalAlignment="Center"
+                      ToolTip.Tip="Played outside the app? Enter the score directly."/>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- ── POST-MATCH: enter what happened ─────────────────────────────────── -->
+          <StackPanel IsVisible="{Binding ShowResultEntry}" Spacing="6" Margin="0,10,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="Full time —" Classes="ml-h2" Foreground="#7FD79B"
+                         VerticalAlignment="Center"/>
+              <NumericUpDown Value="{Binding HomeScore}" Minimum="0" Maximum="20" Increment="1"
+                             FormatString="0" Width="110" VerticalAlignment="Center"/>
+              <TextBlock Text="–" Foreground="White" VerticalAlignment="Center" FontSize="18"/>
+              <NumericUpDown Value="{Binding AwayScore}" Minimum="0" Maximum="20" Increment="1"
+                             FormatString="0" Width="110" VerticalAlignment="Center"/>
+              <Button Content="✔ Record" Command="{Binding RecordResultCommand}"
+                      IsEnabled="{Binding HasNextMatch}" Classes="ml-primary"
+                      FontSize="14" Padding="20,12"/>
+              <Button Content="‹ back" Command="{Binding BackToPreMatchCommand}" Classes="ml-ghost"
+                      VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="📷 Import score" Command="{Binding ImportScoreCommand}"
+                      Classes="ml-secondary" FontSize="12"
+                      ToolTip.Tip="Read the score from your latest eFootball screenshot (F12)"/>
+              <Button Content="🎞 Analyse recording" Command="{Binding AnalyzeRecordingCommand}"
+                      Classes="ml-secondary" FontSize="12"
+                      ToolTip.Tip="Mine the OBS recording of the match: goals, minutes and scorer suggestions"/>
+              <Button Content="📊 Read stats from game" Command="{Binding ReadStatsFromGameCommand}"
+                      Classes="ml-secondary" FontSize="12"
+                      ToolTip.Tip="At the full-time results screen: read team stats and player ratings from the game's live memory"/>
+            </StackPanel>
           </StackPanel>
           <!-- XI-driven event pickers (P3): pick players, never type names -->
-          <Grid ColumnDefinitions="*,*,*" Margin="0,8,0,0">
+          <Grid ColumnDefinitions="*,*,*" Margin="0,8,0,0" IsVisible="{Binding ShowResultEntry}">
             <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="4">
               <Button Content="＋ ⚽ Goal" Command="{Binding AddGoalPickCommand}"
                       Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6"
@@ -217,7 +238,7 @@
               </ItemsControl>
             </StackPanel>
           </Grid>
-          <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0" IsVisible="{Binding ShowResultEntry}">
             <TextBox Grid.Column="0" Text="{Binding RatingsText}" Watermark="★ Ratings (optional): Saka 8.5, Rice 7"
                      Margin="0,0,6,0" VerticalAlignment="Center"/>
             <Button Grid.Column="1" Content="↩ Undo" Command="{Binding UndoResultCommand}"
@@ -226,6 +247,7 @@
                     ToolTip.Tip="Undo the most recently recorded result"/>
           </Grid>
           <!-- team talks: one say pre-match, one at full time -->
+          <StackPanel IsVisible="{Binding ShowPreMatch}">
           <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0"
                       IsVisible="{Binding PreTalkVisible}">
             <TextBlock Text="🗣 Team talk:" Foreground="#7FD79B" FontSize="12" VerticalAlignment="Center"/>
@@ -237,6 +259,7 @@
                     Background="#232B36" Foreground="#C7CEDA" Padding="10,5" CornerRadius="6" FontSize="11"/>
             <TextBlock Text="{Binding TalkHintLine}" Foreground="#8A93A2" FontSize="11"
                        FontStyle="Italic" VerticalAlignment="Center"/>
+          </StackPanel>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0"
                       IsVisible="{Binding PostTalkVisible}">
@@ -253,8 +276,8 @@
           </StackPanel>
           <TextBlock Text="{Binding JobLine}" Foreground="#E0A526" FontSize="12" FontWeight="SemiBold"
                      TextWrapping="Wrap" Margin="0,6,0,0"/>
-          <TextBlock Text="{Binding MatchStatus}" Foreground="#9FE6B4" FontSize="12"
-                     TextWrapping="Wrap" Margin="0,6,0,0" FontFamily="Consolas"/>
+          <TextBlock Text="{Binding MatchStatus}" Classes="ml-muted"
+                     TextWrapping="Wrap" Margin="0,6,0,0"/>
         </StackPanel>
       </Border>
 
@@ -468,4 +491,20 @@
 
     </StackPanel>
   </ScrollViewer>
+
+  <!-- ── CELEBRATION OVERLAY (UX P1): a title is a full-screen moment, never a 12px string ── -->
+  <Border IsVisible="{Binding CelebrationVisible}" Background="#E6060A10">
+    <Border Classes="ml-card" MaxWidth="640" HorizontalAlignment="Center"
+            VerticalAlignment="Center" Padding="44,36" BorderBrush="#D4AC0D" BorderThickness="2">
+      <StackPanel Spacing="14" HorizontalAlignment="Center">
+        <TextBlock Text="{Binding CelebrationTitle}" FontSize="42" FontWeight="Bold"
+                   Foreground="#D4AC0D" HorizontalAlignment="Center" TextAlignment="Center"/>
+        <TextBlock Text="{Binding CelebrationSub}" Classes="ml-body" FontSize="16"
+                   HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+        <Button Content="Soak it in  →" Command="{Binding CloseCelebrationCommand}"
+                Classes="ml-primary ml-go" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+      </StackPanel>
+    </Border>
+  </Border>
+  </Panel>
 </UserControl>

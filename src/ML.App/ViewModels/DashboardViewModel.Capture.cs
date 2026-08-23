@@ -42,6 +42,7 @@ public sealed partial class DashboardViewModel
 
             HomeScore = r.Home;
             AwayScore = r.Away;
+            ResultEntryOpen = true;   // a capture means full time — the card becomes the entry desk
             var caveat = r.Confident ? "" : " (LOW OCR confidence — check the digits)";
             Log($"📸 Screenshot captured {r.Time:HH:mm} — looks like {r.Home}-{r.Away}{caveat}, " +
                 "confirm with Record.");
