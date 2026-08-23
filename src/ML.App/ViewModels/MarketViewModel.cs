@@ -84,7 +84,15 @@ public sealed partial class MarketViewModel : PageViewModel
     [ObservableProperty] private string _searchText = "";
     [ObservableProperty] private string _positionFilter = "All";
     [ObservableProperty] private decimal _maxAge = 45;
-    [ObservableProperty] private decimal _minRating = 40;
+    // Calibre filter (UX P4): a letter floor, never a raw-number spinner. The thresholds are
+    // the same bands AttributeKnowledge grades with, so "B or better" means what the card says.
+    public IReadOnlyList<string> GradeFloors { get; } = new[]
+        { "Any calibre", "C or better", "B or better", "A or better" };
+    [ObservableProperty] private string _gradeFloor = "Any calibre";
+    private decimal MinRating => GradeFloor switch
+    {
+        "A or better" => 78, "B or better" => 64, "C or better" => 52, _ => 40,
+    };
     [ObservableProperty] private bool _freeAgentsOnly;
 
     public IReadOnlyList<string> ValueCaps { get; } = new[]
@@ -100,7 +108,7 @@ public sealed partial class MarketViewModel : PageViewModel
     partial void OnSearchTextChanged(string value) => Requery();
     partial void OnPositionFilterChanged(string value) => Requery();
     partial void OnMaxAgeChanged(decimal value) => Requery();
-    partial void OnMinRatingChanged(decimal value) => Requery();
+    partial void OnGradeFloorChanged(string value) => Requery();
     partial void OnFreeAgentsOnlyChanged(bool value) => Requery();
     partial void OnValueCapChanged(string value) => Requery();
     partial void OnSortByChanged(string value) => Requery();

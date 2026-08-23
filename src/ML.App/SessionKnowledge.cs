@@ -13,10 +13,11 @@ public sealed partial class Session
 {
     // ------------------------------------------------------------------ the display toggle
 
-    /// <summary>FM mode: colour bands + knowledge masking instead of raw numbers.</summary>
+    /// <summary>FM mode: colour bands + knowledge masking instead of raw numbers.
+    /// ON by default (UX P4) — raw numbers are the opt-in, not the qualitative view.</summary>
     public bool FmAttributeMode
     {
-        get => GetMeta("attr_fm_mode") == "1";
+        get => GetMeta("attr_fm_mode") != "0";
         set => SetMeta("attr_fm_mode", value ? "1" : "0");
     }
 

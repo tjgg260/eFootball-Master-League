@@ -111,11 +111,9 @@
             <NumericUpDown Value="{Binding MaxAge}" Minimum="16" Maximum="45" Increment="1"
                            FormatString="0" Width="105" VerticalAlignment="Center"/>
           </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <TextBlock Text="Min OVR" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
-            <NumericUpDown Value="{Binding MinRating}" Minimum="40" Maximum="99" Increment="1"
-                           FormatString="0" Width="105" VerticalAlignment="Center"/>
-          </StackPanel>
+          <ComboBox ItemsSource="{Binding GradeFloors}" SelectedItem="{Binding GradeFloor}"
+                    Width="130" VerticalAlignment="Center"
+                    ToolTip.Tip="Only show players of at least this calibre"/>
           <ComboBox ItemsSource="{Binding ValueCaps}" SelectedItem="{Binding ValueCap}"
                     Width="110" VerticalAlignment="Center"/>
           <CheckBox Content="Free agents" IsChecked="{Binding FreeAgentsOnly}"
@@ -525,7 +523,7 @@
                   <StackPanel>
                     <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="White" FontSize="14"/>
                     <TextBlock Text="{Binding Body}" Foreground="#C7CEDA" FontSize="12"
-                               FontFamily="Consolas" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                               TextWrapping="Wrap" Margin="0,6,0,0" LineHeight="19"/>
                   </StackPanel>
                 </Border>
               </DataTemplate>

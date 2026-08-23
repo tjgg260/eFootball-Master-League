@@ -51,22 +51,28 @@ public sealed partial class StaffViewModel : PageViewModel
         Reload();
     }
 
+    // A 1-20 attribute as a word (UX P4): the desk card reads like a reference, not a spreadsheet.
+    private static string Word(int v) => v switch
+    {
+        >= 17 => "elite", >= 14 => "excellent", >= 11 => "good", >= 8 => "average", _ => "weak",
+    };
+
     private static string AttrSummary(StaffPerson p) => p.Role switch
     {
-        "Assistant Manager" => $"Tactical {p.Tactical} · Man Mgmt {p.ManManagement} · Coaching {p.Coaching}",
-        "Director of Football" => $"Judging {p.JudgingAbility} · Potential {p.JudgingPotential} · Man Mgmt {p.ManManagement}",
-        "Coach" or "GK Coach" => $"Coaching {p.Coaching} · Tactical {p.Tactical} · Youth {p.Youth}",
-        "Fitness Coach" => $"Fitness {p.Fitness} · Coaching {p.Coaching}",
-        "Youth Coach" => $"Youth {p.Youth} · Potential {p.JudgingPotential} · Coaching {p.Coaching}",
-        "Physio" => $"Physio {p.Physio} · Fitness {p.Fitness}",
-        "Scout" => $"Judging {p.JudgingAbility} · Potential {p.JudgingPotential}",
-        "Analyst" => $"Tactical {p.Tactical} · Judging {p.JudgingAbility}",
+        "Assistant Manager" => $"{Word(p.Tactical)} tactically · {Word(p.ManManagement)} man-manager · {Word(p.Coaching)} coach",
+        "Director of Football" => $"{Word(p.JudgingAbility)} judge of ability · {Word(p.JudgingPotential)} eye for potential · {Word(p.ManManagement)} man-manager",
+        "Coach" or "GK Coach" => $"{Word(p.Coaching)} coach · {Word(p.Tactical)} tactically · {Word(p.Youth)} with youngsters",
+        "Fitness Coach" => $"{Word(p.Fitness)} conditioner · {Word(p.Coaching)} coach",
+        "Youth Coach" => $"{Word(p.Youth)} with youngsters · {Word(p.JudgingPotential)} eye for potential · {Word(p.Coaching)} coach",
+        "Physio" => $"{Word(p.Physio)} physio · {Word(p.Fitness)} conditioner",
+        "Scout" => $"{Word(p.JudgingAbility)} judge of ability · {Word(p.JudgingPotential)} eye for potential",
+        "Analyst" => $"{Word(p.Tactical)} tactically · {Word(p.JudgingAbility)} judge of ability",
         _ => "",
     };
 
-    /// <summary>Top style strengths, e.g. "Overload 17 · Quick Counter 12 · Out Wide 9".</summary>
+    /// <summary>Top style strengths, e.g. "Overload · Quick Counter" — the styles he drills best.</summary>
     private static string StylesSummary(StaffPerson p) =>
-        string.Join(" · ", p.StyleStrengths.Take(3).Select(s => $"{s.Style} {s.Strength}"));
+        string.Join(" · ", p.StyleStrengths.Take(3).Select(s => s.Style));
 
     private void Reload()
     {
@@ -110,9 +116,9 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty] private string _wageLine = "";
 
     [ObservableProperty]
-    private string _status = "Attributes are 1-20, FM-style. Every desk has a real effect: " +
-        "Coach 14+ speeds training · Physio shortens layoffs · Youth Coach lifts intakes · " +
-        "GK Coach develops keepers · DoF and Scout work the delegations below.";
+    private string _status = "Every desk has a real effect: an excellent Coach speeds training · " +
+        "Physio shortens layoffs · Youth Coach lifts intakes · GK Coach develops keepers · " +
+        "DoF and Scout work the delegations below.";
 
     partial void OnSelectedRoleChanged(string? value) => ReloadMarket();
 

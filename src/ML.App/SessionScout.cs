@@ -144,7 +144,7 @@ public sealed partial class Session
         var shape = Formations.ShapeOf(Repo.FormationSlots(fid0).Select(s => s.Y));
         var styleIx = Repo.TeamTactics(teamId).FirstOrDefault(t => t.Phase == 0)?.Style ?? 0;
         string[] styles = { "Possession Game", "Quick Counter", "Long Ball Counter", "Long Ball", "Out Wide", "Overload" };
-        sb.AppendLine($"Shape: {shape}   Playstyle: {styles[Math.Clamp(styleIx, 0, 5)]}   ELO {EloOf(teamId)}");
+        sb.AppendLine($"Shape: {shape}   Playstyle: {styles[Math.Clamp(styleIx, 0, 5)]}   Standing: {ClubTier(teamId)}");
 
         if (quality >= 3)
         {
@@ -156,7 +156,7 @@ public sealed partial class Session
             {
                 if (!players.TryGetValue(m.PlayerId, out var p)) continue;
                 sb.AppendLine(quality >= 4
-                    ? $"  {p.Position,-4} {p.Name}  ({p.OverallRating ?? 0})"
+                    ? $"  {p.Position,-4} {p.Name}  {ML.Core.Development.AttributeKnowledge.Grade(p.OverallRating ?? 0)}"
                     : $"  {p.Position,-4} {p.Name}");
             }
         }
@@ -170,10 +170,11 @@ public sealed partial class Session
             {
                 conditions.TryGetValue(p.Id, out var c);
                 var goals = GoalsThisSeason(p.Id);
+                var legs = c?.Fatigue switch { >= 70 => ", running on empty", >= 40 => ", looking leggy", _ => "" };
                 var cond = quality >= 5 && c is not null
-                    ? $", fatigue {c.Fatigue}{(c.InjuredUntilMd is not null ? ", INJURED" : "")}"
+                    ? $"{legs}{(c.InjuredUntilMd is not null ? ", INJURED" : "")}"
                     : "";
-                sb.AppendLine($"  {p.Name} ({p.Position} {p.OverallRating ?? 0}) — {goals} goals{cond}");
+                sb.AppendLine($"  {p.Name} ({p.Position}, {ML.Core.Development.AttributeKnowledge.Grade(p.OverallRating ?? 0)}) — {goals} goals{cond}");
             }
         }
         if (quality <= 2)
@@ -205,7 +206,7 @@ public sealed partial class Session
             }
         }
         var sb = new StringBuilder();
-        sb.AppendLine($"SCOUT REPORT — {name}  ({position}, {rating})  (scout: {new string('★', quality)})");
+        sb.AppendLine($"SCOUT REPORT — {name}  ({position}, {ML.Core.Development.AttributeKnowledge.Grade(rating)})  (scout: {new string('★', quality)})");
         sb.AppendLine($"Age {age?.ToString() ?? "—"}   Value £{MarketValueOf(playerId, rating, age):N0}");
 
         if (quality >= 3)
@@ -213,7 +214,7 @@ public sealed partial class Session
             var abilities = Repo.Attributes(playerId);
             var top = abilities.Where(a => !a.Key.StartsWith("gk_") || position == "GK")
                 .OrderByDescending(a => a.Value).Take(5)
-                .Select(a => $"{a.Key.Replace('_', ' ')} {a.Value}");
+                .Select(a => $"{a.Key.Replace('_', ' ')} {ML.Core.Development.AttributeKnowledge.Grade(a.Value)}");
             sb.AppendLine($"Standout abilities: {string.Join(", ", top)}");
         }
         // Fit verdict vs your current best in that position.
@@ -224,10 +225,10 @@ public sealed partial class Session
         sb.AppendLine(incumbent is null
             ? $"Verdict: you have nobody registered at {position} — an obvious gap he'd fill."
             : rating > (incumbent.OverallRating ?? 0) + 2
-                ? $"Verdict: clear upgrade on {incumbent.Name} ({incumbent.OverallRating})."
+                ? $"Verdict: clear upgrade on {incumbent.Name}."
                 : rating >= (incumbent.OverallRating ?? 0) - 2
-                    ? $"Verdict: comparable to {incumbent.Name} ({incumbent.OverallRating}) — squad depth."
-                    : $"Verdict: below {incumbent.Name} ({incumbent.OverallRating}) — not worth the fee.");
+                    ? $"Verdict: comparable to {incumbent.Name} — squad depth."
+                    : $"Verdict: below {incumbent.Name} — not worth the fee.");
         return sb.ToString();
     }
 }

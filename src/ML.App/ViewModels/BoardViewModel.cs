@@ -47,7 +47,7 @@ public sealed partial class BoardViewModel : PageViewModel
             }
         }
         catch { /* objectives are additive */ }
-        FanLine = $"The fans: {s.FanLabel} ({s.FanHappiness()}/100)";
+        FanLine = $"The fans: {s.FanLabel}";
 
         // The club's whole trajectory: ELO after every game ever recorded (P6 chart).
         try
@@ -64,8 +64,13 @@ public sealed partial class BoardViewModel : PageViewModel
                     EloPoints.Add(new Avalonia.Point(i * step, y));
                 }
                 EloTrendVisible = true;
-                EloTrendLabel = $"Club rating over {history.Count - 1} games — now {history[^1]} " +
-                                $"(peak {hi}, low {lo})";
+                var last = history[^1];
+                var trend = last >= hi - (hi - lo) / 10 ? "at a club high"
+                    : last <= lo + (hi - lo) / 10 ? "at a club low"
+                    : last > history[Math.Max(0, history.Count - 6)] ? "on the rise"
+                    : last < history[Math.Max(0, history.Count - 6)] ? "slipping"
+                    : "holding steady";
+                EloTrendLabel = $"The club's standing across {history.Count - 1} games — currently {trend}";
             }
         }
         catch { EloTrendVisible = false; }
