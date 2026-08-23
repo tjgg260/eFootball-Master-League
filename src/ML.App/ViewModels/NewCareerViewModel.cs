@@ -49,7 +49,7 @@ public sealed class ContinentOption
     public string Glyph => Def.Glyph;
     public int CountryCount => Countries.Count;
     public int ClubCount { get; }
-    public string Summary => $"{CountryCount} nations · {ClubCount} clubs";
+    public string Summary => $"{Visuals.Plural(CountryCount, "nation")} · {Visuals.Plural(ClubCount, "club")}";
     public IBrush Accent => Visuals.Brush(Def.Accent);
     public double NX => Def.X;   // normalized map position (0-1)
     public double NY => Def.Y;
@@ -67,7 +67,7 @@ public sealed class CountryOption
     public string Name => Country.Name;
     public int LeagueCount => Country.Leagues.Count;
     public int ClubCount { get; }
-    public string Summary => $"{LeagueCount} leagues · {ClubCount} clubs";
+    public string Summary => $"{Visuals.Plural(LeagueCount, "league")} · {Visuals.Plural(ClubCount, "club")}";
     public string Badge => Country.Name.Length >= 2 ? Country.Name[..2].ToUpperInvariant() : Country.Name;
     public Bitmap? Flag => Visuals.LoadBitmap(Country.Flag);
     public bool HasFlag => Flag is not null;

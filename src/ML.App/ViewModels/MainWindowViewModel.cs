@@ -41,7 +41,9 @@ public partial class MainWindowViewModel : ObservableObject
         };
         // Tooling hook: ML_PAGE=<nav title> opens straight onto that screen (screenshot runs).
         var startPage = Environment.GetEnvironmentVariable("ML_PAGE");
-        CurrentPage = (Pages.FirstOrDefault(p => p.Title == startPage) ?? Pages[0]).Build(session);
+        var start = Pages.FirstOrDefault(p => p.Title == startPage) ?? Pages[0];
+        CurrentPage = start.Build(session);
+        MarkActive(start);
     }
 
     public string ClubName { get; }
@@ -96,6 +98,7 @@ public partial class MainWindowViewModel : ObservableObject
         try
         {
             CurrentPage = item.Build(_session);
+            MarkActive(item);
             RefreshShell();   // badges follow you around the app
         }
         catch (Exception ex)
@@ -109,11 +112,17 @@ public partial class MainWindowViewModel : ObservableObject
     private void ContinueToOffice()
     {
         CurrentPage = Pages[0].Build(_session);
+        MarkActive(Pages[0]);
         RefreshShell();
+    }
+
+    private void MarkActive(NavItem current)
+    {
+        foreach (var p in Pages) p.IsActive = p == current;
     }
 }
 
-public sealed class NavItem
+public sealed partial class NavItem : ObservableObject
 {
     private readonly Func<Session, PageViewModel> _build;
 
@@ -127,6 +136,9 @@ public sealed class NavItem
     public string Title { get; }
     public string Icon { get; }
     public PageViewModel Build(Session s) => _build(s);
+
+    // The sidebar highlights the page you are on.
+    [ObservableProperty] private bool _isActive;
 }
 
 public abstract class PageViewModel : ObservableObject

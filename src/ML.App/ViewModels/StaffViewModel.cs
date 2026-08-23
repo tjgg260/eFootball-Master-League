@@ -32,7 +32,7 @@ public sealed partial class DelegationToggle : ObservableObject
     [ObservableProperty] private bool _isOn;
     partial void OnIsOnChanged(bool value) => _s.SetDelegation(Key, value);
 
-    public string Hint => RoleFilled ? "" : $"needs a {RoleNeeded}";
+    public string Hint => RoleFilled ? "" : $"needs {("AEIOU".Contains(RoleNeeded[0]) ? "an" : "a")} {RoleNeeded}";
 }
 
 /// <summary>The staff database: your backroom, the market per role, and delegation.</summary>

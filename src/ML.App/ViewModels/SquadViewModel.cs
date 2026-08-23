@@ -442,7 +442,7 @@ public sealed partial class SquadViewModel : PageViewModel
         try
         {
             var (apps, goals, assists, yellows, reds, avg) = _s.PlayerSeasonStats(value.PlayerId);
-            SeasonLine = $"{apps} apps · {goals} goals · {assists} assists · {yellows}🟨 {reds}🟥" +
+            SeasonLine = $"{Visuals.Plural(apps, "app")} · {Visuals.Plural(goals, "goal")} · {Visuals.Plural(assists, "assist")} · {yellows}🟨 {reds}🟥" +
                          (avg is { } a ? $" · {a:0.0} avg" : "");
             var learned = _s.LearnedPositions(value.PlayerId);
             ContractLine = $"Contract until {_s.ContractYear(value.PlayerId)}" +

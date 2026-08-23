@@ -63,7 +63,7 @@ public sealed partial class DashboardViewModel : PageViewModel
             >= 40 => "Okay", >= 25 => "Poor", _ => "Abject",
         };
         Balance = $"£{s.Finances.Balance:N0}";
-        Expectation = s.Board.Expectation.ToString();
+        Expectation = Visuals.ExpectationLabel(s.Board.Expectation);
         BadgeText = Visuals.Initials(ClubName);
         BadgeBrush = Visuals.Brush(s.PrimaryColor);
         BadgeStroke = Visuals.Brush(s.SecondaryColor);
@@ -250,10 +250,17 @@ public sealed partial class DashboardViewModel : PageViewModel
             var moraleNow = _s.SquadMoraleAverage();
             var boardNow = _s.Board.Value;
             var fansNow = _s.FanHappiness();
-            string Delta(int now, int before) => now - before >= 0 ? $"+{now - before}" : $"{now - before}";
-            ReportMoraleLine = $"Dressing room {moraleNow} ({Delta(moraleNow, moraleBefore)})";
-            ReportBoardLine = $"Board {boardNow} ({Delta(boardNow, boardBefore)})  ·  " +
-                              $"Fans {fansNow} ({Delta(fansNow, fansBefore)})";
+            // Words, not numbers (P5): the report reads like an assistant, not a debugger.
+            static string Mood(int v) => v switch
+            {
+                >= 85 => "buzzing", >= 70 => "upbeat", >= 55 => "settled",
+                >= 40 => "flat", >= 25 => "unhappy", _ => "toxic",
+            };
+            static string Swing(int now, int before) =>
+                now - before >= 4 ? "lifted" : now - before <= -4 ? "dented" : "steady";
+            ReportMoraleLine = $"Dressing room {Mood(moraleNow)} — {Swing(moraleNow, moraleBefore)}";
+            ReportBoardLine = $"Board {Mood(boardNow)} ({Swing(boardNow, boardBefore)})  ·  " +
+                              $"Fans {Mood(fansNow)} ({Swing(fansNow, fansBefore)})";
             try { ReportDebrief = _s.AssistantDebrief(fixtureId, homeId, awayId); }
             catch { ReportDebrief = ""; }
 
@@ -318,7 +325,12 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     public bool PlayEnabled => HasNextMatch && !IsCompiling;
 
-    public bool SeasonOver => !HasNextMatch;
+    // Sacked ≠ season over: a sacked manager has no next match either, but must see the
+    // SACKED card, not "SEASON COMPLETE" with a live Advance Season button.
+    public bool SeasonOver => !HasNextMatch && !IsSacked;
+
+    public bool IsSacked => _s.IsSacked;
+    public string SackedHeadline => IsSacked ? "SACKED — " + _s.SackedLine : "";
 
     // --- Next Opposition card ---
     [ObservableProperty]
@@ -392,12 +404,19 @@ public sealed partial class DashboardViewModel : PageViewModel
     {
         if (_fixtureId == 0) { MatchStatus = "No fixture to attach stats to."; return; }
         Log(_s.ReadMatchStatsFromMemory(_fixtureId));
-        // prefill the rating pickers/entry from what we just read (home = your XI order).
+        // Prefill the ratings entry from what we just read. The recorder wants "Name 7.5"
+        // pairs — bare numbers all land in its no-match bin — so zip the slot-ordered
+        // ratings onto your XI names (same order as the results screen).
         try
         {
             var homeRatings = _s.PlayerRatingsFor(_fixtureId, _homeId == _s.CurrentTeamId ? "home" : "away");
             if (homeRatings.Count > 0)
-                RatingsText = string.Join(",", homeRatings.Select(r => r.ToString("0.0")));
+            {
+                var names = _s.XiNamesInSlotOrder();
+                RatingsText = string.Join(", ", homeRatings
+                    .Select((r, i) => i < names.Count ? $"{names[i]} {r.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}" : null)
+                    .Where(s => s is not null));
+            }
         }
         catch { /* prefill is best-effort */ }
     }
@@ -665,7 +684,11 @@ public sealed partial class DashboardViewModel : PageViewModel
             var (win, draw, loss) = youAreHome
                 ? (odds.HomePercent, odds.DrawPercent, odds.AwayPercent)
                 : (odds.AwayPercent, odds.DrawPercent, odds.HomePercent);
-            OddsLine = $"Win {win}%  ·  Draw {draw}%  ·  Loss {loss}%";
+            OddsLine = win >= 55 ? "Clear favourites"
+                : win >= 40 && win > loss ? "Slight favourites"
+                : loss >= 55 ? "Firm underdogs"
+                : loss >= 40 && loss > win ? "Underdogs — nothing to lose"
+                : "Evenly matched";
             OddsWin = win;
             OddsDraw = draw;
             OddsLoss = loss;

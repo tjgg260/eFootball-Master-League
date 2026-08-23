@@ -128,4 +128,23 @@
     <Setter Property="FontWeight" Value="Bold"/>
     <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
   </Style>
+
+  <!-- ── DataGrid (P5): headers that fit, selection on-palette ──────────────────── -->
+  <!-- The Fluent defaults pad headers so wide that fixed-width columns clip to
+       gibberish ("Mora", "Ra"), and paint selection in stock accent blue. -->
+  <Style Selector="DataGridColumnHeader">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+    <Setter Property="Padding" Value="6,4"/>
+    <Setter Property="MinHeight" Value="30"/>
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+    <Setter Property="Fill" Value="{StaticResource MlPrimary}"/>
+    <Setter Property="Opacity" Value="0.28"/>
+  </Style>
+  <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+    <Setter Property="Fill" Value="#22FFFFFF"/>
+  </Style>
 </Styles>

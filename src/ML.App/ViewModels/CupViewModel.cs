@@ -26,7 +26,7 @@ public sealed class CupViewModel : PageViewModel
                     var r = s.ResultFor(f.Id);
                     var score = r is null ? "v"
                         : r.HomeGoals == r.AwayGoals
-                            ? $"{r.HomeGoals}-{r.AwayGoals} ({s.TeamName(s.CupWinnerOf(f))} on pens)"
+                            ? $"{r.HomeGoals}-{r.AwayGoals} (pens)"
                             : $"{r.HomeGoals}-{r.AwayGoals}";
                     var mine = f.HomeTeamId == s.CurrentTeamId || f.AwayTeamId == s.CurrentTeamId;
                     list.Add(new CupTie(

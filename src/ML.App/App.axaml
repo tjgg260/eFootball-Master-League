@@ -58,5 +58,13 @@
     <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource ThemeNavHoverBrush}"/>
     </Style>
+    <!-- the page you are ON (P5): tinted row + bold — "where am I" at a glance -->
+    <Style Selector="Button.nav.active /template/ ContentPresenter">
+      <Setter Property="Background" Value="#1E2D7DD2"/>
+    </Style>
+    <Style Selector="Button.nav.active">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
   </Application.Styles>
 </Application>

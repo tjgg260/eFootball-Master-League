@@ -137,7 +137,7 @@ public sealed partial class Session
         }
         var trophies = Honours().Count(h => h.Team == CurrentTeamName);
         return $"{seasons} season{(seasons == 1 ? "" : "s")} · record {w}W {d}D {l}L · " +
-               $"{trophies} troph{(trophies == 1 ? "y" : "ies")} · reputation {Reputation} ({ReputationLabel})";
+               $"{trophies} troph{(trophies == 1 ? "y" : "ies")} · {ReputationLabel}";
     }
 
     // ------------------------------------------------------------------ job offers

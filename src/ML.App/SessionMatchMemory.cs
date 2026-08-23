@@ -117,6 +117,16 @@ public sealed partial class Session
             .Select(k => (k, home.GetValueOrDefault(k), away.GetValueOrDefault(k))).ToList();
     }
 
+    /// <summary>Your matchday names in slot order (XI first, then bench) — the same order the
+    /// results screen lists them, so memory-read ratings can be zipped back onto names.</summary>
+    public IReadOnlyList<string> XiNamesInSlotOrder()
+    {
+        var players = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id, p => p.Name);
+        return Repo.Squad(CurrentTeamId).OrderBy(m => m.Slot)
+            .Select(m => players.GetValueOrDefault(m.PlayerId))
+            .Where(n => n is not null).Select(n => n!).ToList();
+    }
+
     /// <summary>Stored per-player ratings for a fixture side, in results-screen order.</summary>
     public IReadOnlyList<double> PlayerRatingsFor(int fixtureId, string side)
     {

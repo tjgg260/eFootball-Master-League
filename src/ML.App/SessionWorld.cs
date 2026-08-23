@@ -101,6 +101,7 @@ public sealed partial class Session
     /// </summary>
     public int FansFeeling()
     {
+        if (LeagueResultsThisSeason() == 0) return 55;   // pre-season: quietly optimistic, not mutinous
         var pos = CurrentPosition();
         var teams = Math.Max(LeagueTeams().Count, 2);
         var expected = Math.Max(teams / 3, 1);           // fans expect the top third

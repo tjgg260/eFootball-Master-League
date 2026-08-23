@@ -14,6 +14,21 @@ namespace ML.App;
 /// </summary>
 public static class Visuals
 {
+    /// <summary>"1 league" / "3 leagues" — copy never reads "1 leagues".</summary>
+    public static string Plural(int n, string unit) => $"{n} {unit}{(n == 1 ? "" : "s")}";
+
+    /// <summary>Board expectation as words, never the raw enum name.</summary>
+    public static string ExpectationLabel(ML.Core.Management.Expectation e) => e switch
+    {
+        ML.Core.Management.Expectation.Survival => "Avoid relegation",
+        ML.Core.Management.Expectation.LowerMidTable => "Comfortable safety",
+        ML.Core.Management.Expectation.MidTable => "Mid-table stability",
+        ML.Core.Management.Expectation.Playoffs => "Push for the play-offs",
+        ML.Core.Management.Expectation.Promotion => "Win promotion",
+        ML.Core.Management.Expectation.Title => "Challenge for the title",
+        _ => e.ToString(),
+    };
+
     private const string Fallback = "#3A4759";
 
     // Load a portrait/logo PNG off disk once and cache it; null if missing so the UI shows a

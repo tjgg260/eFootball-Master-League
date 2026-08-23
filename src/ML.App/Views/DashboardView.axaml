@@ -280,6 +280,16 @@
         </StackPanel>
       </Border>
 
+      <!-- Sacked: the career interregnum — no season controls, just the truth and the way back -->
+      <Border CornerRadius="12" Padding="20,18" Background="#2B1518" BorderBrush="#D64545"
+              BorderThickness="1" IsVisible="{Binding IsSacked}">
+        <StackPanel Spacing="8">
+          <TextBlock Classes="cardHead" Text="{Binding SackedHeadline}" Foreground="#E08A8A"/>
+          <TextBlock Text="The board have made their decision. Job offers land on the Board screen — accept one to manage again."
+                     Foreground="White" FontSize="15" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
       <!-- Season complete: roll over to the next season -->
       <Border CornerRadius="12" Padding="20,18" Background="#2A1F3D" BorderBrush="#6B4F9E"
               BorderThickness="1" IsVisible="{Binding SeasonOver}">

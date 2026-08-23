@@ -325,6 +325,13 @@ def main() -> int:
     # team-scoped meta + the per-club youth layer are career artefacts too
     con.execute("DELETE FROM meta WHERE (key LIKE 'chairman_8%' OR key LIKE 'mgrname_8%' "
                 "OR key LIKE 'ttalk_pre_9%')")
+    # A new career is a new life (P5 audit): the previous save's mail, scout missions,
+    # honours and loans must not haunt the fresh one. All four are pure career artefacts.
+    for tbl in ("inbox", "scout_jobs", "honours", "loans"):
+        try:
+            con.execute(f"DELETE FROM {tbl}")
+        except sqlite3.OperationalError:
+            pass
     try:
         con.execute("DELETE FROM squad_members WHERE team_id IN "
                     "(SELECT id FROM teams WHERE team_kind IN ('u21','u18'))")

@@ -102,7 +102,7 @@ public sealed partial class Session
         {
             var (apps, goals, assists, _, _, avg) = PlayerSeasonStats(playerId);
             if (apps == 0) return "Analyst: no competitive minutes on record this season.";
-            var parts = new List<string> { $"{apps} apps" };
+            var parts = new List<string> { Visuals.Plural(apps, "app") };
             if (goals > 0) parts.Add($"{(double)goals / apps:0.00} goals/app");
             if (assists > 0) parts.Add($"{assists} assists");
             if (avg is { } a) parts.Add($"{a:0.0} av rating");

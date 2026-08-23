@@ -99,12 +99,13 @@ public sealed partial class Session
 
     private static string RoundName(int size) => size switch
     {
-        <= 2 => "final", 4 => "semi-finals", 8 => "quarter-finals", _ => "round of 16",
+        <= 2 => "final", 4 => "semi-finals", 8 => "quarter-finals",
+        16 => "round of 16", 32 => "round of 32", _ => $"last {size}",
     };
 
     private string ProgressOf(string kind, int target) => kind switch
     {
-        "league_finish" => CurrentPosition() is var p and > 0
+        "league_finish" => LeagueResultsThisSeason() > 0 && CurrentPosition() is var p and > 0
             ? $"currently {Ordinal(p)}" : "season not started",
         "cup_run" => BestCupRunSize() is { } best
             ? best <= target ? $"reached (best: {RoundName(best)})" : $"best so far: {RoundName(best)}"
@@ -136,7 +137,7 @@ public sealed partial class Session
     private int? BestCupRunSize()
     {
         int? best = null;
-        foreach (var f in Repo.Fixtures(SeasonId).Where(f => f.Kind == "cup"
+        foreach (var f in Repo.Fixtures(SeasonId).Where(f => f.Kind == "cup" && f.Played
                      && (f.HomeTeamId == CurrentTeamId || f.AwayTeamId == CurrentTeamId)))
         {
             var size = Cups.SelectMany(c => c.Rounds)
@@ -156,7 +157,8 @@ public sealed partial class Session
             "JOIN fixtures f ON f.id=e.fixture_id " +
             "JOIN players p ON p.id=e.player_id " +
             "JOIN squad_members s ON s.player_id=e.player_id AND s.team_id=$t " +
-            "WHERE e.event_type='app' AND f.season_id=$s AND COALESCE(p.age, 25) <= 21";
+            "WHERE e.event_type='app' AND f.season_id=$s AND COALESCE(p.age, 25) <= 21 " +
+            "AND f.kind<>'friendly' AND (f.home_team_id=$t OR f.away_team_id=$t)";
         cmd.Parameters.AddWithValue("$t", CurrentTeamId);
         cmd.Parameters.AddWithValue("$s", SeasonId);
         return Convert.ToInt32(cmd.ExecuteScalar());

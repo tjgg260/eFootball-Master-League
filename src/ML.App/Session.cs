@@ -120,6 +120,17 @@ public sealed partial class Session
         return row?.Position ?? 0;
     }
 
+    /// <summary>League results recorded this season — 0 means the table is alphabetical noise,
+    /// and every position-derived gauge must hold its tongue (P5 season-start guard).</summary>
+    public int LeagueResultsThisSeason()
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM results r JOIN fixtures f ON f.id=r.fixture_id " +
+                          "WHERE f.season_id=$s AND f.kind='league'";
+        cmd.Parameters.AddWithValue("$s", SeasonId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
     /// <summary>
     /// Your league position after each played matchday — the "worm" chart's data (P6).
     /// Rebuilt from fixtures, no stored series needed.

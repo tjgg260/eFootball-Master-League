@@ -19,7 +19,7 @@ public sealed partial class BoardViewModel : PageViewModel
     public BoardViewModel(Session s)
     {
         _s = s;
-        Expectation = s.Board.Expectation.ToString();
+        Expectation = Visuals.ExpectationLabel(s.Board.Expectation);
         Confidence = s.Board.Value;
         ConfidenceLabel = s.Board.Label;
         UnderThreat = s.Board.ManagerUnderThreat;
@@ -32,7 +32,9 @@ public sealed partial class BoardViewModel : PageViewModel
             : "Stable — meet expectations and you're fine";
         Summary = Sacked
             ? s.SackedLine
-            : $"The board expects a {Expectation} finish. You are {Position} of {teams}.";
+            : s.LeagueResultsThisSeason() == 0
+                ? $"The board's demand: {Expectation}. The season is yet to kick off."
+                : $"The board's demand: {Expectation}. You are {Position} of {teams}.";
         Reputation = s.Reputation;
         ReputationLabel = s.ReputationLabel;
         CareerLine = s.CareerSummary();
@@ -92,7 +94,7 @@ public sealed partial class BoardViewModel : PageViewModel
 
         Offers = new ObservableCollection<JobOfferRow>(
             s.JobOffers().Select(o => new JobOfferRow(o.TeamId,
-                $"{o.Club}  ·  {o.League}  ·  squad {o.SquadRating}")));
+                $"{o.Club}  ·  {o.League}  ·  {ML.Core.Development.AttributeKnowledge.Grade(o.SquadRating)} squad")));
         RefreshFacilities();
         OffersNote = Offers.Count > 0
             ? "Accepting ends your current post immediately and reopens the app at your new club."

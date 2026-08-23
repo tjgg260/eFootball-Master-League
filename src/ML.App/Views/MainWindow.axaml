@@ -152,8 +152,8 @@
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
               <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-              <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="64"/>
-              <DataGridTemplateColumn Header="Rating" Width="64">
+              <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="66"/>
+              <DataGridTemplateColumn Header="Rating" Width="78">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:MarketPlayer">
                     <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
@@ -161,8 +161,8 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-              <DataGridTextColumn Header="Age" Binding="{Binding AgeLabel}" Width="56"/>
-              <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="105"/>
+              <DataGridTextColumn Header="Age" Binding="{Binding AgeLabel}" Width="60"/>
+              <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="132"/>
               <DataGridTemplateColumn Header="" Width="98">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:MarketPlayer">
@@ -347,7 +347,7 @@
         <WrapPanel>
           <Border Classes="tile"><StackPanel>
             <TextBlock Classes="tileLabel" Text="EXPECTATION"/>
-            <TextBlock Classes="tileBig" Text="{Binding Expectation}"/></StackPanel></Border>
+            <TextBlock Classes="tileBig" Text="{Binding Expectation}" TextWrapping="Wrap"/></StackPanel></Border>
           <Border Classes="tile"><StackPanel>
             <TextBlock Classes="tileLabel" Text="CONFIDENCE"/>
             <TextBlock Classes="tileBig" Text="{Binding ConfidenceLabel}"/>
@@ -1123,8 +1123,8 @@
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
             <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
-            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="60"/>
-            <DataGridTemplateColumn Header="Rating" Width="70">
+            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
+            <DataGridTemplateColumn Header="Rating" Width="78">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:AcademyEntry">
                   <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
@@ -1207,8 +1207,8 @@
           <DataGrid.Columns>
             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
             <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="100"/>
-            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52"/>
-            <DataGridTemplateColumn Header="Rating" Width="64">
+            <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
+            <DataGridTemplateColumn Header="Rating" Width="78">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:TrainingRow">
                   <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
@@ -1217,9 +1217,9 @@
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Personality" Binding="{Binding Personality}" Width="130"/>
-            <DataGridTextColumn Header="Det" Binding="{Binding Determination}" Width="52"/>
+            <DataGridTextColumn Header="Det" Binding="{Binding Determination}" Width="60"/>
             <DataGridTextColumn Header="Focus" Binding="{Binding Focus}" Width="120"/>
-            <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="80"/>
+            <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="94"/>
             <DataGridTextColumn Header="Skills" Binding="{Binding Skills}" Width="220"/>
           </DataGrid.Columns>
         </DataGrid>
@@ -1373,20 +1373,22 @@
                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                   Margin="0,12,0,0"/>
         </StackPanel>
-        <ItemsControl ItemsSource="{Binding Pages}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:NavItem">
-              <Button Classes="nav"
-                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NavigateCommand}"
-                      CommandParameter="{Binding}">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                  <TextBlock Text="{Binding Icon}" FontSize="16"/>
-                  <TextBlock Text="{Binding Title}"/>
-                </StackPanel>
-              </Button>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Pages}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:NavItem">
+                <Button Classes="nav" Classes.active="{Binding IsActive}"
+                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).NavigateCommand}"
+                        CommandParameter="{Binding}">
+                  <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="{Binding Icon}" FontSize="16"/>
+                    <TextBlock Text="{Binding Title}"/>
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
       </DockPanel>
     </Border>
 
