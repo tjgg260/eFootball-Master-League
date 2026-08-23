@@ -378,8 +378,60 @@ public sealed partial class SquadViewModel : PageViewModel
         var abilities = _s.Repo.Attributes(value.PlayerId);
         var isGk = value.Position == "GK";
         RadarPoints = BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
-        // Own squad = full knowledge; the FM toggle still swaps numbers for colour bands.
-        Abilities = BuildAbilityList(abilities, isGk, FmMode, 100, value.PlayerId);
+        // Knowledge-gated: your club is fully known, a browsed club only as deep as scouted.
+        Abilities = BuildAbilityList(abilities, isGk, FmMode, value.Knowledge, value.PlayerId);
+
+        // The MFL analysis panels (UX P3): six graded-statement categories — the north star.
+        try
+        {
+            AnalysisPanels = ML.Core.Development.PlayerAnalysis
+                .Build(value.PlayerId, abilities, isGk, value.Knowledge)
+                .Select(p => new AnalysisPanelVm(p.Name, p.Lines.Select(l => new AnalysisLineVm(
+                    l.Text, l.Grade,
+                    l.Tone switch
+                    {
+                        ML.Core.Development.PlayerAnalysis.Tone.Good => "✓",
+                        ML.Core.Development.PlayerAnalysis.Tone.Mid => "○",
+                        _ => "✗",
+                    },
+                    Visuals.Brush(l.Tone switch
+                    {
+                        ML.Core.Development.PlayerAnalysis.Tone.Good => "#1F9D4D",
+                        ML.Core.Development.PlayerAnalysis.Tone.Mid => "#8A93A2",
+                        _ => "#D64545",
+                    }))).ToList()))
+                .ToList();
+        }
+        catch { AnalysisPanels = Array.Empty<AnalysisPanelVm>(); }
+
+        // Transfer / Value / Absence tab lines (real market + condition data).
+        try
+        {
+            using var mc = _s.Db.Connection.CreateCommand();
+            mc.CommandText = "SELECT COALESCE(value,0), COALESCE(wage,0), transfer_status " +
+                             "FROM player_market WHERE player_id=$p";
+            mc.Parameters.AddWithValue("$p", value.PlayerId);
+            using var r = mc.ExecuteReader();
+            if (r.Read())
+            {
+                MarketValueLine = $"Market value  £{r.GetInt64(0):N0}";
+                WageLine = r.GetInt64(1) > 0 ? $"Wage  £{r.GetInt64(1):N0}/wk" : "";
+                TransferStatusLine = r.IsDBNull(2) ? "Open to offers" : r.GetString(2) switch
+                {
+                    "not-for-sale" => "NOT FOR SALE",
+                    "listed" => "TRANSFER LISTED",
+                    "loan-listed" => "AVAILABLE ON LOAN",
+                    _ => "Open to offers",
+                };
+            }
+            else { MarketValueLine = ""; WageLine = ""; TransferStatusLine = ""; }
+        }
+        catch { MarketValueLine = ""; WageLine = ""; TransferStatusLine = ""; }
+        AbsenceLine = value.IsInjured
+            ? $"🚑 Injured — unavailable until matchday {value.InjuredUntil}"
+            : value.Fatigue >= 40 ? "😮‍💨 Exhausted — needs rest before he breaks down"
+            : value.Fatigue >= 20 ? "Match-fit, carrying normal fatigue"
+            : "Fully fit and available";
         try
         {
             CoachLines = _s.CoachReportOf(value.PlayerId, value.Position)
@@ -400,7 +452,9 @@ public sealed partial class SquadViewModel : PageViewModel
             ListLabel = _s.IsTransferListed(value.PlayerId) ? "Un-list" : "Transfer-list";
             PromiseLine = _s.PromiseLine(value.PlayerId);
             var (det, _, _, _) = _s.TraitsOf(value.PlayerId);
-            CharacterLine = $"{_s.PersonalityOf(value.PlayerId)}  ·  Determination {det}/20";
+            // qualitative, never "9/20" (UX audit): determination becomes a word
+            var detWord = det >= 16 ? "Driven" : det >= 11 ? "Steady" : det >= 6 ? "Inconsistent" : "Flaky";
+            CharacterLine = $"{_s.PersonalityOf(value.PlayerId)}  ·  {detWord}";
             _syncingPt = true;
             var ptStatus = _s.PlayTimeStatusOf(value.PlayerId);
             SelectedPtStatus = ptStatus;
@@ -419,6 +473,15 @@ public sealed partial class SquadViewModel : PageViewModel
     // Character + skills for the card (P1).
     [ObservableProperty] private string _characterLine = "";
     [ObservableProperty] private string _skillsLine = "";
+
+    // The MFL card (UX P3): graded analysis panels + tab data.
+    public sealed record AnalysisLineVm(string Text, string Grade, string Icon, IBrush IconBrush);
+    public sealed record AnalysisPanelVm(string Name, IReadOnlyList<AnalysisLineVm> Lines);
+    [ObservableProperty] private IReadOnlyList<AnalysisPanelVm> _analysisPanels = Array.Empty<AnalysisPanelVm>();
+    [ObservableProperty] private string _marketValueLine = "";
+    [ObservableProperty] private string _wageLine = "";
+    [ObservableProperty] private string _transferStatusLine = "";
+    [ObservableProperty] private string _absenceLine = "";
 
     // Playing time (P5, FM-style): status drives morale AND the AI's willingness to sell.
     public IReadOnlyList<string> PtStatusOptions => Session.PlayTimeStatuses;

@@ -168,6 +168,20 @@
               </Border>
             </Panel>
 
+            <!-- ══ THE MFL CARD (UX P3): five tabs, graded statements, never a number ══ -->
+            <TabControl Margin="0,4,0,0" Padding="0,10,0,0">
+              <TabControl.Styles>
+                <Style Selector="TabItem">
+                  <Setter Property="FontSize" Value="13"/>
+                  <Setter Property="FontWeight" Value="Bold"/>
+                  <Setter Property="Padding" Value="4,2"/>
+                  <Setter Property="MinHeight" Value="30"/>
+                  <Setter Property="Margin" Value="0,0,10,0"/>
+                </Style>
+              </TabControl.Styles>
+
+              <TabItem Header="Info">
+                <StackPanel Spacing="14" Margin="0,10,0,0">
             <!-- hexagon ability radar -->
             <Canvas Width="200" Height="200" HorizontalAlignment="Center">
               <Polygon Points="100,22 167.6,61 167.6,139 100,178 32.4,139 32.4,61"
@@ -188,7 +202,6 @@
               <TextBlock Canvas.Left="6" Canvas.Top="142" Text="DEF" FontSize="10" Foreground="#8A93A2"/>
               <TextBlock Canvas.Left="6" Canvas.Top="48" Text="STR" FontSize="10" Foreground="#8A93A2"/>
             </Canvas>
-
             <!-- info strip -->
             <Border Background="#1B222C" CornerRadius="8" Padding="12,10">
               <Grid ColumnDefinitions="*,*,*">
@@ -210,98 +223,39 @@
               </Grid>
             </Border>
 
-            <!-- season stats + contract + management actions -->
-            <StackPanel Spacing="4">
-              <TextBlock Text="{Binding SeasonLine}" FontSize="12" Foreground="#C7CEDA"
-                         TextWrapping="Wrap"/>
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="{Binding ContractLine}" FontSize="12" Foreground="#8A93A2"/>
-                <TextBlock Text="©" FontSize="13" FontWeight="Bold" Foreground="#E0A526"
-                           IsVisible="{Binding IsCaptain}" ToolTip.Tip="Club captain"/>
-              </StackPanel>
-              <!-- playing time (P5, FM-style) -->
-              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
-                <ComboBox ItemsSource="{Binding PtStatusOptions}"
-                          SelectedItem="{Binding SelectedPtStatus}" MinWidth="180" FontSize="12"/>
-                <TextBlock Text="{Binding PlayTimeLine}" FontSize="11" Foreground="#8A93A2"
-                           VerticalAlignment="Center"/>
-              </StackPanel>
-              <!-- character + skills (P1) -->
-              <TextBlock Text="{Binding CharacterLine}" FontSize="12" Foreground="#C7A8E8"/>
-              <TextBlock Text="{Binding SkillsLine}" FontSize="11" Foreground="#8A93A2"
-                         TextWrapping="Wrap"/>
-              <!-- career history (D3): one line per season on file -->
-              <ItemsControl ItemsSource="{Binding CareerRows}" IsVisible="{Binding HasCareerRows}"
-                            Margin="0,2,0,0">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="x:String">
-                    <TextBlock Text="{Binding}" FontSize="11" Foreground="#5E6875"/>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-              <StackPanel IsVisible="{Binding IsOwnClub}" Spacing="4">
-              <WrapPanel>
-                <Button Content="© Captain" Command="{Binding MakeCaptainCommand}" Margin="0,2,6,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="{Binding ListLabel}" Command="{Binding ToggleListCommand}" Margin="0,2,6,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="Renew +2yrs" Command="{Binding RenewCommand}" Margin="0,2,6,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="Loan out" Command="{Binding LoanOutCommand}" Margin="0,2,6,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="Release" Command="{Binding ReleaseCommand}" Margin="0,2,6,0"
-                        Background="#3A2328" Foreground="#E08A8A" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="📌 Compare" Command="{Binding PinCompareCommand}" Margin="0,2,6,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="✖" Command="{Binding ClearCompareCommand}" Margin="0,2,0,0"
-                        IsVisible="{Binding HasPinned}" ToolTip.Tip="Clear comparison"
-                        Background="#232B36" Foreground="#8A93A2" Padding="8,6" CornerRadius="6" FontSize="11"/>
-              </WrapPanel>
-              <WrapPanel>
-                <Button Content="🗣 Praise" Command="{Binding PraiseCommand}" Margin="0,2,6,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="Criticise" Command="{Binding CriticiseCommand}" Margin="0,2,6,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="Promise starts" Command="{Binding PromiseStartsCommand}" Margin="0,2,6,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-                <Button Content="Promise contract" Command="{Binding PromiseContractCommand}" Margin="0,2,0,0"
-                        Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-              </WrapPanel>
-              <TextBlock Text="{Binding PromiseLine}" FontSize="11" Foreground="#E0A526"/>
+                  <TextBlock Text="{Binding SeasonLine}" Classes="ml-body" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding CharacterLine}" FontSize="12" Foreground="#C7A8E8"/>
+                  <TextBlock Text="{Binding SkillsLine}" Classes="ml-muted" TextWrapping="Wrap"/>
 
-              <!-- contract negotiation: rounds with the agent -->
-              <Button Content="💬 Negotiate contract" Command="{Binding OpenNegotiationCommand}"
-                      IsVisible="{Binding !Negotiating}" Margin="0,2,0,0"
-                      Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
-              <Border Background="#1B222C" CornerRadius="8" Padding="10" IsVisible="{Binding Negotiating}">
-                <StackPanel Spacing="6">
-                  <TextBlock Text="{Binding NegotiationLine}" Foreground="#C7CEDA" FontSize="12"
-                             TextWrapping="Wrap"/>
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="£/wk" Foreground="#8A93A2" FontSize="11" VerticalAlignment="Center"/>
-                    <NumericUpDown Value="{Binding WageOffer}" Minimum="500" Maximum="500000"
-                                   Increment="250" FormatString="N0" Width="140"/>
-                    <ComboBox ItemsSource="{Binding YearsOptions}" SelectedItem="{Binding SelectedYears}"
-                              Width="64" ToolTip.Tip="Years"/>
-                    <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"
-                              Width="110" ToolTip.Tip="Squad status promise — cheaper wage, tracked starts"/>
-                  </StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="Offer" Command="{Binding MakeOfferCommand}"
-                            Background="#1F9D4D" Foreground="White" FontWeight="Bold"
-                            Padding="14,7" CornerRadius="6" FontSize="12"/>
-                    <Button Content="Walk away" Command="{Binding CancelNegotiationCommand}"
-                            Background="#3A4759" Foreground="White" Padding="14,7"
-                            CornerRadius="6" FontSize="12"/>
-                  </StackPanel>
-                </StackPanel>
-              </Border>
-              </StackPanel>
-              <TextBlock Text="{Binding PinnedName, StringFormat='Comparing against {0} (dashed blue)'}"
-                         FontSize="11" Foreground="#2D7DD2" IsVisible="{Binding HasPinned}"/>
-              <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="#9FE6B4" TextWrapping="Wrap"/>
-            </StackPanel>
-
+                  <!-- the six graded analysis panels — the north star's core feature -->
+                  <ItemsControl ItemsSource="{Binding AnalysisPanels}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:SquadViewModel+AnalysisPanelVm">
+                        <Border Classes="ml-card" Margin="0,0,0,10" Padding="12,10">
+                          <StackPanel Spacing="6">
+                            <TextBlock Text="{Binding Name}" Classes="ml-h2" FontSize="14"/>
+                            <ItemsControl ItemsSource="{Binding Lines}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SquadViewModel+AnalysisLineVm">
+                                  <Grid ColumnDefinitions="22,*,Auto" Margin="0,2">
+                                    <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="12"
+                                               FontWeight="Bold" Foreground="{Binding IconBrush}"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Text}" Classes="ml-body"
+                                               FontSize="12" TextWrapping="Wrap"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Grade}" FontSize="12"
+                                               FontWeight="Bold" Foreground="{Binding IconBrush}"
+                                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                  </Grid>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
             <!-- ability list -->
             <StackPanel Spacing="6">
               <TextBlock Text="Ability" FontSize="13" FontWeight="SemiBold" Foreground="#8A93A2"/>
@@ -328,7 +282,6 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
-
             <!-- permanent coach/analyst reports (P5); the FM display toggle lives in Settings -->
             <Border Background="#1B222C" CornerRadius="8" Padding="10"
                     IsVisible="{Binding HasCoachLines}">
@@ -346,6 +299,105 @@
                            TextWrapping="Wrap" Margin="0,4,0,0"/>
               </StackPanel>
             </Border>
+
+                  <ItemsControl ItemsSource="{Binding CareerRows}" IsVisible="{Binding HasCareerRows}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" FontSize="11" Foreground="#5E6875"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <WrapPanel>
+                    <Button Content="📌 Compare" Command="{Binding PinCompareCommand}" Classes="ml-secondary"
+                            FontSize="11" Margin="0,2,6,0"/>
+                    <Button Content="✖" Command="{Binding ClearCompareCommand}" Classes="ml-ghost"
+                            FontSize="11" Margin="0,2,0,0" IsVisible="{Binding HasPinned}"
+                            ToolTip.Tip="Clear comparison"/>
+                  </WrapPanel>
+                  <TextBlock Text="{Binding PinnedName, StringFormat='Comparing against {0} (dashed blue)'}"
+                             FontSize="11" Foreground="#2D7DD2" IsVisible="{Binding HasPinned}"/>
+                  <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="#9FE6B4" TextWrapping="Wrap"/>
+                </StackPanel>
+              </TabItem>
+
+              <TabItem Header="Contract">
+                <StackPanel Spacing="10" Margin="0,10,0,0">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding ContractLine}" Classes="ml-body"/>
+                    <TextBlock Text="©" FontSize="13" FontWeight="Bold" Foreground="#E0A526"
+                               IsVisible="{Binding IsCaptain}" ToolTip.Tip="Club captain"/>
+                  </StackPanel>
+                  <TextBlock Text="{Binding WageLine}" Classes="ml-body"/>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ComboBox ItemsSource="{Binding PtStatusOptions}"
+                              SelectedItem="{Binding SelectedPtStatus}" MinWidth="180" FontSize="12"/>
+                    <TextBlock Text="{Binding PlayTimeLine}" Classes="ml-muted" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <StackPanel IsVisible="{Binding IsOwnClub}" Spacing="8">
+                    <WrapPanel>
+                      <Button Content="© Captain" Command="{Binding MakeCaptainCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <Button Content="Renew +2yrs" Command="{Binding RenewCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <Button Content="🗣 Praise" Command="{Binding PraiseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <Button Content="Criticise" Command="{Binding CriticiseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <Button Content="Promise starts" Command="{Binding PromiseStartsCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <Button Content="Promise contract" Command="{Binding PromiseContractCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,0,0"/>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding PromiseLine}" FontSize="11" Foreground="#E0A526"/>
+                    <Button Content="💬 Negotiate contract" Command="{Binding OpenNegotiationCommand}"
+                            IsVisible="{Binding !Negotiating}" Classes="ml-secondary" FontSize="11"/>
+                    <Border Classes="ml-card" Padding="10" IsVisible="{Binding Negotiating}">
+                      <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding NegotiationLine}" Classes="ml-body" TextWrapping="Wrap"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="£/wk" Classes="ml-muted" VerticalAlignment="Center"/>
+                          <NumericUpDown Value="{Binding WageOffer}" Minimum="500" Maximum="500000"
+                                         Increment="250" FormatString="N0" Width="140"/>
+                          <ComboBox ItemsSource="{Binding YearsOptions}" SelectedItem="{Binding SelectedYears}"
+                                    Width="64" ToolTip.Tip="Years"/>
+                          <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"
+                                    Width="110" ToolTip.Tip="Squad status promise — cheaper wage, tracked starts"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <Button Content="Offer" Command="{Binding MakeOfferCommand}" Classes="ml-primary ml-go" FontSize="12"/>
+                          <Button Content="Walk away" Command="{Binding CancelNegotiationCommand}" Classes="ml-secondary" FontSize="12"/>
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                </StackPanel>
+              </TabItem>
+
+              <TabItem Header="Transfer">
+                <StackPanel Spacing="10" Margin="0,10,0,0">
+                  <Border Classes="ml-chip ml-danger" HorizontalAlignment="Left"
+                          IsVisible="{Binding TransferStatusLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding TransferStatusLine}"/>
+                  </Border>
+                  <TextBlock Text="{Binding MarketValueLine}" Classes="ml-h2"/>
+                  <StackPanel IsVisible="{Binding IsOwnClub}" Spacing="8">
+                    <WrapPanel>
+                      <Button Content="{Binding ListLabel}" Command="{Binding ToggleListCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <Button Content="Loan out" Command="{Binding LoanOutCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <Button Content="Release" Command="{Binding ReleaseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,0,0" Foreground="#E08A8A"/>
+                    </WrapPanel>
+                  </StackPanel>
+                </StackPanel>
+              </TabItem>
+
+              <TabItem Header="Absence">
+                <StackPanel Spacing="10" Margin="0,10,0,0">
+                  <TextBlock Text="{Binding AbsenceLine}" Classes="ml-body" TextWrapping="Wrap"/>
+                </StackPanel>
+              </TabItem>
+
+              <TabItem Header="Value">
+                <StackPanel Spacing="10" Margin="0,10,0,0">
+                  <TextBlock Text="{Binding MarketValueLine}" Classes="ml-h2"/>
+                  <TextBlock Text="{Binding WageLine}" Classes="ml-body"/>
+                  <TextBlock Text="{Binding ContractLine}" Classes="ml-muted"/>
+                </StackPanel>
+              </TabItem>
+            </TabControl>
 
           </StackPanel>
         </ScrollViewer>
