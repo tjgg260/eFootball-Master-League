@@ -53,6 +53,16 @@ Every merged field carries provenance (`source` tag).
    playstyles map to valid STYLE_INDEX values, names encode safely. The build FAILS if any
    catalog team cannot be rendered into the game.
 
+## World-edge policy (who lives outside your divisions)
+
+The career's two divisions + their U21/U18 sides + the academy get the FULL simulation
+(personality-driven development, condition, economy). Everyone else in the world gets the
+**edge treatment** once per season at rollover (`Session.AgeWorldEdge`): every squad player ages
+a year; under-24s drift up toward (never past) their stored potential, 31+ decline, 35+ decline
+faster; at 39 they retire out of their squad into the free-agent pool (records kept — nothing is
+ever deleted). Deterministic per (player, season) — cheap SQL, no RNG loops. The world is no
+longer immortal: leave for five seasons and come back to a changed one.
+
 ## Validation gate (audit-as-build-step)
 
 Zero dangling references · one squad membership per player · every squad player fully attributed

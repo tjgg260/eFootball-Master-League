@@ -243,9 +243,14 @@ public sealed partial class Session
 
             var cupRng = new SeededRandom((SeasonId * 5171 + matchday + cup.Salt) ^ WorldSeed);
             var sim = new PoissonMatchSimulator(cupRng);
+            // YOUR ties are never simmed here (mirror of PlayOutMatchday's guard): league and cup
+            // rounds share matchday numbers, and recording your LEAGUE game passes ITS id as
+            // exceptFixtureId — without the team guard your cup tie on the same number was played
+            // behind your back. The round then simply waits for you before drawing the next one.
             foreach (var f in Repo.Fixtures(SeasonId, matchday)
                          .Where(f => f.Kind == "cup" && f.LeagueId == cup.LeagueId
-                                     && !f.Played && f.Id != exceptFixtureId))
+                                     && !f.Played && f.Id != exceptFixtureId
+                                     && f.HomeTeamId != CurrentTeamId && f.AwayTeamId != CurrentTeamId))
             {
                 var h = XiStrengthOf(f.HomeTeamId);
                 var a = XiStrengthOf(f.AwayTeamId);
@@ -1491,7 +1496,11 @@ public sealed partial class Session
         return $"Signed {name} ({rating}){from} for £{bid:N0} — squad number {shirt}.";
     }
 
-    public sealed record TransferOffer(int PlayerId, string PlayerName, string FromTeam, long Fee);
+    // FromTeamId is the AUTHORITATIVE buyer (audit: resolving by name string could pick the
+    // wrong club or none — and a null buyer VAPORIZED the player). Name is display only.
+    // Old saved offers deserialize with FromTeamId=0 and fall back to the name lookup.
+    public sealed record TransferOffer(int PlayerId, string PlayerName, string FromTeam, long Fee,
+                                       int FromTeamId = 0);
 
     /// <summary>Standing offers from CPU clubs for your players (generated each preseason).</summary>
     public IReadOnlyList<TransferOffer> PendingOffers()
@@ -1541,7 +1550,7 @@ public sealed partial class Session
                 _ => 1.1 + rng.Next(30) / 100.0,
             };
             var fee = (long)(MarketValueOf(p.Id, p.OverallRating ?? 65, p.Age) * mult);
-            offers.Add(new TransferOffer(p.Id, p.Name, buyer.Name, fee));
+            offers.Add(new TransferOffer(p.Id, p.Name, buyer.Name, fee, buyer.Id));
             if (offers.Count == 3) break;
         }
         SaveOffers(offers);
@@ -1551,7 +1560,17 @@ public sealed partial class Session
     {
         var offer = PendingOffers().FirstOrDefault(o => o.PlayerId == playerId);
         if (offer is null) return "That offer is no longer on the table.";
-        var buyerId = Repo.Teams().FirstOrDefault(t => t.Name == offer.FromTeam)?.Id;
+        // Resolve the buyer BEFORE touching the squad — by id (authoritative), name as a legacy
+        // fallback for offers saved before FromTeamId existed. An unresolvable buyer means the
+        // deal collapses; it must never mean the player vanishes from every squad.
+        var buyerId = offer.FromTeamId > 0 && Repo.Teams().Any(t => t.Id == offer.FromTeamId)
+            ? offer.FromTeamId
+            : Repo.Teams().FirstOrDefault(t => t.Name == offer.FromTeam)?.Id;
+        if (buyerId is null)
+        {
+            SaveOffers(PendingOffers().Where(o => o.PlayerId != playerId).ToList());
+            return $"The deal for {offer.PlayerName} collapsed — {offer.FromTeam} pulled out.";
+        }
         Repo.RemoveSquadMember(CurrentTeamId, playerId);
         // Honour any sell-on clause granted to his old club when you bought him (P5).
         var net = offer.Fee;

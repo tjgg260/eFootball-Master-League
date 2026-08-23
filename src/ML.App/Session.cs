@@ -313,6 +313,7 @@ public sealed partial class Session
 
         try { ReturnAllLoans(); } catch { /* loans never block rollover */ }
         AgeAndDevelopSquads();
+        AgeWorldEdge();
         try { RetireAndExpire(); } catch { /* the world never blocks rollover */ }
         CpuTransferActivity();     // the market moves between seasons (and re-fills the retired)
         AcademyIntake();           // every club's youth setup produces new prospects
@@ -417,15 +418,62 @@ public sealed partial class Session
         _results = null;
     }
 
+    /// <summary>
+    /// THE WORLD-EDGE POLICY (audit: "everyone outside the two career divisions is immortal and
+    /// frozen"). Once a season, the whole outside world moves in cheap deterministic SQL:
+    /// every squad player ages a year; the young drift up toward (never past) their potential and
+    /// the old decline; 39+ retire out of their squads into the free-agent pool (their records
+    /// are kept — nothing is deleted). Career divisions, youth sides and the academy are excluded
+    /// here — AgeAndDevelopSquads gives them the full personality-driven treatment.
+    /// </summary>
+    private void AgeWorldEdge()
+    {
+        const string Edge = "SELECT DISTINCT s.player_id FROM squad_members s WHERE s.team_id NOT IN " +
+            "(SELECT id FROM teams WHERE league_id IN (9000,9001) OR team_kind IN ('u21','u18'))";
+        var salt = SeasonId;
+        void Run(string sql)
+        {
+            using var c = Db.Connection.CreateCommand();
+            c.CommandText = sql;
+            c.Parameters.AddWithValue("$s", salt);
+            c.ExecuteNonQuery();
+        }
+        Run($"UPDATE players SET age = COALESCE(age,25) + 1 WHERE id IN ({Edge}) " +
+            "AND id NOT IN (SELECT player_id FROM academy)");
+        // deterministic thirds/halves: ((id+season)*knuth)%n picks who moves this season
+        Run($"UPDATE players SET overall_rating = MIN(99, COALESCE(overall_rating,55) + 1) " +
+            $"WHERE id IN ({Edge}) AND COALESCE(age,25) <= 23 " +
+            "AND ((id + $s) * 2654435761) % 3 = 0 " +
+            "AND COALESCE(overall_rating,55) < COALESCE((SELECT pp.potential FROM player_potential pp " +
+            "                                            WHERE pp.player_id = players.id), 99)");
+        Run($"UPDATE players SET overall_rating = MAX(30, COALESCE(overall_rating,55) - 1) " +
+            $"WHERE id IN ({Edge}) AND COALESCE(age,25) BETWEEN 31 AND 34 " +
+            "AND ((id + $s) * 2654435761) % 3 = 0");
+        Run($"UPDATE players SET overall_rating = MAX(25, COALESCE(overall_rating,55) - 1 " +
+            "    - CASE WHEN ((id + $s) * 2654435761) % 2 = 0 THEN 1 ELSE 0 END) " +
+            $"WHERE id IN ({Edge}) AND COALESCE(age,25) >= 35");
+        Run("DELETE FROM squad_members WHERE player_id IN " +
+            "(SELECT id FROM players WHERE COALESCE(age,0) >= 39) " +
+            "AND team_id NOT IN (SELECT id FROM teams WHERE league_id IN (9000,9001) " +
+            "                    OR team_kind IN ('u21','u18'))");
+    }
+
     // Age every player across both divisions and nudge ratings: youth improve, veterans decline.
     private void AgeAndDevelopSquads()
     {
         var players = new List<(int Id, int Age, int Ovr)>();
         using (var q = Db.Connection.CreateCommand())
         {
+            // Career divisions + THEIR YOUTH SIDES + the academy: U21/U18 teams carry league_id
+            // NULL, so the old league-only filter froze every prospect the moment he was moved
+            // down — youths never aged or developed again (audit blocker).
             q.CommandText = "SELECT DISTINCT p.id, COALESCE(p.age,24), COALESCE(p.overall_rating,70) " +
                 "FROM players p JOIN squad_members s ON s.player_id=p.id " +
-                "WHERE s.team_id IN (SELECT id FROM teams WHERE league_id IN (9000,9001))";
+                "WHERE s.team_id IN (SELECT id FROM teams WHERE league_id IN (9000,9001) " +
+                "                    OR team_kind IN ('u21','u18')) " +
+                "UNION " +
+                "SELECT p.id, COALESCE(p.age,17), COALESCE(p.overall_rating,50) " +
+                "FROM players p JOIN academy a ON a.player_id=p.id";
             using var r = q.ExecuteReader();
             while (r.Read()) players.Add((r.GetInt32(0), r.GetInt32(1), r.GetInt32(2)));
         }
