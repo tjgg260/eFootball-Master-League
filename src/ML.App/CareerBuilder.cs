@@ -66,6 +66,10 @@ public static class CareerBuilder
         psi.ArgumentList.Add("--rfs-id"); psi.ArgumentList.Add(rfsId.ToString());
         psi.ArgumentList.Add("--team"); psi.ArgumentList.Add(teamName);
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
+        // Consent flows through the app's own vault UI ("your current save goes to the vault
+        // first") — with this set, career_seed snapshots any active career to /careers before
+        // it reseeds, so New Career never destroys a save.
+        psi.Environment["ML_CONFIRM_RESEED"] = "1";
 
         try
         {
@@ -93,6 +97,39 @@ public static class CareerBuilder
         await RunScript(root, "update_career_squad.py", log);
 
         return CareerLoader.TryLoad();
+    }
+
+    /// <summary>Run any tools/ script with arguments; true on exit code 0. The career vault
+    /// (snapshot save/restore) rides through here.</summary>
+    public static async Task<bool> RunTool(string script, string[] args, Action<string> log)
+    {
+        var root = MatchLauncher.FindRepoRoot();
+        if (root is null) { log("Could not find the project root."); return false; }
+        var psi = new ProcessStartInfo
+        {
+            FileName = PythonExe(), WorkingDirectory = root,
+            RedirectStandardOutput = true, RedirectStandardError = true,
+            UseShellExecute = false, CreateNoWindow = true,
+        };
+        psi.ArgumentList.Add(Path.Combine("tools", script));
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        psi.Environment["PYTHONIOENCODING"] = "utf-8";
+        try
+        {
+            using var proc = new Process { StartInfo = psi };
+            proc.OutputDataReceived += (_, e) => { if (e.Data is not null) log(e.Data); };
+            proc.ErrorDataReceived += (_, e) => { if (e.Data is not null) log(e.Data); };
+            proc.Start();
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
+            await proc.WaitForExitAsync();
+            return proc.ExitCode == 0;
+        }
+        catch (Exception ex)
+        {
+            log($"Failed to run {script}: {ex.Message}");
+            return false;
+        }
     }
 
     private static async Task RunScript(string root, string script, Action<string> log)

@@ -143,6 +143,14 @@
     </StackPanel></Border>
 
     <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="Career vault"/>
+      <Button Classes="ml-primary" Content="🗄 Save career to vault" Command="{Binding SaveToVaultCommand}"/>
+      <Button Classes="ml-secondary" Content="⇄ Switch / load / new career…" Command="{Binding SwitchCareerCommand}"/>
+      <TextBlock Classes="ml-muted" Text="{Binding VaultStatus}" TextWrapping="Wrap"
+                 IsVisible="{Binding VaultStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+    </StackPanel></Border>
+
+    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
       <TextBlock Classes="ml-label" Text="Data"/>
       <Button Classes="ml-secondary" Content="💾 Backup now" Command="{Binding BackupNowCommand}"/>
       <TextBlock Classes="ml-muted" Text="Restore a backup (applies at next launch)"/>

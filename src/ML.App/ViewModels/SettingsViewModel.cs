@@ -202,6 +202,42 @@ public sealed partial class SettingsViewModel : PageViewModel
         }
     }
 
+    // --- the career vault (P8): save slots as first-class citizens --------------------
+
+    [ObservableProperty] private string _vaultStatus = "";
+
+    /// <summary>Export the career to careers/ as a named save slot (compact, ~5MB).</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task SaveToVault()
+    {
+        VaultStatus = "Saving career to the vault…";
+        var ok = await CareerBuilder.RunTool("career_snapshot.py", new[] { "save" },
+            s => VaultStatus = s);
+        VaultStatus = ok ? "✔ Saved — find it under Load on the launch screen."
+                         : "Vault save failed — is Python reachable? See the log.";
+    }
+
+    /// <summary>Back to the launch screen (vault): continue, load, or start a new career.</summary>
+    [RelayCommand]
+    private void SwitchCareer()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime
+            is not Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop) return;
+        var picker = new NewCareerViewModel();
+        var window = new Views.NewCareerWindow { DataContext = picker };
+        picker.CareerStarted += session =>
+        {
+            var main = new Views.MainWindow { DataContext = new MainWindowViewModel(session) };
+            desktop.MainWindow = main;
+            main.Show();
+            window.Close();
+        };
+        var old = desktop.MainWindow;
+        desktop.MainWindow = window;
+        window.Show();
+        old?.Close();
+    }
+
     [RelayCommand]
     private void BackupNow()
     {

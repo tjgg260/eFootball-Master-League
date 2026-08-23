@@ -120,7 +120,10 @@ public sealed class LeagueOption
     }
 }
 
-public enum CareerStage { Continent, Country, League, Team, Manager }
+public enum CareerStage { Vault, Continent, Country, League, Team, Manager }
+
+/// <summary>One saved career in the vault (a careers/*.db snapshot).</summary>
+public sealed record SaveSlot(string Path, string Club, string SavedLine, string DetailLine);
 
 public sealed partial class NewCareerViewModel : ObservableObject
 {
@@ -147,6 +150,134 @@ public sealed partial class NewCareerViewModel : ObservableObject
             if (members.Count > 0)
                 Continents.Add(new ContinentOption(def, members));
         }
+
+        // The vault (load/save/new): open on it when there is anything to continue or load;
+        // a truly fresh install goes straight to the world browser.
+        LoadVault();
+        if (HasActiveCareer || SavedCareers.Count > 0)
+        {
+            Stage = CareerStage.Vault;
+            Status = "Continue, load a save, or start again.";
+        }
+    }
+
+    // ------------------------------------------------------------------ the career vault
+
+    public ObservableCollection<SaveSlot> SavedCareers { get; } = new();
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowContinueCard))] private bool _hasActiveCareer;
+    [ObservableProperty] private string _activeCareerLine = "";
+    public bool ShowContinueCard => HasActiveCareer;
+    public bool HasSaves => SavedCareers.Count > 0;
+
+    private void LoadVault()
+    {
+        SavedCareers.Clear();
+        HasActiveCareer = false;
+        var root = MatchLauncher.FindRepoRoot();
+        if (root is null) return;
+
+        // The active career: read master's meta directly — cheap, no Session construction.
+        try
+        {
+            var master = System.IO.Path.Combine(root, "build", "master.db");
+            if (File.Exists(master))
+            {
+                using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={master};Mode=ReadOnly");
+                con.Open();
+                string? Meta(string k)
+                {
+                    using var c = con.CreateCommand();
+                    c.CommandText = "SELECT value FROM meta WHERE key=$k";
+                    c.Parameters.AddWithValue("$k", k);
+                    return c.ExecuteScalar() as string;
+                }
+                if (int.TryParse(Meta("current_team_id"), out var tid))
+                {
+                    using var c = con.CreateCommand();
+                    c.CommandText = "SELECT name FROM teams WHERE id=$t";
+                    c.Parameters.AddWithValue("$t", tid);
+                    var club = c.ExecuteScalar() as string;
+                    using var r = con.CreateCommand();
+                    r.CommandText = "SELECT COUNT(*) FROM results r JOIN fixtures f ON f.id=r.fixture_id " +
+                                    "WHERE f.season_id >= 9000";
+                    var played = Convert.ToInt32(r.ExecuteScalar());
+                    if (!string.IsNullOrEmpty(club))
+                    {
+                        HasActiveCareer = true;
+                        ActiveCareerLine = $"{club} — {played} match{(played == 1 ? "" : "es")} played";
+                    }
+                }
+            }
+        }
+        catch { /* vault is best-effort; the world browser is always reachable */ }
+
+        // Saved careers: careers/*.db snapshots (never the .bak safety copies).
+        try
+        {
+            var dir = System.IO.Path.Combine(root, "careers");
+            if (!Directory.Exists(dir)) return;
+            foreach (var f in Directory.GetFiles(dir, "*.db")
+                         .Where(f => !f.Contains(".bak") && !f.Contains("pre-repair"))
+                         .OrderByDescending(File.GetLastWriteTime))
+            {
+                var stem = System.IO.Path.GetFileNameWithoutExtension(f);
+                var club = stem.Contains('_')
+                    ? stem[..stem.LastIndexOf('_')].Replace('_', ' ')
+                    : stem;
+                var saved = $"saved {File.GetLastWriteTime(f):ddd d MMM HH:mm}";
+                var detail = "";
+                try
+                {
+                    using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={f};Mode=ReadOnly");
+                    con.Open();
+                    using var c = con.CreateCommand();
+                    c.CommandText = "SELECT COUNT(*) FROM results";
+                    detail = $"{Convert.ToInt32(c.ExecuteScalar())} results on file";
+                }
+                catch { /* filename identity is enough */ }
+                SavedCareers.Add(new SaveSlot(f, club, saved, detail));
+            }
+        }
+        catch { /* listing is decoration */ }
+        OnPropertyChanged(nameof(HasSaves));
+    }
+
+    [RelayCommand]
+    private void ContinueCareer()
+    {
+        if (IsBuilding) return;
+        if (CareerLoader.TryLoad() is { } session) CareerStarted?.Invoke(session);
+        else Status = "Couldn't open the active career — try loading a save from the vault.";
+    }
+
+    [RelayCommand]
+    private async Task LoadSave(SaveSlot? slot)
+    {
+        if (slot is null || IsBuilding) return;
+        IsBuilding = true;
+        Status = $"Restoring {slot.Club}…";
+        try
+        {
+            // Restore snapshots the career it replaces first (the tool's own guard), so
+            // switching saves never loses the one you were on.
+            var ok = await CareerBuilder.RunTool("career_snapshot.py",
+                new[] { "restore", slot.Path }, s => Status = s);
+            if (ok && CareerLoader.TryLoad() is { } session)
+            {
+                CareerStarted?.Invoke(session);
+                return;
+            }
+            Status = "Restore failed — the save file may be from an incompatible version.";
+        }
+        finally { IsBuilding = false; }
+    }
+
+    [RelayCommand]
+    private void GoNewCareer()
+    {
+        if (IsBuilding) return;
+        Stage = CareerStage.Continent;
+        Status = "🌍 Pick a continent to begin.";
     }
 
     // The five stages of the drill-down.
@@ -156,6 +287,7 @@ public sealed partial class NewCareerViewModel : ObservableObject
     public ObservableCollection<CareerTeamOption> Teams { get; } = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowVault))]
     [NotifyPropertyChangedFor(nameof(ShowContinents))]
     [NotifyPropertyChangedFor(nameof(ShowCountries))]
     [NotifyPropertyChangedFor(nameof(ShowLeagues))]
@@ -166,12 +298,19 @@ public sealed partial class NewCareerViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(BackCommand))]
     private CareerStage _stage = CareerStage.Continent;
 
+    public bool ShowVault => Stage == CareerStage.Vault;
     public bool ShowContinents => Stage == CareerStage.Continent;
     public bool ShowCountries => Stage == CareerStage.Country;
     public bool ShowLeagues => Stage == CareerStage.League;
     public bool ShowTeams => Stage == CareerStage.Team;
     public bool ShowManager => Stage == CareerStage.Manager;
-    public bool CanGoBack => Stage != CareerStage.Continent;
+    public bool CanGoBack => Stage switch
+    {
+        CareerStage.Vault => false,
+        // Back from the world browser returns to the vault only when the vault has content.
+        CareerStage.Continent => HasActiveCareer || SavedCareers.Count > 0,
+        _ => true,
+    };
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(Breadcrumb))] private ContinentOption? _pickedContinent;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(Breadcrumb))] private CountryOption? _pickedCountry;
@@ -312,6 +451,11 @@ public sealed partial class NewCareerViewModel : ObservableObject
             case CareerStage.Country:
                 PickedContinent = null;
                 Stage = CareerStage.Continent;
+                break;
+            case CareerStage.Continent:
+                LoadVault();                      // fresh list — a build may have vaulted a save
+                Stage = CareerStage.Vault;
+                Status = "Continue, load a save, or start again.";
                 break;
         }
     }

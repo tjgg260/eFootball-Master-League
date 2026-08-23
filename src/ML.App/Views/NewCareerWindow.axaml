@@ -34,6 +34,54 @@
 
         <Panel>
           <!-- STAGE 1: continents (stylized world) -->
+          <!-- THE VAULT: continue, load a save, or start again — the game's front door -->
+          <ScrollViewer IsVisible="{Binding ShowVault}">
+            <StackPanel Margin="18,24" Spacing="16" MaxWidth="640">
+
+              <Border Classes="ml-card" Padding="20,18" IsVisible="{Binding ShowContinueCard}">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="ml-label" Text="ACTIVE CAREER"/>
+                  <TextBlock Classes="ml-h2" Text="{Binding ActiveCareerLine}"/>
+                  <Button Content="▶  CONTINUE" Command="{Binding ContinueCareerCommand}"
+                          Classes="ml-primary ml-go" FontSize="15" Padding="26,12"
+                          HorizontalAlignment="Left"/>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="ml-card" Padding="20,18" IsVisible="{Binding HasSaves}">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="ml-label" Text="SAVED CAREERS"/>
+                  <ItemsControl ItemsSource="{Binding SavedCareers}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:SaveSlot">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                          <StackPanel Spacing="1">
+                            <TextBlock Text="{Binding Club}" Classes="ml-body" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <TextBlock Text="{Binding SavedLine}" Classes="ml-muted"/>
+                              <TextBlock Text="{Binding DetailLine}" Classes="ml-muted"/>
+                            </StackPanel>
+                          </StackPanel>
+                          <Button Grid.Column="1" Content="Load"
+                                  Command="{Binding $parent[Window].((vm:NewCareerViewModel)DataContext).LoadSaveCommand}"
+                                  CommandParameter="{Binding}" Classes="ml-secondary"
+                                  VerticalAlignment="Center"/>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="ml-muted"
+                             Text="Loading a save vaults the career it replaces first — nothing is ever lost."/>
+                </StackPanel>
+              </Border>
+
+              <Button Content="＋  Start a new career" Command="{Binding GoNewCareerCommand}"
+                      Classes="ml-secondary" FontSize="14" Padding="20,10" HorizontalAlignment="Left"/>
+              <TextBlock Classes="ml-muted" IsVisible="{Binding ShowContinueCard}"
+                         Text="Starting a new career sends the active one to the vault automatically."/>
+            </StackPanel>
+          </ScrollViewer>
+
           <ScrollViewer IsVisible="{Binding ShowContinents}">
             <StackPanel Margin="18" Spacing="6">
               <TextBlock Classes="ml-body" Foreground="{StaticResource MlTextMuted}"
