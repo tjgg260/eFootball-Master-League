@@ -24,6 +24,7 @@ Anything not meeting every test lands in build/twin_review.csv, untouched.
 
     python tools/merge_squad_twins.py --dry
     python tools/merge_squad_twins.py
+    python tools/merge_squad_twins.py --db careers/<name>.db   # career-side sync (same rules)
 """
 from __future__ import annotations
 
@@ -37,6 +38,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "build" / "master.db"
+if "--db" in sys.argv:
+    DB = REPO / sys.argv[sys.argv.index("--db") + 1]
 
 PID_TABLES = [
     "player_attributes", "player_market", "player_playstyles", "player_appearance",
