@@ -469,7 +469,10 @@
             <DataTemplate x:DataType="vm:DayCell">
               <Border Background="{Binding Bg}" CornerRadius="6" Margin="2" Padding="6" MinHeight="76">
                 <StackPanel Spacing="2">
-                  <TextBlock Text="{Binding DayText}" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"/>
+                  <DockPanel>
+                    <Image DockPanel.Dock="Right" Source="{Binding Crest}" Width="16" Height="16"/>
+                    <TextBlock Text="{Binding DayText}" Foreground="#8A93A2" FontSize="11" FontWeight="Bold"/>
+                  </DockPanel>
                   <TextBlock Text="{Binding Line1}" Foreground="{Binding Fg}" FontSize="11"
                              TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2"/>
                   <TextBlock Text="{Binding Line2}" Foreground="#9FE6B4" FontSize="11" FontWeight="SemiBold"/>
@@ -632,6 +635,15 @@
               <TextBlock Text="{Binding ScorersNote}" Foreground="#8A93A2" FontSize="12" TextWrapping="Wrap"/>
               <DataGrid ItemsSource="{Binding TopScorers}" IsReadOnly="True" HeadersVisibility="None" Height="320">
                 <DataGrid.Columns>
+                  <DataGridTemplateColumn Width="36">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:ScorerRow">
+                        <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True" Margin="4,2">
+                          <Image Source="{Binding Portrait}" Width="26" Height="26" Stretch="UniformToFill"/>
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
                   <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
                   <DataGridTextColumn Binding="{Binding Team}" Width="100"/>
                   <DataGridTextColumn Binding="{Binding Goals}" Width="40"/>
@@ -641,6 +653,15 @@
               <TextBlock Classes="panelHead" Text="🅰 Top assists"/>
               <DataGrid ItemsSource="{Binding TopAssists}" IsReadOnly="True" HeadersVisibility="None" Height="320">
                 <DataGrid.Columns>
+                  <DataGridTemplateColumn Width="36">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:ScorerRow">
+                        <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True" Margin="4,2">
+                          <Image Source="{Binding Portrait}" Width="26" Height="26" Stretch="UniformToFill"/>
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
                   <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
                   <DataGridTextColumn Binding="{Binding Team}" Width="110"/>
                   <DataGridTextColumn Binding="{Binding Goals}" Width="44"/>
@@ -649,6 +670,13 @@
               <TextBlock Classes="panelHead" Text="Best defence (goals against)"/>
               <DataGrid ItemsSource="{Binding BestDefence}" IsReadOnly="True" HeadersVisibility="None" Height="320">
                 <DataGrid.Columns>
+                  <DataGridTemplateColumn Width="32">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:StatRow">
+                        <Image Source="{Binding Crest}" Width="20" Height="20" Margin="4,2"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
                   <DataGridTextColumn Binding="{Binding Team}" Width="*"/>
                   <DataGridTextColumn Binding="{Binding Value}" Width="60"/>
                 </DataGrid.Columns></DataGrid></StackPanel></Border>
@@ -658,6 +686,13 @@
               <TextBlock Classes="panelHead" Text="🧤 Clean sheets"/>
               <DataGrid ItemsSource="{Binding CleanSheets}" IsReadOnly="True" HeadersVisibility="None" MaxHeight="240">
                 <DataGrid.Columns>
+                  <DataGridTemplateColumn Width="32">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:StatRow">
+                        <Image Source="{Binding Crest}" Width="20" Height="20" Margin="4,2"/>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
                   <DataGridTextColumn Binding="{Binding Team}" Width="*"/>
                   <DataGridTextColumn Binding="{Binding Value}" Width="50"/>
                 </DataGrid.Columns></DataGrid></StackPanel></Border>
@@ -665,6 +700,15 @@
               <TextBlock Classes="panelHead" Text="🟨 Discipline"/>
               <DataGrid ItemsSource="{Binding Discipline}" IsReadOnly="True" HeadersVisibility="None" MaxHeight="240">
                 <DataGrid.Columns>
+                  <DataGridTemplateColumn Width="36">
+                    <DataGridTemplateColumn.CellTemplate>
+                      <DataTemplate x:DataType="vm:CardRow">
+                        <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True" Margin="4,2">
+                          <Image Source="{Binding Portrait}" Width="26" Height="26" Stretch="UniformToFill"/>
+                        </Border>
+                      </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                  </DataGridTemplateColumn>
                   <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
                   <DataGridTextColumn Binding="{Binding Team}" Width="100"/>
                   <DataGridTextColumn Binding="{Binding Cards}" Width="80"/>
@@ -695,10 +739,14 @@
             <ItemsControl ItemsSource="{Binding Honours}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:HonourRow">
-                  <Grid ColumnDefinitions="70,*,*" Margin="0,3">
+                  <Grid ColumnDefinitions="70,*,26,*" Margin="0,3">
                     <TextBlock Grid.Column="0" Text="{Binding Year}" Foreground="#8A93A2" FontSize="14"/>
                     <TextBlock Grid.Column="1" Text="{Binding Competition}" Foreground="#C7CEDA" FontSize="14"/>
-                    <TextBlock Grid.Column="2" Text="{Binding Team}" Foreground="White" FontWeight="SemiBold" FontSize="14"/>
+                    <Border Grid.Column="2" Width="20" Height="20" CornerRadius="10" ClipToBounds="True">
+                      <Image Source="{Binding Crest}" Width="20" Height="20" Stretch="UniformToFill"/>
+                    </Border>
+                    <TextBlock Grid.Column="3" Text="{Binding Team}" Foreground="White" FontWeight="SemiBold"
+                               FontSize="14" Margin="6,0,0,0"/>
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -734,15 +782,19 @@
                                           Background="{Binding Bg}" BorderBrush="#242E3B"
                                           BorderThickness="1">
                                     <StackPanel Spacing="1">
-                                      <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="{Binding Home}" Foreground="#E6EAF0"
-                                                   FontSize="12" FontWeight="SemiBold"
+                                      <Grid ColumnDefinitions="18,*,Auto">
+                                        <Image Source="{Binding HomeCrest}" Width="14" Height="14"
+                                               VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Home}" Foreground="#E6EAF0"
+                                                   FontSize="12" FontWeight="SemiBold" Margin="3,0,0,0"
                                                    TextTrimming="CharacterEllipsis"/>
                                       </Grid>
-                                      <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="{Binding Away}" Foreground="#C7CEDA"
-                                                   FontSize="12" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Score}"
+                                      <Grid ColumnDefinitions="18,*,Auto">
+                                        <Image Source="{Binding AwayCrest}" Width="14" Height="14"
+                                               VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Away}" Foreground="#C7CEDA"
+                                                   FontSize="12" Margin="3,0,0,0" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Score}"
                                                    Foreground="#F5C044" FontWeight="Bold"
                                                    FontSize="11" Margin="8,0,0,0"/>
                                       </Grid>
@@ -783,16 +835,18 @@
                 <ItemsControl ItemsSource="{Binding TopTable}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ArchiveTableRow">
-                      <Grid ColumnDefinitions="34,*,40,34,34,34,44,44" Margin="0,1">
+                      <Grid ColumnDefinitions="34,20,*,40,34,34,34,44,44" Margin="0,1">
                         <TextBlock Text="{Binding Pos}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Team}" FontSize="12"
+                        <Image Grid.Column="1" Source="{Binding Crest}" Width="14" Height="14"
+                               VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Team}" FontSize="12" Margin="4,0,0,0"
                                    Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
-                        <TextBlock Grid.Column="2" Text="{Binding P}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="3" Text="{Binding W}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="4" Text="{Binding D}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="5" Text="{Binding L}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="6" Text="{Binding GD}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="7" Text="{Binding Pts}" Foreground="White"
+                        <TextBlock Grid.Column="3" Text="{Binding P}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="4" Text="{Binding W}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="5" Text="{Binding D}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="6" Text="{Binding L}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="7" Text="{Binding GD}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="8" Text="{Binding Pts}" Foreground="White"
                                    FontWeight="Bold" FontSize="12"/>
                       </Grid>
                     </DataTemplate>
@@ -804,16 +858,18 @@
                 <ItemsControl ItemsSource="{Binding SecondTable}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ArchiveTableRow">
-                      <Grid ColumnDefinitions="34,*,40,34,34,34,44,44" Margin="0,1">
+                      <Grid ColumnDefinitions="34,20,*,40,34,34,34,44,44" Margin="0,1">
                         <TextBlock Text="{Binding Pos}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Team}" FontSize="12"
+                        <Image Grid.Column="1" Source="{Binding Crest}" Width="14" Height="14"
+                               VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Team}" FontSize="12" Margin="4,0,0,0"
                                    Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
-                        <TextBlock Grid.Column="2" Text="{Binding P}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="3" Text="{Binding W}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="4" Text="{Binding D}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="5" Text="{Binding L}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="6" Text="{Binding GD}" Foreground="#8A93A2" FontSize="12"/>
-                        <TextBlock Grid.Column="7" Text="{Binding Pts}" Foreground="White"
+                        <TextBlock Grid.Column="3" Text="{Binding P}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="4" Text="{Binding W}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="5" Text="{Binding D}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="6" Text="{Binding L}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="7" Text="{Binding GD}" Foreground="#8A93A2" FontSize="12"/>
+                        <TextBlock Grid.Column="8" Text="{Binding Pts}" Foreground="White"
                                    FontWeight="Bold" FontSize="12"/>
                       </Grid>
                     </DataTemplate>
@@ -827,9 +883,11 @@
                 <ItemsControl ItemsSource="{Binding SeasonHonours}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ArchiveHonourRow">
-                      <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                      <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
                         <TextBlock Text="{Binding Competition}" Foreground="#8A93A2" FontSize="13"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Team}" Foreground="White"
+                        <Image Grid.Column="1" Source="{Binding Crest}" Width="16" Height="16"
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Team}" Foreground="White"
                                    FontWeight="Bold" FontSize="13"/>
                       </Grid>
                     </DataTemplate>

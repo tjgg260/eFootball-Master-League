@@ -375,13 +375,15 @@
             <ItemsControl ItemsSource="{Binding Schedule}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ScheduleRowVm">
-                  <Grid ColumnDefinitions="46,*,Auto" Margin="0,3">
+                  <Grid ColumnDefinitions="46,22,*,Auto" Margin="0,3">
                     <TextBlock Text="{Binding Md}" Foreground="#8A93A2" FontSize="12"
                                VerticalAlignment="Center"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Opponent}" Foreground="#C7CEDA"
+                    <Image Grid.Column="1" Source="{Binding Crest}" Width="16" Height="16"
+                           VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Opponent}" Foreground="#C7CEDA"
                                FontSize="13" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
-                    <Border Grid.Column="2" MinWidth="46" CornerRadius="6"
+                    <Border Grid.Column="3" MinWidth="46" CornerRadius="6"
                             Background="{Binding ChipBg}" Padding="8,3">
                       <TextBlock Text="{Binding Chip}" Foreground="{Binding ChipFg}" FontSize="12"
                                  FontWeight="Bold" HorizontalAlignment="Center"/>
@@ -397,32 +399,34 @@
         <Border Grid.Column="2" Classes="card" Margin="12,0,0,0">
           <StackPanel>
             <TextBlock Classes="cardHead" Text="LEAGUE TABLE"/>
-            <Grid ColumnDefinitions="24,*,30,38,34" Margin="7,0,7,5">
+            <Grid ColumnDefinitions="24,20,*,30,38,34" Margin="7,0,7,5">
               <TextBlock Text="#" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"/>
-              <TextBlock Grid.Column="1" Text="TEAM" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"/>
-              <TextBlock Grid.Column="2" Text="P" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
+              <TextBlock Grid.Column="2" Text="TEAM" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"/>
+              <TextBlock Grid.Column="3" Text="P" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
                          HorizontalAlignment="Right"/>
-              <TextBlock Grid.Column="3" Text="GD" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
+              <TextBlock Grid.Column="4" Text="GD" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
                          HorizontalAlignment="Right"/>
-              <TextBlock Grid.Column="4" Text="PTS" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
+              <TextBlock Grid.Column="5" Text="PTS" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
                          HorizontalAlignment="Right"/>
             </Grid>
             <ItemsControl ItemsSource="{Binding MiniTable}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:MiniRowVm">
                   <Border Background="{Binding Bg}" CornerRadius="6" Padding="7,4" Margin="0,1">
-                    <Grid ColumnDefinitions="24,*,30,38,34">
+                    <Grid ColumnDefinitions="24,20,*,30,38,34">
                       <TextBlock Text="{Binding Pos}" Foreground="{Binding Fg}" FontSize="12"
                                  VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="1" Text="{Binding Team}" Foreground="{Binding Fg}"
+                      <Image Grid.Column="1" Source="{Binding Crest}" Width="14" Height="14"
+                             VerticalAlignment="Center"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Team}" Foreground="{Binding Fg}"
                                  FontSize="12" FontWeight="{Binding Weight}"
-                                 TextTrimming="CharacterEllipsis" Margin="0,0,6,0"
+                                 TextTrimming="CharacterEllipsis" Margin="4,0,6,0"
                                  VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="2" Text="{Binding P}" Foreground="{Binding Fg}"
+                      <TextBlock Grid.Column="3" Text="{Binding P}" Foreground="{Binding Fg}"
                                  FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="3" Text="{Binding Gd}" Foreground="{Binding Fg}"
+                      <TextBlock Grid.Column="4" Text="{Binding Gd}" Foreground="{Binding Fg}"
                                  FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                      <TextBlock Grid.Column="4" Text="{Binding Pts}" Foreground="{Binding Fg}"
+                      <TextBlock Grid.Column="5" Text="{Binding Pts}" Foreground="{Binding Fg}"
                                  FontSize="12" FontWeight="{Binding Weight}"
                                  HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>

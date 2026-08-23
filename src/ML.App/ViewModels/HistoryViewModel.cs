@@ -8,11 +8,12 @@ namespace ML.App.ViewModels;
 
 public sealed record ArchiveTableRow(
     int Pos, string Team, int P, int W, int D, int L, int GD, int Pts,
-    IBrush TeamBrush, FontWeight TeamWeight);
+    IBrush TeamBrush, FontWeight TeamWeight, Avalonia.Media.Imaging.Bitmap? Crest = null);
 
 public sealed record ArchiveScorerRow(string Player, string Team, int Goals);
 
-public sealed record ArchiveHonourRow(string Competition, string Team);
+public sealed record ArchiveHonourRow(string Competition, string Team,
+    Avalonia.Media.Imaging.Bitmap? Crest = null);
 
 public sealed partial class HistoryViewModel : PageViewModel
 {
@@ -74,9 +75,10 @@ public sealed partial class HistoryViewModel : PageViewModel
             Fill(SecondTable, season, 9001);
             TopTableName = TopTable.Count > 0 ? _s.ArchiveLeagueName(9000) : "";
             SecondTableName = SecondTable.Count > 0 ? _s.ArchiveLeagueName(9001) : "";
-            foreach (var (comp, team) in _s.HonoursIn(season))
+            foreach (var (comp, team, teamId) in _s.HonoursIn(season))
             {
-                SeasonHonours.Add(new ArchiveHonourRow(comp, team));
+                SeasonHonours.Add(new ArchiveHonourRow(comp, team,
+                    Visuals.LoadBitmap(_s.TeamLogoPath(teamId))));
             }
             foreach (var (player, team, goals) in _s.LeadersIn(season, "goal"))
             {
@@ -99,7 +101,8 @@ public sealed partial class HistoryViewModel : PageViewModel
                 r.Position, _s.TeamName(r.TeamId.Value), r.Played, r.Won, r.Drawn, r.Lost,
                 r.GoalDifference, r.Points,
                 mine ? Visuals.Brush("#9FE6B4") : Visuals.Brush("#C7CEDA"),
-                mine ? FontWeight.Bold : FontWeight.Normal));
+                mine ? FontWeight.Bold : FontWeight.Normal,
+                Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value))));
         }
     }
 }

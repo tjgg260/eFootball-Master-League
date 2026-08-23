@@ -447,9 +447,9 @@ public sealed partial class Session
     }
 
     /// <summary>The Roll of Honour: every season's champions, newest first.</summary>
-    public IReadOnlyList<(int Year, string Competition, string Team)> Honours()
+    public IReadOnlyList<(int Year, string Competition, string Team, int HolderId, bool HolderIsPlayer)> Honours()
     {
-        var rows = new List<(int, string, string)>();
+        var rows = new List<(int, string, string, int, bool)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT season_id, competition, team_id FROM honours ORDER BY season_id DESC, competition";
         using var r = cmd.ExecuteReader();
@@ -467,7 +467,7 @@ public sealed partial class Session
             };
             // Award rows store a PLAYER id in the team column; everything else a club.
             var holder = raw == "pots" ? PlayerNameOf(r.GetInt32(2)) : TeamName(r.GetInt32(2));
-            rows.Add((2026 + (r.GetInt32(0) - 9000), comp, holder));
+            rows.Add((2026 + (r.GetInt32(0) - 9000), comp, holder, r.GetInt32(2), raw == "pots"));
         }
         return rows;
     }
@@ -1148,12 +1148,12 @@ public sealed partial class Session
     }
 
     /// <summary>League leaders for any counted event type ('goal', 'assist') + apps for per-90s.</summary>
-    public IReadOnlyList<(string Player, string Team, int Count, int Apps)> LeadersBy(string eventType, int count = 12)
+    public IReadOnlyList<(string Player, string Team, int Count, int Apps, int PlayerId, int TeamId)> LeadersBy(string eventType, int count = 12)
     {
-        var rows = new List<(string, string, int, int)>();
+        var rows = new List<(string, string, int, int, int, int)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
-            "SELECT p.name, COALESCE(s.team_id, 0), COUNT(*) AS g, " +
+            "SELECT p.name, COALESCE(s.team_id, 0), COUNT(*) AS g, e.player_id, " +
             "(SELECT COUNT(*) FROM match_events a JOIN fixtures af ON af.id=a.fixture_id " +
             " WHERE a.player_id=e.player_id AND a.event_type='app' AND af.season_id=$s) AS apps " +
             "FROM match_events e " +
@@ -1168,18 +1168,20 @@ public sealed partial class Session
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
-            rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2), r.GetInt32(3)));
+            // cols: 0 name · 1 team_id · 2 count · 3 player_id · 4 apps
+            rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2), r.GetInt32(4),
+                      r.GetInt32(3), r.GetInt32(1)));
         }
         return rows;
     }
 
     /// <summary>Clean sheets this season per club, best first (league games only).</summary>
-    public IReadOnlyList<(string Team, int Count)> CleanSheetTable(int count = 8)
+    public IReadOnlyList<(string Team, int Count, int TeamId)> CleanSheetTable(int count = 8)
     {
-        var rows = new List<(string, int)>();
+        var rows = new List<(string, int, int)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
-            "SELECT t.name, SUM(CASE WHEN (f.home_team_id=t.id AND r.away_goals=0) " +
+            "SELECT t.name, t.id, SUM(CASE WHEN (f.home_team_id=t.id AND r.away_goals=0) " +
             "OR (f.away_team_id=t.id AND r.home_goals=0) THEN 1 ELSE 0 END) AS cs " +
             "FROM teams t JOIN fixtures f ON (f.home_team_id=t.id OR f.away_team_id=t.id) " +
             "JOIN results r ON r.fixture_id=f.id " +
@@ -1188,19 +1190,19 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$s", SeasonId);
         cmd.Parameters.AddWithValue("$n", count);
         using var r = cmd.ExecuteReader();
-        while (r.Read()) rows.Add((r.GetString(0), r.GetInt32(1)));
+        while (r.Read()) rows.Add((r.GetString(0), r.GetInt32(2), r.GetInt32(1)));
         return rows;
     }
 
     /// <summary>Discipline: bookings-heaviest players (a red counts as three points).</summary>
-    public IReadOnlyList<(string Player, string Team, int Yellows, int Reds)> DisciplineLeaders(int count = 8)
+    public IReadOnlyList<(string Player, string Team, int Yellows, int Reds, int PlayerId, int TeamId)> DisciplineLeaders(int count = 8)
     {
-        var rows = new List<(string, string, int, int)>();
+        var rows = new List<(string, string, int, int, int, int)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT p.name, COALESCE(s.team_id, 0), " +
             "SUM(CASE WHEN e.event_type='yellow' THEN 1 ELSE 0 END) AS y, " +
-            "SUM(CASE WHEN e.event_type='red' THEN 1 ELSE 0 END) AS rd " +
+            "SUM(CASE WHEN e.event_type='red' THEN 1 ELSE 0 END) AS rd, e.player_id " +
             "FROM match_events e JOIN players p ON p.id=e.player_id " +
             "LEFT JOIN squad_members s ON s.player_id=e.player_id " +
             "JOIN fixtures f ON f.id=e.fixture_id " +
@@ -1209,7 +1211,8 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$s", SeasonId);
         cmd.Parameters.AddWithValue("$n", count);
         using var r = cmd.ExecuteReader();
-        while (r.Read()) rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2), r.GetInt32(3)));
+        while (r.Read()) rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2), r.GetInt32(3),
+                                   r.GetInt32(4), r.GetInt32(1)));
         return rows;
     }
 

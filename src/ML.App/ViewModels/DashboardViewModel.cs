@@ -15,12 +15,14 @@ namespace ML.App.ViewModels;
 /// <summary>One W/D/L letter square in a form strip.</summary>
 public sealed record FormChipVm(string Letter, IBrush Bg);
 
-/// <summary>One schedule line: matchday label, opponent, and a result chip ("2-1" or "—").</summary>
-public sealed record ScheduleRowVm(string Md, string Opponent, string Chip, IBrush ChipBg, IBrush ChipFg);
+/// <summary>One schedule line: matchday label, opponent (with crest), and a result chip ("2-1" or "—").</summary>
+public sealed record ScheduleRowVm(string Md, string Opponent, string Chip, IBrush ChipBg, IBrush ChipFg,
+    Avalonia.Media.Imaging.Bitmap? Crest = null);
 
 /// <summary>One mini-table line (or the dim "· · ·" separator when you sit outside the top six).</summary>
 public sealed record MiniRowVm(
-    string Pos, string Team, string P, string Gd, string Pts, IBrush Bg, IBrush Fg, FontWeight Weight);
+    string Pos, string Team, string P, string Gd, string Pts, IBrush Bg, IBrush Fg, FontWeight Weight,
+    Avalonia.Media.Imaging.Bitmap? Crest = null);
 
 // --- Dashboard (the MFL "Office", FM-portal style) --------------------------------
 
@@ -651,7 +653,7 @@ public sealed partial class DashboardViewModel : PageViewModel
             var shape = fid is int f0
                 ? Formations.ShapeOf(_s.Repo.FormationSlots(f0).Select(sl => sl.Y))
                 : "—";
-            OppShapeLine = $"Preferred shape: {shape}  ·  ELO {_s.EloOf(oppId)}";
+            OppShapeLine = $"Preferred shape: {shape}  ·  {_s.ClubTier(oppId)}";
         }
         catch { OppShapeLine = ""; }
 
@@ -712,12 +714,14 @@ public sealed partial class DashboardViewModel : PageViewModel
             var them = f.HomeTeamId == myId ? r?.AwayGoals ?? 0 : r?.HomeGoals ?? 0;
             var bg = r is null ? NeutralChip : us > them ? WinBrush : us == them ? DrawBrush : LossBrush;
             Schedule.Add(new ScheduleRowVm(
-                MdLabel(f), OppLabel(f, myId), r is null ? "—" : $"{us}-{them}", bg, Brushes.White));
+                MdLabel(f), OppLabel(f, myId), r is null ? "—" : $"{us}-{them}", bg, Brushes.White,
+                OppCrest(f, myId)));
         }
 
         foreach (var f in mine.Where(f => !f.Played).Take(4))
         {
-            Schedule.Add(new ScheduleRowVm(MdLabel(f), OppLabel(f, myId), "—", NeutralChip, DimBrush));
+            Schedule.Add(new ScheduleRowVm(MdLabel(f), OppLabel(f, myId), "—", NeutralChip, DimBrush,
+                OppCrest(f, myId)));
         }
     }
 
@@ -726,6 +730,12 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     private string OppLabel(FixtureRow f, int myId) =>
         f.HomeTeamId == myId ? $"{_s.TeamName(f.AwayTeamId)} (H)" : $"{_s.TeamName(f.HomeTeamId)} (A)";
+
+    private Avalonia.Media.Imaging.Bitmap? OppCrest(FixtureRow f, int myId)
+    {
+        try { return Visuals.LoadBitmap(_s.TeamLogoPath(f.HomeTeamId == myId ? f.AwayTeamId : f.HomeTeamId)); }
+        catch { return null; }
+    }
 
     private void BuildMiniTable()
     {
@@ -755,7 +765,8 @@ public sealed partial class DashboardViewModel : PageViewModel
             r.Points.ToString(),
             you ? YouRowBg : Brushes.Transparent,
             you ? YouRowFg : TextBrush,
-            you ? FontWeight.Bold : FontWeight.Normal);
+            you ? FontWeight.Bold : FontWeight.Normal,
+            Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value)));
     }
 
     [RelayCommand]

@@ -57,9 +57,9 @@ public sealed partial class Session
     public string ArchiveLeagueName(int leagueId) => LeagueNameFor(leagueId);
 
     /// <summary>One past season's silverware (competition, winner).</summary>
-    public IReadOnlyList<(string Competition, string Team)> HonoursIn(int seasonId)
+    public IReadOnlyList<(string Competition, string Team, int TeamId)> HonoursIn(int seasonId)
     {
-        var rows = new List<(string, string)>();
+        var rows = new List<(string, string, int)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT competition, team_id FROM honours WHERE season_id=$s ORDER BY competition";
         cmd.Parameters.AddWithValue("$s", seasonId);
@@ -73,7 +73,7 @@ public sealed partial class Session
                 "lcup" => LeagueCupName,
                 _ => CupName,
             };
-            rows.Add((comp, TeamName(r.GetInt32(1))));
+            rows.Add((comp, TeamName(r.GetInt32(1)), r.GetInt32(1)));
         }
         return rows;
     }

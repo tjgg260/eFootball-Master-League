@@ -3,7 +3,8 @@ using Avalonia.Media;
 
 namespace ML.App.ViewModels;
 
-public sealed record CupTie(string Home, string Away, string Score, bool Mine, bool Played, IBrush Bg);
+public sealed record CupTie(string Home, string Away, string Score, bool Mine, bool Played, IBrush Bg,
+    Avalonia.Media.Imaging.Bitmap? HomeCrest = null, Avalonia.Media.Imaging.Bitmap? AwayCrest = null);
 
 public sealed record CupRound(string Name, ObservableCollection<CupTie> Ties);
 
@@ -30,7 +31,9 @@ public sealed class CupViewModel : PageViewModel
                     var mine = f.HomeTeamId == s.CurrentTeamId || f.AwayTeamId == s.CurrentTeamId;
                     list.Add(new CupTie(
                         s.TeamName(f.HomeTeamId), s.TeamName(f.AwayTeamId), score, mine, f.Played,
-                        mine ? Visuals.Brush("#2E1F9D4D") : Brushes.Transparent));
+                        mine ? Visuals.Brush("#2E1F9D4D") : Brushes.Transparent,
+                        Visuals.LoadBitmap(s.TeamLogoPath(f.HomeTeamId)),
+                        Visuals.LoadBitmap(s.TeamLogoPath(f.AwayTeamId))));
                 }
                 rounds.Add(new CupRound(round, list));
             }

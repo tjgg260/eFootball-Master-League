@@ -8,7 +8,8 @@ namespace ML.App.ViewModels;
 
 // --- Calendar (FM-style month grid over real season dates) ------------------------
 
-public sealed record DayCell(string DayText, string Line1, string Line2, IBrush Bg, IBrush Fg);
+public sealed record DayCell(string DayText, string Line1, string Line2, IBrush Bg, IBrush Fg,
+    Avalonia.Media.Imaging.Bitmap? Crest = null);
 
 /// <summary>The season on a real calendar: league Saturdays, cup Wednesdays, Aug → May.</summary>
 public sealed partial class CalendarViewModel : PageViewModel
@@ -21,7 +22,8 @@ public sealed partial class CalendarViewModel : PageViewModel
     private static readonly IBrush Dim = Visuals.Brush("#5E6774");
 
     private readonly Session _s;
-    private readonly Dictionary<DateOnly, (string L1, string L2, bool Mine, bool Played)> _days = new();
+    private readonly Dictionary<DateOnly, (string L1, string L2, bool Mine, bool Played,
+        Avalonia.Media.Imaging.Bitmap? Crest)> _days = new();
     private DateOnly _month;
 
     public CalendarViewModel(Session s)
@@ -32,13 +34,15 @@ public sealed partial class CalendarViewModel : PageViewModel
                      .Where(f => f.HomeTeamId == myId || f.AwayTeamId == myId))
         {
             var date = s.DateOfFixture(f);
-            var opp = f.HomeTeamId == myId ? s.TeamName(f.AwayTeamId) : s.TeamName(f.HomeTeamId);
+            var oppId = f.HomeTeamId == myId ? f.AwayTeamId : f.HomeTeamId;
+            var opp = s.TeamName(oppId);
             var venue = f.HomeTeamId == myId ? "(H)" : "(A)";
             var comp = f.Kind == "cup" ? "🏆" : f.Kind == "friendly" ? "PS" : "⚽";
             var r = f.Played ? s.ResultFor(f.Id) : null;
             var line2 = r is null ? venue
                 : f.HomeTeamId == myId ? $"{r.HomeGoals}-{r.AwayGoals} {venue}" : $"{r.AwayGoals}-{r.HomeGoals} {venue}";
-            _days[date] = ($"{comp} {opp}", line2, true, f.Played);
+            _days[date] = ($"{comp} {opp}", line2, true, f.Played,
+                Visuals.LoadBitmap(s.TeamLogoPath(oppId)));
         }
 
         // Season EVENTS on the calendar (P6 UX): the days that matter beyond fixtures.
@@ -46,11 +50,11 @@ public sealed partial class CalendarViewModel : PageViewModel
         {
             if (_days.TryGetValue(d, out var e))
             {
-                _days[d] = (e.L1, $"{e.L2} · {label}", e.Mine, e.Played);
+                _days[d] = (e.L1, $"{e.L2} · {label}", e.Mine, e.Played, e.Crest);
             }
             else
             {
-                _days[d] = (label, "", false, false);
+                _days[d] = (label, "", false, false, null);
             }
         }
         try
@@ -101,7 +105,7 @@ public sealed partial class CalendarViewModel : PageViewModel
             if (_days.TryGetValue(d, out var e))
             {
                 Cells.Add(new DayCell(d.Day.ToString(), e.L1, e.L2,
-                    e.Played ? PlayedBg : MineBg, Fg));
+                    e.Played ? PlayedBg : MineBg, Fg, e.Crest));
             }
             else
             {
