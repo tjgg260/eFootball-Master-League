@@ -1,9 +1,16 @@
-"""Rename dt200 teams to their real names + alphabetically reorder each league.
+"""Rename dt200 teams AND competitions to their real names.
 
-Input: build/dt200_renames.json = { "<team_id>": "Real Name", ... }.
-For every affected league (CategoryTeamList category), teams are re-sorted alphabetically by
-their NEW name. Both Team.bin (English name @396) and CategoryTeamList.bin are rebuilt, each
-gated by a byte-exact round-trip proof of the UNMODIFIED file first (repo rule). Backups taken.
+Inputs (either may be absent):
+  build/dt200_renames.json       = { "<team_id>": "Real Name", ... }
+  build/dt200_comp_renames.json  = { "<competition_id>": "Real Name", ... }
+
+Teams: Team.bin English name @396 (48-byte field) + alphabetical reorder of each affected
+CategoryTeamList league. Competitions: CompetitionUnit.bin — 75 records x 2472 bytes, id at
+u16@10 (joins CategoryTeamList.category), then 21 language slots x 115 bytes of UTF-8
+NUL-padded name starting at +56. Konami's own licensed entries repeat the identical real name
+in all 21 slots, so we do the same — the two-English-slot ambiguity disappears. Fixed-length
+fields: an edit can never change the payload length. Every file is gated by a round-trip proof
+of the UNMODIFIED file first (repo rule). Backups taken.
 
 Usage: python tools/dt200_rename.py            # apply to build/tree_base (round-trip proven)
        python tools/dt200_rename.py --dry       # prove + report, write nothing
@@ -25,6 +32,13 @@ from vendor.sider import wesys
 PESDB = ROOT / "build/tree_base/common/etc/pesdb"
 NAME_OFF, REC = 396, 1600
 BACKUP = ROOT / "build" / "backups"
+
+# CompetitionUnit.bin layout (decoded 2026-08-23): fixed records, fixed name fields.
+CU_REC = 2472            # bytes per record
+CU_ID_OFF = 10           # u16 competition id (== CategoryTeamList.category)
+CU_NAMES_OFF = 56        # 21 language slots follow the 56-byte header
+CU_SLOT = 115            # bytes per name slot, UTF-8, NUL-padded
+CU_SLOTS = 21
 
 
 def load(fn):
@@ -57,10 +71,66 @@ def write_out(fn, payload, nibble, lvl):
     print(f"  written {fn} ({len(packed):,} bytes)")
 
 
+def rename_competitions(dry):
+    """The CompetitionUnit.bin pass: real league names into all 21 language slots."""
+    src = ROOT / "build" / "dt200_comp_renames.json"
+    if not src.exists():
+        return
+    comp = {int(k): v for k, v in json.loads(src.read_text(encoding="utf-8")).items()}
+    print(f"{len(comp)} competition renames requested")
+
+    raw, pay, nib = load("CompetitionUnit.bin")
+    lvl = prove("CompetitionUnit.bin", raw, pay, nib)
+    if len(pay) % CU_REC:
+        raise SystemExit(f"CompetitionUnit.bin payload {len(pay)} not a multiple of {CU_REC} — layout drifted, refusing.")
+    original_len = len(pay)
+
+    by_id = {}
+    for r in range(len(pay) // CU_REC):
+        by_id[struct.unpack_from("<H", pay, r * CU_REC + CU_ID_OFF)[0]] = r * CU_REC
+
+    applied = 0
+    for cid, real in sorted(comp.items()):
+        o = by_id.get(cid)
+        if o is None:
+            print(f"  ! competition id {cid} not in file — skipped")
+            continue
+        enc = real.encode("utf-8")
+        if len(enc) > CU_SLOT - 1:
+            raise SystemExit(f"'{real}' encodes to {len(enc)} bytes — over the {CU_SLOT - 1} limit, refusing.")
+        old = pay[o + CU_NAMES_OFF + 15 * CU_SLOT:o + CU_NAMES_OFF + 15 * CU_SLOT + CU_SLOT].split(b"\0")[0]
+        for s in range(CU_SLOTS):
+            f = o + CU_NAMES_OFF + s * CU_SLOT
+            pay[f:f + CU_SLOT] = enc + b"\0" * (CU_SLOT - len(enc))
+        applied += 1
+        print(f"  {cid}: '{old.decode('utf-8', 'replace')}' -> '{real}'")
+
+    if len(pay) != original_len:
+        raise SystemExit("payload length changed — impossible for fixed fields, refusing.")
+    # read-back: every touched slot must decode to exactly the intended name
+    for cid, real in comp.items():
+        o = by_id.get(cid)
+        if o is None:
+            continue
+        for s in range(CU_SLOTS):
+            f = o + CU_NAMES_OFF + s * CU_SLOT
+            got = bytes(pay[f:f + CU_SLOT]).split(b"\0")[0].decode("utf-8")
+            if got != real:
+                raise SystemExit(f"read-back mismatch id {cid} slot {s}: '{got}'")
+    print(f"applied {applied} competition names (all {CU_SLOTS} language slots each, read-back verified)")
+    if not dry:
+        write_out("CompetitionUnit.bin", pay, nib, lvl)
+
+
 def main():
     dry = "--dry" in sys.argv
+    rename_competitions(dry)
+    team_src = ROOT / "build" / "dt200_renames.json"
+    if not team_src.exists():
+        print("no team renames file — competition pass only.")
+        return 0
     renames = {int(k): v for k, v in
-               json.loads((ROOT / "build" / "dt200_renames.json").read_text(encoding="utf-8")).items()}
+               json.loads(team_src.read_text(encoding="utf-8")).items()}
     print(f"{len(renames)} renames requested")
 
     traw, tpay, tnib = load("Team.bin")
