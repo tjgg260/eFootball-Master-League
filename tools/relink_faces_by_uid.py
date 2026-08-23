@@ -109,6 +109,48 @@ def main() -> int:
     print(f"roster-closure: {len(spine_adds):,} stub players gained an FM identity, "
           f"{roster_hits:,} of them a uid-exact face")
 
+    # -- PASS 3: BIO closure, club-independent. The FM export reflects ITS save's transfers
+    # (Cristian Romero at Atlético, Djed Spence at Inter), so roster closure misses anyone who
+    # moved. Full name + first nationality, UNIQUE across the whole CSV, is club-proof: if
+    # exactly one FM human matches, that's the uid. Ambiguity (two Argentine Cristian Romeros)
+    # is skipped — those want eyes, not heuristics.
+    bio_index = defaultdict(list)            # (sorted-name-tokens, nation) -> [uid]
+    if src_csv.exists():
+        with open(src_csv, encoding="cp1252", errors="replace", newline="") as f:
+            for r in csv.DictReader(f, delimiter=";"):
+                u, nm = (r.get("Unique ID") or "").strip(), (r.get("Name") or "").strip()
+                nat = (r.get("Nation") or "").split("/")[0].strip().lower()
+                if not (u.lstrip("-").isdigit() and nm and nat):
+                    continue
+                toks = tuple(sorted(t for t in re.sub(r"[^a-z ]", " ", norm(nm)).split() if len(t) >= 2))
+                if len(toks) >= 2:
+                    bio_index[(toks, nat)].append(int(u))
+    NATA = {"holland": "netherlands", "n.ireland": "northern ireland",
+            "korea republic": "south korea", "republic of ireland": "ireland"}
+    bio_hits = 0
+    already = {p for p, _ in spine_adds} | have_uid
+    for pid, nm, nat, cur in con.execute(
+            "SELECT p.id, p.name, p.nationality, p.real_face_path FROM players p "
+            "WHERE p.id IN (SELECT DISTINCT player_id FROM squad_members)"):
+        if pid in already or pid >= 50_000_000_000 or 20_000_000 <= pid < 700_000_000:
+            continue
+        toks = tuple(sorted(t for t in re.sub(r"[^a-z ]", " ", norm(nm)).split() if len(t) >= 2))
+        if len(toks) < 2:
+            continue                                     # stubs stay with roster closure
+        n = (nat or "").split("/")[0].strip().lower()
+        n = NATA.get(n, n)
+        cands = bio_index.get((toks, n), [])
+        if len(set(cands)) != 1:
+            continue
+        uid = cands[0]
+        spine_adds.append((pid, uid))
+        if uid in have:
+            expect = f"facepack/webp/face_{uid}.webp"
+            if cur != expect:
+                updates.append((expect, pid))
+                bio_hits += 1
+    print(f"bio-closure (name+nation unique, club-proof): {bio_hits:,} more uid-exact faces")
+
     # career copies: re-point from their catalog source club by name+age
     cat = json.loads((REPO / "build" / "catalog.json").read_text(encoding="utf-8"))
     src_by_name = {}
