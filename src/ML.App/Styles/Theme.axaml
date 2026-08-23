@@ -1,0 +1,131 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ════════════════════════════════════════════════════════════════════════════════
+       THE DESIGN SYSTEM (UX audit 2026-08-23: 75 ad-hoc hex colors, 87 hand-styled
+       buttons, 4 chip radii, 20 font sizes). One token sheet + shared classes; screens
+       consume classes, never raw hex. Migrate screens opportunistically — every new or
+       touched element MUST use these.
+
+       Palette (the keepers, measured from de-facto usage):
+         Surfaces  #0A0E14 app · #0E141C panel · #161E28 card · #1A222C control · #26313F border
+         Text      #FFFFFF heading · #C7CEDA body · #8A93A2 muted
+         Accents   #2D7DD2 primary · #1F9D4D success · #E0A526 warn · #D64545 danger · #6EA8FF link
+       ════════════════════════════════════════════════════════════════════════════════ -->
+
+  <Styles.Resources>
+    <ResourceDictionary>
+      <SolidColorBrush x:Key="MlSurfaceApp">#0A0E14</SolidColorBrush>
+      <SolidColorBrush x:Key="MlSurfacePanel">#0E141C</SolidColorBrush>
+      <SolidColorBrush x:Key="MlSurfaceCard">#161E28</SolidColorBrush>
+      <SolidColorBrush x:Key="MlSurfaceControl">#1A222C</SolidColorBrush>
+      <SolidColorBrush x:Key="MlBorder">#26313F</SolidColorBrush>
+      <SolidColorBrush x:Key="MlTextHeading">#FFFFFF</SolidColorBrush>
+      <SolidColorBrush x:Key="MlTextBody">#C7CEDA</SolidColorBrush>
+      <SolidColorBrush x:Key="MlTextMuted">#8A93A2</SolidColorBrush>
+      <SolidColorBrush x:Key="MlPrimary">#2D7DD2</SolidColorBrush>
+      <SolidColorBrush x:Key="MlSuccess">#1F9D4D</SolidColorBrush>
+      <SolidColorBrush x:Key="MlWarn">#E0A526</SolidColorBrush>
+      <SolidColorBrush x:Key="MlDanger">#D64545</SolidColorBrush>
+      <SolidColorBrush x:Key="MlLink">#6EA8FF</SolidColorBrush>
+      <SolidColorBrush x:Key="MlGold">#D4AC0D</SolidColorBrush>
+      <CornerRadius x:Key="MlRadiusCard">12</CornerRadius>
+      <CornerRadius x:Key="MlRadiusControl">8</CornerRadius>
+      <CornerRadius x:Key="MlRadiusChip">4</CornerRadius>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- ── panels & cards ─────────────────────────────────────────────────────────── -->
+  <Style Selector="Border.ml-panel">
+    <Setter Property="Background" Value="{StaticResource MlSurfacePanel}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource MlRadiusCard}"/>
+    <Setter Property="Padding" Value="16"/>
+  </Style>
+  <Style Selector="Border.ml-card">
+    <Setter Property="Background" Value="{StaticResource MlSurfaceCard}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource MlBorder}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="{StaticResource MlRadiusCard}"/>
+    <Setter Property="Padding" Value="14"/>
+  </Style>
+
+  <!-- ── buttons: exactly three kinds ───────────────────────────────────────────── -->
+  <Style Selector="Button.ml-primary">
+    <Setter Property="Background" Value="{StaticResource MlPrimary}"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Padding" Value="16,9"/>
+    <Setter Property="CornerRadius" Value="{StaticResource MlRadiusControl}"/>
+  </Style>
+  <Style Selector="Button.ml-primary.ml-go">
+    <Setter Property="Background" Value="{StaticResource MlSuccess}"/>
+  </Style>
+  <Style Selector="Button.ml-secondary">
+    <Setter Property="Background" Value="{StaticResource MlSurfaceControl}"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextBody}"/>
+    <Setter Property="Padding" Value="14,8"/>
+    <Setter Property="CornerRadius" Value="{StaticResource MlRadiusControl}"/>
+  </Style>
+  <Style Selector="Button.ml-ghost">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="CornerRadius" Value="{StaticResource MlRadiusControl}"/>
+  </Style>
+
+  <!-- ── chips: one anatomy, semantic variants ──────────────────────────────────── -->
+  <Style Selector="Border.ml-chip">
+    <Setter Property="Background" Value="{StaticResource MlSurfaceControl}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource MlRadiusChip}"/>
+    <Setter Property="Padding" Value="7,3"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Border.ml-chip > TextBlock">
+    <Setter Property="FontSize" Value="10"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Border.ml-chip.ml-success"><Setter Property="Background" Value="{StaticResource MlSuccess}"/></Style>
+  <Style Selector="Border.ml-chip.ml-warn"><Setter Property="Background" Value="{StaticResource MlWarn}"/></Style>
+  <Style Selector="Border.ml-chip.ml-danger"><Setter Property="Background" Value="{StaticResource MlDanger}"/></Style>
+  <Style Selector="Border.ml-chip.ml-info"><Setter Property="Background" Value="{StaticResource MlPrimary}"/></Style>
+  <Style Selector="Border.ml-chip.ml-gold"><Setter Property="Background" Value="{StaticResource MlGold}"/></Style>
+
+  <!-- ── grade badge: THE way a rating is shown (letter, never a number) ────────── -->
+  <Style Selector="Border.ml-grade">
+    <Setter Property="Background" Value="{StaticResource MlSurfaceControl}"/>
+    <Setter Property="CornerRadius" Value="{StaticResource MlRadiusChip}"/>
+    <Setter Property="Padding" Value="8,2"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Border.ml-grade > TextBlock">
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+  </Style>
+
+  <!-- ── type scale: five sizes, not twenty ─────────────────────────────────────── -->
+  <Style Selector="TextBlock.ml-h1">
+    <Setter Property="FontSize" Value="26"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextHeading}"/>
+  </Style>
+  <Style Selector="TextBlock.ml-h2">
+    <Setter Property="FontSize" Value="17"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextHeading}"/>
+  </Style>
+  <Style Selector="TextBlock.ml-body">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextBody}"/>
+  </Style>
+  <Style Selector="TextBlock.ml-muted">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+  </Style>
+  <Style Selector="TextBlock.ml-label">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+  </Style>
+</Styles>

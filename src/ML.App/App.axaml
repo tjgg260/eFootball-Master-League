@@ -13,6 +13,8 @@
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+    <!-- THE design system (tokens + ml-* classes) — every new/touched element uses these -->
+    <StyleInclude Source="avares://ML.App/Styles/Theme.axaml" />
 
     <!-- shared app chrome: tiles, panels and nav — app-wide so UserControls pick them up -->
     <Style Selector="Border.tile">
