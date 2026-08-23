@@ -210,6 +210,13 @@ def main() -> int:
     if not CATALOG.exists():
         sys.exit("build/catalog.json missing — run tools/build_catalog.py first")
     catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
+    # Catalog v3 renamed comp_id->league_id and rfs_id->team_id. Alias the old keys so the rest of
+    # this seeder (which reads comp_id/rfs_id) works against both v2 and v3 catalogs.
+    for _co in catalog.get("countries", []):
+        for _lg in _co.get("leagues", []):
+            _lg.setdefault("comp_id", _lg.get("league_id"))
+            for _t in _lg.get("teams", []):
+                _t.setdefault("rfs_id", _t.get("team_id"))
 
     # Resolve the REAL league (division 1 of the career) and the managed club.
     if args.comp_id is not None:
@@ -250,7 +257,8 @@ def main() -> int:
     size = len(tier_clubs[LEAGUE_ID])
 
     import sqlite3
-    con = sqlite3.connect(args.db)
+    con = sqlite3.connect(args.db, timeout=120)
+    con.execute("PRAGMA busy_timeout=120000")   # wait out any concurrent writer (e.g. face import)
     con.executescript((REPO / "src" / "ML.Data" / "schema.sql").read_text(encoding="utf-8"))
     con.execute("PRAGMA foreign_keys=OFF")
     rfs = RfsDb(RFS_DB)
@@ -266,18 +274,63 @@ def main() -> int:
     templates = real_team_templates(con)
 
     con.execute("BEGIN")
-    for tbl, col in (("player_attributes", "player_id"), ("squad_members", "team_id"),
-                     ("team_tactics", "team_id"), ("coaches", "team_id"), ("results", "fixture_id"),
-                     ("fixtures", "id"), ("players", "id"), ("teams", "id")):
-        base = PLAYER_BASE if col == "player_id" else (FIXTURE_BASE if col == "fixture_id"
-               else PLAYER_BASE if tbl == "players" else TEAM_BASE)
-        con.execute(f"DELETE FROM {tbl} WHERE {col} >= ?", (base,))
+    # A career reseed clears ONLY its own reserved id range — never the imported world above it.
+    # Imported RFS players live at >= 700,000,000 and RFS teams at >= 3,000,000 (tools/rfs_full_import),
+    # carrying facepack real_face_path; an open-ended ">= base" DELETE would wipe them, so every
+    # career DELETE is upper-bounded to stay below the import ranges.
+    RFS_PLAYER_BASE, RFS_TEAM_BASE, INF = 700_000_000, 3_000_000, 1 << 62
+    for tbl, col, base, cap in (
+            ("player_attributes", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("squad_members", "team_id", TEAM_BASE, RFS_TEAM_BASE),
+            ("team_tactics", "team_id", TEAM_BASE, RFS_TEAM_BASE),
+            ("coaches", "team_id", TEAM_BASE, RFS_TEAM_BASE),
+            ("results", "fixture_id", FIXTURE_BASE, INF),
+            ("fixtures", "id", FIXTURE_BASE, INF),
+            ("players", "id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("teams", "id", TEAM_BASE, RFS_TEAM_BASE),
+            # CASCADE (audit 2026-08-23): a reset used to leave every one of these behind —
+            # ghost contracts inflating the wage bill, dead players' skills silently inherited
+            # by the next career's reused pids, match data for deleted fixtures.
+            ("player_skills", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("player_playstyles", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("player_traits", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("player_appearance", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("player_market", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("player_potential", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("player_knowledge", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("player_positions", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("player_status", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("morale", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("promises", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("training_focus", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("skill_training", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("academy", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("contracts", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("transfers", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
+            ("objectives", "team_id", TEAM_BASE, RFS_TEAM_BASE),
+            ("match_events", "fixture_id", FIXTURE_BASE, INF),
+            ("match_team_stats", "fixture_id", FIXTURE_BASE, INF),
+            ("match_player_ratings", "fixture_id", FIXTURE_BASE, INF)):
+        try:
+            con.execute(f"DELETE FROM {tbl} WHERE {col} >= ? AND {col} < ?", (base, cap))
+        except sqlite3.OperationalError:
+            pass                       # table absent on an older DB — nothing to cascade
+    # team-scoped meta + the per-club youth layer are career artefacts too
+    con.execute("DELETE FROM meta WHERE (key LIKE 'chairman_8%' OR key LIKE 'mgrname_8%' "
+                "OR key LIKE 'ttalk_pre_9%')")
+    try:
+        con.execute("DELETE FROM squad_members WHERE team_id IN "
+                    "(SELECT id FROM teams WHERE team_kind IN ('u21','u18'))")
+        con.execute("DELETE FROM teams WHERE team_kind IN ('u21','u18')")
+    except sqlite3.OperationalError:
+        pass
     # Career clubs own their formation-id pairs (>= FORMATION_BASE) and their condition rows;
     # both are reseeded below. player_condition may predate this schema on old DBs — tolerate.
     con.execute("DELETE FROM formation_slots WHERE formation_id >= ?", (FORMATION_BASE,))
     con.execute("DELETE FROM formations WHERE id >= ?", (FORMATION_BASE,))
     try:
-        con.execute("DELETE FROM player_condition WHERE player_id >= ?", (PLAYER_BASE,))
+        con.execute("DELETE FROM player_condition WHERE player_id >= ? AND player_id < ?",
+                    (PLAYER_BASE, RFS_PLAYER_BASE))
     except sqlite3.OperationalError:
         pass
     con.execute("DELETE FROM board_confidence WHERE season_id=?", (SEASON_ID,))
@@ -297,6 +350,22 @@ def main() -> int:
     tier_team_ids = {LEAGUE_ID: [], LEAGUE_ID_2: []}
     managed_tid, managed_lg = TEAM_BASE, LEAGUE_ID
     portraits = 0
+    # Real FM finances where we have them (resolved by club name): a club's own transfer budget,
+    # else ~40% of its cash balance. Falls back to a rank formula for clubs FM didn't load.
+    fm_budget = {}
+    try:
+        for nm, tb, bal in con.execute(
+                "SELECT name, transfer_budget, balance FROM fm_clubs WHERE name IS NOT NULL"):
+            key = norm_club_key(nm)
+            if key in fm_budget:
+                continue
+            if tb and tb > 0:
+                fm_budget[key] = int(tb)
+            elif bal and bal > 0:
+                fm_budget[key] = int(bal * 0.4)
+        print(f"fm_clubs budgets available for {len(fm_budget):,} clubs")
+    except sqlite3.OperationalError:
+        pass   # fm_clubs not imported on this DB — fall back to the rank formula
     for lg, clubs in tier_clubs.items():
         for i, club in enumerate(clubs):
             tid = TEAM_BASE + tid_counter
@@ -308,7 +377,9 @@ def main() -> int:
             con.execute(
                 "INSERT INTO teams(id,game_team_id,is_custom,name,short_name,league_id,budget,logo_path)"
                 " VALUES(?,?,1,?,?,?,?,?)",
-                (tid, tid, club["name"], short[:12], lg, 1_000_000 + (size - i) * 60_000, club.get("logo")))
+                (tid, tid, club["name"], short[:12], lg,
+                 fm_budget.get(norm_club_key(club["name"])) or (1_000_000 + (size - i) * 60_000),
+                 club.get("logo")))
             con.execute("INSERT INTO coaches(id,game_coach_id,team_id,name) VALUES(?,?,?,?)",
                         (tid, tid, tid, f"{short} Manager"))
 
@@ -337,31 +408,63 @@ def main() -> int:
                     "VALUES(?,?,?,?,?)", [(fid, s, role, x, y) for s, role, x, y in slots])
                 con.execute("INSERT INTO team_tactics(team_id,phase,formation_id,style) "
                             "VALUES(?,?,?,?)", (tid, phase, fid, style))
-            for shirt, pid in sorted(links.get(club["rfs_id"], [])):
-                if pid not in pidx:
+            # Squad source: the SORTED master.db (the single source of truth — consolidated,
+            # deduped, real membership from tools/sort_database.py). Each reference-world player is
+            # copied into the career namespace with its own attributes + face. Fall back to the RFS
+            # binary only for a club the sort left without a squad, so no career is ever empty.
+            db_squad = con.execute(
+                "SELECT player_id, squad_number FROM squad_members WHERE team_id=? ORDER BY slot",
+                (club["rfs_id"],)).fetchall()
+            placed = 0
+            for src_pid, shirt in db_squad:
+                row = con.execute(
+                    "SELECT name,position,overall_rating,portrait_path,real_face_path,"
+                    "height_cm,weight_kg,age,nationality FROM players WHERE id=?", (src_pid,)).fetchone()
+                if row is None:
                     continue
-                p = translate(rfs.record("players", pidx[pid]))
-                # eFootball's own rating/abilities take priority over RFS where it has the player.
-                ef = ef_index.get(_norm(p["name"])) or ef_index.get(_norm(p["name"].split()[-1]))
-                overall = ef[0] if ef else p["overall"]
-                abilities = ef[1] if ef and ef[1] else p["abilities"]
-                bio = ef[2] if ef else {}
+                nm, pos, ovr, portrait, face, h, w, age, nat = row
                 our = next_pid
                 next_pid += 1
-                portrait = player_portrait(pid)
-                if portrait:
+                if portrait or face:
                     portraits += 1
                 con.execute(
                     "INSERT INTO players(id,game_pid,is_custom,name,position,overall_rating,"
-                    "portrait_path,height_cm,weight_kg,age,nationality) VALUES(?,?,1,?,?,?,?,?,?,?,?)",
-                    (our, our, p["name"], p["position"], overall, portrait,
-                     bio.get("height"), bio.get("weight"), bio.get("age"), bio.get("nationality")))
+                    "portrait_path,real_face_path,height_cm,weight_kg,age,nationality) "
+                    "VALUES(?,?,1,?,?,?,?,?,?,?,?,?)",
+                    (our, our, nm, pos, ovr, portrait, face, h, w, age, nat))
                 con.executemany("INSERT INTO player_attributes(player_id,attribute,value) VALUES(?,?,?)",
-                                [(our, a, v) for a, v in abilities.items()])
-                slot = shirt if 1 <= shirt <= 99 else 1
+                                [(our, a, v) for a, v in con.execute(
+                                    "SELECT attribute,value FROM player_attributes WHERE player_id=?",
+                                    (src_pid,)).fetchall()])
+                s = shirt if (shirt and 1 <= shirt <= 99) else 1
                 con.execute("INSERT INTO squad_members(team_id,player_id,squad_number,slot) VALUES(?,?,?,?)",
-                            (tid, our, slot, con.execute(
-                                "SELECT COUNT(*) FROM squad_members WHERE team_id=?", (tid,)).fetchone()[0]))
+                            (tid, our, s, placed))
+                placed += 1
+            if placed == 0:                       # legacy RFS fallback for a club the sort missed
+                for shirt, pid in sorted(links.get(club["rfs_id"], [])):
+                    if pid not in pidx:
+                        continue
+                    p = translate(rfs.record("players", pidx[pid]))
+                    ef = ef_index.get(_norm(p["name"])) or ef_index.get(_norm(p["name"].split()[-1]))
+                    overall = ef[0] if ef else p["overall"]
+                    abilities = ef[1] if ef and ef[1] else p["abilities"]
+                    bio = ef[2] if ef else {}
+                    our = next_pid
+                    next_pid += 1
+                    portrait = player_portrait(pid)
+                    if portrait:
+                        portraits += 1
+                    con.execute(
+                        "INSERT INTO players(id,game_pid,is_custom,name,position,overall_rating,"
+                        "portrait_path,height_cm,weight_kg,age,nationality) VALUES(?,?,1,?,?,?,?,?,?,?,?)",
+                        (our, our, p["name"], p["position"], overall, portrait,
+                         bio.get("height"), bio.get("weight"), bio.get("age"), bio.get("nationality")))
+                    con.executemany("INSERT INTO player_attributes(player_id,attribute,value) VALUES(?,?,?)",
+                                    [(our, a, v) for a, v in abilities.items()])
+                    slot = shirt if 1 <= shirt <= 99 else 1
+                    con.execute("INSERT INTO squad_members(team_id,player_id,squad_number,slot) VALUES(?,?,?,?)",
+                                (tid, our, slot, placed))
+                    placed += 1
             con.execute("INSERT INTO board_confidence(team_id,season_id,confidence,expectation) VALUES(?,?,?,?)",
                         (tid, SEASON_ID, 58, "Title challenge" if i == 0 else "Mid-table"))
 
@@ -380,14 +483,53 @@ def main() -> int:
     con.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('current_season_id',?)", (str(SEASON_ID),))
     con.commit()
 
+    # borrow the canonical facepack face for each career copy (surname+nationality+age match
+    # against the reference world); the RFS portrait_path stays as the UI's fallback
+    faced = _backfill_real_faces(con)
+
     total = con.execute("SELECT COUNT(*) FROM teams WHERE id>=?", (TEAM_BASE,)).fetchone()[0]
     sp = con.execute("SELECT COUNT(*) FROM squad_members WHERE team_id>=?", (TEAM_BASE,)).fetchone()[0]
     tier_name = "top flight" if managed_lg == LEAGUE_ID else "Division 2"
     n_tiers = 2 if tier_clubs[LEAGUE_ID_2] else 1
     print(f"Career: {chosen['name']} in {league['name']} — {tier_name} ({total} clubs, {n_tiers} tier{'s' if n_tiers > 1 else ''})")
-    print(f"  {sp} squad players, {portraits} with face photos")
+    print(f"  {sp} squad players, {portraits} with face photos, {faced} matched to facepack faces")
     con.close()
     return 0
+
+
+def _backfill_real_faces(con) -> int:
+    """Match each career copy (20M-700M) to its reference-world counterpart by
+    surname + nationality (+ age within 2) and copy that player's real_face_path."""
+    import re
+    import unicodedata
+
+    def norm(s):
+        s = unicodedata.normalize("NFKD", s or "")
+        s = "".join(ch for ch in s if not unicodedata.combining(ch))
+        return re.sub(r"\s+", " ", re.sub(r"[^a-z ]", " ", s.lower())).strip()
+
+    canon = {}
+    for nm, nat, age, face in con.execute(
+            "SELECT name, nationality, age, real_face_path FROM players "
+            "WHERE real_face_path IS NOT NULL AND (id<20000000 OR id>=700000000)"):
+        words = norm(nm).split()
+        if words:
+            canon.setdefault((words[-1], norm(nat or "")), []).append((age or 0, face))
+
+    hit = 0
+    for pid, nm, nat, age in con.execute(
+            "SELECT id, name, nationality, age FROM players "
+            "WHERE id BETWEEN 20000000 AND 699999999 AND real_face_path IS NULL").fetchall():
+        words = norm(nm).split()
+        if not words:
+            continue
+        faces = {f for ca, f in canon.get((words[-1], norm(nat or "")), [])
+                 if abs(ca - (age or 0)) <= 2}
+        if len(faces) == 1:
+            con.execute("UPDATE players SET real_face_path=? WHERE id=?", (faces.pop(), pid))
+            hit += 1
+    con.commit()
+    return hit
 
 
 if __name__ == "__main__":

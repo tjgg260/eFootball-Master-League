@@ -21,6 +21,30 @@ public static class AttributeKnowledge
         3 => "Elite", 2 => "Good", 1 => "Average", _ => "Poor",
     };
 
+    /// <summary>A 0-99 ability as a qualitative letter grade (F..A+) — the app never shows the raw
+    /// number, only this. A 99 is A+, a 40 is F, so the world's crap players read as crap.</summary>
+    public static string Grade(int value) => value switch
+    {
+        >= 90 => "A+",
+        >= 85 => "A",
+        >= 82 => "A-",
+        >= 78 => "B+",
+        >= 74 => "B",
+        >= 70 => "B-",
+        >= 66 => "C+",
+        >= 62 => "C",
+        >= 58 => "C-",
+        >= 52 => "D",
+        _ => "F",
+    };
+
+    /// <summary>The grade you're allowed to SEE at a knowledge level: the true letter once a player
+    /// is well-scouted (>=75) or on your team (100); an approximate "B?" while part-scouted; a bare
+    /// "?" until you've scouted enough. This is the overall-rating equivalent of per-attribute
+    /// masking.</summary>
+    public static string GradeMasked(int value, int knowledge) =>
+        knowledge >= 75 ? Grade(value) : knowledge >= 45 ? Grade(value) + "?" : "?";
+
     /// <summary>
     /// Whether one attribute is revealed at a knowledge level (0-100). Deterministic per
     /// (player, attribute): the same partial dossier always shows the same subset, and more

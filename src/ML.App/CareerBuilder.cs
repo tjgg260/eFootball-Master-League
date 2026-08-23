@@ -1,5 +1,7 @@
+using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ML.App;
@@ -7,6 +9,39 @@ namespace ML.App;
 /// <summary>Runs tools/career_seed.py for the chosen club, then loads the resulting career.</summary>
 public static class CareerBuilder
 {
+    /// <summary>
+    /// Resolve a working Python. The app is usually launched from Explorer, which does NOT inherit
+    /// the shell PATH where Python lives — so "python" alone fails ("is Python installed?"). We look
+    /// for the real interpreter: an ML_PYTHON override, the per-user install, common machine paths,
+    /// the Windows py launcher, then finally the bare name.
+    /// </summary>
+    public static string PythonExe()
+    {
+        var env = Environment.GetEnvironmentVariable("ML_PYTHON");
+        if (!string.IsNullOrWhiteSpace(env) && File.Exists(env)) return env;
+
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var pyRoot = Path.Combine(local, "Programs", "Python");
+        if (Directory.Exists(pyRoot))
+        {
+            var exe = Directory.GetDirectories(pyRoot, "Python3*")
+                .OrderByDescending(d => d)
+                .Select(d => Path.Combine(d, "python.exe"))
+                .FirstOrDefault(File.Exists);
+            if (exe is not null) return exe;
+        }
+        foreach (var p in new[]
+                 {
+                     @"C:\Python313\python.exe", @"C:\Python312\python.exe", @"C:\Python311\python.exe",
+                     @"C:\Program Files\Python313\python.exe", @"C:\Program Files\Python312\python.exe",
+                 })
+            if (File.Exists(p)) return p;
+
+        var windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var py = Path.Combine(windir, "py.exe");
+        return File.Exists(py) ? py : "python";
+    }
+
     public static async Task<Session?> BuildAsync(int compId, int rfsId, string teamName, Action<string> log)
     {
         var root = MatchLauncher.FindRepoRoot();
@@ -19,7 +54,7 @@ public static class CareerBuilder
         log($"Building {teamName}'s career (squads, tactics, fixtures)…");
         var psi = new ProcessStartInfo
         {
-            FileName = "python",
+            FileName = PythonExe(),
             WorkingDirectory = root,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -64,7 +99,7 @@ public static class CareerBuilder
     {
         var psi = new ProcessStartInfo
         {
-            FileName = "python", WorkingDirectory = root,
+            FileName = PythonExe(), WorkingDirectory = root,
             RedirectStandardOutput = true, RedirectStandardError = true,
             UseShellExecute = false, CreateNoWindow = true,
         };

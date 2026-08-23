@@ -9,7 +9,10 @@ namespace ML.App.ViewModels;
 
 public sealed record TrainingRow(
     int PlayerId, string Name, string Position, int Age, int Rating, IBrush RatingBrush,
-    string Focus, string Progress, string Personality, int Determination, string Skills);
+    string Focus, string Progress, string Personality, int Determination, string Skills)
+{
+    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // own squad
+}
 
 public sealed record SkillProgressRow(string Line);
 

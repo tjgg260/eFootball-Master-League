@@ -1,0 +1,111 @@
+@page "/fixtures"
+@inject Db Db
+@inject AppState State
+@inject MatchdayEngine Engine
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron"><span>Fixtures · @_teamName</span></div>
+        <div class="tools">
+            @if (_simmed > 0)
+            {
+                <span class="label" style="color:var(--win)">CPU played @_simmed other fixtures</span>
+            }
+            <span class="label">@_fixtures.Count(f => f.Played) of @_fixtures.Count played</span>
+        </div>
+    </div>
+
+    @if (State.Career is null)
+    {
+        <div class="pcard"><div style="font:400 13px/18px var(--font-body);color:var(--text-3)">No career yet — fixtures appear once a season is seeded.</div></div>
+    }
+    else
+    {
+        <div class="gtable">
+            <div class="rows">
+                @foreach (var f in _fixtures)
+                {
+                    var mine = true;
+                    var home = f.HomeId == State.Career!.TeamId;
+                    <div class="fixrow @(f.Played ? "played" : "") @(f == _importing ? "sel" : "")">
+                        <span class="tnum md">MD @f.Matchday</span>
+                        <span class="kind">@(f.Kind == "league" ? "" : f.Kind.ToUpperInvariant())</span>
+                        <span class="fh @(home ? "you" : "")">@f.Home</span>
+                        <span class="fscore tnum">
+                            @(f.Played && f.HomeGoals is not null ? $"{f.HomeGoals} – {f.AwayGoals}" : "v")
+                        </span>
+                        <span class="fa @(!home ? "you" : "")">@f.Away</span>
+                        <span class="fact">
+                            @if (!f.Played && f == _nextUnplayed)
+                            {
+                                <button class="fbtn on" @onclick="() => _importing = f">Import result</button>
+                            }
+                            else if (f.Played)
+                            {
+                                <span class="chip @ResultChip(f, home)"></span>
+                            }
+                        </span>
+                    </div>
+                    @if (f == _importing)
+                    {
+                        <div class="importrow">
+                            <span class="label">Final score</span>
+                            <input class="theme scorein tnum" type="number" min="0" max="99" @bind="_hg" />
+                            <span class="d-wide">–</span>
+                            <input class="theme scorein tnum" type="number" min="0" max="99" @bind="_ag" />
+                            <button class="btn" @onclick="Confirm">Confirm result</button>
+                            <button class="btn ghost" @onclick="() => _importing = null">Cancel</button>
+                            <span style="font:400 11px/14px var(--font-body);color:var(--text-3)">
+                                Writes into the career database. Screenshot OCR lands with Phase 3 — score entry is manual for now.
+                            </span>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<FixtureRow> _fixtures = new();
+    private FixtureRow? _nextUnplayed;
+    private FixtureRow? _importing;
+    private string _teamName = "";
+    private int _hg;
+    private int _ag;
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        if (State.Career is not { } c) return;
+        _teamName = c.TeamName;
+        _fixtures = Db.TeamFixtures(c.TeamId, c.SeasonId);
+        _nextUnplayed = _fixtures.FirstOrDefault(f => !f.Played);
+    }
+
+    private void Confirm()
+    {
+        if (_importing is not { } f || State.Career is not { } c) return;
+        Db.RecordResult(f.Id, _hg, _ag);
+        // CPU plays out the rest of the matchday — league fixtures only, never the user's own
+        if (f.Kind == "league")
+        {
+            var lid = Db.LeagueOf(c.TeamId, c.SeasonId);
+            _simmed = Engine.SimOthers(lid, c.SeasonId, f.Matchday, c.TeamId);
+        }
+        _importing = null;
+        _hg = _ag = 0;
+        Load();
+        State.Reload();
+    }
+
+    private int _simmed;
+
+    private static string ResultChip(FixtureRow f, bool home)
+    {
+        if (f.HomeGoals is null) return "n";
+        var (gf, ga) = home ? (f.HomeGoals.Value, f.AwayGoals!.Value) : (f.AwayGoals!.Value, f.HomeGoals.Value);
+        return gf > ga ? "w" : gf == ga ? "d" : "l";
+    }
+}

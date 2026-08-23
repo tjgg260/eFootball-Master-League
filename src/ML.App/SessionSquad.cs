@@ -196,8 +196,17 @@ public sealed partial class Session
                 c?.InjuredUntilMd is int until && until >= md);
         }).ToList();
         var registered = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id, p => p.Position);
+        // Position-adjusted overalls drive the pick: a slot rates each candidate on ITS core
+        // abilities (winger-in-goal ≈ his gk_* ≈ 40), so nobody strong ever fills the wrong slot.
+        var abilities = new Dictionary<int, IReadOnlyDictionary<string, int>>();
+        foreach (var pid in registered.Keys)
+        {
+            try { abilities[pid] = Repo.Attributes(pid); } catch { /* rating fallback */ }
+        }
         return XiSelector.SelectOrder(squad, slotPositions,
-            pid => (registered.GetValueOrDefault(pid, "CMF"), LearnedPositions(pid)));
+            pid => (registered.GetValueOrDefault(pid, "CMF"), LearnedPositions(pid)),
+            (pid, slot) => ML.Core.Selection.PositionOverall.Of(
+                abilities.GetValueOrDefault(pid), slot));
     }
 
     // ------------------------------------------------------------------ set-piece takers

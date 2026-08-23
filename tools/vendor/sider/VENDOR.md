@@ -22,11 +22,17 @@ keys, re-pull from upstream so the diff stays visible.
 That is a deliberate, informed choice: without this cipher there is no automated writeback at
 all, only a manual GUI step in the middle of every apply.
 
-## What we deliberately did NOT take
+## The `dxgi.dll` proxy runtime — now permitted (2026-08-21)
 
-Sider's `dxgi.dll` proxy runtime. It injects into the game process, and the build plan rules
-that out — the account risk is not worth it when a screenshot does the job. Only the offline
-file-format code is used here; nothing from this vendor directory runs while the game does.
+Originally we vendored only Sider's offline file-format code and deliberately left out its
+`dxgi.dll` proxy runtime, on account-risk grounds. That restriction is **lifted** by the owner's
+informed decision: this is offline single-player on an owned copy, the owner is not playing
+online, and accepts the ban risk. Sider runtime injection — LiveCPK file serving and lua hooks —
+is now allowed, and can replace CPK repacking as the delivery path.
+
+Note the runtime is still **not committed to this repo**: it is obtained from the upstream Sider
+distribution and run locally. Only the offline file-format files above are vendored here (their
+GPL-3.0 is why the repo is GPL-3.0); the runtime is used, not redistributed by us.
 
 ## Fragility
 

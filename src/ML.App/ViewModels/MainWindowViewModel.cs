@@ -93,8 +93,16 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void Navigate(NavItem item)
     {
-        CurrentPage = item.Build(_session);
-        RefreshShell();   // badges follow you around the app
+        try
+        {
+            CurrentPage = item.Build(_session);
+            RefreshShell();   // badges follow you around the app
+        }
+        catch (Exception ex)
+        {
+            // A page that fails to build must not take the whole app down — log it and stay put.
+            Program.Log($"Navigate -> {item.Title}", ex);
+        }
     }
 
     [RelayCommand]

@@ -76,10 +76,20 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:BenchEntry">
               <Border BorderBrush="#242B35" BorderThickness="0,0,0,1" Padding="2,4">
-                <Grid ColumnDefinitions="38,*">
-                  <TextBlock Text="{Binding Position}" Foreground="#8A93A2" FontSize="11"
-                             FontWeight="Bold" VerticalAlignment="Center"/>
-                  <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="#E6EAF0"
+                <Grid ColumnDefinitions="30,38,*">
+                  <Border Width="24" Height="24" CornerRadius="12" ClipToBounds="True"
+                          Background="{Binding MarkBrush}">
+                    <Panel>
+                      <TextBlock Text="{Binding Mark}" Foreground="White" FontSize="8"
+                                 FontWeight="Bold" HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                      <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                             IsVisible="{Binding HasPortrait}"/>
+                    </Panel>
+                  </Border>
+                  <TextBlock Grid.Column="1" Text="{Binding Position}" Foreground="#8A93A2" FontSize="11"
+                             FontWeight="Bold" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="#E6EAF0"
                              FontSize="12" VerticalAlignment="Center"
                              TextTrimming="CharacterEllipsis"/>
                 </Grid>
@@ -113,7 +123,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <TextBlock Text="{Binding SelectedPlayer.Position}" Foreground="White"
                              FontSize="14" FontWeight="Bold" VerticalAlignment="Bottom"/>
-                  <TextBlock Text="{Binding SelectedPlayer.Rating}"
+                  <TextBlock Text="{Binding SelectedPlayer.Grade}"
                              Foreground="{Binding SelectedPlayer.RatingBrush}"
                              FontSize="26" FontWeight="Bold"/>
                 </StackPanel>
@@ -157,7 +167,7 @@
                     <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="#C7CEDA"
                                FontSize="12" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Grid.Column="3" Text="{Binding Rating}"
+                    <TextBlock Grid.Column="3" Text="{Binding Grade}"
                                Foreground="{Binding RatingBrush}" FontSize="12" FontWeight="Bold"
                                VerticalAlignment="Center"/>
                   </Grid>
@@ -171,10 +181,10 @@
             <TextBlock Text="Registered position" Foreground="#7C8698" FontSize="10"/>
             <ComboBox ItemsSource="{Binding PositionChoices}"
                       SelectedItem="{Binding SelectedPosition}" HorizontalAlignment="Stretch"/>
-            <TextBlock Text="Playing style (★ = suits his abilities)" Foreground="#7C8698"
+            <TextBlock Text="In possession · playstyle (★ = suits his abilities)" Foreground="#7C8698"
                        FontSize="10"/>
             <ListBox ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}"
-                     Background="Transparent" BorderThickness="0" MaxHeight="230">
+                     Background="Transparent" BorderThickness="0" MaxHeight="200">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:RoleOption">
                   <StackPanel Spacing="1" Margin="2">
@@ -189,6 +199,13 @@
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
+            <TextBlock Text="Out of possession · defensive role" Foreground="#7C8698" FontSize="10"
+                       Margin="0,6,0,0"/>
+            <ComboBox ItemsSource="{Binding SecondaryRoles}"
+                      SelectedItem="{Binding SelectedSecondaryRole}" HorizontalAlignment="Stretch"/>
+            <Button Content="⚡ Auto-assign roles (AI)" Command="{Binding AutoAssignRolesCommand}"
+                    HorizontalAlignment="Stretch" Margin="0,8,0,2"
+                    ToolTip.Tip="Fills every player's in- and out-of-possession role from their attributes and your team playstyle."/>
           </StackPanel>
         </ScrollViewer>
 
@@ -397,7 +414,7 @@
             <!-- the edit-phase frame around YOUR half (pink Attack / teal Defence) -->
             <Rectangle Canvas.Left="0" Canvas.Top="0" Width="360" Height="430"
                        Stroke="{Binding PhaseBrush}" StrokeThickness="2"
-                       IsVisible="{Binding ShowSetFormation}" IsHitTestVisible="False"/>
+                       IsVisible="{Binding ShowPhaseFrame}" IsHitTestVisible="False"/>
 
             <!-- opponent tokens (right half, read-only) -->
             <ItemsControl ItemsSource="{Binding Opponents}" Width="720" Height="430">
@@ -428,7 +445,7 @@
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding Pos}" Foreground="#C7CEDA" FontSize="8"
                                    FontWeight="Bold" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                        <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
                                    FontSize="8" FontWeight="Bold" VerticalAlignment="Center"/>
                       </StackPanel>
                     </Border>
@@ -480,7 +497,7 @@
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding Position}" Foreground="#C7CEDA" FontSize="8"
                                    FontWeight="Bold" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                        <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
                                    FontSize="8" FontWeight="Bold" VerticalAlignment="Center"/>
                       </StackPanel>
                     </Border>
@@ -494,7 +511,7 @@
 
             <!-- phase banner + shape labels, like the game -->
             <Border Canvas.Left="8" Canvas.Top="6" Background="#B0000000" CornerRadius="4"
-                    Padding="8,3" IsVisible="{Binding ShowSetFormation}" IsHitTestVisible="False">
+                    Padding="8,3" IsVisible="{Binding ShowPhaseFrame}" IsHitTestVisible="False">
               <TextBlock Text="{Binding PhaseBanner}" Foreground="{Binding PhaseBrush}"
                          FontSize="13" FontWeight="Bold"/>
             </Border>

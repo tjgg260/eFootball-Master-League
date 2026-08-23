@@ -1,0 +1,178 @@
+@page "/"
+@inject Db Db
+@inject AppState State
+@inject NavigationManager Nav
+
+<div class="content">
+    @if (State.Career is not { } c)
+    {
+        <div class="pcard" style="max-width:520px;margin:auto;text-align:center;gap:16px">
+            <div class="d-narrow" style="font-size:24px">No career yet</div>
+            <div style="font:400 13px/18px var(--font-body);color:var(--text-2)">
+                Start a Master League career to generate fixtures, a table, and a season to play.
+            </div>
+            <button class="btn" @onclick='() => Nav.NavigateTo("new-career")'>Start a career</button>
+        </div>
+    }
+    else
+    {
+        <div class="toolbar">
+            <div class="chyron"><span>Season hub · Matchday @(_next?.Matchday ?? 0)</span></div>
+            <div class="tools">
+                <span class="label">Manager @c.Manager</span>
+            </div>
+        </div>
+
+        <div class="hubgrid">
+            @* next fixture hero *@
+            <div class="pcard hub-fixture">
+                <div class="label" style="color:var(--chyron)">Next fixture</div>
+                @if (_next is { } nx)
+                {
+                    var home = nx.HomeId == c.TeamId;
+                    <div class="hub-vs">
+                        <span class="d-narrow" style="font-size:26px">@nx.Home</span>
+                        <span class="d-wide" style="font-size:22px;color:var(--text-3)">v</span>
+                        <span class="d-narrow" style="font-size:26px">@nx.Away</span>
+                    </div>
+                    <div style="font:400 13px/16px var(--font-body);color:var(--text-2)">
+                        Matchday @nx.Matchday · @(nx.Kind == "league" ? _leagueName : nx.Kind) · @(home ? "Home" : "Away")
+                    </div>
+                    <div class="rowflex" style="margin-top:auto;gap:8px">
+                        <button class="btn">Play in eFootball</button>
+                        <button class="btn ghost" @onclick='() => Nav.NavigateTo("fixtures")'>Import result</button>
+                    </div>
+                }
+                else
+                {
+                    <div style="font:400 13px/18px var(--font-body);color:var(--text-2)">Season complete.</div>
+                }
+            </div>
+
+            @* mini table *@
+            <div class="pcard hub-table">
+                <div class="attrhead"><span class="label">@_leagueName</span>
+                    <a class="hint" href="table" style="cursor:pointer">Full table →</a></div>
+                <div class="minitable">
+                    @foreach (var (t, i) in _mini)
+                    {
+                        <div class="mtrow @(t.Id == c.TeamId ? "you" : "")">
+                            <span class="tnum pos">@(i + 1)</span>
+                            <span class="nm">@t.Name</span>
+                            <span class="tnum">@t.P</span>
+                            <span class="tnum pts">@t.Pts</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* form + morale *@
+            <div class="pcard hub-side">
+                <div class="label">Form</div>
+                @if (_form.Count == 0)
+                {
+                    <div style="font:400 12px/16px var(--font-body);color:var(--text-3)">No matches played yet — the worm starts with your first result.</div>
+                }
+                else
+                {
+                    <div class="chips">
+                        @foreach (var f in _form) { <span class="chip @f"></span> }
+                    </div>
+                }
+                <div class="label" style="margin-top:10px">Squad morale</div>
+                <div class="rowflex">
+                    <span class="d-wide" style="font-size:28px;color:@MoraleColor(_morale)">@(_morale?.ToString() ?? "—")</span>
+                    <span style="font:400 12px/16px var(--font-body);color:var(--text-2)">@MoraleWord(_morale)</span>
+                </div>
+                <div class="label" style="margin-top:10px">Board</div>
+                <div style="font:400 12px/16px var(--font-body);color:var(--text-2)">
+                    @(_board is { } b ? $"{b.Expectation} · confidence {b.Confidence}" : "—")
+                </div>
+            </div>
+
+            @* objectives *@
+            <div class="pcard hub-obj">
+                <div class="label">Season objectives</div>
+                @if (_objectives.Count == 0)
+                {
+                    <div style="font:400 12px/16px var(--font-body);color:var(--text-3)">The board hasn't set objectives yet.</div>
+                }
+                @foreach (var o in _objectives)
+                {
+                    <div class="objrow @o.Importance">
+                        <span class="oi">@o.Importance.ToUpperInvariant()</span>
+                        <span class="ot">@ObjText(o)</span>
+                    </div>
+                }
+            </div>
+
+            @* inbox preview *@
+            <div class="pcard hub-inbox">
+                <div class="attrhead"><span class="label">Inbox</span>
+                    <a class="hint" href="inbox" style="cursor:pointer">Open →</a></div>
+                @if (_inbox.Count == 0)
+                {
+                    <div style="font:400 12px/16px var(--font-body);color:var(--text-3)">Nothing new.</div>
+                }
+                @foreach (var m in _inbox.Take(4))
+                {
+                    <div class="inbrow @(m.IsRead ? "" : "unread")">
+                        <span class="cat">@m.Category</span>
+                        <span class="sub">@m.Subject</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private FixtureRow? _next;
+    private List<(TableRow, int)> _mini = new();
+    private List<string> _form = new();
+    private List<ObjectiveRow> _objectives = new();
+    private List<InboxRow> _inbox = new();
+    private (int Confidence, string Expectation)? _board;
+    private int? _morale;
+    private string _leagueName = "League";
+
+    protected override void OnInitialized()
+    {
+        if (State.Career is not { } c) return;
+        _next = Db.NextFixture(c.TeamId, c.SeasonId);
+        var lid = Db.LeagueOf(c.TeamId, c.SeasonId);
+        var table = Db.LeagueTable(lid, c.SeasonId);
+        _leagueName = Db.Meta($"league_name_{lid}") ?? "Premier League";
+        // mini table: window around your row
+        var idx = table.FindIndex(t => t.Id == c.TeamId);
+        var lo = Math.Clamp(idx - 3, 0, Math.Max(0, table.Count - 8));
+        _mini = table.Skip(lo).Take(8).Select((t, i) => (t, lo + i)).ToList();
+        _form = Db.TeamFixtures(c.TeamId, c.SeasonId)
+            .Where(f => f.Played && f.HomeGoals is not null)
+            .OrderByDescending(f => f.Matchday).Take(5)
+            .Select(f =>
+            {
+                var (gf, ga) = f.HomeId == c.TeamId ? (f.HomeGoals!.Value, f.AwayGoals!.Value)
+                                                    : (f.AwayGoals!.Value, f.HomeGoals!.Value);
+                return gf > ga ? "w" : gf == ga ? "d" : "l";
+            }).ToList();
+        _objectives = Db.Objectives(c.TeamId, c.SeasonId);
+        _board = Db.Board(c.TeamId, c.SeasonId);
+        _morale = Db.MoraleAvg(c.TeamId);
+        _inbox = Db.Inbox(c.SeasonId);
+    }
+
+    private static string MoraleColor(int? m) => m is null ? "var(--text-3)"
+        : m >= 70 ? "var(--win)" : m >= 45 ? "var(--draw)" : "var(--loss)";
+    private static string MoraleWord(int? m) => m is null ? "No data yet"
+        : m >= 70 ? "Buzzing" : m >= 55 ? "Content" : m >= 45 ? "Flat" : "Restless";
+
+    private static string ObjText(ObjectiveRow o) => o.Kind switch
+    {
+        "league_finish" => $"Finish {o.Target} or higher in the league",
+        "cup_run" => $"Reach round of {o.Target} in the cup",
+        "youth_minutes" => "Give academy players minutes",
+        "wage_discipline" => "Stay inside the wage budget",
+        _ => o.Kind.Replace('_', ' '),
+    };
+}

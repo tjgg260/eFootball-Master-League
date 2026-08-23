@@ -1,0 +1,61 @@
+@page "/settings"
+@inject Db Db
+@inject AppState State
+@inject IJSRuntime JS
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron"><span>Settings</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start">
+        <div class="pcard">
+            <div class="label">Career</div>
+            @if (State.Career is { } c)
+            {
+                <div class="fact" style="background:var(--surface-2);padding:8px">
+                    <div class="label">Club</div><div class="v" style="font:500 13px/18px var(--font-data)">@c.TeamName (@c.TeamId)</div>
+                </div>
+                <div class="fact" style="background:var(--surface-2);padding:8px">
+                    <div class="label">Season</div><div class="v" style="font:500 13px/18px var(--font-data)">@c.SeasonId</div>
+                </div>
+                <div class="fact" style="background:var(--surface-2);padding:8px">
+                    <div class="label">Manager</div><div class="v" style="font:500 13px/18px var(--font-data)">@c.Manager</div>
+                </div>
+            }
+            else
+            {
+                <div style="font:400 13px/18px var(--font-body);color:var(--text-3)">
+                    No active career yet.
+                </div>
+            }
+            <a class="btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="new-career">New career</a>
+        </div>
+        <div class="pcard">
+            <div class="label">Appearance</div>
+            <div class="rowflex">
+                <button class="fbtn @(!_light ? "on" : "")" @onclick="() => SetTheme(false)">Dark</button>
+                <button class="fbtn @(_light ? "on" : "")" @onclick="() => SetTheme(true)">Light</button>
+            </div>
+            <div class="label" style="margin-top:12px">Simulation</div>
+            <div class="fact" style="background:var(--surface-2);padding:8px">
+                <div class="label">Injury frequency</div><div class="v" style="font:500 13px/18px var(--font-data)">@(Db.Meta("injury_freq") ?? "Normal")</div>
+            </div>
+            <div class="fact" style="background:var(--surface-2);padding:8px">
+                <div class="label">Transfer difficulty</div><div class="v" style="font:500 13px/18px var(--font-data)">@(Db.Meta("transfer_difficulty") ?? "Normal")</div>
+            </div>
+            <div class="fact" style="background:var(--surface-2);padding:8px">
+                <div class="label">Sack leniency</div><div class="v" style="font:500 13px/18px var(--font-data)">@(Db.Meta("sack_leniency") ?? "Normal")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _light;
+
+    private async Task SetTheme(bool light)
+    {
+        _light = light;
+        await JS.InvokeVoidAsync("floodlit.setTheme", light ? "light" : "dark");
+    }
+}

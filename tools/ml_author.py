@@ -45,6 +45,19 @@ sys.path.insert(0, str(REPO / "tools"))
 import wesys   # noqa: E402
 import pesdb   # noqa: E402
 from ability_bits import write_abilities as _write_abilities   # noqa: E402
+from skill_bits import write_skills as _write_skills           # noqa: E402
+from playstyle_secondary import write_secondary as _write_secondary  # noqa: E402
+
+_PRIMARY_TABLE = None
+
+
+def _primary_table():
+    """Cached (position category, style) -> raw value table for the primary playstyle."""
+    global _PRIMARY_TABLE
+    if _PRIMARY_TABLE is None:
+        from playstyle_bits import build_style_table
+        _PRIMARY_TABLE = build_style_table()
+    return _PRIMARY_TABLE
 
 PLAYER_REC = 400
 APP_REC = 64
@@ -176,7 +189,9 @@ class Tree:
 
     def author_player(self, donor_pid: int, new_pid: int, full_name: str,
                       abilities: dict[str, int] | None = None,
-                      skin_tone: int | None = None) -> bool:
+                      skin_tone: int | None = None,
+                      skills=None, primary_style: str | None = None,
+                      secondary_style: str | None = None, position: str | None = None) -> bool:
         di = self.player_idx.get(donor_pid)
         if di is None:
             return False
@@ -192,6 +207,18 @@ class Tree:
         # their own attributes rather than the cloned template's. The bit offsets are verified.
         if abilities:
             _write_abilities(rec, abilities)
+        # REAL skills + both playstyles over the donor's, so the authored player is faithful, not a
+        # clone wearing the donor's skill set. Skills: exact 52-bit map. Primary: position-scoped
+        # 5-bit field. Secondary: only the confident defensive/GK codes (Basic left untouched).
+        if skills is not None:
+            _write_skills(rec, skills)
+        if primary_style and position:
+            from playstyle_bits import value_for, write_playstyle
+            v = value_for(_primary_table(), position, primary_style)
+            if v is not None:
+                write_playstyle(rec, v)
+        if secondary_style and position:
+            _write_secondary(rec, position, secondary_style)
         self._pending_players.append((new_pid, bytes(rec)))
         # appearance: clone donor's if present, then write the player's OWN skin tone over
         # the donor's (3-bit field at bit 292, verified by portrait correlation — see

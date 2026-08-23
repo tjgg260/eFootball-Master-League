@@ -165,10 +165,13 @@ public sealed partial class Session
         return notes;
     }
 
-    /// <summary>Season growth multiplier for a player — determined professionals develop.</summary>
+    /// <summary>Season growth multiplier for a player — determined professionals develop,
+    /// lifted (or dragged) by the personalities around them and, for your club, by your
+    /// facilities and coaches.</summary>
     internal double GrowthMultiplierOf(int playerId)
     {
         var (det, prof, _, _) = TraitsOf(playerId);
+        var env = SquadEnvironmentMultiplier(playerId);   // who you share a dressing room with
         var facility = 1.0;
         try
         {
@@ -177,7 +180,30 @@ public sealed partial class Session
                 facility = TrainingFacilityMultiplier * GkCoachMultiplier(playerId);
         }
         catch { /* facilities are additive */ }
-        return PersonalityModel.GrowthMultiplier(det, prof) * facility;
+        return PersonalityModel.GrowthMultiplier(det, prof) * facility * env;
+    }
+
+    /// <summary>
+    /// The mentoring effect of a player's clubmates: a room of Model Professionals pulls the kids
+    /// up, a slack one drags everyone down. Averages (determination+professionalism)/2 over the
+    /// rest of his squad — a gentle ±12%. Applies to every club, so who a manager signs shapes
+    /// who develops. FM-real traits (from the data pass) feed this directly; unseeded mates fall
+    /// out of the average and land it near neutral.
+    /// </summary>
+    internal double SquadEnvironmentMultiplier(int playerId)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText =
+            "SELECT AVG((t.determination + t.professionalism)/2.0) " +
+            "FROM squad_members me " +
+            "JOIN squad_members mate ON mate.team_id = me.team_id AND mate.player_id <> me.player_id " +
+            "JOIN player_traits t ON t.player_id = mate.player_id " +
+            "WHERE me.player_id = $p";
+        cmd.Parameters.AddWithValue("$p", playerId);
+        var v = cmd.ExecuteScalar();
+        if (v is null or DBNull) return 1.0;
+        var avg = Convert.ToDouble(v);          // ~1-20 dressing-room quality, typical ~10
+        return Math.Clamp(0.88 + (avg - 10.0) * 0.024, 0.88, 1.12);
     }
 
     // ------------------------------------------------------------------ potential (P2)

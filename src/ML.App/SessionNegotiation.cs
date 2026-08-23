@@ -27,7 +27,7 @@ public sealed partial class Session
         using var r = q.ExecuteReader();
         if (!r.Read()) return null;
         var (rating, age, name) = PlayerBasics(playerId);
-        var value = ValuationOf(rating, age);
+        var value = MarketValueOf(playerId, rating, age);
         var sellerId = r.GetInt32(0);
         return new NegotiationView(playerId, name,
             sellerId == 0 ? "Free agent" : TeamName(sellerId),
@@ -42,7 +42,7 @@ public sealed partial class Session
         if (Repo.Squad(CurrentTeamId).Any(s => s.PlayerId == playerId))
             return "He is already your player.";
         var (rating, age, name) = PlayerBasics(playerId);
-        var value = ValuationOf(rating, age);
+        var value = MarketValueOf(playerId, rating, age);
         var seller = OwningClub(playerId);
         if (seller is { } club && Repo.Squad(club.TeamId).Count <= 18)
             return $"{club.Name} won't discuss {name} — their squad is at the minimum.";
@@ -55,6 +55,19 @@ public sealed partial class Session
         var status = seller is null ? "Squad Player" : PlayTimeStatusOf(playerId);
         var ask = seller is null ? value
             : ClubNegotiation.OpeningAsk(value, premium, difficulty) * StatusAskPct(status) / 100;
+        // NOT FOR SALE (player_market.transfer_status): everyone has a price, but it's silly money
+        // and the club opens hostile.
+        var notForSale = false;
+        using (var st = Db.Connection.CreateCommand())
+        {
+            st.CommandText = "SELECT transfer_status FROM player_market WHERE player_id=$p";
+            st.Parameters.AddWithValue("$p", playerId);
+            notForSale = st.ExecuteScalar() as string == "not-for-sale";
+        }
+        if (notForSale && seller is not null)
+        {
+            ask = ask * 22 / 10;
+        }
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO negotiations(player_id,seller_id,round,ask,state) " +
                           "VALUES($p,$s,1,$a,'open') ON CONFLICT(player_id) DO UPDATE SET " +
@@ -64,9 +77,12 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$a", ask);
         cmd.ExecuteNonQuery();
         return seller is { } c2
-            ? $"{c2.Name} open talks over {name} ({status} there): they'd listen at about £{ask:N0}." +
-              (status == "Star Player" ? " They do NOT want to sell — expect a war."
-               : status == "Surplus to Requirements" ? " They want him gone — push hard." : "")
+            ? (notForSale
+                ? $"{c2.Name} insist {name} is NOT FOR SALE. They'd only even take a call at " +
+                  $"£{ask:N0} — silly money."
+                : $"{c2.Name} open talks over {name} ({status} there): they'd listen at about £{ask:N0}." +
+                  (status == "Star Player" ? " They do NOT want to sell — expect a war."
+                   : status == "Surplus to Requirements" ? " They want him gone — push hard." : ""))
             : $"{name} is a free agent — agree market value £{value:N0} plus his wages.";
     }
 
@@ -149,8 +165,8 @@ public sealed partial class Session
         if (n is null || n.State != "agreed") return "No agreed deal to complete.";
         var (rating, age, name) = PlayerBasics(playerId);
 
-        // The agent's floor: the standard demand with a modest deal-done discount.
-        var demand = ContractNegotiation.WeeklyDemand(rating, age ?? 25, 60, years) * 92 / 100;
+        // The agent's floor: the real FM wage (or the model demand) with a modest deal-done discount.
+        var demand = RealWageDemand(playerId, rating, age ?? 25, years) * 92 / 100;
         if (weeklyWage < demand)
             return $"His agent wants at least £{demand:N0}/wk on {years} years — £{weeklyWage:N0} won't do it.";
 

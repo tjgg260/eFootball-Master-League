@@ -13,6 +13,12 @@ public sealed partial class Session
     {
         PickBestXi(teamId);
         PickTacticVs(teamId, opponentId);
+        // The AI now assigns each player an in- and out-of-possession role that fits the tactic it
+        // just chose (never touches the human's club — you set your own roles).
+        if (teamId != CurrentTeamId)
+        {
+            try { AssignRolesFor(teamId); } catch { /* roles are additive */ }
+        }
     }
 
     /// <summary>Assign the strongest player to each formation slot (GK to GK, by position + rating).</summary>

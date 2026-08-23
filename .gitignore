@@ -74,3 +74,35 @@ build/stats_map.json
 build/ce/cmd.txt
 build/ce/cmd.done
 build/ce/result.json
+tools/__pycache__/
+tokens/
+
+# ---- world-asset stores: multi-GB, regenerated from local packs by tools/ ----
+facepack/
+Uran Faces Megapack/
+Uran Faces Megapack.zip
+EVO_GP_HEAVY/
+EVO_GP_HEAVY.rar
+assets/dvx_logos/
+assets/dvx_flags/
+assets/dvx_comps/
+assets/gen_badges/
+assets/badges/
+dist/
+careers/
+# raw exports at repo root (FM/Genie data, not ours to redistribute)
+/*.csv
+/*.html
+# stray downloads
+ChatGPT Installer.exe
+Microsoft.Services.Store.winmd
+*.winmd
+# downloaded data packs & exports living at repo root (delete nothing, commit nothing)
+sortitoutsi*/
+sortitoutsi*.zip
+FM26PlayerExport*/
+soccer-bunny*.zip
+scratchpad/
+scratchpad_pack_uids.txt
+design/
+*.zip

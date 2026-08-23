@@ -30,24 +30,36 @@ public static class ConditionModel
     /// Form after a result. outcome is 1 win / 0 draw / -1 loss: the result moves form by ±0.5,
     /// then form drifts 10% back toward <see cref="NeutralForm"/>, clamped to 4..9.
     /// </summary>
-    public static double FormAfterResult(double form, int outcome)
+    public static double FormAfterResult(double form, int outcome) => FormAfterResult(form, outcome, 0.0);
+
+    /// <summary>
+    /// Form after a result for a player of a given <paramref name="steadiness"/> (0..1 — eFootball's
+    /// Condition/"form" attribute for natives, professionalism otherwise). Steady players swing less:
+    /// the ±0.5 base shrinks to as little as ±0.2 for a rock-steady player, so consistent performers
+    /// hold their level while flaky ones lurch between hot and cold. Then the usual 10% drift home.
+    /// </summary>
+    public static double FormAfterResult(double form, int outcome, double steadiness)
     {
-        var f = form + 0.5 * outcome;
+        var swing = 0.5 * (1.0 - 0.6 * Math.Clamp(steadiness, 0.0, 1.0));
+        var f = form + swing * outcome;
         f += (NeutralForm - f) * 0.1;
         return Math.Clamp(f, 4.0, 9.0);
     }
 
+    public static int? InjuryRoll(int seasonId, int matchday, int playerId) =>
+        InjuryRoll(seasonId, matchday, playerId, 1.0);
+
     /// <summary>
-    /// Deterministic injury roll for a player who started this matchday: ~2% chance of a knock
-    /// lasting 1-4 matchdays. Returns matchday + duration — the player is out THROUGH that
-    /// matchday, so duration d misses exactly d games — or null for no injury.
-    /// Same (seasonId, matchday, playerId) always rolls the same.
+    /// Injury roll scaled by <paramref name="proneness"/> (a multiplier on the ~2% base: eFootball's
+    /// Injury Resistance inverted — robust ~0.5, fragile ~1.6). Glass players pick up knocks two to
+    /// three times as often as iron men. Still fully deterministic in (season, matchday, player).
     /// </summary>
-    public static int? InjuryRoll(int seasonId, int matchday, int playerId)
+    public static int? InjuryRoll(int seasonId, int matchday, int playerId, double proneness)
     {
         var h = Mix(seasonId, matchday, playerId);
-        if ((uint)(h >> 32) % 10000 >= 200) return null;         // 2% of the upper 32 bits
-        var duration = 1 + (int)((uint)h % 4);                   // lower bits: 1..4 matchdays
+        var threshold = (uint)Math.Clamp(200.0 * proneness, 0.0, 9999.0);
+        if ((uint)(h >> 32) % 10000 >= threshold) return null;
+        var duration = 1 + (int)((uint)h % 4);
         return matchday + duration;
     }
 

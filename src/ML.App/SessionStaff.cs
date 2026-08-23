@@ -83,6 +83,10 @@ public sealed partial class Session
         }
         var rng = new SeededRandom(777_001 ^ WorldSeed);
 
+        // Real FM staff first (real names + real ratings); the synthetic pool only tops up shortfalls.
+        var real = new Dictionary<string, int>();
+        try { real = SeedRealStaffPool(); } catch { /* fall back to fully synthetic */ }
+
         // Real coach names first (Coach.bin pool), synthetic fill after.
         var names = new List<string>();
         try
@@ -111,7 +115,8 @@ public sealed partial class Session
         int Attr(bool key) => key ? 8 + rng.Next(12) : 3 + rng.Next(12);
         foreach (var (role, count) in counts)
         {
-            for (var i = 0; i < count; i++)
+            var shortfall = Math.Max(0, count - real.GetValueOrDefault(role, 0));
+            for (var i = 0; i < shortfall; i++)
             {
                 // Style strengths: a modest base everywhere and one clear speciality.
                 var styles = new int[6];

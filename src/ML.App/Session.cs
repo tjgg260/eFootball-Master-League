@@ -42,6 +42,12 @@ public sealed partial class Session
         Board = new BoardConfidence(expectation, starting: StoredBoardConfidence);
 
         RestoreSeasonFinances();   // season income/spend survive app restarts (P0)
+        // Youth sides (U21/U18) exist for every career club — created + seeded once per career.
+        try
+        {
+            if (GetMeta("youth_teams_v1") is null) { EnsureYouthTeams(); SetMeta("youth_teams_v1", "1"); }
+        }
+        catch { /* youth teams are additive */ }
         // OCR paths from settings (meta), falling back to the recorded defaults.
         if (GetMeta("steam_root") is { Length: > 0 } root) ScoreImport.SteamRoot = root;
         if (GetMeta("steam_user_id") is { Length: > 0 } uid) ScoreImport.SteamUserId = uid;
@@ -239,8 +245,8 @@ public sealed partial class Session
                                  && !f.Played && f.Id != exceptFixtureId
                                  && f.HomeTeamId != CurrentTeamId && f.AwayTeamId != CurrentTeamId))
         {
-            var h = XiStrengthOf(f.HomeTeamId);
-            var a = XiStrengthOf(f.AwayTeamId);
+            var h = MatchdayStrengthOf(f.HomeTeamId, rng);
+            var a = MatchdayStrengthOf(f.AwayTeamId, rng);
             // A point and a half of home advantage on the attack — crowds matter (P3).
             var r = sim.Simulate(new TeamStrength(h.Attack + 1.5, h.Defence),
                                  new TeamStrength(a.Attack, a.Defence));
@@ -400,8 +406,8 @@ public sealed partial class Session
         var sim = new PoissonMatchSimulator(rng);
         foreach (var f in Repo.Fixtures(SeasonId).Where(f => f.Kind == "league" && !f.Played).ToList())
         {
-            var h = XiStrengthOf(f.HomeTeamId);
-            var a = XiStrengthOf(f.AwayTeamId);
+            var h = MatchdayStrengthOf(f.HomeTeamId, rng);
+            var a = MatchdayStrengthOf(f.AwayTeamId, rng);
             // A point and a half of home advantage on the attack — crowds matter (P3).
             var r = sim.Simulate(new TeamStrength(h.Attack + 1.5, h.Defence),
                                  new TeamStrength(a.Attack, a.Defence));
@@ -793,32 +799,49 @@ public sealed partial class Session
             rows);
     }
 
-    private void PersistRole(int playerId, string role)
+    private void PersistRole(int playerId, string role) => PersistRoleKind(playerId, role, "primary");
+
+    /// <summary>Persist a player's in- (kind='primary') or out-of-possession (kind='secondary')
+    /// role. Only that kind's row is touched, so setting one never wipes the other.</summary>
+    private void PersistRoleKind(int playerId, string role, string kind)
     {
         if (playerId <= 0) return;
         using (var del = Db.Connection.CreateCommand())
         {
-            del.CommandText = "DELETE FROM player_playstyles WHERE player_id=$p";
+            del.CommandText = "DELETE FROM player_playstyles WHERE player_id=$p AND kind=$k";
             del.Parameters.AddWithValue("$p", playerId);
+            del.Parameters.AddWithValue("$k", kind);
             del.ExecuteNonQuery();
         }
-        // "Basic" (and the legacy "Balanced") mean no specialised style — the delete alone.
-        if (string.IsNullOrWhiteSpace(role) || role is "Basic" or "Balanced") return;
+        // "Basic"/"None" (and legacy "Balanced") mean no specialised style — the delete alone.
+        if (string.IsNullOrWhiteSpace(role) || role is "Basic" or "Balanced" or "None") return;
         using var ins = Db.Connection.CreateCommand();
-        ins.CommandText = "INSERT INTO player_playstyles(player_id,playstyle) VALUES($p,$r)";
+        ins.CommandText = "INSERT OR IGNORE INTO player_playstyles(player_id,playstyle,kind) " +
+                          "VALUES($p,$r,$k)";
         ins.Parameters.AddWithValue("$p", playerId);
         ins.Parameters.AddWithValue("$r", role);
+        ins.Parameters.AddWithValue("$k", kind);
         ins.ExecuteNonQuery();
     }
 
-    /// <summary>A player's saved role (playstyle) — "Basic" when none is set.</summary>
-    public string RoleOf(int playerId)
+    /// <summary>Set a player's out-of-possession (defensive) role.</summary>
+    public void SetSecondaryRole(int playerId, string role) =>
+        PersistRoleKind(playerId, role, "secondary");
+
+    private string RoleOfKind(int playerId, string kind, string fallback)
     {
         using var cmd = Db.Connection.CreateCommand();
-        cmd.CommandText = "SELECT playstyle FROM player_playstyles WHERE player_id=$p LIMIT 1";
+        cmd.CommandText = "SELECT playstyle FROM player_playstyles WHERE player_id=$p AND kind=$k LIMIT 1";
         cmd.Parameters.AddWithValue("$p", playerId);
-        return cmd.ExecuteScalar() as string ?? "Basic";
+        cmd.Parameters.AddWithValue("$k", kind);
+        return cmd.ExecuteScalar() as string ?? fallback;
     }
+
+    /// <summary>A player's saved in-possession role — "Basic" when none is set.</summary>
+    public string RoleOf(int playerId) => RoleOfKind(playerId, "primary", "Basic");
+
+    /// <summary>A player's saved out-of-possession role — "None" when none is set.</summary>
+    public string SecondaryRoleOf(int playerId) => RoleOfKind(playerId, "secondary", "None");
 
     /// <summary>Whether the club last saved with a fluid (distinct Sub) shape.</summary>
     public bool SavedFluid() => GetMeta($"tactics_fluid_{CurrentTeamId}") == "1";
@@ -960,7 +983,7 @@ public sealed partial class Session
                             injuredUntil = until;
                         }
                     }
-                    form = ConditionModel.FormAfterResult(form, o);
+                    form = ConditionModel.FormAfterResult(form, o, SteadinessOf(member.PlayerId));
                 }
                 Repo.UpsertCondition(new PlayerConditionRow
                 {
@@ -976,11 +999,12 @@ public sealed partial class Session
     /// <summary>Injury roll honouring the Settings frequency (Low halves, High adds a chance).</summary>
     internal int? RollInjury(int matchday, int playerId)
     {
-        var rolled = ConditionModel.InjuryRoll(SeasonId, matchday, playerId);
+        var proneness = PronenessOf(playerId);
+        var rolled = ConditionModel.InjuryRoll(SeasonId, matchday, playerId, proneness);
         return (GetMeta("injury_freq") ?? "Normal") switch
         {
             "Low" => (playerId & 1) == 0 ? rolled : null,
-            "High" => rolled ?? ConditionModel.InjuryRoll(SeasonId ^ 0x5A5A, matchday, playerId),
+            "High" => rolled ?? ConditionModel.InjuryRoll(SeasonId ^ 0x5A5A, matchday, playerId, proneness),
             _ => rolled,
         };
     }

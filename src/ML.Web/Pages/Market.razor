@@ -1,0 +1,337 @@
+@page "/market"
+@using ML.App
+@inject Db Db
+@inject GameHost Game
+@inject AppState State
+
+<div class="content" style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;align-content:stretch">
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0">
+        <div class="toolbar">
+            <div class="chyron" style="border-left-color:var(--chyron)"><span>Market · @(_rows.Count) of @(_total.ToString("N0"))</span></div>
+            <div class="tools">
+                <input class="theme" placeholder="Search name…" value="@_q" @oninput="OnSearch" />
+                <button class="fbtn @(_unit is null ? "on" : "")" @onclick='() => SetUnit(null)'>Any</button>
+                <button class="fbtn @(_unit == "GK" ? "on" : "")" @onclick='() => SetUnit("GK")'>GK</button>
+                <button class="fbtn @(_unit == "DEF" ? "on" : "")" @onclick='() => SetUnit("DEF")'>DEF</button>
+                <button class="fbtn @(_unit == "MID" ? "on" : "")" @onclick='() => SetUnit("MID")'>MID</button>
+                <button class="fbtn @(_unit == "FWD" ? "on" : "")" @onclick='() => SetUnit("FWD")'>FWD</button>
+                <button class="fbtn @(_u23 ? "on" : "")" @onclick="ToggleU23">U23</button>
+            </div>
+        </div>
+
+        <div class="gtable">
+            <div class="mhead">
+                <div class="c-pad">Pos</div><div></div><div>Name</div><div>Club</div>
+                <div class="c-center">Age</div><div class="c-center">Ovr</div><div></div>
+            </div>
+            <div class="rows">
+                @if (_q.Length < 2)
+                {
+                    <div style="padding:24px;font:400 13px/18px var(--font-body);color:var(--text-3)">
+                        Type at least two letters to search the world database.
+                    </div>
+                }
+                else if (_rows.Count == 0)
+                {
+                    <div style="padding:24px;font:400 13px/18px var(--font-body);color:var(--text-3)">No players match.</div>
+                }
+                @foreach (var m in _rows)
+                {
+                    <div class="mrow">
+                        <div class="c-pad"><span class="pill @m.Unit.ToLowerInvariant()"><span>@m.Position.ToUpperInvariant()</span></span></div>
+                        <div>
+                            @if (Db.FaceDataUri(m.FacePath) is { } uri)
+                            { <img class="face" src="@uri" alt="" /> }
+                            else
+                            { <div class="face mono">@Mark(m.Name)</div> }
+                        </div>
+                        <div class="gname"><span class="nm">@m.Name</span></div>
+                        <div class="mclub">@m.Club</div>
+                        <div class="gage tnum">@(m.Age > 0 ? m.Age.ToString() : "—")</div>
+                        <div class="govr">@(m.Rating > 0 ? m.Rating.ToString() : "—")</div>
+                        <div>
+                            @if (Game.Session is not null)
+                            {
+                                <button class="offerbtn" @onclick="() => OpenTalks(m)">
+                                    @(m.Club == "Free agent" ? "Sign" : "Make offer")
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="gfoot">@_windowLine</div>
+        </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;min-height:0">
+        <div class="pcard" style="flex:none">
+            <div class="label">Active talks</div>
+            @if (_talks.Count == 0)
+            {
+                <div style="font:400 12px/16px var(--font-body);color:var(--text-3)">No negotiations in play.</div>
+            }
+            @foreach (var t in _talks)
+            {
+                <button class="benchrow" @onclick="() => ResumeTalks(t.PlayerId, t.PlayerName)">
+                    <span class="nm d-narrow" style="font-size:13px">@t.PlayerName</span>
+                    <span style="margin-left:auto;font:500 11px/14px var(--font-body);color:@(t.State == "agreed" ? "var(--win)" : t.State == "dead" ? "var(--loss)" : "var(--kickoff)")">
+                        @(t.State == "agreed" ? "AGREED" : t.State == "dead" ? "COLLAPSED" : $"Round {t.Round}")
+                    </span>
+                </button>
+            }
+        </div>
+        <div class="pcard" style="flex:1">
+            <div class="rowflex" style="gap:8px">
+                <span style="width:8px;height:8px;background:var(--chyron)"></span>
+                <span class="label" style="color:var(--chyron)">Transfers feed</span>
+            </div>
+            @if (_feed.Count == 0)
+            {
+                <div style="font:400 12px/16px var(--font-body);color:var(--text-3)">Deals around the league appear here.</div>
+            }
+            @foreach (var f in _feed)
+            {
+                <div style="padding:6px 0;border-bottom:1px solid var(--line);font:400 12px/16px var(--font-body);color:var(--text-2)">
+                    <span style="color:var(--text)">@f.Player</span> → @f.ToTeam · <span class="tnum">£@Money(f.Fee)</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ================= negotiation modal ================= *@
+@if (_target is { } tgt)
+{
+    <div class="modalveil" @onclick="CloseTalks">
+        <div class="negomodal" @onclick:stopPropagation>
+            <div class="negohead">
+                <div class="chyron" style="border-left-color:var(--chyron);height:30px"><span style="font-size:14px">
+                    @(_view is { } v0 ? $"Negotiation · round {v0.Round}" : "Opening talks")</span></div>
+                <span class="d-narrow" style="font-size:18px;margin-left:12px">@tgt.Name</span>
+                <span style="margin-left:auto;font:400 12px/16px var(--font-body);color:var(--text-3)">@tgt.Club</span>
+            </div>
+
+            <div class="negolog">
+                @foreach (var line in _log)
+                {
+                    <div class="negoline @(line.You ? "you" : "them")">@line.Text</div>
+                }
+            </div>
+
+            @if (_view is { } v && !_agreed && !_dead)
+            {
+                <div class="negoform">
+                    <div>
+                        <div class="label">Fee (£)</div>
+                        <input class="theme tnum" style="width:100%" type="number" step="100000" min="0" @bind="_fee" />
+                        <div style="font:400 10px/14px var(--font-data);color:var(--text-3)">they'd listen at £@Money(v.Ask) · value £@Money(v.MarketValue)</div>
+                    </div>
+                    <div>
+                        <div class="label">Sell-on %</div>
+                        <input class="theme tnum" style="width:100%" type="number" min="0" max="50" @bind="_sellOn" />
+                    </div>
+                    <label class="rowflex" style="gap:6px;font:400 12px/16px var(--font-body);color:var(--text-2);align-self:end;cursor:pointer">
+                        <input type="checkbox" @bind="_instalments" /> Instalments
+                    </label>
+                    <div style="align-self:end">
+                        <div class="label">Deal likelihood</div>
+                        <div class="bar" style="height:8px;background:var(--surface-2);position:relative;width:140px">
+                            <i style="position:absolute;left:0;top:0;bottom:0;width:@(Likelihood())%;background:@(Likelihood() >= 60 ? "var(--win)" : Likelihood() >= 35 ? "var(--draw)" : "var(--loss)")"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="negoactions">
+                    <button class="btn" @onclick="SendOffer">Send offer</button>
+                    <button class="btn ghost" @onclick="WalkAway">Walk away</button>
+                </div>
+            }
+            else if (_agreed && !_signed)
+            {
+                <div class="negoform" style="grid-template-columns:120px 1fr auto">
+                    <div>
+                        <div class="label">Contract years</div>
+                        <select class="theme" style="width:100%" @onchange="e => SetYears(e.Value?.ToString())">
+                            @foreach (var y in new[] { 2, 3, 4, 5 })
+                            {
+                                <option value="@y" selected="@(y == _years)">@y years</option>
+                            }
+                        </select>
+                    </div>
+                    <div style="align-self:end;font:400 13px/18px var(--font-body);color:var(--text-2)">
+                        Agent asks <span class="tnum" style="color:var(--text);font-weight:700">£@Money(_wage)/wk</span>
+                    </div>
+                    <div style="align-self:end">
+                        <button class="btn" @onclick="Complete">Complete signing</button>
+                    </div>
+                </div>
+            }
+            else if (_signed || _dead)
+            {
+                <div class="negoactions"><button class="btn ghost" @onclick="CloseTalks">Close</button></div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private sealed record LogLine(bool You, string Text);
+    private sealed record TalkRow(int PlayerId, string PlayerName, int Round, string State);
+
+    private List<MarketRow> _rows = new();
+    private List<TalkRow> _talks = new();
+    private IReadOnlyList<(int PlayerId, string Player, string ToTeam, long Fee)> _feed
+        = Array.Empty<(int, string, string, long)>();
+    private long _total;
+    private string _q = "";
+    private string? _unit;
+    private bool _u23;
+    private string _windowLine = "";
+
+    private MarketRow? _target;
+    private NegotiationView? _view;
+    private readonly List<LogLine> _log = new();
+    private long _fee;
+    private int _sellOn;
+    private bool _instalments;
+    private bool _agreed;
+    private bool _dead;
+    private bool _signed;
+    private int _years = 3;
+    private long _wage;
+
+    protected override void OnInitialized()
+    {
+        _total = Db.PlayerCount();
+        RefreshSide();
+        _windowLine = Game.Session is { } s
+            ? (s.IsDeadlineDay() ? "DEADLINE DAY — talks conclude tonight." : "Transfer talks run through the shared career engine.")
+            : "Start a career to make offers.";
+    }
+
+    private void RefreshSide()
+    {
+        if (Game.Session is not { } s) return;
+        _feed = s.TransfersFeed(8);
+        _talks.Clear();
+        using var cmd = s.Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT n.player_id, p.name, n.round, n.state FROM negotiations n " +
+                          "JOIN players p ON p.id=n.player_id ORDER BY rowid DESC LIMIT 8";
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) _talks.Add(new TalkRow(r.GetInt32(0), r.GetString(1), r.GetInt32(2), r.GetString(3)));
+    }
+
+    private void OnSearch(ChangeEventArgs e) { _q = e.Value?.ToString() ?? ""; Run(); }
+    private void SetUnit(string? u) { _unit = u; Run(); }
+    private void ToggleU23() { _u23 = !_u23; Run(); }
+    private void Run() => _rows = _q.Length >= 2 ? Db.SearchPlayers(_q, _unit, _u23 ? 23 : null) : new();
+
+    // ---- negotiation flow ----------------------------------------------------------
+
+    private void OpenTalks(MarketRow m)
+    {
+        if (Game.Session is not { } s) return;
+        ResetModal(m);
+        if (m.Club == "Free agent")
+        {
+            var msg = s.SignPlayer((int)m.Id);
+            _log.Add(new LogLine(false, msg));
+            _signed = true; _dead = true;      // terminal either way; message says which
+            RefreshSide();
+            return;
+        }
+        var line = s.StartNegotiation((int)m.Id);
+        _log.Add(new LogLine(false, line));
+        _view = s.NegotiationFor((int)m.Id);
+        if (_view is null) { _dead = true; return; }   // window shut / squad minimum etc.
+        _fee = _view.Ask;
+        if (_view.State == "agreed") ReachAgreement();
+        if (_view.State == "dead") _dead = true;
+    }
+
+    private void ResumeTalks(int playerId, string name)
+    {
+        if (Game.Session is not { } s) return;
+        var m = _rows.FirstOrDefault(x => x.Id == playerId)
+                ?? new MarketRow(playerId, name, "", 0, 0, null, "");
+        ResetModal(m);
+        _view = s.NegotiationFor(playerId);
+        if (_view is null) { _dead = true; _log.Add(new LogLine(false, "Talks are closed.")); return; }
+        _log.Add(new LogLine(false, $"{_view.SellerName}: round {_view.Round}. {_view.Stance} Their number is £{_view.Ask:N0}."));
+        _fee = _view.Ask;
+        if (_view.State == "agreed") ReachAgreement();
+        if (_view.State == "dead") { _dead = true; _log.Add(new LogLine(false, "These talks collapsed.")); }
+    }
+
+    private void ResetModal(MarketRow m)
+    {
+        _target = m; _view = null; _log.Clear();
+        _agreed = _dead = _signed = false;
+        _sellOn = 0; _instalments = false; _years = 3; _wage = 0;
+    }
+
+    private int Likelihood()
+        => Game.Session is { } s && _target is { } t ? Math.Clamp(s.DealLikelihood((int)t.Id, _fee, _sellOn, _instalments), 0, 100) : 0;
+
+    private void SendOffer()
+    {
+        if (Game.Session is not { } s || _target is not { } t) return;
+        _log.Add(new LogLine(true, $"Offer: £{_fee:N0}" +
+            (_sellOn > 0 ? $" + {_sellOn}% sell-on" : "") + (_instalments ? " in instalments" : "")));
+        var (msg, agreed, dead) = s.SendClubOffer((int)t.Id, _fee, _sellOn, _instalments);
+        _log.Add(new LogLine(false, msg));
+        _view = s.NegotiationFor((int)t.Id);
+        if (agreed) ReachAgreement();
+        else if (dead) _dead = true;
+        else if (_view is { } v) _fee = Math.Max(_fee, (_fee + v.Ask) / 2);
+        RefreshSide();
+    }
+
+    private void ReachAgreement()
+    {
+        if (Game.Session is not { } s || _target is not { } t) return;
+        _agreed = true;
+        _wage = s.SigningWageDemand((int)t.Id, _years);
+        _log.Add(new LogLine(false, $"Fee agreed. His agent wants £{_wage:N0}/wk on {_years} years."));
+    }
+
+    private void SetYears(string? v)
+    {
+        if (int.TryParse(v, out var y) && Game.Session is { } s && _target is { } t)
+        {
+            _years = y;
+            _wage = s.SigningWageDemand((int)t.Id, y);
+        }
+    }
+
+    private void Complete()
+    {
+        if (Game.Session is not { } s || _target is not { } t) return;
+        var msg = s.CompleteSigning((int)t.Id, _fee, _sellOn, _instalments, _wage, _years);
+        _log.Add(new LogLine(false, msg));
+        _signed = true;
+        RefreshSide();
+        State.Reload();
+        Run();
+    }
+
+    private void WalkAway()
+    {
+        if (Game.Session is { } s && _target is { } t) s.WalkAwayFromNegotiation((int)t.Id);
+        _dead = true;
+        _log.Add(new LogLine(true, "We walk away."));
+        RefreshSide();
+    }
+
+    private void CloseTalks() { _target = null; }
+
+    private static string Money(long v) => Math.Abs(v) >= 1_000_000
+        ? $"{v / 1_000_000.0:0.#}m" : Math.Abs(v) >= 1_000 ? $"{v / 1_000.0:0.#}k" : v.ToString();
+
+    private static string Mark(string n)
+    {
+        var w = n.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var sname = w.Length > 0 ? w[^1] : n;
+        return (sname.Length >= 2 ? sname[..2] : sname).ToUpperInvariant();
+    }
+}

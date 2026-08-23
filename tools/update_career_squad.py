@@ -24,7 +24,13 @@ from rfs_translate import translate    # noqa: E402
 RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
 RFS_PLAYERS = Path.home() / "OneDrive/Documents/RFS/Players"
 EF_CSV = REPO / "samples" / "editor-bundled-players.csv"
-PLAYER_BASE = 21_000_000
+# Curated-overlay namespace: ABOVE the FM range (~12B) and BELOW the generated fillers (50B), so
+# these hand-curated 2026/27 players are attached to REFERENCE squads without living inside the
+# career-reset wipe window (20M-700M) — a reseed no longer deletes-and-recreates them, and they
+# never masquerade as career copies. (Old base 21_000_000 polluted reference Liverpool/Arsenal
+# with career-range ids.)
+PLAYER_BASE = 45_000_000_000
+CURATED_END = 46_000_000_000
 
 POS = {"GK": "GK", "DF": "CB", "MF": "CMF", "FW": "CF"}
 
@@ -162,10 +168,13 @@ def main() -> int:
         return row[0] if row else None
 
     con.execute("BEGIN")
-    con.execute("DELETE FROM players WHERE id>=?", (PLAYER_BASE,))
-    con.execute("DELETE FROM player_attributes WHERE player_id>=?", (PLAYER_BASE,))
+    # Clear ONLY the curated namespace (45B-46B) — never the FM world below it or the generated
+    # fillers above it. The old 21M-700M clear wiped career copies and RFS alike.
+    con.execute("DELETE FROM squad_members WHERE player_id>=? AND player_id<?", (PLAYER_BASE, CURATED_END))
+    con.execute("DELETE FROM players WHERE id>=? AND id<?", (PLAYER_BASE, CURATED_END))
+    con.execute("DELETE FROM player_attributes WHERE player_id>=? AND player_id<?", (PLAYER_BASE, CURATED_END))
     try:   # replaced players take their condition rows with them (table absent on old DBs)
-        con.execute("DELETE FROM player_condition WHERE player_id>=?", (PLAYER_BASE,))
+        con.execute("DELETE FROM player_condition WHERE player_id>=? AND player_id<?", (PLAYER_BASE, CURATED_END))
     except sqlite3.OperationalError:
         pass
     next_pid = PLAYER_BASE + 1

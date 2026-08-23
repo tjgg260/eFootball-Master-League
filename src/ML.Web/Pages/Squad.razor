@@ -1,0 +1,135 @@
+@page "/squad"
+@inject Db Db
+@inject AppState State
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron"><span>Squad · @_squad.Count players</span></div>
+        <div class="tools">
+            <button class="fbtn @(_filter is null ? "on" : "")" @onclick="() => _filter = null">All</button>
+            @foreach (var u in _units)
+            {
+                <button class="fbtn @(_filter == u ? "on" : "")" @onclick="() => _filter = u">@u</button>
+            }
+            <div class="teamsearch">
+                <input class="theme" placeholder="Search clubs…" value="@_query"
+                       @oninput="OnSearch" @onfocus="() => _open = true" />
+                @if (_open && _results.Count > 0)
+                {
+                    <div class="results">
+                        @foreach (var t in _results)
+                        {
+                            <button class="result" @onclick="() => Choose(t)">
+                                <span>@t.Name</span><span class="tnum rmeta">@t.SquadSize</span>
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="gtable">
+        <div class="ghead">
+            <div></div><div class="c-pad">Pos</div><div></div><div>Name</div>
+            <div class="c-center">Age</div><div class="c-center">Ovr</div><div class="c-center">Growth</div>
+            <div class="c-center">Form</div><div class="c-center">Contract</div><div class="c-pad">Status</div>
+        </div>
+        <div class="rows">
+            @foreach (var unit in _units)
+            {
+                var rows = Filtered().Where(p => p.Unit == unit).ToList();
+                if (rows.Count == 0) { continue; }
+                <div class="gsec"><span class="pill @unit.ToLowerInvariant()"><span>@unit</span></span><span class="n tnum">@rows.Count</span></div>
+                @foreach (var p in rows)
+                {
+                    <div class="grow_ @(p == _sel ? "sel" : "")" @onclick="() => _sel = p">
+                        <div></div>
+                        <div class="c-pad"><span class="pill @p.Unit.ToLowerInvariant()"><span>@p.Position.ToUpperInvariant()</span></span></div>
+                        <div>
+                            @if (Db.FaceDataUri(p.FacePath) is { } uri)
+                            { <img class="face" src="@uri" alt="" /> }
+                            else
+                            { <div class="face mono">@Mark(p.Name)</div> }
+                        </div>
+                        <div class="gname"><span class="nm">@p.Name</span></div>
+                        <div class="gage tnum">@(p.Age > 0 ? p.Age.ToString() : "—")</div>
+                        <div class="govr">@(p.Rating > 0 ? p.Rating.ToString() : "—")</div>
+                        <div class="ggro" style="color:var(--text-3)">—</div>
+                        <div class="chips">
+                            @for (var i = 0; i < 5; i++) { <span class="chip n"></span> }
+                        </div>
+                        <div class="c-center" style="font:400 12px/16px var(--font-data);color:var(--text-3)">—</div>
+                        <div class="gstatus" style="color:@StatusColor(p)">@Status(p)</div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    @if (_sel is { } sel)
+    {
+        <PlayerProfile Id="sel.Id" TeamName="@_teamName" Status="@Status(sel)" @key="sel.Id" />
+    }
+</div>
+
+@code {
+    private static readonly string[] _units = { "GK", "DEF", "MID", "FWD" };
+
+    private List<PlayerRow> _squad = new();
+    private List<TeamRow> _results = new();
+    private HashSet<long> _starters = new();
+    private PlayerRow? _sel;
+    private int _teamId;
+    private string _teamName = "";
+    private string _query = "";
+    private string? _filter;
+    private bool _open;
+
+    protected override void OnInitialized()
+    {
+        if (State.Career is { } c) { _teamId = c.TeamId; Load(); return; }
+        var pick = Db.FindTeam("Liverpool FC") ?? Db.FindTeam("Arsenal FC")
+                   ?? Db.SearchTeams("", 1).FirstOrDefault();
+        if (pick is not null) { _teamId = pick.Id; Load(); }
+    }
+
+    private IEnumerable<PlayerRow> Filtered()
+        => _filter is null ? _squad : _squad.Where(p => p.Unit == _filter);
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? "";
+        _open = true;
+        _results = _query.Length >= 2 ? Db.SearchTeams(_query) : new();
+    }
+
+    private void Choose(TeamRow t)
+    {
+        _teamId = t.Id; _query = ""; _results = new(); _open = false;
+        Load();
+    }
+
+    private void Load()
+    {
+        _teamName = Db.TeamName(_teamId);
+        _squad = Db.Squad(_teamId);
+        // derived depth-chart status until real lineups exist: best XI by rating = starter
+        _starters = _squad.OrderByDescending(p => p.Rating).Take(11).Select(p => p.Id).ToHashSet();
+        _sel = _squad.OrderByDescending(p => p.Rating).FirstOrDefault();
+        State.SetTeam(_teamId, _teamName);
+    }
+
+    private string Status(PlayerRow p)
+        => _starters.Contains(p.Id) ? "Starter" : p.Age is > 0 and <= 21 ? "Youth" : "Rotation";
+
+    private string StatusColor(PlayerRow p)
+        => _starters.Contains(p.Id) ? "var(--win)" : p.Age is > 0 and <= 21 ? "var(--kickoff)" : "var(--text-2)";
+
+    private static string Mark(string n)
+    {
+        var w = n.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var s = w.Length > 0 ? w[^1] : n;
+        return (s.Length >= 2 ? s[..2] : s).ToUpperInvariant();
+    }
+}

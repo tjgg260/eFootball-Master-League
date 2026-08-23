@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ML.Web</RootNamespace>
+    <AssemblyName>ML.Web</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Wpf" Version="9.0.90" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ML.Core\ML.Core.csproj" />
+    <ProjectReference Include="..\ML.Data\ML.Data.csproj" />
+    <ProjectReference Include="..\ML.Ingest\ML.Ingest.csproj" />
+    <ProjectReference Include="..\ML.Sync\ML.Sync.csproj" />
+  </ItemGroup>
+
+  <!-- The Session game engine is shared with ML.App by compile-link: same files, same behavior.
+       UI-coupled files (SessionPortrait, Visuals, Theme) are excluded; ML.Web ships pure shims
+       for the helpers the engine calls (Compat/Visuals.cs, Compat/Theme.cs). -->
+  <ItemGroup>
+    <Compile Include="..\ML.App\Session.cs" Link="Engine\Session.cs" />
+    <Compile Include="..\ML.App\SessionAiSelection.cs" Link="Engine\SessionAiSelection.cs" />
+    <Compile Include="..\ML.App\SessionBoardLevers.cs" Link="Engine\SessionBoardLevers.cs" />
+    <Compile Include="..\ML.App\SessionCareer.cs" Link="Engine\SessionCareer.cs" />
+    <Compile Include="..\ML.App\SessionDevelopment.cs" Link="Engine\SessionDevelopment.cs" />
+    <Compile Include="..\ML.App\SessionHistory.cs" Link="Engine\SessionHistory.cs" />
+    <Compile Include="..\ML.App\SessionInbox.cs" Link="Engine\SessionInbox.cs" />
+    <Compile Include="..\ML.App\SessionKnowledge.cs" Link="Engine\SessionKnowledge.cs" />
+    <Compile Include="..\ML.App\SessionLoans.cs" Link="Engine\SessionLoans.cs" />
+    <Compile Include="..\ML.App\SessionMatchMemory.cs" Link="Engine\SessionMatchMemory.cs" />
+    <Compile Include="..\ML.App\SessionMorale.cs" Link="Engine\SessionMorale.cs" />
+    <Compile Include="..\ML.App\SessionNegotiation.cs" Link="Engine\SessionNegotiation.cs" />
+    <Compile Include="..\ML.App\SessionObjectives.cs" Link="Engine\SessionObjectives.cs" />
+    <Compile Include="..\ML.App\SessionPlayTime.cs" Link="Engine\SessionPlayTime.cs" />
+    <Compile Include="..\ML.App\SessionRivals.cs" Link="Engine\SessionRivals.cs" />
+    <Compile Include="..\ML.App\SessionScout.cs" Link="Engine\SessionScout.cs" />
+    <Compile Include="..\ML.App\SessionSquad.cs" Link="Engine\SessionSquad.cs" />
+    <Compile Include="..\ML.App\SessionStaff.cs" Link="Engine\SessionStaff.cs" />
+    <Compile Include="..\ML.App\SessionWorld.cs" Link="Engine\SessionWorld.cs" />
+    <Compile Include="..\ML.App\SessionXiRepair.cs" Link="Engine\SessionXiRepair.cs" />
+    <Compile Include="..\ML.App\CareerBuilder.cs" Link="Engine\CareerBuilder.cs" />
+    <Compile Include="..\ML.App\CareerLoader.cs" Link="Engine\CareerLoader.cs" />
+    <Compile Include="..\ML.App\CatalogData.cs" Link="Engine\CatalogData.cs" />
+    <Compile Include="..\ML.App\Formations.cs" Link="Engine\Formations.cs" />
+    <Compile Include="..\ML.App\MatchLauncher.cs" Link="Engine\MatchLauncher.cs" />
+    <Compile Include="..\ML.App\ScoreImport.cs" Link="Engine\ScoreImport.cs" />
+    <Compile Include="..\ML.App\VideoCapture.cs" Link="Engine\VideoCapture.cs" />
+  </ItemGroup>
+
+</Project>

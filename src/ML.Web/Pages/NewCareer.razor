@@ -1,0 +1,97 @@
+@page "/new-career"
+@inject Db Db
+@inject AppState State
+@inject CareerSeeder Seeder
+@inject GameHost Game
+@inject NavigationManager Nav
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron" style="border-left-color:var(--chyron)"><span>New career</span></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px;flex:1;min-height:0">
+        <div class="pcard" style="min-height:0">
+            <div class="label">Pick your club</div>
+            <input class="theme" style="width:100%" placeholder="Search any club in the world…"
+                   value="@_q" @oninput="OnSearch" disabled="@_running" />
+            <div style="flex:1;min-height:0;overflow-y:auto;border:1px solid var(--line)">
+                @foreach (var t in _results)
+                {
+                    <button class="result" style="height:40px" @onclick="() => _pick = t" disabled="@_running">
+                        <span class="d-narrow" style="font-size:14px">@t.Name</span>
+                        <span class="tnum rmeta">@t.SquadSize players</span>
+                    </button>
+                }
+                @if (_q.Length >= 2 && _results.Count == 0)
+                {
+                    <div style="padding:16px;font:400 12px/16px var(--font-body);color:var(--text-3)">No clubs match.</div>
+                }
+            </div>
+        </div>
+
+        <div class="pcard">
+            @if (_pick is { } p)
+            {
+                <div class="label">Your club</div>
+                <div class="d-narrow" style="font-size:26px">@p.Name</div>
+                <div style="font:400 13px/18px var(--font-body);color:var(--text-2)">@p.SquadSize players in the squad today.</div>
+                <div class="hintbox">
+                    Seeding builds the club's league from the strongest sides in its country, pulls every
+                    real squad, generates a full double round-robin season plus an opening friendly, and
+                    hands you the dugout. The previous career is replaced; the world database is untouched.
+                </div>
+                @if (State.Career is { } c)
+                {
+                    <div class="objrow critical"><span class="oi">REPLACES</span>
+                        <span class="ot">Your current @c.TeamName career</span></div>
+                }
+                <div class="actions" style="margin-top:auto;display:flex;gap:6px">
+                    <button class="btn" style="flex:1" @onclick="Start" disabled="@_running">
+                        @(_running ? "Seeding…" : "Start career")
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div style="margin:auto;font:400 13px/18px var(--font-body);color:var(--text-3)">Search and select a club.</div>
+            }
+            @if (_log is not null)
+            {
+                <div style="max-height:200px;overflow-y:auto;background:var(--surface-2);padding:8px;
+                            font:400 11px/16px var(--font-data);color:var(--text-2);white-space:pre-wrap">@_log</div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<TeamRow> _results = new();
+    private TeamRow? _pick;
+    private string _q = "";
+    private string? _log;
+    private bool _running;
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        _q = e.Value?.ToString() ?? "";
+        _results = _q.Length >= 2 ? Db.SearchTeams(_q, 30) : new();
+    }
+
+    private async Task Start()
+    {
+        if (_pick is not { } p || _running) return;
+        _running = true;
+        _log = "Seeding career — this takes a minute…";
+        StateHasChanged();
+        var (ok, log) = await Seeder.SeedAsync(p.Name);
+        _log = log;
+        _running = false;
+        if (ok)
+        {
+            State.Reload();
+            Game.Reload();
+            Nav.NavigateTo("");
+        }
+    }
+}

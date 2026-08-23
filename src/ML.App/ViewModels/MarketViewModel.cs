@@ -10,11 +10,30 @@ namespace ML.App.ViewModels;
 
 public sealed record MarketPlayer(
     int Id, string Name, string Position, int Overall, int? Age, long ValueRaw, string Club,
-    string? PortraitPath = null, int? SkinTone = null)
+    string? PortraitPath = null, int? SkinTone = null, int Knowledge = 100,
+    string? TransferStatus = null)
 {
+    public string StatusLabel => TransferStatus switch
+    {
+        "not-for-sale" => "NOT FOR SALE",
+        "listed" => "LISTED",
+        "loan-listed" => "LOAN",
+        _ => "",
+    };
+    public bool HasStatus => StatusLabel.Length > 0;
+    public Avalonia.Media.IBrush StatusBrush => Visuals.Brush(TransferStatus switch
+    {
+        "not-for-sale" => "#D64545",
+        "listed" => "#1F9D4D",
+        _ => "#2D7DD2",
+    });
     public string AgeLabel => Age?.ToString() ?? "—";
     public string Value => $"£{ValueRaw:N0}";
-    public Avalonia.Media.IBrush RatingBrush => Visuals.RatingBrush(Overall);
+    // The overall is shown ONLY as a qualitative letter, and masked until the player is well
+    // scouted or on your team ("?" / "B?" instead of the real grade).
+    public string Grade => ML.Core.Development.AttributeKnowledge.GradeMasked(Overall, Knowledge);
+    public Avalonia.Media.IBrush RatingBrush =>
+        Knowledge >= 75 ? Visuals.RatingBrush(Overall) : Visuals.Brush("#8A93A2");
     public Avalonia.Media.Imaging.Bitmap? Portrait => Visuals.LoadBitmap(PortraitPath);
     public bool HasPortrait => Portrait is not null;
     public string Mark => Visuals.PlayerMark(Name);
@@ -76,7 +95,7 @@ public sealed partial class MarketViewModel : PageViewModel
     public IReadOnlyList<string> SortOptions { get; } = new[]
         { "Best rated", "Most valuable", "Youngest", "Name A–Z" };
 
-    [ObservableProperty] private string _sortBy = "Best rated";
+    [ObservableProperty] private string _sortBy = "Most valuable";
 
     partial void OnSearchTextChanged(string value) => Requery();
     partial void OnPositionFilterChanged(string value) => Requery();
@@ -109,6 +128,12 @@ public sealed partial class MarketViewModel : PageViewModel
 
     private void Requery()
     {
+        try { RequeryCore(); }
+        catch (Exception ex) { Program.Log("Market.Requery", ex); }
+    }
+
+    private void RequeryCore()
+    {
         var masterDb = FindMasterDb();
         if (masterDb is null) return;
         using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={masterDb};Mode=ReadOnly");
@@ -116,36 +141,43 @@ public sealed partial class MarketViewModel : PageViewModel
 
         try { WindowLine = _s.TransferWindowLabel(); } catch { WindowLine = ""; }
 
-        // Which career club currently holds each player (one query, not one per row).
-        var clubs = new Dictionary<int, string>();
-        using (var cq = con.CreateCommand())
-        {
-            cq.CommandText = "SELECT s.player_id, t.name FROM squad_members s " +
-                             "JOIN teams t ON t.id=s.team_id WHERE t.league_id IN (9000, 9001)";
-            using var cr = cq.ExecuteReader();
-            while (cr.Read()) clubs[cr.GetInt32(0)] = cr.GetString(1);
-        }
-
         Rows.Clear();
         using var cmd = con.CreateCommand();
         var where = new List<string>();
-        if (!string.IsNullOrWhiteSpace(SearchText)) where.Add("name LIKE $q");
-        if (PositionFilter != "All") where.Add("position = $pos");
-        if (MaxAge < 45) where.Add("COALESCE(age, 25) <= $age");
-        if (MinRating > 40) where.Add("COALESCE(overall_rating, 0) >= $min");
+        if (!string.IsNullOrWhiteSpace(SearchText)) where.Add("p.name LIKE $q");
+        if (PositionFilter != "All") where.Add("p.position = $pos");
+        if (MaxAge < 45) where.Add("COALESCE(p.age, 25) <= $age");
+        if (MinRating > 40) where.Add("COALESCE(p.overall_rating, 0) >= $min");
+        // The candidate pool is ordered by the chosen sort so "Most valuable" surfaces the world's
+        // priciest players, not the highest-rated. A player's club is his ACTUAL team (any league,
+        // not just the career divisions) — so the reference world reads as real clubs, and only a
+        // genuinely unattached player is a free agent.
+        var order = SortBy switch
+        {
+            "Most valuable" => "COALESCE((SELECT value FROM player_market WHERE player_id=p.id),0) DESC, " +
+                               "p.overall_rating DESC",
+            "Youngest" => "COALESCE(p.age,99) ASC, p.overall_rating DESC",
+            "Name A–Z" => "p.name ASC",
+            _ => "p.overall_rating DESC",
+        };
         cmd.CommandText =
             "SELECT p.id, p.name, p.position, COALESCE(p.overall_rating,0), p.age, " +
-            "p.portrait_path, (SELECT skin_tone FROM player_appearance a WHERE a.player_id=p.id) " +
+            "COALESCE(p.real_face_path, p.portrait_path), " +
+            "(SELECT skin_tone FROM player_appearance a WHERE a.player_id=p.id), " +
+            "(SELECT t.name FROM squad_members s JOIN teams t ON t.id=s.team_id " +
+            " WHERE s.player_id=p.id LIMIT 1), " +
+            "(SELECT transfer_status FROM player_market m WHERE m.player_id=p.id) " +
             "FROM players p " +
             (where.Count > 0 ? "WHERE " + string.Join(" AND ", where) + " " : "") +
-            "ORDER BY p.overall_rating DESC LIMIT 4000";
+            "ORDER BY " + order + " LIMIT 4000";
         if (!string.IsNullOrWhiteSpace(SearchText)) cmd.Parameters.AddWithValue("$q", $"%{SearchText.Trim()}%");
         if (PositionFilter != "All") cmd.Parameters.AddWithValue("$pos", PositionFilter);
         if (MaxAge < 45) cmd.Parameters.AddWithValue("$age", (int)MaxAge);
         if (MinRating > 40) cmd.Parameters.AddWithValue("$min", (int)MinRating);
 
         var cap = CapOf(ValueCap);
-        var found = new List<MarketPlayer>();
+        var found = new List<(int Id, string Name, string Pos, int Rating, int? Age, long Value,
+            string Club, string? Portrait, int? Skin, string? Status)>();
         using (var r = cmd.ExecuteReader())
         {
             while (r.Read())
@@ -153,23 +185,36 @@ public sealed partial class MarketViewModel : PageViewModel
                 var rating = r.GetInt32(3);
                 int? age = r.IsDBNull(4) ? null : r.GetInt32(4);
                 var id = r.GetInt32(0);
-                var club = clubs.GetValueOrDefault(id, "Free agent");
+                var club = r.IsDBNull(7) ? "Free agent" : r.GetString(7);
                 if (FreeAgentsOnly && club != "Free agent") continue;
-                var value = Session.ValuationOf(rating, age);
+                var value = _s.MarketValueOf(id, rating, age);
                 if (value > cap) continue;
-                found.Add(new MarketPlayer(id, r.GetString(1), r.GetString(2), rating, age, value, club,
-                    r.IsDBNull(5) ? null : r.GetString(5),
-                    r.IsDBNull(6) ? null : r.GetInt32(6)));
+                found.Add((id, r.GetString(1), r.GetString(2), rating, age, value, club,
+                    r.IsDBNull(5) ? null : r.GetString(5), r.IsDBNull(6) ? null : r.GetInt32(6),
+                    r.IsDBNull(8) ? null : r.GetString(8)));
             }
         }
-        IEnumerable<MarketPlayer> sorted = SortBy switch
+        IEnumerable<(int Id, string Name, string Pos, int Rating, int? Age, long Value,
+            string Club, string? Portrait, int? Skin, string? Status)> sorted = SortBy switch
         {
-            "Most valuable" => found.OrderByDescending(p => p.ValueRaw),
-            "Youngest" => found.OrderBy(p => p.Age ?? 99).ThenByDescending(p => p.Overall),
+            "Youngest" => found.OrderBy(p => p.Age ?? 99).ThenByDescending(p => p.Rating),
             "Name A–Z" => found.OrderBy(p => p.Name),
-            _ => found.OrderByDescending(p => p.Overall),
+            "Best rated" => found.OrderByDescending(p => p.Rating),
+            _ => found.OrderByDescending(p => p.Value).ThenByDescending(p => p.Rating),  // Most valuable
         };
-        foreach (var p in sorted.Take(300)) Rows.Add(p);
+        // Knowledge is only looked up for the 300 shown, so the grade masking costs nothing extra.
+        foreach (var p in sorted.Take(300))
+        {
+            var knowledge = KnowledgeSafe(p.Id);
+            Rows.Add(new MarketPlayer(p.Id, p.Name, p.Pos, p.Rating, p.Age, p.Value, p.Club,
+                p.Portrait, p.Skin, knowledge, p.Status));
+        }
+    }
+
+    private int KnowledgeSafe(int id)
+    {
+        try { return _s.FmAttributeMode ? _s.KnowledgeOf(id) : 100; }
+        catch { return 100; }
     }
 
     // --- the profile card: click a row, see the player -------------------------------
@@ -177,7 +222,7 @@ public sealed partial class MarketViewModel : PageViewModel
     [ObservableProperty] private bool _hasProfile;
     [ObservableProperty] private string _profileName = "";
     [ObservableProperty] private string _profilePosition = "";
-    [ObservableProperty] private int _profileRating;
+    [ObservableProperty] private string _profileGrade = "?";
     [ObservableProperty] private Avalonia.Media.IBrush _profileRatingBrush = Visuals.Brush("#C7CEDA");
     [ObservableProperty] private Avalonia.Media.IBrush _profileFill = Visuals.Brush("#3A4759");
     [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _profilePortrait;
@@ -198,18 +243,20 @@ public sealed partial class MarketViewModel : PageViewModel
         {
             ProfileName = value.Name;
             ProfilePosition = value.Position;
-            ProfileRating = value.Overall;
-            ProfileRatingBrush = Visuals.RatingBrush(value.Overall);
+            ProfileGrade = value.Grade;                 // gated letter, never the raw number
+            ProfileRatingBrush = value.RatingBrush;
             ProfileFill = Visuals.PositionBrush(value.Position);
             ProfileClub = value.Club;
-            ProfileValueLine = $"Market value {value.Value}";
+            ProfileValueLine = $"Market value {value.Value}" +
+                               (value.HasStatus ? $"   ·   {value.StatusLabel}" : "");
 
             using var con = new Microsoft.Data.Sqlite.SqliteConnection(
                 $"Data Source={FindMasterDb()};Mode=ReadOnly");
             con.Open();
             using (var cmd = con.CreateCommand())
             {
-                cmd.CommandText = "SELECT age, height_cm, weight_kg, nationality, portrait_path, " +
+                cmd.CommandText = "SELECT age, height_cm, weight_kg, nationality, " +
+                                  "COALESCE(real_face_path, portrait_path), " +
                                   "(SELECT playstyle FROM player_playstyles WHERE player_id=$p LIMIT 1) " +
                                   "FROM players WHERE id=$p";
                 cmd.Parameters.AddWithValue("$p", value.Id);

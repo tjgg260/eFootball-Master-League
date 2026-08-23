@@ -8,6 +8,9 @@ using Dapper;
 
 namespace ML.App.ViewModels;
 
+/// <summary>A club option in the Squad screen's browse-any-club picker.</summary>
+public sealed record SquadClubOption(int TeamId, string Name);
+
 // --- Squad (master-detail: roster grid + eFootball-style player card) -------------
 
 /// <summary>
@@ -34,10 +37,17 @@ public sealed record SquadEntry
     public int? HeightCm { get; init; }
     public int? WeightKg { get; init; }
     public Bitmap? Portrait { get; init; }
+    public int? SkinTone { get; init; }
+    public int? HairColor { get; init; }
+    public IBrush SkinBrush => Visuals.SkinBrush(SkinTone);
+    public IBrush HairBrush => Visuals.HairBrush(HairColor);
     public string Mark { get; init; } = "";
     public IBrush MarkBrush { get; init; } = CondGreen;
 
-    public IBrush RatingBrush => Visuals.RatingBrush(Rating);
+    /// <summary>0-100 dossier level; 100 for your own club. Gates the letter grade.</summary>
+    public int Knowledge { get; init; } = 100;
+    public string Grade => ML.Core.Development.AttributeKnowledge.GradeMasked(Rating, Knowledge);
+    public IBrush RatingBrush => Knowledge >= 75 ? Visuals.RatingBrush(Rating) : Visuals.Brush("#8A93A2");
     public IBrush ConditionBrush => Fatigue < 20 ? CondGreen : Fatigue < 40 ? CondAmber : CondRed;
     public bool IsInjured => InjuredUntil is not null;
     public string HeightDisplay => HeightCm is > 0 ? $"{HeightCm} cm" : "—";
@@ -129,16 +139,33 @@ public sealed partial class SquadViewModel : PageViewModel
     {
         _s = s;
         _fmMode = s.FmAttributeMode;   // backing field: no rebuild side-effect during ctor
+        _viewTeamId = s.CurrentTeamId;
 
+        var md = 0;
+        try { md = s.NextFixture()?.Matchday ?? 0; } catch { }
+        _nextMd = md;
+
+        BuildClubList();
+        LoadRoster(_viewTeamId);
+        ApplyFilter();
+        Selected = Rows.FirstOrDefault();
+        ReloadLoans();
+    }
+
+    /// <summary>Load a team's roster into <see cref="_all"/>. Own club or any browsed club.</summary>
+    private void LoadRoster(int teamId)
+    {
+        _all.Clear();
         // One query for the whole roster: playstyle + condition joined in. player_condition may
-        // hold no rows yet (COALESCE covers it); playstyle via subquery so a player with several
-        // stored styles can never duplicate a roster row.
-        var rows = s.Db.Connection.Query<SquadRowDto>(
+        // hold no rows yet (COALESCE covers it); the primary playstyle via subquery (kind-filtered
+        // so the out-of-possession row never leaks in) so a player can't duplicate a roster row.
+        var rows = _s.Db.Connection.Query<SquadRowDto>(
             """
             SELECT s.player_id PlayerId, s.squad_number Number, p.name Name, p.position Position,
                    COALESCE(p.age,0) Age, COALESCE(p.overall_rating,0) Rating,
                    p.height_cm HeightCm, p.weight_kg WeightKg, p.portrait_path PortraitPath,
-                   (SELECT playstyle FROM player_playstyles WHERE player_id=s.player_id LIMIT 1) Playstyle,
+                   (SELECT playstyle FROM player_playstyles WHERE player_id=s.player_id
+                        AND kind='primary' LIMIT 1) Playstyle,
                    COALESCE(c.fatigue,0) Fatigue, c.injured_until_md InjuredUntil,
                    COALESCE(m.value,50) Morale
             FROM squad_members s
@@ -147,12 +174,19 @@ public sealed partial class SquadViewModel : PageViewModel
             LEFT JOIN morale m ON m.player_id=s.player_id
             WHERE s.team_id=@teamId
             ORDER BY s.slot
-            """, new { teamId = s.CurrentTeamId });
+            """, new { teamId });
 
-        var md = 0;
-        try { md = s.NextFixture()?.Matchday ?? 0; } catch { }
+        var ownClub = teamId == _s.CurrentTeamId;
         foreach (var r in rows)
         {
+            var por = _s.PortraitFor(r.PlayerId);
+            int knowledge;
+            if (ownClub) { knowledge = 100; }
+            else
+            {
+                try { knowledge = _s.FmAttributeMode ? _s.KnowledgeOf(r.PlayerId) : 100; }
+                catch { knowledge = 100; }
+            }
             _all.Add(new SquadEntry
             {
                 PlayerId = r.PlayerId,
@@ -161,21 +195,65 @@ public sealed partial class SquadViewModel : PageViewModel
                 Position = r.Position,
                 Age = r.Age,
                 Rating = r.Rating,
+                Knowledge = knowledge,
                 Playstyle = string.IsNullOrWhiteSpace(r.Playstyle) ? "Basic" : r.Playstyle,
                 Fatigue = r.Fatigue,
                 InjuredUntil = r.InjuredUntil,
                 Morale = r.Morale,
                 HeightCm = r.HeightCm,
                 WeightKg = r.WeightKg,
-                Portrait = Visuals.LoadBitmap(r.PortraitPath),
+                Portrait = por.Image,
+                SkinTone = por.SkinTone,
+                HairColor = por.HairColor,
                 Mark = Visuals.PlayerMark(r.Name),
-                MarkBrush = Visuals.PositionBrush(r.Position),
+                // real skin tone behind the initials when there's no photo (the generic-face tier)
+                MarkBrush = por.Image is null ? Visuals.SkinBrush(por.SkinTone) : Visuals.PositionBrush(r.Position),
             });
         }
-        _nextMd = md;
+    }
+
+    // --- club browser (parity with ML.Web Squad): inspect any club's full roster -------
+    public ObservableCollection<SquadClubOption> Clubs { get; } = new();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsOwnClub))]
+    [NotifyPropertyChangedFor(nameof(ViewingOtherClub))]
+    private SquadClubOption? _selectedClub;
+    private int _viewTeamId;
+
+    /// <summary>True when the shown roster is your own club — management commands only work then.</summary>
+    public bool IsOwnClub => _viewTeamId == _s.CurrentTeamId;
+    public bool ViewingOtherClub => !IsOwnClub;
+
+    private void BuildClubList()
+    {
+        try
+        {
+            Clubs.Add(new SquadClubOption(_s.CurrentTeamId, $"{_s.CurrentTeamName} (your club)"));
+            foreach (var t in _s.LeagueTeams()
+                         .Where(t => t.Id != _s.CurrentTeamId).OrderBy(t => t.Name))
+                Clubs.Add(new SquadClubOption(t.Id, t.Name));
+            _selectedClub = Clubs.FirstOrDefault();   // backing field: no reload during ctor
+        }
+        catch { /* club browsing is additive */ }
+    }
+
+    partial void OnSelectedClubChanged(SquadClubOption? value)
+    {
+        if (value is null) return;
+        _viewTeamId = value.TeamId;
+        OnPropertyChanged(nameof(IsOwnClub));
+        OnPropertyChanged(nameof(ViewingOtherClub));
+        LoadRoster(_viewTeamId);
         ApplyFilter();
         Selected = Rows.FirstOrDefault();
-        ReloadLoans();
+    }
+
+    /// <summary>Guard for management actions: they only apply to your own club.</summary>
+    private bool NotYourClub()
+    {
+        if (IsOwnClub) return false;
+        SquadStatus = "You can only manage your own club — this is a scouting view.";
+        return true;
     }
 
     public override string Title => "Squad";
@@ -494,7 +572,7 @@ public sealed partial class SquadViewModel : PageViewModel
     [RelayCommand]
     private void Release()
     {
-        if (Selected is null) return;
+        if (Selected is null || NotYourClub()) return;
         var name = Selected.Name;
         var msg = _s.ReleasePlayer(Selected.PlayerId);
         SquadStatus = $"{name}: {msg}";

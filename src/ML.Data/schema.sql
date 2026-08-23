@@ -42,7 +42,9 @@ CREATE TABLE IF NOT EXISTS teams (
     secondary_color TEXT,
     kit_home_path TEXT,
     kit_away_path TEXT,
-    logo_path     TEXT
+    logo_path     TEXT,
+    parent_team_id INTEGER,                     -- for youth sides: the senior club they belong to
+    team_kind     TEXT NOT NULL DEFAULT 'first' -- 'first' | 'u21' | 'u18'
 );
 
 CREATE TABLE IF NOT EXISTS coaches (
@@ -82,10 +84,13 @@ CREATE TABLE IF NOT EXISTS player_attributes (
     PRIMARY KEY (player_id, attribute)
 );
 
+-- Each player carries TWO roles: an in-possession playstyle (kind='primary') and an
+-- out-of-possession/defensive one (kind='secondary'). Both compile into Player.bin on install.
 CREATE TABLE IF NOT EXISTS player_playstyles (
     player_id  INTEGER NOT NULL REFERENCES players(id),
     playstyle  TEXT NOT NULL,
-    PRIMARY KEY (player_id, playstyle)
+    kind       TEXT NOT NULL DEFAULT 'primary',   -- 'primary' (in possession) | 'secondary' (out of)
+    PRIMARY KEY (player_id, kind)
 );
 
 -- squad membership (compiles to PlayerAssignment). One row per player per team.
@@ -213,9 +218,14 @@ CREATE TABLE IF NOT EXISTS inbox (
     requires_action INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE INDEX IF NOT EXISTS ix_squad_team ON squad_members(team_id);
+-- NOTE: no index on squad_members(team_id) — it's a prefix of the (team_id, player_id) primary
+-- key and therefore pure duplication (audit 2026-08-23 dropped five such PK-prefix indexes).
 CREATE INDEX IF NOT EXISTS ix_fixtures_season_md ON fixtures(season_id, matchday);
 CREATE INDEX IF NOT EXISTS ix_players_team ON squad_members(player_id);
+-- Market browser hot path: ORDER BY overall_rating over the whole world. Without this the Market
+-- full-scans 375k players per open and hangs. (ix_appear_pid lives next to player_appearance
+-- below — an index here would reference a table that doesn't exist yet on a fresh create.)
+CREATE INDEX IF NOT EXISTS ix_players_ovr ON players(overall_rating);
 
 -- ---------------------------------------------------------------- world (cup, academy, honours)
 
@@ -347,7 +357,7 @@ CREATE TABLE IF NOT EXISTS player_knowledge (
 -- field recovered by portrait correlation. Sources: 'bin' (read from the game),
 -- 'portrait' (sampled from the player's own portrait), 'seeded' (generated).
 CREATE TABLE IF NOT EXISTS player_appearance (
-    player_id INTEGER PRIMARY KEY REFERENCES players(id),
+    player_id INTEGER PRIMARY KEY REFERENCES players(id),   -- rowid alias: already indexed
     skin_tone INTEGER NOT NULL,
     source    TEXT    NOT NULL DEFAULT 'seeded'
 );

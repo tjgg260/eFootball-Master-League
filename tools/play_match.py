@@ -269,7 +269,11 @@ def squad_from_db(db_path: str, team_id: int):
         abilities = dict(con.execute(
             "SELECT attribute, value FROM player_attributes WHERE player_id=?", (pid,)).fetchall())
         role = con.execute(
-            "SELECT playstyle FROM player_playstyles WHERE player_id=? LIMIT 1", (pid,)).fetchone()
+            "SELECT playstyle FROM player_playstyles WHERE player_id=? AND kind='primary' LIMIT 1",
+            (pid,)).fetchone()
+        srole = con.execute(
+            "SELECT playstyle FROM player_playstyles WHERE player_id=? AND kind='secondary' LIMIT 1",
+            (pid,)).fetchone()
         # Skin tone (portrait-correlated field): the authored clone gets the player's own
         # face colour instead of the donor's (tools/appearance.py for the layout).
         skin = con.execute(
@@ -277,6 +281,7 @@ def squad_from_db(db_path: str, team_id: int):
         players.append({"name": p[0], "position": p[1],
                         "shirt": shirt if 1 <= shirt <= 99 else len(players) + 1,
                         "abilities": abilities, "role": role[0] if role else None,
+                        "secondary_role": srole[0] if srole else None,
                         "captain": pid == captain_id,
                         "taker_bits": taker_bits.get(pid, 0),
                         "skin_tone": skin[0] if skin else None})
@@ -488,21 +493,33 @@ def _style_table():
     return _STYLE_TABLE
 
 
-def _apply_playstyles(pb: bytearray, pid2offset: dict, resolved) -> int:
-    """Write each squad player's chosen role into Player.bin (5-bit style field at byte 46.6)."""
+def _apply_playstyles(pb: bytearray, pid2offset: dict, resolved, sec_by_pid: dict | None = None) -> int:
+    """Write each squad player's roles into Player.bin: the PRIMARY (in-possession) style in the
+    5-bit field at byte 46.6, and the SECONDARY (out-of-possession/defending) style at bit 440
+    (playstyle_secondary). Both come from the app's player_playstyles."""
+    import playstyle_secondary
     table = _style_table()
+    sec_by_pid = sec_by_pid or {}
     written = 0
     for pid, _shirt, position, role in resolved:
-        if not role or pid not in pid2offset:
-            continue
-        val = table.get((_pos_cat(position), role))
-        if val is None:
+        if pid not in pid2offset:
             continue
         off = pid2offset[pid]
-        val &= 0x1F
-        pb[off + 46] = (pb[off + 46] & 0x3F) | ((val & 0x03) << 6)
-        pb[off + 47] = (pb[off + 47] & 0xF8) | ((val >> 2) & 0x07)
-        written += 1
+        rec = bytearray(pb[off:off + 400])
+        changed = False
+        if role:
+            val = table.get((_pos_cat(position), role))
+            if val is not None:
+                val &= 0x1F
+                rec[46] = (rec[46] & 0x3F) | ((val & 0x03) << 6)
+                rec[47] = (rec[47] & 0xF8) | ((val >> 2) & 0x07)
+                changed = True
+        srole = sec_by_pid.get(pid)
+        if srole and playstyle_secondary.write_secondary(rec, position, srole):
+            changed = True
+        if changed:
+            pb[off:off + 400] = rec
+            written += 1
     return written
 
 
@@ -550,6 +567,7 @@ def reconcile_real_slot(tree: Path, slot_id: int, squad) -> tuple[int, int, list
     by_ix: dict[int, tuple[int, int, str, str | None]] = {}   # squad index -> (pid, shirt, pos, role)
     captain_pid: int | None = None
     taker_by_pid: dict[int, int] = {}                          # resolved pid -> taker bits (fk8/pk16/ckl4/ckr1)
+    sec_by_pid: dict[int, str] = {}                            # resolved pid -> out-of-possession role
     unmatched_ix: list[tuple[int, str]] = []
     for ix in sorted(range(len(squad)), key=lambda i: -len(squad[i]["name"].split())):
         p = squad[ix]
@@ -571,10 +589,12 @@ def reconcile_real_slot(tree: Path, slot_id: int, squad) -> tuple[int, int, list
                 captain_pid = pid
             if p.get("taker_bits"):
                 taker_by_pid[pid] = p["taker_bits"]
+            if p.get("secondary_role"):
+                sec_by_pid[pid] = p["secondary_role"]
     resolved = [by_ix[ix] for ix in sorted(by_ix)]            # DB slot order
 
-    # Write each player's chosen role into their Player.bin record (5-bit playstyle field).
-    styles_written = _apply_playstyles(pb, pid2offset, resolved)
+    # Write each player's in- AND out-of-possession role into their Player.bin record.
+    styles_written = _apply_playstyles(pb, pid2offset, resolved, sec_by_pid)
     if styles_written:
         pb_path.write_bytes(wesys.pack_wesys_container(bytes(pb), key_nibble=pb_blob[1] & 0x0F,
                                                        compression_level=1))

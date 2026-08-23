@@ -1,0 +1,23 @@
+@page "/history"
+@inject Db Db
+@inject AppState State
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron"><span>History</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:12px;flex:1;min-height:0">
+        <div class="pcard">
+            <div class="label">Trophy cabinet</div>
+            <div style="font:400 13px/18px var(--font-body);color:var(--text-3)">
+                Nothing yet — silverware lands here at each season's end.
+            </div>
+        </div>
+        <div class="pcard">
+            <div class="label">Position by season</div>
+            <div style="font:400 13px/18px var(--font-body);color:var(--text-3)">
+                The chart begins after your first completed season.
+            </div>
+        </div>
+    </div>
+</div>

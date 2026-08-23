@@ -1,0 +1,58 @@
+@page "/table"
+@inject Db Db
+@inject AppState State
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron"><span>@_leagueName</span></div>
+        <div class="tools"><span class="label">Season @(State.Career?.SeasonId ?? 0)</span></div>
+    </div>
+
+    @if (_rows.Count == 0)
+    {
+        <div class="pcard"><div style="font:400 13px/18px var(--font-body);color:var(--text-3)">No league found for the career club.</div></div>
+    }
+    else
+    {
+        <div class="gtable">
+            <div class="thead">
+                <span></span><span class="tnum">#</span><span>Club</span>
+                <span class="tnum">P</span><span class="tnum">W</span><span class="tnum">D</span><span class="tnum">L</span>
+                <span class="tnum">GF</span><span class="tnum">GA</span><span class="tnum">GD</span><span class="tnum pts">Pts</span>
+            </div>
+            <div class="rows">
+                @foreach (var (t, i) in _rows.Select((t, i) => (t, i)))
+                {
+                    <div class="trow @(t.Id == State.Career?.TeamId ? "you" : "") @(ZoneClass(i))">
+                        <span></span>
+                        <span class="tnum pos">@(i + 1)</span>
+                        <span class="nm d-narrow" style="font-size:14px">@t.Name</span>
+                        <span class="tnum">@t.P</span><span class="tnum">@t.W</span><span class="tnum">@t.D</span><span class="tnum">@t.L</span>
+                        <span class="tnum">@t.Gf</span><span class="tnum">@t.Ga</span>
+                        <span class="tnum" style="color:@(t.Gd > 0 ? "var(--win)" : t.Gd < 0 ? "var(--loss)" : "var(--text-2)")">@(t.Gd > 0 ? "+" : "")@t.Gd</span>
+                        <span class="tnum pts d-wide" style="font-size:15px">@t.Pts</span>
+                    </div>
+                }
+            </div>
+            <div class="gfoot">Top rows: continental places · bottom @_relegation: relegation. Zones colour the position bar.</div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<TableRow> _rows = new();
+    private string _leagueName = "League table";
+    private int _relegation = 3;
+
+    protected override void OnInitialized()
+    {
+        if (State.Career is not { } c) return;
+        var lid = Db.LeagueOf(c.TeamId, c.SeasonId);
+        if (lid == 0) return;
+        _rows = Db.LeagueTable(lid, c.SeasonId);
+        _leagueName = "Premier League";
+    }
+
+    private string ZoneClass(int i)
+        => i < 4 ? "zone-cl" : i >= _rows.Count - _relegation ? "zone-rel" : "";
+}

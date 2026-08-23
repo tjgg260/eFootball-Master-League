@@ -1,41 +1,150 @@
 #!/usr/bin/env python3
 """
-build_catalog.py — the browsable country → league → club catalog for the New Career screen.
+build_catalog.py (v3) — the browsable country → league → club catalog for the New Career screen.
 
-The real division structure comes from RFS:
-  competitions  id u16@0, name@2 (40B), tier u8@51, country u8@53   (verified: Premier League
-                id 13 tier 1 country 14; Championship id 14 tier 2; ... National League tier 5)
-  previuosseason  comp u16@0, team u32@2, position u8@6 — one row per team per competition it
-                played in. A team appears for its LEAGUE and its cups; the league row is the one
-                whose competition has a plausible tier + enough members.
-  countries     id u8@0, name@1
+HYBRID sourcing (the honest best of both worlds):
+  * STRUCTURE (countries, leagues, tiers, membership) comes from RFS — its competitions table
+    carries verified tiers (Premier League=1 … National League=5) and previuosseason gives real
+    membership. master.db's teams.league_id is unusable (the FM export's Division column was
+    garbage), so RFS remains the structural truth.
+  * CLUBS resolve into master.db teams (club_key + country match, largest squad wins) so the New
+    Career screen and the seeder get the MERGED world: FM-authoritative squads, facepack faces,
+    best ratings.
 
 Writes build/catalog.json:
-  { countries: [ { id, name,
-      leagues: [ { comp_id, name, tier, teams: [ {name, rfs_id, rating, logo} ] } ] } ] }
-Leagues sorted by tier, countries by name. Clubs sorted by squad strength within a league.
+  { version: 3, countries: [ { name,
+      leagues: [ { league_id, name, tier,
+        teams: [ {name, team_id, rating, faces, squad, logo} ] } ] } ] }
+
+team_id is the master.db team id (the seeder's roster source). Clubs that can't be resolved to a
+master team with a real squad are dropped (a club we can't field isn't playable).
 """
 from __future__ import annotations
 
 import json
+import re
+import sqlite3
 import struct
 import sys
-from collections import defaultdict
+import unicodedata
+from collections import Counter, defaultdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+DB = REPO / "build" / "master.db"
+OUT = REPO / "build" / "catalog.json"
+RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
+
 sys.path.insert(0, str(REPO / "tools"))
 from rfs_import import RfsDb   # noqa: E402
 
-RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
-RFS_TEAMS = Path.home() / "OneDrive/Documents/RFS/Teams"
-
+MIN_CLUBS = 8
+MIN_SQUAD = 8   # thin-but-real clubs (Celta 10, Mallorca 8) must not be dropped from their league
+MAX_TIERS = 6
 YOUTH = ("U21", "U-21", "U20", "U-20", "U23", "U-23", "U19", "U-18", "Olympic")
+ARTEFACT_RE = re.compile(
+    r"playoff|play-off|relegation|aggregate|zone|reducido|ranking|supercup|super cup|"
+    r"championsip|championship_|_relegation|draw|apertura|clausura", re.I)
+CLUB_STOP = {"fc", "cf", "sc", "ac", "afc", "cd", "ud", "club", "de", "the", "fk", "if", "bk",
+             "us", "as", "rc", "1", "1899", "1900"}
+
+
+def norm(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", s.lower())).strip()
+
+
+ALIASES = {"utd": "united", "&": "and", "st.": "st"}
+
+
+def club_key(s: str) -> str:
+    words = [ALIASES.get(t, t) for t in norm(s).split()]
+    return " ".join(t for t in words if t not in CLUB_STOP)
 
 
 def main() -> int:
-    db = RfsDb(RFS_DB)
+    con = sqlite3.connect(DB)
 
+    # ---- master.db side: squads, ratings, faces, countries per team ----
+    stats = {}
+    for tid, n, avg in con.execute(
+            "SELECT s.team_id, COUNT(*), AVG(COALESCE(p.overall_rating,55)) "
+            "FROM squad_members s JOIN players p ON p.id=s.player_id GROUP BY s.team_id"):
+        stats[tid] = (n, avg or 55)
+    faces = dict(con.execute(
+        "SELECT s.team_id, SUM(COALESCE(p.real_face_path, p.portrait_path) IS NOT NULL) "
+        "FROM squad_members s JOIN players p ON p.id=s.player_id GROUP BY s.team_id"))
+    team_country: dict[int, str] = {}
+    cnt: dict[int, Counter] = defaultdict(Counter)
+    for tid, nat, k in con.execute(
+            "SELECT s.team_id, p.nationality, COUNT(*) FROM squad_members s "
+            "JOIN players p ON p.id=s.player_id WHERE p.nationality IS NOT NULL "
+            "GROUP BY s.team_id, p.nationality"):
+        cnt[tid][(nat or "").split("/")[0].strip()] += k
+    for tid, c in cnt.items():
+        team_country[tid] = c.most_common(1)[0][0]
+
+    by_key: dict[str, list[int]] = defaultdict(list)
+    tname_master: dict[int, tuple[str, str | None]] = {}
+    for tid, name, logo in con.execute(
+            "SELECT id, name, logo_path FROM teams WHERE name IS NOT NULL AND name<>''"):
+        if any(y in name for y in YOUTH):
+            continue
+        if stats.get(tid, (0, 0))[0] < MIN_SQUAD:
+            continue
+        tname_master[tid] = (name, logo)
+        by_key[club_key(name)].append(tid)
+
+    # prefix index: first word(s) of a club key -> team ids (for FM short names:
+    # master "Huddersfield" must match RFS "Huddersfield Town")
+    by_prefix: dict[str, list[int]] = defaultdict(list)
+    for k, tids in by_key.items():
+        by_prefix[k].extend(tids)
+
+    def resolve(rfs_name: str, want_country: str) -> int | None:
+        """RFS club name -> master.db team id: exact name, club_key, then prefix-subset
+        (master short name is a leading subset of the RFS full name), country-checked."""
+        cands = [t for t, (nm, _) in tname_master.items() if nm == rfs_name]
+        if not cands:
+            cands = by_key.get(club_key(rfs_name), [])
+        if not cands:
+            words = club_key(rfs_name).split()
+            for cut in range(len(words) - 1, 0, -1):
+                short = " ".join(words[:cut])
+                hit = by_prefix.get(short, [])
+                if hit:
+                    cands = hit
+                    break
+        if not cands:
+            return None
+        wc = norm(want_country)
+        scored = []
+        for t in cands:
+            tc = norm(team_country.get(t, ""))
+            scored.append((0 if tc == wc else 1, -stats[t][0], t))
+        scored.sort()
+        # if the best candidate's country actively disagrees, drop it (Everton Chile trap)
+        best = scored[0]
+        if best[0] == 1 and len(cands) > 1:
+            return None
+        chosen = best[2]
+        # SPLIT REPAIR: some clubs got fragmented across records (FM's "Mallorca" vs eFootball's
+        # "RCD Mallorca"). If the chosen record is THIN and exactly ONE same-key, same-country twin
+        # is clearly fuller (>=18 and >=2x), it's a split — use the fuller record. Requiring a
+        # SINGLE dominant twin avoids collapsing genuine homonyms (Brazil's several "América"s,
+        # which are multiple full-sized records).
+        chosen_sq = stats.get(chosen, (0,))[0]
+        if chosen_sq < 18:
+            twins = [t for t in by_key.get(club_key(rfs_name), [])
+                     if t != chosen and norm(team_country.get(t, "")) == wc
+                     and stats.get(t, (0,))[0] >= max(18, chosen_sq * 2)]
+            if len(twins) == 1:
+                return twins[0]
+        return chosen
+
+    # ---- RFS side: structure ----
+    db = RfsDb(RFS_DB)
     ct = db.tables["countries"]
     country = {}
     for i in range(ct.rows):
@@ -43,7 +152,6 @@ def main() -> int:
         country[r[0]] = r[1:1 + 24].split(b"\0")[0].decode("utf-8", "replace").strip()
     country_names = set(country.values())
 
-    # competitions: id, name, tier, country
     cp = db.tables["competitions"]
     comps = {}
     for i in range(cp.rows):
@@ -54,73 +162,105 @@ def main() -> int:
             "tier": r[51], "country": r[53],
         }
 
-    # squad strength per team
-    pt = db.tables["players"]
-    pidx = {struct.unpack_from("<I", db.record("players", i), 0)[0]: i for i in range(pt.rows)}
-    tpl = db.tables["teamplayerlinks"]
-    squads = defaultdict(list)
-    for i in range(tpl.rows):
-        r = db.record("teamplayerlinks", i)
-        squads[struct.unpack_from("<I", r, 0)[0]].append(struct.unpack_from("<I", r, 4)[0])
-
     tt = db.tables["teams"]
-    tname = {}
+    rfs_tname = {}
     for i in range(tt.rows):
         r = db.record("teams", i)
-        tname[struct.unpack_from("<I", r, 0)[0]] = \
+        rfs_tname[struct.unpack_from("<I", r, 0)[0]] = \
             r[36:36 + 32].split(b"\0")[0].decode("utf-8", "replace").strip()
 
-    # league membership: for each team keep every competition row; the league row is the comp
-    # with a country + tier 1-9 and at least 6 members (cups and continental comps fail that).
     ps = db.tables["previuosseason"]
     comp_members = defaultdict(set)
     for i in range(ps.rows):
         r = db.record("previuosseason", i)
         comp_members[struct.unpack_from("<H", r, 0)[0]].add(struct.unpack_from("<I", r, 2)[0])
 
-    def club_entry(rfs_id: int):
-        name = tname.get(rfs_id, "")
-        if not name or any(y in name for y in YOUTH) or name in country_names:
-            return None
-        sq = [p for p in squads.get(rfs_id, []) if p in pidx]
-        if len(sq) < 11:
-            return None
-        ovr = [db.record("players", pidx[p])[196] for p in sq]
-        logo = RFS_TEAMS / f"T_{rfs_id}.png"
-        return {"name": name, "rfs_id": rfs_id, "rating": round(sum(ovr) / len(ovr), 1),
-                "logo": str(logo) if logo.exists() else None}
-
-    by_country = defaultdict(list)
+    # ---- join: league -> resolved master clubs ----
+    dropped = Counter()
+    by_country_leagues = defaultdict(list)
     for cid, members in comp_members.items():
         c = comps.get(cid)
         if not c or c["country"] not in country or not (1 <= c["tier"] <= 9):
             continue
-        # playoff / relegation-group phases are the same league sliced up — not separate leagues
-        low = c["name"].lower()
-        if "playoff" in low or "relegation" in low or "championsip" in low or "championship_" in low:
+        if ARTEFACT_RE.search(c["name"]):
             continue
-        teams = [e for e in (club_entry(t) for t in members) if e]
-        if len(teams) < 8:
+        cname = country[c["country"]]
+        teams = []
+        seen = set()
+        for rid in members:
+            nm = rfs_tname.get(rid, "")
+            if not nm or any(y in nm for y in YOUTH) or nm in country_names:
+                continue
+            tid = resolve(nm, cname)
+            if tid is None or tid in seen:
+                if tid is None:
+                    dropped[cname] += 1
+                continue
+            seen.add(tid)
+            mname, logo = tname_master[tid]
+            teams.append({"name": mname, "team_id": tid,
+                          "rating": round(stats[tid][1], 1), "squad": stats[tid][0],
+                          "faces": int(faces.get(tid) or 0), "logo": logo})
+        if len(teams) < MIN_CLUBS:
             continue
         teams.sort(key=lambda t: -t["rating"])
-        by_country[c["country"]].append(
-            {"comp_id": cid, "name": c["name"], "tier": c["tier"], "teams": teams})
+        by_country_leagues[cname].append(
+            {"league_id": cid, "name": c["name"], "tier": min(c["tier"], MAX_TIERS),
+             "teams": teams})
 
-    catalog = {"countries": []}
-    for ccode, leagues in by_country.items():
-        leagues.sort(key=lambda lg: (lg["tier"], -len(lg["teams"])))
-        catalog["countries"].append({"id": ccode, "name": country[ccode], "leagues": leagues})
-    catalog["countries"].sort(key=lambda c: c["name"])
+    catalog = {"version": 3, "countries": []}
+    for cname in sorted(by_country_leagues):
+        leagues = by_country_leagues[cname]
+        # one league per tier: strongest keeps it, extras push down
+        leagues.sort(key=lambda l: (l["tier"], -sum(t["rating"] for t in l["teams"][:16])))
+        seen_tiers: set[int] = set()
+        final = []
+        for l in leagues:
+            t = l["tier"]
+            while t in seen_tiers and t <= MAX_TIERS:
+                t += 1
+            if t > MAX_TIERS:
+                continue
+            l["tier"] = t
+            seen_tiers.add(t)
+            final.append(l)
+        if final:
+            catalog["countries"].append({"name": cname, "leagues": final})
 
-    out = REPO / "build" / "catalog.json"
-    out.write_text(json.dumps(catalog, ensure_ascii=False), encoding="utf-8")
-    n_leagues = sum(len(c["leagues"]) for c in catalog["countries"])
-    n_teams = sum(len(lg["teams"]) for c in catalog["countries"] for lg in c["leagues"])
-    print(f"catalog: {len(catalog['countries'])} countries, {n_leagues} leagues, {n_teams:,} clubs -> {out}")
-    eng = next((c for c in catalog["countries"] if c["name"] == "England"), None)
-    if eng:
-        for lg in eng["leagues"]:
-            print(f"  England t{lg['tier']}: {lg['name']:<24} {len(lg['teams'])} clubs")
+    # Backfill logos: a club can resolve to a reference record with no crest while a same-named
+    # record HAS one (Chelsea 3000005 vs 800003). Prefer any available logo, matched by name.
+    def _lkey(n):
+        n = n.lower().replace("&", "and")
+        n = re.sub(r"\b(fc|afc|cf)\b", "", n)
+        return re.sub(r"[^a-z0-9]", "", n)
+    logo_by_key = {}
+    for _nm, _lp in tname_master.values():
+        if _lp:
+            logo_by_key.setdefault(_lkey(_nm), _lp)
+    # eFootball/PES crests live at RFS/Teams/T_<pes_id>.png, and a reference club's team_id is
+    # 3_000_000 + pes_id — so T_<team_id-3_000_000>.png is the club's real crest (verified 99%).
+    rfs_teams = Path.home() / "OneDrive" / "Documents" / "RFS" / "Teams"
+    for _co in catalog["countries"]:
+        for _lg in _co["leagues"]:
+            for _t in _lg["teams"]:
+                if _t.get("logo"):
+                    continue
+                _t["logo"] = logo_by_key.get(_lkey(_t["name"]))
+                if not _t.get("logo") and 3_000_000 <= _t.get("team_id", 0) < 3_200_000:
+                    cand = rfs_teams / f"T_{_t['team_id'] - 3_000_000}.png"
+                    if cand.exists():
+                        _t["logo"] = str(cand)
+
+    nl = sum(len(c["leagues"]) for c in catalog["countries"])
+    nt = sum(len(l["teams"]) for c in catalog["countries"] for l in c["leagues"])
+    OUT.write_text(json.dumps(catalog), encoding="utf-8")
+    print(f"catalog v3: {len(catalog['countries'])} countries, {nl} leagues, {nt:,} clubs -> {OUT}")
+    tiers = Counter(l["tier"] for c in catalog["countries"] for l in c["leagues"])
+    print(f"tiers: {dict(sorted(tiers.items()))}")
+    print(f"unresolved clubs dropped (top): {dropped.most_common(5)}")
+    for c in catalog["countries"]:
+        if c["name"] == "England":
+            print("England:", [(l["name"], l["tier"], len(l["teams"])) for l in c["leagues"]])
     return 0
 
 

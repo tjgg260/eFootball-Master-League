@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TacticsSmoke</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ML.Core\ML.Core.csproj" />
+    <ProjectReference Include="..\..\src\ML.Data\ML.Data.csproj" />
+    <ProjectReference Include="..\..\src\ML.Ingest\ML.Ingest.csproj" />
+    <ProjectReference Include="..\..\src\ML.Sync\ML.Sync.csproj" />
+  </ItemGroup>
+
+  <!-- same engine link set as ML.Web -->
+  <ItemGroup>
+    <Compile Include="..\..\src\ML.App\Session*.cs" Exclude="..\..\src\ML.App\SessionPortrait.cs" />
+    <Compile Include="..\..\src\ML.App\CareerBuilder.cs" />
+    <Compile Include="..\..\src\ML.App\CareerLoader.cs" />
+    <Compile Include="..\..\src\ML.App\CatalogData.cs" />
+    <Compile Include="..\..\src\ML.App\Formations.cs" />
+    <Compile Include="..\..\src\ML.App\MatchLauncher.cs" />
+    <Compile Include="..\..\src\ML.App\ScoreImport.cs" />
+    <Compile Include="..\..\src\ML.App\VideoCapture.cs" />
+    <Compile Include="..\..\src\ML.Web\Compat\Visuals.cs" />
+    <Compile Include="..\..\src\ML.Web\Compat\GlobalUsings.cs" />
+  </ItemGroup>
+
+</Project>

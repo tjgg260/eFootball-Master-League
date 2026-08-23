@@ -1,0 +1,47 @@
+@page "/staff"
+@inject Db Db
+@inject AppState State
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron"><span>Staff</span></div>
+        @if (State.Career is { } cc)
+        {
+            <div class="tools"><span class="label">Manager @cc.Manager</span></div>
+        }
+    </div>
+
+    @if (_staff.Count == 0)
+    {
+        <div class="pcard"><div style="font:400 13px/18px var(--font-body);color:var(--text-3)">
+            No staff hired at this club yet — vacancies appear once the staff market opens.</div></div>
+    }
+    else
+    {
+        <div class="gtable">
+            <div class="rows">
+                @foreach (var s in _staff)
+                {
+                    <div class="staffrow">
+                        <span class="role label">@s.Role</span>
+                        <span class="nm d-narrow" style="font-size:15px">@s.Name</span>
+                        <span class="stars" style="color:var(--draw)">@Stars(s.Quality)</span>
+                        <span class="tnum" style="font-family:var(--font-data);font-size:12px;color:var(--text-2)">£@(s.Wage)/wk</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<StaffRow> _staff = new();
+
+    protected override void OnInitialized()
+    {
+        if (State.Career is not { } c) return;
+        _staff = Db.Staff(c.TeamId);
+    }
+
+    private static string Stars(int q) => new string('★', Math.Clamp(q, 0, 5)) + new string('☆', Math.Clamp(5 - q, 0, 5));
+}

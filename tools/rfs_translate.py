@@ -42,6 +42,9 @@ ABILITY_OFFSETS = {
 
 # RFS row byte offsets (verified)
 OFF_ID, OFF_FIRST, OFF_LAST, OFF_FULL, OFF_POS, OFF_OVERALL = 0, 4, 28, 76, 148, 196
+# characteristics (verified by distribution + known players: Bruno Fernandes PT/179cm/1994 etc.)
+OFF_BIRTHYEAR, OFF_NATION, OFF_HEIGHT, OFF_WEIGHT = 100, 104, 105, 106
+CURRENT_YEAR = 2026
 
 
 def _clamp(v: int) -> int:
@@ -72,9 +75,15 @@ def translate(rec: bytes) -> dict:
         for a in ("finishing", "dribbling", "tackling"):
             abilities[a] = min(abilities[a], 50)
 
+    birth_year = struct.unpack_from("<H", rec, OFF_BIRTHYEAR)[0]
+    age = CURRENT_YEAR - birth_year if 1950 <= birth_year <= CURRENT_YEAR else None
+    height = rec[OFF_HEIGHT] if 140 <= rec[OFF_HEIGHT] <= 215 else None
+    weight = rec[OFF_WEIGHT] if 45 <= rec[OFF_WEIGHT] <= 120 else None
     return {
         "rfs_id": pid, "name": full, "first": first, "last": last,
         "position": position, "overall": overall, "abilities": abilities,
+        "nation_code": rec[OFF_NATION], "birth_year": birth_year, "age": age,
+        "height": height, "weight": weight,
     }
 
 

@@ -1,0 +1,103 @@
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
+@inject AppState State
+@inject Db Db
+@inject MatchdayEngine Engine
+@implements IDisposable
+
+<div class="shell">
+    <nav class="rail">
+        <div class="crest">@State.Crest</div>
+        <NavLink href="" Match="NavLinkMatch.All" title="Season hub"><i class="ph ph-house"></i></NavLink>
+        <NavLink href="squad" title="Squad"><i class="ph ph-users-three"></i></NavLink>
+        <NavLink href="tactics" title="Tactics"><i class="ph ph-strategy"></i></NavLink>
+        <NavLink href="fixtures" title="Fixtures"><i class="ph ph-calendar-blank"></i></NavLink>
+        <NavLink href="table" title="Table"><i class="ph ph-list-numbers"></i></NavLink>
+        <NavLink href="market" title="Transfers"><i class="ph ph-arrows-left-right"></i></NavLink>
+        <NavLink href="inbox" title="Inbox">
+            <i class="ph ph-envelope-simple"></i>
+            @if (State.Unread > 0) { <span class="badge">@State.Unread</span> }
+        </NavLink>
+        <NavLink href="finances" title="Finances"><i class="ph ph-currency-gbp"></i></NavLink>
+        <NavLink href="board" title="Board"><i class="ph ph-bank"></i></NavLink>
+        <NavLink href="staff" title="Staff"><i class="ph ph-user-gear"></i></NavLink>
+        <NavLink href="scouting" title="Scouting"><i class="ph ph-binoculars"></i></NavLink>
+        <NavLink href="history" title="History"><i class="ph ph-trophy"></i></NavLink>
+        <NavLink href="settings" class="spacer" title="Settings"><i class="ph ph-gear"></i></NavLink>
+    </nav>
+    <div class="main">
+        <div class="matchbar">
+            <div class="rowflex" style="gap:8px">
+                <div class="clubmark"></div>
+                <span class="clubname">@(State.Career?.TeamName ?? State.TeamName)</span>
+            </div>
+            <div class="divider"></div>
+            <div class="next">
+                <span class="label">Next</span>
+                @if (State.Next is { } nx)
+                {
+                    var home = nx.HomeId == State.Career?.TeamId;
+                    <span class="vs" style="white-space:nowrap">@(home ? "vs" : "at") @(home ? nx.Away : nx.Home)</span>
+                    <span class="meta">Matchday @nx.Matchday · @(nx.Kind == "league" ? "League" : nx.Kind)</span>
+                }
+                else
+                {
+                    <span class="vs" style="white-space:nowrap">No fixture</span>
+                    <span class="meta">Season complete or no career yet</span>
+                }
+            </div>
+            <div style="margin-left:auto" class="rowflex">
+                <div class="stat"><span class="label">Position</span><span class="v tnum">@_pos</span></div>
+                <div class="divider" style="margin:0 12px"></div>
+                <button class="btn" disabled="@(_installing || State.Next is null)" @onclick="PlayInEfootball">
+                    @(_installing ? "Compiling squads…" : _installMsg ?? "Play in eFootball")
+                </button>
+            </div>
+        </div>
+        @Body
+    </div>
+</div>
+
+@code {
+    private string _pos = "—";
+    private bool _light;
+    private bool _installing;
+    private string? _installMsg;
+
+    private async Task PlayInEfootball()
+    {
+        if (State.Next is not { } nx || _installing) return;
+        _installing = true;
+        _installMsg = null;
+        StateHasChanged();
+        var (ok, log) = await Engine.InstallFixtureAsync(nx.HomeId, nx.AwayId);
+        _installing = false;
+        _installMsg = ok ? "Installed — launch eFootball" : "Install failed (see log)";
+        if (!ok) { Console.Error.WriteLine(log); }
+        StateHasChanged();
+    }
+
+    protected override void OnInitialized()
+    {
+        State.Changed += OnState;
+        ComputePos();
+    }
+
+    private void OnState() { ComputePos(); InvokeAsync(StateHasChanged); }
+    public void Dispose() => State.Changed -= OnState;
+
+    private void ComputePos()
+    {
+        if (State.Career is not { } c) { _pos = "—"; return; }
+        var lid = Db.LeagueOf(c.TeamId, c.SeasonId);
+        if (lid == 0) { _pos = "—"; return; }
+        var table = Db.LeagueTable(lid, c.SeasonId);
+        var i = table.FindIndex(t => t.Id == c.TeamId);
+        _pos = i >= 0 ? Ordinal(i + 1) : "—";
+    }
+
+    private static string Ordinal(int n) => n % 100 is 11 or 12 or 13 ? $"{n}th" : (n % 10) switch
+    {
+        1 => $"{n}st", 2 => $"{n}nd", 3 => $"{n}rd", _ => $"{n}th",
+    };
+}

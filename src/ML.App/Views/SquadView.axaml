@@ -9,6 +9,16 @@
     <DockPanel Grid.Column="0">
       <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,10">
         <TextBox Text="{Binding SquadSearch}" Watermark="🔎 Find a player…" Width="180"/>
+        <ComboBox ItemsSource="{Binding Clubs}" SelectedItem="{Binding SelectedClub}" Width="200"
+                  ToolTip.Tip="Browse any club in your leagues">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:SquadClubOption">
+              <TextBlock Text="{Binding Name}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBlock Text="👁 scouting view — read-only" Foreground="#E0A526" FontSize="11"
+                   VerticalAlignment="Center" IsVisible="{Binding ViewingOtherClub}"/>
         <ItemsControl ItemsSource="{Binding FilterChips}" VerticalAlignment="Center">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="5"/></ItemsPanelTemplate>
@@ -80,10 +90,10 @@
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="48"/>
-        <DataGridTemplateColumn Header="OVR" Width="56">
+        <DataGridTemplateColumn Header="Rating" Width="60">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:SquadEntry">
-              <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+              <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
                          FontSize="14" FontWeight="Bold"
                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </DataTemplate>
@@ -135,7 +145,7 @@
                              Foreground="White"/>
                 </Border>
               </StackPanel>
-              <TextBlock Grid.Column="1" Text="{Binding Selected.Rating}" FontSize="34" FontWeight="Bold"
+              <TextBlock Grid.Column="1" Text="{Binding Selected.Grade}" FontSize="34" FontWeight="Bold"
                          Foreground="{Binding Selected.RatingBrush}" Margin="10,0,0,0"
                          VerticalAlignment="Top"/>
             </Grid>
@@ -229,6 +239,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+              <StackPanel IsVisible="{Binding IsOwnClub}" Spacing="4">
               <WrapPanel>
                 <Button Content="© Captain" Command="{Binding MakeCaptainCommand}" Margin="0,2,6,0"
                         Background="#232B36" Foreground="#C7CEDA" Padding="10,6" CornerRadius="6" FontSize="11"/>
@@ -285,6 +296,7 @@
                   </StackPanel>
                 </StackPanel>
               </Border>
+              </StackPanel>
               <TextBlock Text="{Binding PinnedName, StringFormat='Comparing against {0} (dashed blue)'}"
                          FontSize="11" Foreground="#2D7DD2" IsVisible="{Binding HasPinned}"/>
               <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="#9FE6B4" TextWrapping="Wrap"/>

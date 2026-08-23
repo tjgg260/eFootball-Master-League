@@ -1,0 +1,331 @@
+@page "/tactics"
+@using ML.App
+@using ML.Core.Selection
+
+@if (Game.Session is null)
+{
+    <div class="content"><div class="pcard">
+        <div style="font:400 13px/18px var(--font-body);color:var(--text-3)">No career loaded — start one to manage your game plan.</div>
+    </div></div>
+}
+else
+{
+<div class="content gameplan">
+    @* ============ left rail: hover card OR submenu ============ *@
+    <div class="gp-left">
+        @if (_tab == Tab.Lineup)
+        {
+            @if (HoverTok() is { } h)
+            {
+                <div class="hovercard">
+                    @if (Db.FaceDataUri(h.Face) is { } uri)
+                    { <img class="hface" src="@uri" alt="" /> }
+                    else
+                    { <div class="hface mono">@ML.App.Visuals.PlayerMark(h.Name)</div> }
+                    <div class="rowflex" style="gap:10px">
+                        <span class="pill @Cat(h.Position).ToLowerInvariant()"><span>@h.Position</span></span>
+                        <span class="d-wide" style="font-size:30px">@h.Rating</span>
+                        <span class="cond @CondClass(h.PlayerId)">@CondArrow(h.PlayerId)</span>
+                    </div>
+                    <div class="d-narrow" style="font-size:17px">@h.Name</div>
+                    <svg viewBox="0 0 140 140" style="width:130px;height:130px;margin:4px auto">
+                        <polygon points="@Ring(1.0)" fill="none" stroke="var(--line)" stroke-width="1"></polygon>
+                        <polygon points="@Ring(0.66)" fill="none" stroke="var(--line)" stroke-width="1"></polygon>
+                        <polygon points="@RadarPts(h.PlayerId)" fill="rgba(255,46,110,.25)" stroke="var(--chyron)" stroke-width="2"></polygon>
+                    </svg>
+                    <div class="hstats">
+                        <div><span>Height</span><b class="tnum">@(h.Height > 0 ? $"{h.Height} cm" : "—")</b></div>
+                        <div><span>Weight</span><b class="tnum">@(h.Weight > 0 ? $"{h.Weight} kg" : "—")</b></div>
+                        <div><span>Age</span><b class="tnum">@(h.Age > 0 ? h.Age.ToString() : "—")</b></div>
+                        <div><span>Condition</span><b class="cond @CondClass(h.PlayerId)">@CondArrow(h.PlayerId)</b></div>
+                    </div>
+                    <button class="btn ghost" style="margin-top:auto" @onclick="() => _details = h.PlayerId">Player details</button>
+                </div>
+            }
+        }
+        else if (_tab == Tab.TacticsTab)
+        {
+            <div class="gp-menutitle">Tactics</div>
+            <button class="gp-menu @(_tmenu == TMenu.Formation ? "on" : "")" @onclick="() => _tmenu = TMenu.Formation">Set Formation</button>
+            <button class="gp-menu @(_tmenu == TMenu.Playstyle ? "on" : "")" @onclick="() => _tmenu = TMenu.Playstyle">Team Playstyle</button>
+            <button class="gp-menu @(_tmenu == TMenu.Instructions ? "on" : "")" @onclick="() => _tmenu = TMenu.Instructions">Individual Instructions</button>
+
+            @if (_tmenu == TMenu.Formation)
+            {
+                <div class="gp-sublist">
+                    @foreach (var f in _templates)
+                    {
+                        <button class="gp-item @(f.Id == _hoverFid ? "on" : "")"
+                                @onmouseover="() => PreviewTemplate(f.Id)" @onclick="() => ApplyTemplate(f.Id)">@f.Shape</button>
+                    }
+                </div>
+            }
+            else if (_tmenu == TMenu.Playstyle)
+            {
+                <div class="gp-sublist">
+                    @for (var i = 0; i < StyleCatalog.Length; i++)
+                    {
+                        var ix = i;
+                        <button class="gp-item @(ix == _styleIx ? "on" : "")" @onclick="() => PickStyle(ix)">
+                            @StyleCatalog[ix].Name @(ix == _styleIx ? "✓" : "")
+                        </button>
+                    }
+                </div>
+            }
+            else if (_tmenu == TMenu.Instructions)
+            {
+                <div class="gp-sublist">
+                    @foreach (var slotName in InstrSlots)
+                    {
+                        <button class="gp-item @(_instrSlot == slotName ? "on" : "")" @onclick="() => _instrSlot = slotName">
+                            <span>@InstrLabel(slotName)</span>
+                            <span class="sub">@InstrOf(slotName).Name</span>
+                        </button>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <div class="gp-menutitle">Team</div>
+            <button class="gp-menu @(_teamMenu == 0 ? "on" : "")" @onclick="() => _teamMenu = 0">In-Match Roles</button>
+            <button class="gp-menu @(_teamMenu == 1 ? "on" : "")" @onclick="() => _teamMenu = 1">Substitutions</button>
+        }
+    </div>
+
+    @* ============ centre: tabs + pitch / detail panes ============ *@
+    <div class="gp-centre">
+        <div class="gp-tabs">
+            <button class="gp-tab @(_tab == Tab.Lineup ? "on" : "")" @onclick="() => SetTab(Tab.Lineup)">Lineup</button>
+            <button class="gp-tab @(_tab == Tab.TacticsTab ? "on" : "")" @onclick="() => SetTab(Tab.TacticsTab)">Tactics</button>
+            <button class="gp-tab @(_tab == Tab.Team ? "on" : "")" @onclick="() => SetTab(Tab.Team)">Team</button>
+            <button class="btn" style="margin-left:auto" @onclick="Save">Save game plan</button>
+        </div>
+
+        @if (_tab == Tab.TacticsTab && _tmenu == TMenu.Playstyle)
+        {
+            <div class="gp-detail">
+                <div class="label" style="color:var(--chyron)">Player movement · @(_stylePage + 1) of @StyleCatalog[_styleIx].Pages.Length</div>
+                <div class="d-narrow" style="font-size:22px">@PageTitle(_stylePage)</div>
+                <div style="font:400 13px/20px var(--font-body);color:var(--text-2);max-width:520px;text-wrap:pretty">@StyleCatalog[_styleIx].Pages[_stylePage]</div>
+                <div class="rowflex" style="gap:6px;margin-top:8px">
+                    @for (var i = 0; i < StyleCatalog[_styleIx].Pages.Length; i++)
+                    {
+                        var ix = i;
+                        <button class="pagedot @(ix == _stylePage ? "on" : "")" @onclick="() => _stylePage = ix"></button>
+                    }
+                </div>
+                <svg viewBox="0 0 300 190" class="minipitch">
+                    <rect x="4" y="4" width="292" height="182" fill="none" stroke="var(--line)"></rect>
+                    <line x1="150" y1="4" x2="150" y2="186" stroke="var(--line)"></line>
+                    <circle cx="150" cy="95" r="26" fill="none" stroke="var(--line)"></circle>
+                    <rect x="@ZoneX()" y="@ZoneY()" width="@ZoneW()" height="@ZoneH()" fill="rgba(18,185,129,.30)" stroke="var(--pitch)"></rect>
+                </svg>
+            </div>
+        }
+        else if (_tab == Tab.TacticsTab && _tmenu == TMenu.Instructions)
+        {
+            <div class="gp-detail">
+                <div class="label" style="color:var(--chyron)">@InstrLabel(_instrSlot)</div>
+                <div class="d-narrow" style="font-size:22px">@InstrOf(_instrSlot).Name</div>
+                <div style="font:400 13px/20px var(--font-body);color:var(--text-2);max-width:520px;text-wrap:pretty">@InstrOf(_instrSlot).Description</div>
+                <div class="label" style="margin-top:10px">Player</div>
+                <select class="theme" style="width:240px" value="@InstrPid(_instrSlot)" @onchange="e => SetInstrPlayer(e.Value?.ToString())">
+                    <option value="0">—</option>
+                    @foreach (var tk in Tokens(_phase).Where(x => x.PlayerId > 0))
+                    {
+                        <option value="@tk.PlayerId">@tk.Surname</option>
+                    }
+                </select>
+                <div class="label" style="margin-top:10px">Instruction</div>
+                <div class="rowflex" style="gap:4px;flex-wrap:wrap">
+                    @foreach (var o in (_instrSlot.StartsWith("attack") ? AttackInstrOptions : DefenceInstrOptions))
+                    {
+                        <button class="fbtn @(InstrOf(_instrSlot).Name == o.Name ? "on" : "")" @onclick="() => SetInstr(o.Name)">@o.Name</button>
+                    }
+                </div>
+            </div>
+        }
+        else if (_tab == Tab.Team && _teamMenu == 0)
+        {
+            <div class="gp-detail">
+                <div class="rowflex">
+                    <div class="d-narrow" style="font-size:22px">In-Match Roles</div>
+                    <button class="fbtn" style="margin-left:auto" @onclick="Recommend">Recommended</button>
+                </div>
+                @foreach (var duty in DutyList)
+                {
+                    <div class="rowflex" style="gap:6px">
+                        <span style="flex:0 0 100px;font:400 12px/16px var(--font-body);color:var(--text-3)">@duty.Label</span>
+                        <select class="theme" style="flex:0 0 220px" value="@(_duties.GetValueOrDefault(duty.Kind)?.ToString() ?? "")"
+                                @onchange="e => SetDuty(duty.Kind, e.Value?.ToString())">
+                            <option value="">—</option>
+                            @foreach (var tk in Tokens(_phase).Where(x => x.PlayerId > 0))
+                            {
+                                <option value="@tk.PlayerId">@tk.Surname</option>
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+        }
+        else if (_tab == Tab.Team && _teamMenu == 1)
+        {
+            <div class="gp-detail">
+                <div class="d-narrow" style="font-size:22px">Substitutions</div>
+                <div style="font:400 13px/18px var(--font-body);color:var(--text-2)">Choose how frequently substitutions are automatically performed during matches.</div>
+                <div class="rowflex" style="gap:4px;flex-wrap:wrap">
+                    @foreach (var o in AutoSubOptions)
+                    {
+                        <button class="fbtn @(_autoSub == o ? "on" : "")" @onclick="() => SetAutoSub(o)">@o</button>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="gp-pitchwrap">
+                <div class="phasebanner @(_phase == 0 ? "atk" : "def")">
+                    <span>@(_phase == 0 ? "Attack" : "Defence")</span>
+                    <button class="fbtn" style="margin-left:12px" @onclick="TogglePhase">Switch ATK/DEF</button>
+                </div>
+                <div class="pitch gp-pitch" id="tacpitch">
+                    <div class="pline" style="inset:12px"></div>
+                    <div class="pline" style="left:50%;top:12px;bottom:12px;width:1px;border:none;background:var(--line)"></div>
+                    <div class="pcircle" style="width:110px;height:110px"></div>
+                    @foreach (var t in Tokens(_phase))
+                    {
+                        <div class="token ttoken @(t.Slot == _sel ? "sel" : "")" data-slot="@t.Slot"
+                             style="left:@F(t.Left)%;top:@F(t.Top)%"
+                             @onmouseover="() => _hover = t.PlayerId">
+                            <span class="num">@(t.Shirt > 0 ? t.Shirt.ToString() : t.Position)</span>
+                            <span class="nm">@t.Surname</span>
+                            <span class="pos">@t.Position <span class="cond @CondClass(t.PlayerId)">@CondArrow(t.PlayerId)</span></span>
+                            @if (t.PlayerId == _duties.GetValueOrDefault("cap")) { <span class="capbadge">C</span> }
+                        </div>
+                    }
+                    @foreach (var o in _opp)
+                    {
+                        <div class="token opp" style="left:@F(o.Left)%;top:@F(o.Top)%">
+                            <span class="num">@o.Rating</span>
+                            <span class="nm">@o.Surname</span>
+                            <span class="pos">@o.Position</span>
+                        </div>
+                    }
+                    <div class="shapelabel left d-wide">@_shape</div>
+                    <div class="shapelabel right d-wide">@_oppShape</div>
+                </div>
+                <div class="benchstrip">
+                    @for (var i = 0; i < _bench.Count; i++)
+                    {
+                        var ix = i;
+                        var b = _bench[ix];
+                        <button class="benchtok @(ix == _benchSel ? "sel" : "")"
+                                @onclick="() => BenchClick(ix)"
+                                @onmouseover="() => _hover = b.PlayerId">
+                            @if (Db.FaceDataUri(b.Face) is { } uri)
+                            { <img src="@uri" alt="" /> }
+                            else
+                            { <span class="mono">@ML.App.Visuals.PlayerMark(b.Name)</span> }
+                            <span class="brate tnum">@b.Rating</span>
+                            <span class="bnm">@b.Surname</span>
+                        </button>
+                    }
+                    <span style="font:400 11px/14px var(--font-data);color:var(--text-3);align-self:center;margin-left:8px;flex:0 0 auto;white-space:nowrap">
+                        pick a sub, then click a starter to swap in
+                    </span>
+                </div>
+            </div>
+        }
+        <div class="styleline" style="position:static;margin-top:4px">@_status</div>
+    </div>
+
+    @* ============ right rail: the opponent ============ *@
+    <div class="gp-right">
+        <div class="oppcrest">@ML.App.Visuals.Initials(_oppName)</div>
+        <div class="d-narrow" style="font-size:16px;text-align:center">@_oppName</div>
+        <div class="label" style="margin-top:8px">Substitutes</div>
+        <div class="oppsubs">
+            @foreach (var sub in _oppSubs)
+            {
+                <div class="oppsub">
+                    <span class="pill @Cat(sub.Position).ToLowerInvariant()" style="height:16px"><span style="font-size:9px">@sub.Position</span></span>
+                    <span>@sub.Name</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ============ player details overlay ============ *@
+@if (_details is { } dpid && DetailTok(dpid) is { } d)
+{
+    <div class="modalveil" @onclick="() => _details = null">
+        <div class="negomodal" style="width:min(860px,94vw)" @onclick:stopPropagation>
+            <div class="rowflex">
+                <span class="pill @Cat(d.Position).ToLowerInvariant()"><span>@d.Position</span></span>
+                <span class="d-narrow" style="font-size:22px">@d.Name</span>
+                <span class="d-wide" style="font-size:30px;margin-left:auto">@d.Rating</span>
+            </div>
+            <div class="rowflex" style="font:400 12px/16px var(--font-body);color:var(--text-2);gap:14px">
+                <span>Playstyle: <b style="color:var(--text)">@RoleOfSafe(dpid)</b></span>
+                <span class="tnum">@(d.Height > 0 ? $"{d.Height}cm" : "")</span>
+                <span class="tnum">@(d.Weight > 0 ? $"{d.Weight}kg" : "")</span>
+                <span class="tnum">@(d.Age > 0 ? $"{d.Age}y" : "")</span>
+                <span class="cond @CondClass(dpid)">@CondArrow(dpid)</span>
+            </div>
+            <div style="display:grid;grid-template-columns:150px 1fr 1fr;gap:16px;min-height:0">
+                <div>
+                    <div class="label">Positions</div>
+                    <svg viewBox="0 0 90 130" class="heatmap">
+                        <rect x="2" y="2" width="86" height="126" fill="none" stroke="var(--line)"></rect>
+                        <line x1="2" y1="65" x2="88" y2="65" stroke="var(--line)"></line>
+                        @foreach (var cell in HeatCells(dpid, d.Position))
+                        {
+                            <rect x="@cell.X" y="@cell.Y" width="26" height="24" fill="rgba(18,185,129,.45)"></rect>
+                        }
+                    </svg>
+                    <div class="label" style="margin-top:8px">Change position</div>
+                    <div class="rowflex" style="gap:4px;flex-wrap:wrap">
+                        @foreach (var p in ChangeTargets(dpid, d.Position))
+                        {
+                            <button class="fbtn" @onclick="() => ChangePosition(dpid, p)">@p</button>
+                        }
+                    </div>
+                    <div class="label" style="margin-top:10px">In possession · playstyle</div>
+                    <select class="theme" style="width:100%" value="@RoleOfSafe(dpid)"
+                            @onchange='e => SetRole(dpid, e.Value?.ToString() ?? "Basic")'>
+                        <option value="Basic">Basic — no specialised style</option>
+                        @foreach (var r in RolesFor(d.Position))
+                        {
+                            <option value="@r.Name">@r.Name @FitStars(dpid, r.Name)</option>
+                        }
+                    </select>
+                    <div class="label" style="margin-top:8px">Out of possession</div>
+                    <select class="theme" style="width:100%" value="@DefStyleOf(dpid)"
+                            @onchange='e => SetDefStyle(dpid, e.Value?.ToString() ?? "None")'>
+                        <option value="None">None</option>
+                        @foreach (var ds in DefStylesFor(d.Position))
+                        {
+                            <option value="@ds">@ds</option>
+                        }
+                    </select>
+                </div>
+                <div class="detattrs">
+                    @foreach (var a in DetailAttrs(dpid, 0))
+                    {
+                        <div class="darow"><span>@a.Label</span><b class="tnum" style="color:@ValColor(a.Value)">@a.Value</b></div>
+                    }
+                </div>
+                <div class="detattrs">
+                    @foreach (var a in DetailAttrs(dpid, 1))
+                    {
+                        <div class="darow"><span>@a.Label</span><b class="tnum" style="color:@ValColor(a.Value)">@a.Value</b></div>
+                    }
+                </div>
+            </div>
+            <div class="negoactions"><button class="btn ghost" @onclick="() => _details = null">Done</button></div>
+        </div>
+    </div>
+}
+}

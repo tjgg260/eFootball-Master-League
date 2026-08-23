@@ -206,7 +206,7 @@ public sealed partial class Session
         }
         var sb = new StringBuilder();
         sb.AppendLine($"SCOUT REPORT — {name}  ({position}, {rating})  (scout: {new string('★', quality)})");
-        sb.AppendLine($"Age {age?.ToString() ?? "—"}   Value £{ValuationOf(rating, age):N0}");
+        sb.AppendLine($"Age {age?.ToString() ?? "—"}   Value £{MarketValueOf(playerId, rating, age):N0}");
 
         if (quality >= 3)
         {

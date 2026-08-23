@@ -155,16 +155,28 @@
               </DataGridTemplateColumn>
               <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
               <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="64"/>
-              <DataGridTemplateColumn Header="OVR" Width="60">
+              <DataGridTemplateColumn Header="Rating" Width="64">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:MarketPlayer">
-                    <TextBlock Text="{Binding Overall}" Foreground="{Binding RatingBrush}"
+                    <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
                                FontWeight="Bold" VerticalAlignment="Center" Margin="4,0"/>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
               <DataGridTextColumn Header="Age" Binding="{Binding AgeLabel}" Width="56"/>
               <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="105"/>
+              <DataGridTemplateColumn Header="" Width="98">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:MarketPlayer">
+                    <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Left"
+                            VerticalAlignment="Center" Background="{Binding StatusBrush}"
+                            IsVisible="{Binding HasStatus}">
+                      <TextBlock Text="{Binding StatusLabel}" Foreground="White" FontSize="9"
+                                 FontWeight="Bold"/>
+                    </Border>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTextColumn Header="Club" Binding="{Binding Club}" Width="150"/>
             </DataGrid.Columns>
           </DataGrid>
@@ -187,7 +199,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="8">
                       <TextBlock Text="{Binding ProfilePosition}" Foreground="#8A93A2" FontSize="13"
                                  FontWeight="Bold" VerticalAlignment="Bottom"/>
-                      <TextBlock Text="{Binding ProfileRating}" Foreground="{Binding ProfileRatingBrush}"
+                      <TextBlock Text="{Binding ProfileGrade}" Foreground="{Binding ProfileRatingBrush}"
                                  FontSize="26" FontWeight="Bold"/>
                     </StackPanel>
                     <TextBlock Text="{Binding ProfilePlaystyle}" Foreground="#E0A526" FontSize="11"/>
@@ -974,10 +986,14 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:AcademyEntry">
                   <Border Width="32" Height="32" CornerRadius="16" Background="{Binding FaceBrush}"
-                          Margin="4,2">
-                    <TextBlock Text="{Binding Mark}" Foreground="#20262E" FontSize="10"
-                               FontWeight="Bold" HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
+                          Margin="4,2" ClipToBounds="True">
+                    <Panel>
+                      <TextBlock Text="{Binding Mark}" Foreground="#20262E" FontSize="10"
+                                 FontWeight="Bold" HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                      <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                             IsVisible="{Binding HasPortrait}"/>
+                    </Panel>
                   </Border>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
@@ -985,10 +1001,10 @@
             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
             <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
             <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="60"/>
-            <DataGridTemplateColumn Header="OVR" Width="70">
+            <DataGridTemplateColumn Header="Rating" Width="70">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:AcademyEntry">
-                  <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                  <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
                              FontWeight="Bold" VerticalAlignment="Center" Margin="8,0"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
@@ -1069,10 +1085,10 @@
             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
             <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="100"/>
             <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="52"/>
-            <DataGridTemplateColumn Header="OVR" Width="60">
+            <DataGridTemplateColumn Header="Rating" Width="64">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:TrainingRow">
-                  <TextBlock Text="{Binding Rating}" Foreground="{Binding RatingBrush}"
+                  <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
                              FontWeight="Bold" VerticalAlignment="Center" Margin="8,0"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>

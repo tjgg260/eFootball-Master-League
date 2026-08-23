@@ -1,0 +1,84 @@
+@page "/board"
+@inject Db Db
+@inject AppState State
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron"><span>Board &amp; objectives</span></div>
+        @if (State.Career is { } cc && cc.Chairman is { Length: > 0 })
+        {
+            <div class="tools"><span class="label">Chairman @cc.Chairman</span></div>
+        }
+    </div>
+
+    @if (State.Career is not { } c)
+    {
+        <div class="pcard"><div style="font:400 13px/18px var(--font-body);color:var(--text-3)">No career yet.</div></div>
+    }
+    else
+    {
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px;flex:1;min-height:0">
+            <div class="pcard">
+                <div class="label">Board confidence</div>
+                @if (_board is { } b)
+                {
+                    <div class="d-wide" style="font-size:52px;color:@ConfColor(b.Confidence)">@b.Confidence</div>
+                    <div class="bar" style="height:8px;background:var(--surface-2);position:relative">
+                        <i style="position:absolute;left:0;top:0;bottom:0;background:@ConfColor(b.Confidence);width:@(b.Confidence)%"></i>
+                    </div>
+                    <div style="font:400 13px/18px var(--font-body);color:var(--text-2);margin-top:8px">
+                        The board expects: <span style="color:var(--text);font-weight:700">@b.Expectation</span>
+                    </div>
+                }
+                else
+                {
+                    <div style="font:400 12px/16px var(--font-body);color:var(--text-3)">No board data for this club.</div>
+                }
+                <div class="hintbox" style="margin-top:auto">
+                    Mid-season review and season-end verdict feed confidence, budget and job security.
+                </div>
+            </div>
+
+            <div class="pcard">
+                <div class="label">Season objectives</div>
+                @if (_objectives.Count == 0)
+                {
+                    <div style="font:400 12px/16px var(--font-body);color:var(--text-3)">The board hasn't issued objectives for this club yet.</div>
+                }
+                @foreach (var o in _objectives)
+                {
+                    <div class="objrow @o.Importance" style="min-height:40px">
+                        <span class="oi">@o.Importance.ToUpperInvariant()</span>
+                        <span class="ot" style="font-size:13px">@ObjText(o)</span>
+                        <span style="margin-left:auto;font:600 11px/14px var(--font-body);color:@(o.Status == 1 ? "var(--win)" : o.Status == -1 ? "var(--loss)" : "var(--text-3)")">
+                            @(o.Status == 1 ? "MET" : o.Status == -1 ? "FAILED" : "IN PLAY")
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private (int Confidence, string Expectation)? _board;
+    private List<ObjectiveRow> _objectives = new();
+
+    protected override void OnInitialized()
+    {
+        if (State.Career is not { } c) return;
+        _board = Db.Board(c.TeamId, c.SeasonId);
+        _objectives = Db.Objectives(c.TeamId, c.SeasonId);
+    }
+
+    private static string ConfColor(int v) => v >= 65 ? "var(--win)" : v >= 40 ? "var(--draw)" : "var(--loss)";
+
+    private static string ObjText(ObjectiveRow o) => o.Kind switch
+    {
+        "league_finish" => $"Finish {o.Target} or higher in the league",
+        "cup_run" => $"Reach round of {o.Target} in the cup",
+        "youth_minutes" => "Give academy players minutes",
+        "wage_discipline" => "Stay inside the wage budget",
+        _ => o.Kind.Replace('_', ' '),
+    };
+}

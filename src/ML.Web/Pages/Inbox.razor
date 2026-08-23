@@ -1,0 +1,66 @@
+@page "/inbox"
+@inject Db Db
+@inject AppState State
+
+<div class="content" style="display:grid;grid-template-columns:340px minmax(0,1fr);gap:12px;align-content:stretch">
+    <div style="display:flex;flex-direction:column;gap:12px;min-height:0">
+        <div class="chyron"><span>Inbox</span></div>
+        <div class="gtable" style="flex:1">
+            <div class="rows">
+                @if (_items.Count == 0)
+                {
+                    <div style="padding:20px;font:400 12px/16px var(--font-body);color:var(--text-3)">Nothing here yet.</div>
+                }
+                @foreach (var item in _items)
+                {
+                    <button class="mailrow @(item == _sel ? "sel" : "") @(item.IsRead ? "" : "unread")" @onclick="() => Open(item)">
+                        <span class="cat">@item.Category</span>
+                        <span class="sub">@item.Subject</span>
+                        @if (item.RequiresAction) { <span class="act">ACTION</span> }
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="pcard" style="min-height:0">
+        @if (_sel is { } m)
+        {
+            <div class="rowflex">
+                <span class="pill mid"><span>@m.Category.ToUpperInvariant()</span></span>
+                @if (m.Matchday is { } md) { <span class="label">Matchday @md</span> }
+            </div>
+            <div class="d-narrow" style="font-size:22px">@m.Subject</div>
+            <div style="font:400 14px/22px var(--font-body);color:var(--text-2);white-space:pre-wrap;text-wrap:pretty">@m.Body</div>
+        }
+        else
+        {
+            <div style="margin:auto;font:400 13px/18px var(--font-body);color:var(--text-3)">Select a message.</div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<InboxRow> _items = new();
+    private InboxRow? _sel;
+
+    protected override void OnInitialized()
+    {
+        if (State.Career is not { } c) return;
+        _items = Db.Inbox(c.SeasonId);
+        _sel = _items.FirstOrDefault();
+        if (_sel is { IsRead: false }) { Db.MarkRead(_sel.Id); State.Reload(); }
+    }
+
+    private void Open(InboxRow m)
+    {
+        _sel = m;
+        if (!m.IsRead)
+        {
+            Db.MarkRead(m.Id);
+            _items = Db.Inbox(State.Career!.SeasonId);
+            _sel = _items.First(x => x.Id == m.Id);
+            State.Reload();
+        }
+    }
+}

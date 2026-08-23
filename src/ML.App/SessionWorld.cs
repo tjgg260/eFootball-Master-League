@@ -538,7 +538,7 @@ public sealed partial class Session
                         .FirstOrDefault();
                     if (sellable is not null && Repo.Squad(seller.Id).Count > 19)
                     {
-                        var fee = ValuationOf(sellable.OverallRating ?? 65, sellable.Age);
+                        var fee = MarketValueOf(sellable.Id, sellable.OverallRating ?? 65, sellable.Age);
                         Repo.RemoveSquadMember(seller.Id, sellable.Id);
                         MoveIntoSquad(club.Id, sellable.Id);
                         RecordPaidTransfer(sellable.Id, seller.Id, club.Id, fee);
@@ -1332,6 +1332,34 @@ public sealed partial class Session
         return (long)(Math.Round(v / 25_000) * 25_000);
     }
 
+    /// <summary>
+    /// A player's market value — the REAL FM value we imported (player_market.value) when we have
+    /// one, otherwise the synthetic rating/age curve. This is what makes a bid for Bellingham cost
+    /// £162m instead of a formula guess.
+    /// </summary>
+    public long MarketValueOf(int playerId, int rating, int? age)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT value FROM player_market WHERE player_id=$p";
+        cmd.Parameters.AddWithValue("$p", playerId);
+        var v = cmd.ExecuteScalar();
+        if (v is not null and not DBNull && Convert.ToInt64(v) > 0)
+            return Convert.ToInt64(v);
+        return ValuationOf(rating, age);
+    }
+
+    /// <summary>The agent's weekly wage floor: the real FM wage if imported, else the model demand.</summary>
+    public long RealWageDemand(int playerId, int rating, int age, int years)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT wage FROM player_market WHERE player_id=$p";
+        cmd.Parameters.AddWithValue("$p", playerId);
+        var v = cmd.ExecuteScalar();
+        if (v is not null and not DBNull && Convert.ToInt64(v) > 0)
+            return Convert.ToInt64(v);
+        return ML.Core.Selection.ContractNegotiation.WeeklyDemand(rating, age, 60, years);
+    }
+
     /// <summary>Which club (if any) in the career world currently holds this player.</summary>
     private (int TeamId, string Name)? OwningClub(int playerId)
     {
@@ -1391,7 +1419,7 @@ public sealed partial class Session
             }
         }
 
-        var value = ValuationOf(rating, age);
+        var value = MarketValueOf(playerId, rating, age);
         var bid = value * bidPct / 100;
         var seller = OwningClub(playerId);
         if (seller is { } club)
@@ -1512,7 +1540,7 @@ public sealed partial class Session
                 "Surplus to Requirements" => 0.75 + rng.Next(20) / 100.0,
                 _ => 1.1 + rng.Next(30) / 100.0,
             };
-            var fee = (long)(ValuationOf(p.OverallRating ?? 65, p.Age) * mult);
+            var fee = (long)(MarketValueOf(p.Id, p.OverallRating ?? 65, p.Age) * mult);
             offers.Add(new TransferOffer(p.Id, p.Name, buyer.Name, fee));
             if (offers.Count == 3) break;
         }

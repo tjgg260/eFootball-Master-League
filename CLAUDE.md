@@ -27,8 +27,6 @@ WESYS decryption. Deliberate, informed choice — see
   `tools/ml_apply.py` rebuilds the *unmodified* source file and compares byte for byte. If it
   cannot, we do not understand the format well enough to be trusted, and nothing is written.
   Keep that gate on every new file type.
-- **Nothing from `tools/vendor/sider/` may run while the game is running.** Only the offline
-  file-format code is used. Sider's `dxgi.dll` injection runtime is deliberately not vendored.
 - **Never guess CSV column names or attribute field names.** Read them from a real export file
   in `/samples`. If the file isn't there, ask for it.
 - SQLite is the source of truth. No code path may treat a game file as authoritative state.

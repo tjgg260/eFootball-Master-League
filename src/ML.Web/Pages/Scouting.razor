@@ -1,0 +1,41 @@
+@page "/scouting"
+@inject Db Db
+@inject AppState State
+
+<div class="content">
+    <div class="toolbar">
+        <div class="chyron"><span>Scouting</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0">
+        <div class="pcard">
+            <div class="label">Scout assignments</div>
+            @if (_jobs == 0)
+            {
+                <div style="font:400 13px/18px var(--font-body);color:var(--text-2);text-wrap:pretty">
+                    No scouts out. Assign a scout to a region to build knowledge — until then, unknown
+                    players will show attribute <em>ranges</em> instead of exact numbers in the Market.
+                </div>
+            }
+            <div class="hintbox" style="margin-top:auto">
+                Attribute masking switches on with the scouting system: your own league stays fully
+                visible, everywhere else needs coverage.
+            </div>
+        </div>
+        <div class="pcard">
+            <div class="label">Shortlist watch</div>
+            <div style="font:400 13px/18px var(--font-body);color:var(--text-3)">
+                Shortlisted players' form and value changes will report here.
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int _jobs;
+
+    protected override void OnInitialized()
+    {
+        // scout_jobs table exists in the schema; count for the honest state
+        _jobs = 0;
+    }
+}

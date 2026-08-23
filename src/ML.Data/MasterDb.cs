@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reflection;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -39,6 +40,25 @@ public sealed class MasterDb : IDisposable
     {
         _connection.Execute("PRAGMA foreign_keys = ON;");
         _connection.Execute(SchemaSql());
+        Migrate();
+    }
+
+    /// <summary>
+    /// Additive column migrations for DBs created before a column existed. SQLite has no
+    /// ADD COLUMN IF NOT EXISTS, so we probe pragma_table_info first. Idempotent.
+    /// </summary>
+    private void Migrate()
+    {
+        void AddColumn(string table, string col, string decl)
+        {
+            var has = _connection.Query<string>($"SELECT name FROM pragma_table_info('{table}')")
+                .Any(n => n == col);
+            if (!has) _connection.Execute($"ALTER TABLE {table} ADD COLUMN {col} {decl}");
+        }
+        AddColumn("teams", "parent_team_id", "INTEGER");
+        AddColumn("teams", "team_kind", "TEXT NOT NULL DEFAULT 'first'");
+        AddColumn("players", "personality", "TEXT");
+        AddColumn("player_playstyles", "kind", "TEXT NOT NULL DEFAULT 'primary'");
     }
 
     private static string SchemaSql()

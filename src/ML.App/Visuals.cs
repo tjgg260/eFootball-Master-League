@@ -18,13 +18,40 @@ public static class Visuals
 
     // Load a portrait/logo PNG off disk once and cache it; null if missing so the UI shows a
     // generated badge/avatar in its place. Real RFS art where it exists, generated fallback where not.
+    // Stored paths are repo-relative (forward slashes); resolve them against the repo root found by
+    // walking up from the app binary. Cache is keyed by the ORIGINAL string, pre-resolution.
     private static readonly Dictionary<string, Bitmap?> _bitmaps = new();
+
+    // Repo root, computed once: first ancestor of the binary that contains build/master.db or
+    // tools/career_seed.py. Null when the app runs detached from the repo (relative paths then miss).
+    private static readonly string? RepoRoot = FindRepoRoot();
+    private static string? FindRepoRoot()
+    {
+        try
+        {
+            for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "build", "master.db")) ||
+                    File.Exists(Path.Combine(dir.FullName, "tools", "career_seed.py")))
+                    return dir.FullName;
+            }
+        }
+        catch { /* fall through to null */ }
+        return null;
+    }
+
     public static Bitmap? LoadBitmap(string? path)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
         if (_bitmaps.TryGetValue(path, out var cached)) return cached;
         Bitmap? bmp = null;
-        try { if (File.Exists(path)) bmp = new Bitmap(path); }
+        try
+        {
+            var resolved = !Path.IsPathRooted(path) && RepoRoot is not null
+                ? Path.Combine(RepoRoot, path)
+                : path;
+            if (File.Exists(resolved)) bmp = new Bitmap(resolved);
+        }
         catch { bmp = null; }
         _bitmaps[path] = bmp;
         return bmp;
@@ -63,6 +90,16 @@ public static class Visuals
     {
         1 => "#F0D2B6", 2 => "#E3BD95", 3 => "#CDA173",
         4 => "#A97B4F", 5 => "#7E5633", 6 => "#573A21", _ => "#3A4453",
+    });
+
+    /// <summary>
+    /// Hair colour for the generated avatar, from the PlayerAppearance hair_color field (0 black –
+    /// 5 lightest). Pairs with <see cref="SkinBrush"/> to give the tier-3 generic face real colours.
+    /// </summary>
+    public static IBrush HairBrush(int? hair) => Brush(hair switch
+    {
+        0 => "#1B1712", 1 => "#3B2A1C", 2 => "#5A3A22", 3 => "#8A5A2B",
+        4 => "#C79A50", 5 => "#E4C77E", _ => "#241C16",
     });
 
     /// <summary>Colour a player avatar by unit so a squad list reads at a glance.</summary>

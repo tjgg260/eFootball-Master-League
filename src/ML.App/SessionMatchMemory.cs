@@ -26,7 +26,7 @@ public sealed partial class Session
         {
             var psi = new ProcessStartInfo
             {
-                FileName = "python",
+                FileName = CareerBuilder.PythonExe(),
                 WorkingDirectory = root,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

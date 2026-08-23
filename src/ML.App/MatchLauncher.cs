@@ -50,7 +50,7 @@ public static class MatchLauncher
         log($"Compiling {homeName} vs {awayName} from your career database…");
         var psi = new ProcessStartInfo
         {
-            FileName = "python",
+            FileName = CareerBuilder.PythonExe(),
             WorkingDirectory = root,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

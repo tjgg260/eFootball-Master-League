@@ -58,7 +58,8 @@ public static class XiSelector
     public static IReadOnlyList<int> SelectOrder(
         IReadOnlyList<CandidatePlayer> squad,
         IReadOnlyList<string> slotPositions,
-        Func<int, (string Registered, IReadOnlyCollection<string> Learned)> positionsOf)
+        Func<int, (string Registered, IReadOnlyCollection<string> Learned)> positionsOf,
+        Func<int, string, int?>? ratingAt = null)
     {
         var picked = new HashSet<int>();
         var order = new List<int>(squad.Count);
@@ -66,7 +67,20 @@ public static class XiSelector
         double SlotScore(CandidatePlayer p, string slot)
         {
             var (reg, learned) = positionsOf(p.PlayerId);
-            return Score(p) + PositionFit.Bonus(PositionFit.Of(reg, learned, slot));
+            // When abilities are known, the slot rating IS position-adjusted (a winger's GK
+            // overall is his gk_* abilities, ~40) — the flat fit bonus then only breaks ties
+            // toward trained positions. Without abilities, fall back to native rating + bonus,
+            // which is too weak a penalty on its own to keep a star winger out of goal — so a
+            // GK/outfield mismatch gets a hard extra penalty there.
+            var adjusted = ratingAt?.Invoke(p.PlayerId, slot);
+            var baseScore = (adjusted ?? p.Rating) - p.Fatigue / 4.0 + p.Form
+                            + PositionFit.Bonus(PositionFit.Of(reg, learned, slot));
+            if (adjusted is null
+                && (slot == "GK") != (PositionFit.Category(reg) == "GK"))
+            {
+                baseScore -= 40;                 // never a winger in goal / keeper up front
+            }
+            return baseScore;
         }
 
         foreach (var slot in slotPositions)

@@ -7,9 +7,11 @@ namespace ML.App.ViewModels;
 
 public sealed record AcademyEntry(
     int PlayerId, string Name, string Position, int Age, int Rating, IBrush RatingBrush,
-    string Potential, IBrush FaceBrush)
+    string Potential, IBrush FaceBrush, Avalonia.Media.Imaging.Bitmap? Portrait = null)
 {
     public string Mark => Visuals.PlayerMark(Name);
+    public bool HasPortrait => Portrait is not null;
+    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // your academy
 }
 
 /// <summary>Your youth setup: this season's prospects, with promotion to the senior squad.</summary>
@@ -32,10 +34,17 @@ public sealed partial class AcademyViewModel : PageViewModel
             // REAL potential (P2): the same stored ceiling development grows toward.
             var stars = _s.PotentialStars(p.Id);
             int? tone = null;
-            try { tone = _s.NewsFaceOf(p.Id).SkinTone; } catch { }
+            Avalonia.Media.Imaging.Bitmap? face = null;
+            try
+            {
+                var por = _s.PortraitFor(p.Id);
+                tone = por.SkinTone;
+                face = por.Image;
+            }
+            catch { }
             Rows.Add(new AcademyEntry(p.Id, p.Name, p.Position, p.Age ?? 17, rating,
                 Visuals.RatingBrush(rating), new string('★', stars) + new string('☆', 5 - stars),
-                Visuals.SkinBrush(tone)));
+                Visuals.SkinBrush(tone), face));
         }
         Note = Rows.Count == 0
             ? "No prospects yet — the academy produces a new intake every preseason."

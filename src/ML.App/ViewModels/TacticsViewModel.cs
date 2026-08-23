@@ -36,6 +36,7 @@ public sealed record BenchEntry(
     int Fatigue, bool Injured, IReadOnlyList<string> Learned)
 {
     public Avalonia.Media.IBrush RatingBrush => Visuals.RatingBrush(Rating);
+    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // own squad: true letter
     public Avalonia.Media.IBrush CondBrush =>
         Visuals.Brush(Injured ? "#D64545" : Fatigue < 20 ? "#1F9D4D" : Fatigue < 40 ? "#E0A526" : "#D64545");
     public string Tag => Injured ? "INJ" : Fatigue >= 40 ? "TIRED" : "";
@@ -51,8 +52,10 @@ public sealed partial class PitchPlayer : ObservableObject
     public PitchPlayer(int playerId, int number, string name, int rating, string? portraitPath,
                        string position, string role, double left, double top,
                        string registeredPosition = "", IReadOnlyList<string>? learned = null,
-                       int fatigue = 0, bool injured = false)
+                       int fatigue = 0, bool injured = false,
+                       IReadOnlyDictionary<string, int>? abilities = null)
     {
+        Abilities = abilities;
         PlayerId = playerId;
         Number = number;
         Name = name;
@@ -81,7 +84,13 @@ public sealed partial class PitchPlayer : ObservableObject
     public string Surname => Name.Contains(' ') ? Name[(Name.LastIndexOf(' ') + 1)..] : Name;
     public Avalonia.Media.Imaging.Bitmap? Portrait { get; }
     public bool HasPortrait => Portrait is not null;
-    public Avalonia.Media.IBrush RatingBrush => Visuals.RatingBrush(Rating);
+    public IReadOnlyDictionary<string, int>? Abilities { get; }
+
+    /// <summary>His overall AT THE SLOT he's standing in — a winger dropped in goal is scored on
+    /// his goalkeeping (an F), not his wing play. Falls back to native rating without abilities.</summary>
+    public int EffectiveRating => ML.Core.Selection.PositionOverall.Of(Abilities, Position) ?? Rating;
+    public Avalonia.Media.IBrush RatingBrush => Visuals.RatingBrush(EffectiveRating);
+    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(EffectiveRating);
 
     /// <summary>Condition dot: green fresh, amber leggy, red exhausted/injured.</summary>
     public Avalonia.Media.IBrush CondBrush =>
@@ -95,6 +104,9 @@ public sealed partial class PitchPlayer : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Fill))]
     [NotifyPropertyChangedFor(nameof(FitBrush))]
+    [NotifyPropertyChangedFor(nameof(EffectiveRating))]
+    [NotifyPropertyChangedFor(nameof(Grade))]
+    [NotifyPropertyChangedFor(nameof(RatingBrush))]
     private string _position;
 
     [ObservableProperty] private string _role;
@@ -115,12 +127,15 @@ public sealed partial class PitchPlayer : ObservableObject
 
 /// <summary>The next opponent's read-only token on the mirrored right half of the pitch.</summary>
 public sealed record OppToken(double Left, double Top, string Pos, int Rating, string Surname,
-                              Avalonia.Media.Imaging.Bitmap? Portrait)
+                              Avalonia.Media.Imaging.Bitmap? Portrait, int Knowledge = 100)
 {
     public bool HasPortrait => Portrait is not null;
     public string Mark => Visuals.PlayerMark(Surname);
     public Avalonia.Media.IBrush MarkBrush => Visuals.PositionBrush(Pos);
-    public Avalonia.Media.IBrush RatingBrush => Visuals.RatingBrush(Rating);
+    // Opponent overalls are knowledge-gated: "?" until you've scouted or faced them enough.
+    public string Grade => ML.Core.Development.AttributeKnowledge.GradeMasked(Rating, Knowledge);
+    public Avalonia.Media.IBrush RatingBrush =>
+        Knowledge >= 75 ? Visuals.RatingBrush(Rating) : Visuals.Brush("#8A93A2");
 }
 
 public sealed partial class TacticsViewModel : PageViewModel
@@ -196,11 +211,18 @@ public sealed partial class TacticsViewModel : PageViewModel
             "When ball possession is lost, players will focus on forming a defensive block in the " +
             "midfield, then adapt their formation according to the game state."),
         new(5, "Overload",
-            // Konami ships no movement text for Overload in the PC string files (its Dream Team
-            // description is served online) — stated plainly rather than invented.
-            "The game's PC files carry no movement description for Overload — Konami serves its " +
-            "Dream Team text online. It is the all-out attacking Team Playstyle (style value 5, " +
-            "used by 22 shipped teams)."),
+            // The PC string files carry no movement text for Overload (Konami serves it online);
+            // this is Konami's own v6.0.0 Overload description, sourced from its official reveal
+            // rather than invented. Style value 5, used by 22 shipped teams.
+            "Players concentrate on the same side as the ball to achieve numerical superiority.\n" +
+            "In attack this makes short passes easier and lets the team keep possession even in " +
+            "crowded areas, breaking lines with quick combinations.",
+            "Without the ball the team stays compact and closes the ball-carrier down quickly, " +
+            "raising the back line for a high press when attacking in the opponent's half.",
+            "When possession is regained, nearby players swarm the ball side to rebuild the " +
+            "overload and keep the ball moving through tight spaces.",
+            "When possession is lost, players immediately gegenpress — hunting the ball in numbers " +
+            "to win it back high up the pitch (a Possession Game + Quick Counter hybrid)."),
     };
 
     // Player roles (Playing Styles): descriptions VERBATIM from eFootball's string table
@@ -351,7 +373,8 @@ public sealed partial class TacticsViewModel : PageViewModel
                 token = new PitchPlayer(player.Id, slot.SquadNumber, player.Name,
                                         player.OverallRating ?? 0, player.PortraitPath, pos,
                                         _s.RoleOf(player.Id), left, top,
-                                        player.Position, _s.LearnedPositions(player.Id), fat, inj);
+                                        player.Position, _s.LearnedPositions(player.Id), fat, inj,
+                                        AttrsOf(player.Id));
             }
             else
             {
@@ -429,13 +452,24 @@ public sealed partial class TacticsViewModel : PageViewModel
     public ObservableCollection<StyleOption> Styles { get; } = new();
     public ObservableCollection<string> Positions { get; } = new();
     public ObservableCollection<RoleOption> Roles { get; } = new();
+    // Out-of-possession (defensive) roles for the selected player — parity with ML.Web's DefCatalog,
+    // sourced from the shared ML.Core.Tactics.RoleCatalog so the two apps can't drift.
+    public ObservableCollection<string> SecondaryRoles { get; } = new();
+    [ObservableProperty] private string? _selectedSecondaryRole;
+    private bool _syncingSecondary;
     public ObservableCollection<PitchPlayer> Players { get; } = new();
     public ObservableCollection<BenchEntry> Bench { get; } = new();
 
     [ObservableProperty] private FormationOption? _selectedTemplate;
     [ObservableProperty] private StyleOption? _selectedStyle;
     [ObservableProperty] private RoleOption? _selectedRole;
-    [ObservableProperty] private bool _fluid;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPhaseFrame))]
+    private bool _fluid;
+
+    /// <summary>The pink/teal phase frame only means something when Fluid is on — with a single
+    /// shape there is no attack/defence distinction to frame.</summary>
+    public bool ShowPhaseFrame => ShowSetFormation && Fluid;
     [ObservableProperty] private PitchPlayer? _selectedPlayer;
 
     // Set-piece duties (compiled into the game: fk=8, pk=16, ckl=4, ckr=1 in the flag byte).
@@ -501,6 +535,7 @@ public sealed partial class TacticsViewModel : PageViewModel
     [NotifyPropertyChangedFor(nameof(MenuTitle))]
     [NotifyPropertyChangedFor(nameof(DragEnabled))]
     [NotifyPropertyChangedFor(nameof(PitchCaption))]
+    [NotifyPropertyChangedFor(nameof(ShowPhaseFrame))]
     private int _tacticsMenu;
 
     public bool ShowMenuRoot => TacticsMenu == 0;
@@ -634,8 +669,14 @@ public sealed partial class TacticsViewModel : PageViewModel
                 var pos = Visuals.RoleCodeLabel(slots[i].Position);
                 var name = pl?.Name ?? "—";
                 var surname = name.Contains(' ') ? name[(name.LastIndexOf(' ') + 1)..] : name;
+                var knowledge = 100;
+                if (pl is not null)
+                {
+                    try { knowledge = _s.FmAttributeMode ? _s.KnowledgeOf(pl.Id) : 100; }
+                    catch { knowledge = 100; }
+                }
                 Opponents.Add(new OppToken(left, top, pos, pl?.OverallRating ?? 0, surname,
-                    Visuals.LoadBitmap(pl?.PortraitPath)));
+                    Visuals.LoadBitmap(pl?.PortraitPath), knowledge));
             }
             OpponentLabel = _s.TeamName(oppId);
             OpponentShape = Formations.ShapeOf(slots.Select(sl => sl.Y));
@@ -741,7 +782,7 @@ public sealed partial class TacticsViewModel : PageViewModel
         var token = new PitchPlayer(incoming.PlayerId, incoming.Number, incoming.Name,
             incoming.Rating, incoming.PortraitPath, outgoing.Position, _s.RoleOf(incoming.PlayerId),
             outgoing.Left, outgoing.Top, incoming.Position, incoming.Learned,
-            incoming.Fatigue, incoming.Injured);
+            incoming.Fatigue, incoming.Injured, AttrsOf(incoming.PlayerId));
         token.PropertyChanged += OnTokenChanged;
         outgoing.PropertyChanged -= OnTokenChanged;
         _swapping = true;
@@ -784,6 +825,12 @@ public sealed partial class TacticsViewModel : PageViewModel
         SaveStatus = $"⇄ {a.Name} and {b.Name} trade places — Save to lock it in.";
     }
 
+    /// <summary>A player's abilities for position-adjusted grades; null degrades to native rating.</summary>
+    private IReadOnlyDictionary<string, int>? AttrsOf(int pid)
+    {
+        try { return pid > 0 ? _s.Repo.Attributes(pid) : null; } catch { return null; }
+    }
+
     /// <summary>Let the AI propose an XI (form/fatigue/fit) — you can still edit before saving.</summary>
     [RelayCommand]
     private void SuggestXi()
@@ -803,7 +850,7 @@ public sealed partial class TacticsViewModel : PageViewModel
             var token = new PitchPlayer(player.Id, slot.SquadNumber, player.Name,
                 player.OverallRating ?? 0, player.PortraitPath, old.Position, _s.RoleOf(player.Id),
                 old.Left, old.Top, player.Position, _s.LearnedPositions(player.Id),
-                c?.Fatigue ?? 0, c?.InjuredUntilMd is int u && u >= md);
+                c?.Fatigue ?? 0, c?.InjuredUntilMd is int u && u >= md, AttrsOf(player.Id));
             token.PropertyChanged += OnTokenChanged;
             old.PropertyChanged -= OnTokenChanged;
             Players[i] = token;
@@ -1005,12 +1052,42 @@ public sealed partial class TacticsViewModel : PageViewModel
             current = rated.First(r => r.Name == "Basic");
         }
         SelectedRole = current;
+
+        // Out-of-possession options for this position (shared catalog), with the saved pick.
+        _syncingSecondary = true;
+        SecondaryRoles.Clear();
+        SecondaryRoles.Add("None");
+        var pos = SelectedPlayer.Position switch { "LWB" => "LB", "RWB" => "RB", _ => SelectedPlayer.Position };
+        foreach (var r in ML.Core.Tactics.RoleCatalog.Secondary.Where(r => r.Positions.Contains(pos)))
+            SecondaryRoles.Add(r.Name);
+        var savedSec = SelectedPlayer.PlayerId > 0 ? _s.SecondaryRoleOf(SelectedPlayer.PlayerId) : "None";
+        SelectedSecondaryRole = SecondaryRoles.Contains(savedSec) ? savedSec : "None";
+        _syncingSecondary = false;
     }
 
     partial void OnSelectedRoleChanged(RoleOption? value)
     {
         if (value is not null && SelectedPlayer is not null && SelectedPlayer.Role != value.Name)
             SelectedPlayer.Role = value.Name;
+    }
+
+    partial void OnSelectedSecondaryRoleChanged(string? value)
+    {
+        // Persist immediately (like ML.Web's SetDefStyle) — it compiles into Player.bin on install.
+        if (_syncingSecondary || value is null || SelectedPlayer is null || SelectedPlayer.PlayerId <= 0)
+            return;
+        _s.SetSecondaryRole(SelectedPlayer.PlayerId, value);
+        SaveStatus = $"{SelectedPlayer.Name}: {(value == "None" ? "no defending role" : value)} out of possession.";
+    }
+
+    /// <summary>Let the AI fill every player's in- and out-of-possession role from their attributes
+    /// and the team's chosen playstyle (parity with the AI opponent's behaviour).</summary>
+    [RelayCommand]
+    private void AutoAssignRoles()
+    {
+        _s.AssignRolesFor(_s.CurrentTeamId);
+        if (SelectedPlayer is not null) RefreshRoles();
+        SaveStatus = "AI assigned in- and out-of-possession roles to the whole squad.";
     }
 
     // --- save ----------------------------------------------------------------------
