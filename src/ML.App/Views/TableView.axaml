@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:app="using:ML.App"
+             x:Class="ML.App.Views.TableView"
+             x:DataType="vm:TableViewModel">
+  <DockPanel Margin="20">
+    <!-- the position worm (P6): lower is better, top line = 1st -->
+    <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,12"
+            IsVisible="{Binding WormVisible}">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding WormLabel}" Foreground="#8A93A2" FontSize="12"/>
+        <Panel Width="560" Height="84" HorizontalAlignment="Left">
+          <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Top" Margin="0,4,0,0"/>
+          <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
+          <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+          <Polyline Points="{Binding WormPoints}" Stroke="{DynamicResource ThemeAccentBrush}"
+                    StrokeThickness="2.5" StrokeJoin="Round"/>
+        </Panel>
+      </StackPanel>
+    </Border>
+    <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="True"
+            GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+    <DataGrid.Columns>
+      <DataGridTextColumn Header="#" Binding="{Binding Pos}" Width="44"/>
+      <DataGridTemplateColumn Header="" Width="40">
+        <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate x:DataType="vm:TableEntry">
+            <Panel Width="26" Height="26" Margin="4,3">
+              <Border CornerRadius="13" Background="{Binding BadgeBrush}">
+                <TextBlock Text="{Binding Badge}" FontSize="9" Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              </Border>
+              <Image Source="{Binding Logo}" Width="26" Height="26"/>
+            </Panel>
+          </DataTemplate>
+        </DataGridTemplateColumn.CellTemplate>
+      </DataGridTemplateColumn>
+      <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="*"/>
+      <DataGridTextColumn Header="P" Binding="{Binding P}" Width="46"/>
+      <DataGridTextColumn Header="W" Binding="{Binding W}" Width="46"/>
+      <DataGridTextColumn Header="D" Binding="{Binding D}" Width="46"/>
+      <DataGridTextColumn Header="L" Binding="{Binding L}" Width="46"/>
+      <DataGridTextColumn Header="GF" Binding="{Binding GF}" Width="46"/>
+      <DataGridTextColumn Header="GA" Binding="{Binding GA}" Width="46"/>
+      <DataGridTextColumn Header="GD" Binding="{Binding GD}" Width="46"/>
+      <DataGridTextColumn Header="Pts" Binding="{Binding Pts}" Width="56"/>
+    </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

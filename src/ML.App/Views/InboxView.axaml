@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:app="using:ML.App"
+             x:Class="ML.App.Views.InboxView"
+             x:DataType="vm:InboxViewModel">
+  <DockPanel Margin="20">
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+      <TextBlock Text="{Binding Header}" FontSize="22" FontWeight="Bold" Foreground="White"/>
+      <Button Grid.Column="1" Content="Mark all read" Command="{Binding MarkAllReadCommand}"
+              Background="#232B36" Foreground="#C7CEDA" Padding="12,8" CornerRadius="8" FontSize="12"/>
+    </Grid>
+    <TextBlock DockPanel.Dock="Top" Text="Nothing on the wire yet — play a match."
+               Foreground="#8A93A2" IsVisible="{Binding Empty}"/>
+
+    <!-- ticker rail: AROUND THE MARKET with faces (Sky-style) -->
+    <Border DockPanel.Dock="Right" Width="250" Background="{DynamicResource ThemePanelAltBrush}" CornerRadius="12"
+            Padding="14" Margin="14,0,0,0" IsVisible="{Binding HasTicker}">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="AROUND THE MARKET" Foreground="#5E6875"
+                   FontSize="10" FontWeight="Bold" LetterSpacing="1.4" Margin="0,0,0,10"/>
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Ticker}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TickerEntry">
+                <Grid ColumnDefinitions="40,*" Margin="0,4">
+                  <Border Width="32" Height="32" CornerRadius="16" ClipToBounds="True"
+                          Background="#1B2430">
+                    <Panel>
+                      <TextBlock Text="{Binding Mark}" Foreground="#8A93A2" FontSize="9"
+                                 FontWeight="Bold" HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                      <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                             IsVisible="{Binding HasPortrait}"/>
+                    </Panel>
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Player}" Foreground="White" FontSize="12"
+                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Line}" Foreground="#E0A526" FontSize="10"/>
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <ScrollViewer>
+      <StackPanel>
+        <!-- DONE DEAL hero: the latest paid move, Sky-style -->
+        <Border CornerRadius="14" Padding="18" Margin="0,0,0,14" IsVisible="{Binding HeroVisible}"
+                BorderBrush="#2E1F9D4D" BorderThickness="1">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+              <GradientStop Color="#0E2A1C" Offset="0"/>
+              <GradientStop Color="#10151D" Offset="0.7"/>
+            </LinearGradientBrush>
+          </Border.Background>
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Width="76" Height="76" CornerRadius="38" ClipToBounds="True"
+                    Background="#1B2430" BorderBrush="#1F9D4D" BorderThickness="2">
+              <Panel>
+                <TextBlock Text="⚽" FontSize="26" HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+                <Image Source="{Binding HeroPortrait}" Stretch="UniformToFill"
+                       IsVisible="{Binding HasHeroPortrait}"/>
+              </Panel>
+            </Border>
+            <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center" Spacing="2">
+              <Border Background="#1F9D4D" CornerRadius="4" Padding="7,2" HorizontalAlignment="Left">
+                <TextBlock Text="✓ DONE DEAL" Foreground="#04150B" FontSize="10" FontWeight="Bold"
+                           LetterSpacing="1.5"/>
+              </Border>
+              <TextBlock Text="{Binding HeroName}" Foreground="White" FontSize="22" FontWeight="Bold"/>
+              <TextBlock Text="{Binding HeroLine}" Foreground="#8A93A2" FontSize="13"/>
+            </StackPanel>
+            <TextBlock Grid.Column="2" Text="{Binding HeroFee}" Foreground="#F5C044"
+                       FontSize="22" FontWeight="Bold" VerticalAlignment="Center"/>
+          </Grid>
+        </Border>
+
+        <!-- the feed: accent-barred cards with faces -->
+        <ItemsControl ItemsSource="{Binding Rows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:NewsEntry">
+              <Border Classes="panel" Margin="0,0,0,10" BorderThickness="3,0,0,0"
+                      BorderBrush="{Binding AccentBrush}">
+                <Grid ColumnDefinitions="Auto,*">
+                  <Border Width="44" Height="44" CornerRadius="22" ClipToBounds="True"
+                          Background="#1B2430" VerticalAlignment="Top" Margin="0,2,12,0">
+                    <Panel>
+                      <TextBlock Text="{Binding Icon}" FontSize="17" HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                      <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                             IsVisible="{Binding HasPortrait}"/>
+                    </Panel>
+                  </Border>
+                  <StackPanel Grid.Column="1">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                      <TextBlock Text="{Binding Subject}" FontWeight="SemiBold"
+                                 Foreground="{Binding SubjectBrush}" FontSize="15"
+                                 TextTrimming="CharacterEllipsis"/>
+                      <Border Grid.Column="1" Background="#1F9D4D" CornerRadius="4" Padding="6,1"
+                              Margin="8,0" IsVisible="{Binding ShowNew}" VerticalAlignment="Center">
+                        <TextBlock Text="NEW" Foreground="White" FontSize="9" FontWeight="Bold"/>
+                      </Border>
+                      <TextBlock Grid.Column="2" Text="{Binding When}" Foreground="#5E6774"
+                                 FontSize="11" VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="{Binding Body}" Foreground="{Binding BodyBrush}"
+                               TextWrapping="Wrap" Margin="0,5,0,0" FontSize="13"/>
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

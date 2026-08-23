@@ -1,0 +1,246 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:app="using:ML.App"
+             x:Class="ML.App.Views.MarketView"
+             x:DataType="vm:MarketViewModel">
+  <DockPanel Margin="20">
+    <TextBlock DockPanel.Dock="Top" Text="{Binding Header}" FontSize="22" FontWeight="Bold"
+               Foreground="White" Margin="0,0,0,10"/>
+
+    <!-- offers from CPU clubs for YOUR players -->
+    <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,10" IsVisible="{Binding HasOffers}">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="panelHead" Text="📨 Offers for your players"/>
+        <ListBox ItemsSource="{Binding Offers}" SelectedItem="{Binding SelectedOffer}"
+                 Background="Transparent" BorderThickness="0" MaxHeight="90">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:OfferRow">
+              <TextBlock Text="{Binding Line}" Foreground="#C7CEDA" FontSize="13"/>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Content="Accept — sell" Command="{Binding AcceptOfferCommand}"
+                  Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="14,8" CornerRadius="6"/>
+          <Button Content="Reject" Command="{Binding RejectOfferCommand}"
+                  Background="#3A4759" Foreground="White" Padding="14,8" CornerRadius="6"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <TextBlock DockPanel.Dock="Top" Text="{Binding WindowLine}" Foreground="#E0A526"
+               FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
+    <!-- filter bar: search · position · age · rating · value cap · free agents · sort -->
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+      <WrapPanel.Styles>
+        <Style Selector="WrapPanel > :is(Control)">
+          <Setter Property="Margin" Value="0,0,10,8"/>
+        </Style>
+      </WrapPanel.Styles>
+      <TextBox Watermark="Search players…" Text="{Binding SearchText}" Width="200"/>
+      <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding PositionFilter}"
+                Width="88" VerticalAlignment="Center"/>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Max age" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+        <NumericUpDown Value="{Binding MaxAge}" Minimum="16" Maximum="45" Increment="1"
+                       FormatString="0" Width="105" VerticalAlignment="Center"/>
+      </StackPanel>
+      <ComboBox ItemsSource="{Binding GradeFloors}" SelectedItem="{Binding GradeFloor}"
+                Width="130" VerticalAlignment="Center"
+                ToolTip.Tip="Only show players of at least this calibre"/>
+      <ComboBox ItemsSource="{Binding ValueCaps}" SelectedItem="{Binding ValueCap}"
+                Width="110" VerticalAlignment="Center"/>
+      <CheckBox Content="Free agents" IsChecked="{Binding FreeAgentsOnly}"
+                Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Sort" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+        <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SortBy}"
+                  Width="130" VerticalAlignment="Center"/>
+      </StackPanel>
+      <ComboBox ItemsSource="{Binding BidOptions}" SelectedItem="{Binding SelectedBid}"
+                Width="145" VerticalAlignment="Center"
+                ToolTip.Tip="Your offer vs market value — clubs want a premium, lowballs get countered"/>
+      <Button Content="＋ Bid" Command="{Binding SignCommand}"
+              Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="20,8" CornerRadius="8"/>
+    </WrapPanel>
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding SignStatus}" Foreground="#9FE6B4"
+               FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
+    <Grid ColumnDefinitions="*,330">
+      <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedPlayer}" IsReadOnly="True"
+                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="" Width="46">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MarketPlayer">
+                <Border Width="32" Height="32" CornerRadius="16" ClipToBounds="True"
+                        Background="{Binding FaceBrush}" Margin="4,2">
+                  <Panel>
+                    <TextBlock Text="{Binding Mark}" Foreground="#FFFFFF" FontSize="9"
+                               FontWeight="Bold" HorizontalAlignment="Center"
+                               VerticalAlignment="Center" Opacity="0.85"/>
+                    <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                           IsVisible="{Binding HasPortrait}"/>
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="66"/>
+          <DataGridTemplateColumn Header="Rating" Width="78">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MarketPlayer">
+                <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
+                           FontWeight="Bold" VerticalAlignment="Center" Margin="4,0"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Age" Binding="{Binding AgeLabel}" Width="60"/>
+          <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="132"/>
+          <DataGridTemplateColumn Header="" Width="98">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MarketPlayer">
+                <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Left"
+                        VerticalAlignment="Center" Background="{Binding StatusBrush}"
+                        IsVisible="{Binding HasStatus}">
+                  <TextBlock Text="{Binding StatusLabel}" Foreground="White" FontSize="9"
+                             FontWeight="Bold"/>
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="Club" Binding="{Binding Club}" Width="150"/>
+        </DataGrid.Columns>
+      </DataGrid>
+
+      <!-- the profile card: click a row, see the player -->
+      <Border Grid.Column="1" Classes="panel" Margin="12,0,0,0" IsVisible="{Binding HasProfile}">
+        <ScrollViewer>
+          <StackPanel Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Border Width="64" Height="64" CornerRadius="8" ClipToBounds="True"
+                      Background="{Binding ProfileFill}">
+                <Panel>
+                  <TextBlock Text="{Binding ProfilePosition}" Foreground="White" FontSize="14"
+                             FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Image Source="{Binding ProfilePortrait}" Stretch="UniformToFill"
+                         IsVisible="{Binding ProfileHasPortrait}"/>
+                </Panel>
+              </Border>
+              <StackPanel VerticalAlignment="Center" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding ProfilePosition}" Foreground="#8A93A2" FontSize="13"
+                             FontWeight="Bold" VerticalAlignment="Bottom"/>
+                  <TextBlock Text="{Binding ProfileGrade}" Foreground="{Binding ProfileRatingBrush}"
+                             FontSize="26" FontWeight="Bold"/>
+                </StackPanel>
+                <TextBlock Text="{Binding ProfilePlaystyle}" Foreground="#E0A526" FontSize="11"/>
+              </StackPanel>
+            </StackPanel>
+            <TextBlock Text="{Binding ProfileName}" Foreground="White" FontSize="17"
+                       FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ProfileBio}" Foreground="#8A93A2" FontSize="12"/>
+            <TextBlock Text="{Binding ProfileValueLine}" Foreground="#9FE6B4" FontSize="13"
+                       FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding ProfileClub}" Foreground="#C7CEDA" FontSize="12"/>
+            <TextBlock Text="{Binding ProfileKnowledgeLine}" Foreground="#E0A526" FontSize="12"/>
+            <TextBlock Text="{Binding ProfileCoachLine}" Foreground="#8A93A2" FontSize="11"
+                       TextWrapping="Wrap"/>
+
+            <!-- hexagon radar, same maths as the Squad card -->
+            <Panel Width="200" Height="200" HorizontalAlignment="Center">
+              <Ellipse Width="160" Height="160" Stroke="#242E3B" StrokeThickness="1"/>
+              <Ellipse Width="106" Height="106" Stroke="#242E3B" StrokeThickness="1"/>
+              <Ellipse Width="52" Height="52" Stroke="#242E3B" StrokeThickness="1"/>
+              <Polygon Points="{Binding ProfileRadar}" Fill="#402EC4A6" Stroke="#2EC4A6"
+                       StrokeThickness="2"/>
+              <TextBlock Text="SHO" Foreground="#5E6875" FontSize="9" HorizontalAlignment="Center"
+                         VerticalAlignment="Top"/>
+              <TextBlock Text="DEF" Foreground="#5E6875" FontSize="9" HorizontalAlignment="Center"
+                         VerticalAlignment="Bottom"/>
+            </Panel>
+
+            <!-- negotiation v2 (P5): open talks, structure the package, close the deal -->
+            <Button Content="🤝 Open negotiation" Command="{Binding OpenTalksCommand}"
+                    Background="#1F9D4D" Foreground="White" FontWeight="Bold"
+                    Padding="14,9" CornerRadius="8" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"/>
+            <Button Content="↔ Loan until June (10% of value)" Command="{Binding LoanInCommand}"
+                    Background="#232B36" Foreground="#C7CEDA"
+                    Padding="14,8" CornerRadius="8" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"/>
+            <Border Background="#1B222C" CornerRadius="10" Padding="12"
+                    IsVisible="{Binding Negotiating}">
+              <StackPanel Spacing="8">
+                <TextBlock Text="{Binding NegStance}" Foreground="#E7D9B8" FontSize="12"
+                           FontStyle="Italic" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding NegLine}" Foreground="#C7CEDA" FontSize="12"
+                           TextWrapping="Wrap"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Fee £" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+                  <NumericUpDown Value="{Binding NegFee}" Increment="100000" Minimum="0"
+                                 FormatString="N0" Width="160"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <CheckBox Content="15% sell-on" IsChecked="{Binding NegSellOn}"
+                            Foreground="#C7CEDA" FontSize="12"/>
+                  <CheckBox Content="Instalments" IsChecked="{Binding NegInstalments}"
+                            Foreground="#C7CEDA" FontSize="12"/>
+                </StackPanel>
+                <TextBlock Text="{Binding LikelihoodLine}" Foreground="#8A93A2" FontSize="11"
+                           TextWrapping="Wrap"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !DealAgreed}">
+                  <Button Content="Send offer" Command="{Binding SendOfferCommand}"
+                          Background="#1F9D4D" Foreground="White" FontWeight="Bold"
+                          Padding="14,7" CornerRadius="7" FontSize="12"/>
+                  <Button Content="Walk away" Command="{Binding WalkAwayCommand}"
+                          Background="#3A1418" Foreground="#F08A8A" Padding="14,7"
+                          CornerRadius="7" FontSize="12"/>
+                </StackPanel>
+                <!-- the agent's step: wages + years, then the deal is done -->
+                <StackPanel Spacing="6" IsVisible="{Binding DealAgreed}">
+                  <TextBlock Text="AGENT'S TERMS" Foreground="#7C8698" FontSize="10"
+                             FontWeight="Bold" LetterSpacing="1.2"/>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="£/wk" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+                    <NumericUpDown Value="{Binding NegWage}" Increment="1000" Minimum="500"
+                                   FormatString="N0" Width="130"/>
+                    <ComboBox ItemsSource="{Binding YearsOptions}" SelectedItem="{Binding NegYears}"
+                              Width="66"/>
+                    <TextBlock Text="yrs" Foreground="#8A93A2" FontSize="12" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <Button Content="✓ Complete signing" Command="{Binding CompleteDealCommand}"
+                          Background="#2438C8" Foreground="White" FontWeight="Bold"
+                          Padding="14,8" CornerRadius="7" FontSize="13"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding ProfileAbilities}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AbilityEntry">
+                  <Grid ColumnDefinitions="*,34" Margin="2,1">
+                    <TextBlock Text="{Binding Name}" Foreground="#8A93A2" FontSize="10"
+                               TextTrimming="CharacterEllipsis"/>
+                    <Panel Grid.Column="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Display}"
+                                 Foreground="{Binding ValueBrush}" FontSize="10" FontWeight="Bold"/>
+                      <Border Width="22" Height="8" CornerRadius="2"
+                              Background="{Binding BandBrush}" IsVisible="{Binding ShowBand}"
+                              HorizontalAlignment="Left"/>
+                    </Panel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>

@@ -1,0 +1,107 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:app="using:ML.App"
+             x:Class="ML.App.Views.BoardView"
+             x:DataType="vm:BoardViewModel">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+  <StackPanel Margin="28" Spacing="16">
+    <TextBlock Text="The Board" FontSize="24" FontWeight="Bold" Foreground="White"/>
+    <TextBlock Text="{Binding Summary}" Foreground="#A9B2C0" FontSize="15"/>
+    <WrapPanel>
+      <Border Classes="tile"><StackPanel>
+        <TextBlock Classes="tileLabel" Text="EXPECTATION"/>
+        <TextBlock Classes="tileBig" Text="{Binding Expectation}" TextWrapping="Wrap"/></StackPanel></Border>
+      <Border Classes="tile"><StackPanel>
+        <TextBlock Classes="tileLabel" Text="CONFIDENCE"/>
+        <TextBlock Classes="tileBig" Text="{Binding ConfidenceLabel}"/>
+        <ProgressBar Maximum="100" Value="{Binding Confidence}" Height="6" Margin="0,8,0,0"/></StackPanel></Border>
+    </WrapPanel>
+    <Border Classes="panel"><StackPanel>
+      <TextBlock Classes="panelHead" Text="Job security"/>
+      <TextBlock Text="{Binding JobSecurity}" Foreground="#C7CEDA" FontSize="15" TextWrapping="Wrap"/></StackPanel></Border>
+    <Border Classes="panel"><StackPanel>
+      <TextBlock Classes="panelHead" Text="Season objectives"/>
+      <ItemsControl ItemsSource="{Binding Objectives}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ObjectiveLine">
+            <Grid ColumnDefinitions="28,*,Auto,Auto" Margin="0,3">
+              <TextBlock Text="{Binding Icon}" FontSize="13"/>
+              <TextBlock Grid.Column="1" Text="{Binding Description}" Foreground="#C7CEDA"
+                         FontSize="13" TextWrapping="Wrap"/>
+              <TextBlock Grid.Column="2" Text="{Binding Progress}" Foreground="#9FE6B4"
+                         FontSize="12" Margin="10,0" VerticalAlignment="Center"/>
+              <Border Grid.Column="3" Background="#1B222C" CornerRadius="4" Padding="6,2"
+                      VerticalAlignment="Center">
+                <TextBlock Text="{Binding Importance}" Foreground="#8A93A2" FontSize="9"
+                           FontWeight="Bold"/>
+              </Border>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Text="{Binding FanLine}" Foreground="#E0A526" FontSize="13" Margin="0,8,0,0"/>
+      <Panel Width="520" Height="48" HorizontalAlignment="Left" IsVisible="{Binding FanTrendVisible}">
+        <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
+        <Polyline Points="{Binding FanPoints}" Stroke="#E0A526" StrokeThickness="2" StrokeJoin="Round"/>
+      </Panel>
+    </StackPanel></Border>
+    <Border Classes="panel"><StackPanel Spacing="8">
+      <TextBlock Classes="panelHead" Text="Club infrastructure"/>
+      <TextBlock Text="{Binding FacilitiesLine}" Foreground="#C7CEDA" FontSize="13"/>
+      <WrapPanel>
+        <Button Content="💷 Request budget" Command="{Binding RequestBudgetCommand}" Margin="0,2,6,0"
+                Background="#232B36" Foreground="#C7CEDA" Padding="12,7" CornerRadius="7" FontSize="12"/>
+        <Button Content="🏋 Upgrade training ground" Command="{Binding UpgradeTrainingCommand}" Margin="0,2,6,0"
+                Background="#232B36" Foreground="#C7CEDA" Padding="12,7" CornerRadius="7" FontSize="12"/>
+        <Button Content="🎓 Upgrade academy" Command="{Binding UpgradeAcademyCommand}" Margin="0,2,6,0"
+                Background="#232B36" Foreground="#C7CEDA" Padding="12,7" CornerRadius="7" FontSize="12"/>
+      </WrapPanel>
+      <TextBlock Text="{Binding LeverStatus}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"/>
+    </StackPanel></Border>
+    <Border Classes="panel" IsVisible="{Binding EloTrendVisible}"><StackPanel Spacing="6">
+      <TextBlock Classes="panelHead" Text="Club trajectory"/>
+      <TextBlock Text="{Binding EloTrendLabel}" Foreground="#8A93A2" FontSize="12"/>
+      <Panel Width="520" Height="72" HorizontalAlignment="Left">
+        <Rectangle Height="1" Fill="#242E3B" VerticalAlignment="Center"/>
+        <Polyline Points="{Binding EloPoints}" Stroke="{DynamicResource ThemeAccentBrush}"
+                  StrokeThickness="2" StrokeJoin="Round"/>
+      </Panel>
+    </StackPanel></Border>
+    <Border Classes="panel" IsVisible="{Binding Sacked}" Background="#2E3A1F24"><StackPanel>
+      <TextBlock Classes="panelHead" Text="You have been dismissed" Foreground="#F08A8A"/>
+      <TextBlock Text="{Binding Summary}" Foreground="#E0B3B3" FontSize="14" TextWrapping="Wrap"/>
+      <TextBlock Text="Accept an offer below to manage again — or start a new career from a fresh seed."
+                 Foreground="#C7CEDA" FontSize="13" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel></Border>
+    <WrapPanel>
+      <Border Classes="tile"><StackPanel>
+        <TextBlock Classes="tileLabel" Text="REPUTATION"/>
+        <TextBlock Classes="tileBig" Text="{Binding ReputationLabel}"/>
+        <ProgressBar Maximum="100" Value="{Binding Reputation}" Height="6" Margin="0,8,0,0"/></StackPanel></Border>
+      <Border Classes="tile"><StackPanel>
+        <TextBlock Classes="tileLabel" Text="CAREER"/>
+        <TextBlock Text="{Binding CareerLine}" Foreground="White" FontSize="14"
+                   TextWrapping="Wrap" MaxWidth="360" Margin="0,4,0,0"/></StackPanel></Border>
+    </WrapPanel>
+    <Border Classes="panel"><StackPanel>
+      <TextBlock Classes="panelHead" Text="Job offers"/>
+      <TextBlock Text="{Binding OffersNote}" Foreground="#8A93A2" FontSize="13"
+                 TextWrapping="Wrap" Margin="0,0,0,8"/>
+      <ItemsControl ItemsSource="{Binding Offers}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:JobOfferRow">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+              <TextBlock Text="{Binding Line}" Foreground="#C7CEDA" FontSize="14"
+                         VerticalAlignment="Center"/>
+              <Button Grid.Column="1" Content="Accept job" Background="#1F9D4D" Foreground="White"
+                      Padding="14,6" CornerRadius="8"
+                      Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).AcceptOfferCommand}"
+                      CommandParameter="{Binding}"/>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel></Border>
+  </StackPanel>
+  </ScrollViewer>
+</UserControl>

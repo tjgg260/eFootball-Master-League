@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:app="using:ML.App"
+             x:Class="ML.App.Views.TrainingView"
+             x:DataType="vm:TrainingViewModel">
+  <DockPanel Margin="20">
+    <TextBlock DockPanel.Dock="Top" Text="Training Ground" FontSize="24" FontWeight="Bold"
+               Foreground="White" Margin="0,0,0,8"/>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+      <TextBlock Text="FOCUS" Foreground="#7C8698" FontSize="11" FontWeight="Bold"
+                 VerticalAlignment="Center"/>
+      <ComboBox ItemsSource="{Binding FocusOptions}" SelectedItem="{Binding SelectedFocus}"
+                Width="170" MaxDropDownHeight="380"/>
+      <Button Content="Assign to selected player" Command="{Binding AssignCommand}"
+              Background="#1F9D4D" Foreground="White" FontWeight="Bold" Padding="16,9" CornerRadius="8"/>
+      <TextBlock Text="SKILL" Foreground="#7C8698" FontSize="11" FontWeight="Bold"
+                 VerticalAlignment="Center" Margin="18,0,0,0"/>
+      <ComboBox ItemsSource="{Binding LearnableSkills}" SelectedItem="{Binding SelectedSkill}"
+                Width="180" MaxDropDownHeight="380"
+                PlaceholderText="What can he learn?"/>
+      <Button Content="Start skill training" Command="{Binding StartSkillCommand}"
+              Background="#2D7DD2" Foreground="White" FontWeight="Bold" Padding="16,9" CornerRadius="8"/>
+    </StackPanel>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding SkillNote}" Foreground="#8A93A2"
+               FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
+    <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,10" IsVisible="{Binding HasSkillWork}">
+      <StackPanel>
+        <TextBlock Classes="panelHead" Text="On the training pitch"/>
+        <ItemsControl ItemsSource="{Binding SkillWork}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SkillProgressRow">
+              <TextBlock Text="{Binding Line}" Foreground="#C7CEDA" FontSize="12" Margin="0,1"/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" Foreground="#9FE6B4"
+               FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
+    <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" IsReadOnly="True"
+              GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+        <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="100"/>
+        <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
+        <DataGridTemplateColumn Header="Rating" Width="78">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:TrainingRow">
+              <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
+                         FontWeight="Bold" VerticalAlignment="Center" Margin="8,0"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Personality" Binding="{Binding Personality}" Width="130"/>
+        <DataGridTextColumn Header="Det" Binding="{Binding Determination}" Width="60"/>
+        <DataGridTextColumn Header="Focus" Binding="{Binding Focus}" Width="120"/>
+        <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="94"/>
+        <DataGridTextColumn Header="Skills" Binding="{Binding Skills}" Width="220"/>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

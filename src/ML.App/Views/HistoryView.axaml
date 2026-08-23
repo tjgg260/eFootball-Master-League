@@ -1,0 +1,122 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:app="using:ML.App"
+             x:Class="ML.App.Views.HistoryView"
+             x:DataType="vm:HistoryViewModel">
+  <ScrollViewer Padding="20" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="14">
+      <Grid ColumnDefinitions="Auto,Auto,*">
+        <TextBlock Text="History" FontSize="24" FontWeight="Bold" Foreground="White"
+                   VerticalAlignment="Center"/>
+        <ComboBox Grid.Column="1" Margin="18,0,0,0" MinWidth="140"
+                  ItemsSource="{Binding SeasonChoices}"
+                  SelectedItem="{Binding SelectedSeason}"/>
+        <TextBlock Grid.Column="2" Text="{Binding ArchiveNote}" Foreground="#8A93A2"
+                   FontSize="13" Margin="14,0,0,0" VerticalAlignment="Center"/>
+      </Grid>
+      <Grid ColumnDefinitions="3*,2*" >
+        <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,12,0">
+          <Border Classes="panel"><StackPanel>
+            <TextBlock Classes="panelHead" Text="{Binding TopTableName}"/>
+            <ItemsControl ItemsSource="{Binding TopTable}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ArchiveTableRow">
+                  <Grid ColumnDefinitions="34,20,*,40,34,34,34,44,44" Margin="0,1">
+                    <TextBlock Text="{Binding Pos}" Foreground="#8A93A2" FontSize="12"/>
+                    <Image Grid.Column="1" Source="{Binding Crest}" Width="14" Height="14"
+                           VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Team}" FontSize="12" Margin="4,0,0,0"
+                               Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
+                    <TextBlock Grid.Column="3" Text="{Binding P}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="4" Text="{Binding W}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="5" Text="{Binding D}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="6" Text="{Binding L}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="7" Text="{Binding GD}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="8" Text="{Binding Pts}" Foreground="White"
+                               FontWeight="Bold" FontSize="12"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel></Border>
+          <Border Classes="panel" IsVisible="{Binding HasSecondTable}"><StackPanel>
+            <TextBlock Classes="panelHead" Text="{Binding SecondTableName}"/>
+            <ItemsControl ItemsSource="{Binding SecondTable}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ArchiveTableRow">
+                  <Grid ColumnDefinitions="34,20,*,40,34,34,34,44,44" Margin="0,1">
+                    <TextBlock Text="{Binding Pos}" Foreground="#8A93A2" FontSize="12"/>
+                    <Image Grid.Column="1" Source="{Binding Crest}" Width="14" Height="14"
+                           VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Team}" FontSize="12" Margin="4,0,0,0"
+                               Foreground="{Binding TeamBrush}" FontWeight="{Binding TeamWeight}"/>
+                    <TextBlock Grid.Column="3" Text="{Binding P}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="4" Text="{Binding W}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="5" Text="{Binding D}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="6" Text="{Binding L}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="7" Text="{Binding GD}" Foreground="#8A93A2" FontSize="12"/>
+                    <TextBlock Grid.Column="8" Text="{Binding Pts}" Foreground="White"
+                               FontWeight="Bold" FontSize="12"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel></Border>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Spacing="12">
+          <Border Classes="panel"><StackPanel>
+            <TextBlock Classes="panelHead" Text="Honours"/>
+            <ItemsControl ItemsSource="{Binding SeasonHonours}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ArchiveHonourRow">
+                  <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
+                    <TextBlock Text="{Binding Competition}" Foreground="#8A93A2" FontSize="13"/>
+                    <Image Grid.Column="1" Source="{Binding Crest}" Width="16" Height="16"
+                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Team}" Foreground="White"
+                               FontWeight="Bold" FontSize="13"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel></Border>
+          <Border Classes="panel"><StackPanel>
+            <TextBlock Classes="panelHead" Text="Top scorers"/>
+            <ItemsControl ItemsSource="{Binding SeasonScorers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ArchiveScorerRow">
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Player}" Foreground="#C7CEDA" FontSize="13"/>
+                      <TextBlock Text="{Binding Team}" Foreground="#5E6875" FontSize="12"
+                                 VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding Goals}" Foreground="White"
+                               FontWeight="Bold" FontSize="13"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel></Border>
+          <Border Classes="panel"><StackPanel>
+            <TextBlock Classes="panelHead" Text="Club records"/>
+            <TextBlock Text="{Binding RecordsNote}" Foreground="#8A93A2" FontSize="12"/>
+            <ItemsControl ItemsSource="{Binding Records}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="app:ClubRecordRow">
+                  <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+                    <TextBlock Text="{Binding Record}" Foreground="#8A93A2" FontSize="13"
+                               Width="150"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Holder}" Foreground="White"
+                               FontSize="13" TextWrapping="Wrap"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel></Border>
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

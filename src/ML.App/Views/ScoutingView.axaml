@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:app="using:ML.App"
+             x:Class="ML.App.Views.ScoutingView"
+             x:DataType="vm:ScoutingViewModel">
+  <DockPanel Margin="20">
+    <TextBlock DockPanel.Dock="Top" Text="Scouting" FontSize="24" FontWeight="Bold"
+               Foreground="White" Margin="0,0,0,4"/>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="14" Margin="0,0,0,10">
+      <TextBlock Text="{Binding ScoutLine}" Foreground="#C7CEDA" FontSize="13"/>
+      <TextBlock Text="{Binding MissionLine}" Foreground="#E0A526" FontSize="13"/>
+    </StackPanel>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,24,*,Auto" Margin="0,0,0,10">
+      <ComboBox Grid.Column="0" ItemsSource="{Binding Clubs}" SelectedItem="{Binding SelectedClub}"
+                Width="220" MaxDropDownHeight="380">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:ScoutTargetClub">
+            <TextBlock Text="{Binding Name}"/>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <Button Grid.Column="1" Content="🔍 Scout club" Command="{Binding ScoutClubCommand}"
+              Margin="8,0,0,0" Background="#2D7DD2" Foreground="White" FontWeight="SemiBold"
+              Padding="14,8" CornerRadius="8"/>
+      <TextBox Grid.Column="3" Watermark="…or a player name" Text="{Binding PlayerSearch}"
+               MaxWidth="240" HorizontalAlignment="Left"/>
+      <Button Grid.Column="4" Content="🔍 Scout player" Command="{Binding ScoutPlayerCommand}"
+              Margin="8,0,0,0" Background="#2D7DD2" Foreground="White" FontWeight="SemiBold"
+              Padding="14,8" CornerRadius="8"/>
+    </Grid>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12"
+               TextWrapping="Wrap" Margin="0,0,0,8"/>
+    <TextBlock DockPanel.Dock="Top" Foreground="#8A93A2" FontSize="12" IsVisible="{Binding Empty}"
+               Text="No dossiers yet — send the scout out; reports take two matchdays."/>
+    <ScrollViewer>
+      <ItemsControl ItemsSource="{Binding Reports}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ScoutReportRow">
+            <Border Classes="panel" Margin="0,0,0,10">
+              <StackPanel>
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="White" FontSize="14"/>
+                <TextBlock Text="{Binding Body}" Foreground="#C7CEDA" FontSize="12"
+                           TextWrapping="Wrap" Margin="0,6,0,0" LineHeight="19"/>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

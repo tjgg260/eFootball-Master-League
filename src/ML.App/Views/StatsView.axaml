@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:app="using:ML.App"
+             x:Class="ML.App.Views.StatsView"
+             x:DataType="vm:StatsViewModel">
+  <ScrollViewer Padding="20" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16">
+      <Grid ColumnDefinitions="*,*,*">
+        <Border Grid.Column="0" Classes="panel" Margin="0,0,8,0"><StackPanel>
+          <TextBlock Classes="panelHead" Text="⚽ Top scorers"/>
+          <TextBlock Text="{Binding ScorersNote}" Foreground="#8A93A2" FontSize="12" TextWrapping="Wrap"/>
+          <DataGrid ItemsSource="{Binding TopScorers}" IsReadOnly="True" HeadersVisibility="None" Height="320">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Width="36">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ScorerRow">
+                    <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True" Margin="4,2">
+                      <Image Source="{Binding Portrait}" Width="26" Height="26" Stretch="UniformToFill"/>
+                    </Border>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
+              <DataGridTextColumn Binding="{Binding Team}" Width="100"/>
+              <DataGridTextColumn Binding="{Binding Goals}" Width="40"/>
+              <DataGridTextColumn Binding="{Binding Rate}" Width="86"/>
+            </DataGrid.Columns></DataGrid></StackPanel></Border>
+        <Border Grid.Column="1" Classes="panel" Margin="4,0,4,0"><StackPanel>
+          <TextBlock Classes="panelHead" Text="🅰 Top assists"/>
+          <DataGrid ItemsSource="{Binding TopAssists}" IsReadOnly="True" HeadersVisibility="None" Height="320">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Width="36">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ScorerRow">
+                    <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True" Margin="4,2">
+                      <Image Source="{Binding Portrait}" Width="26" Height="26" Stretch="UniformToFill"/>
+                    </Border>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
+              <DataGridTextColumn Binding="{Binding Team}" Width="110"/>
+              <DataGridTextColumn Binding="{Binding Goals}" Width="44"/>
+            </DataGrid.Columns></DataGrid></StackPanel></Border>
+        <Border Grid.Column="2" Classes="panel" Margin="8,0,0,0"><StackPanel>
+          <TextBlock Classes="panelHead" Text="Best defence (goals against)"/>
+          <DataGrid ItemsSource="{Binding BestDefence}" IsReadOnly="True" HeadersVisibility="None" Height="320">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Width="32">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:StatRow">
+                    <Image Source="{Binding Crest}" Width="20" Height="20" Margin="4,2"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Binding="{Binding Team}" Width="*"/>
+              <DataGridTextColumn Binding="{Binding Value}" Width="60"/>
+            </DataGrid.Columns></DataGrid></StackPanel></Border>
+      </Grid>
+      <Grid ColumnDefinitions="*,*,*">
+        <Border Grid.Column="0" Classes="panel" Margin="0,0,8,0" IsVisible="{Binding HasCleanSheets}"><StackPanel>
+          <TextBlock Classes="panelHead" Text="🧤 Clean sheets"/>
+          <DataGrid ItemsSource="{Binding CleanSheets}" IsReadOnly="True" HeadersVisibility="None" MaxHeight="240">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Width="32">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:StatRow">
+                    <Image Source="{Binding Crest}" Width="20" Height="20" Margin="4,2"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Binding="{Binding Team}" Width="*"/>
+              <DataGridTextColumn Binding="{Binding Value}" Width="50"/>
+            </DataGrid.Columns></DataGrid></StackPanel></Border>
+        <Border Grid.Column="1" Classes="panel" Margin="4,0,4,0" IsVisible="{Binding HasDiscipline}"><StackPanel>
+          <TextBlock Classes="panelHead" Text="🟨 Discipline"/>
+          <DataGrid ItemsSource="{Binding Discipline}" IsReadOnly="True" HeadersVisibility="None" MaxHeight="240">
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Width="36">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:CardRow">
+                    <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True" Margin="4,2">
+                      <Image Source="{Binding Portrait}" Width="26" Height="26" Stretch="UniformToFill"/>
+                    </Border>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTextColumn Binding="{Binding Player}" Width="*"/>
+              <DataGridTextColumn Binding="{Binding Team}" Width="100"/>
+              <DataGridTextColumn Binding="{Binding Cards}" Width="80"/>
+            </DataGrid.Columns></DataGrid></StackPanel></Border>
+        <Border Grid.Column="2" Classes="panel" Margin="8,0,0,0" IsVisible="{Binding HasHeadToHead}"><StackPanel>
+          <TextBlock Classes="panelHead" Text="⚔ Head to head"/>
+          <TextBlock Text="{Binding HeadToHeadLine}" Foreground="#C7CEDA" FontSize="14"
+                     TextWrapping="Wrap" Margin="0,6,0,0"/>
+        </StackPanel></Border>
+      </Grid>
+      <Border Classes="panel"><StackPanel>
+        <TextBlock Classes="panelHead" Text="📊 Match reports"/>
+        <ItemsControl ItemsSource="{Binding MatchReports}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ReportRow">
+              <Grid ColumnDefinitions="70,*,Auto" Margin="0,3">
+                <TextBlock Text="{Binding When}" Foreground="#8A93A2" FontSize="13"/>
+                <TextBlock Grid.Column="1" Text="{Binding Line}" Foreground="#C7CEDA" FontSize="13"/>
+                <TextBlock Grid.Column="2" Text="{Binding Stats}" Foreground="#9FE6B4" FontSize="12"/>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel></Border>
+      <Border Classes="panel"><StackPanel>
+        <TextBlock Classes="panelHead" Text="🏆 Roll of Honour"/>
+        <TextBlock Text="{Binding HonoursNote}" Foreground="#8A93A2" FontSize="13"/>
+        <ItemsControl ItemsSource="{Binding Honours}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:HonourRow">
+              <Grid ColumnDefinitions="70,*,26,*" Margin="0,3">
+                <TextBlock Grid.Column="0" Text="{Binding Year}" Foreground="#8A93A2" FontSize="14"/>
+                <TextBlock Grid.Column="1" Text="{Binding Competition}" Foreground="#C7CEDA" FontSize="14"/>
+                <Border Grid.Column="2" Width="20" Height="20" CornerRadius="10" ClipToBounds="True">
+                  <Image Source="{Binding Crest}" Width="20" Height="20" Stretch="UniformToFill"/>
+                </Border>
+                <TextBlock Grid.Column="3" Text="{Binding Team}" Foreground="White" FontWeight="SemiBold"
+                           FontSize="14" Margin="6,0,0,0"/>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel></Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

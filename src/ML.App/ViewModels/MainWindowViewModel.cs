@@ -35,7 +35,6 @@ public partial class MainWindowViewModel : ObservableObject
             new("Stats", "📈", s => new StatsViewModel(s)),
             new("History", "📜", s => new HistoryViewModel(s)),
             new("Finances", "💷", s => new FinancesViewModel(s)),
-            new("Bank", "🏦", s => new BankViewModel(s)),
             new("News", "📰", s => new InboxViewModel(s)),
             new("Settings", "⚙️", s => new SettingsViewModel(s)),
         };
