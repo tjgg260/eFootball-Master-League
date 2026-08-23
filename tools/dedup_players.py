@@ -30,6 +30,7 @@ PID_TABLES = [
     "player_attributes", "player_market", "player_playstyles", "player_appearance",
     "player_appearance_raw", "player_traits", "player_skills", "player_potential",
     "player_positions", "player_condition", "player_knowledge", "player_status",
+    "player_identity",   # spine rows must die with their player (P7 gate leak)
 ]
 
 
@@ -72,7 +73,8 @@ def main() -> int:
         q = ",".join("?" * len(chunk))
         for tbl in PID_TABLES:
             try:
-                con.execute(f"DELETE FROM {tbl} WHERE player_id IN ({q})", chunk)
+                # transfer-log rows for a removed phantom would dangle — they go too (P7 gate leak)
+        con.execute(f"DELETE FROM {tbl} WHERE player_id IN ({q})", chunk)
             except sqlite3.OperationalError:
                 pass
         con.execute(f"DELETE FROM players WHERE id IN ({q})", chunk)
