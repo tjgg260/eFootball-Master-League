@@ -81,7 +81,9 @@ def main() -> int:
     def lgkey(s):
         s = key(s)
         s = re.sub(r"(reg\.?season|\(simulated\))", " ", s)
-        return frozenset(w for w in re.sub(r"[^a-z0-9 ]", " ", s).split() if len(w) > 1)
+        # keep digit tokens: they distinguish La Liga from La Liga 2
+        return frozenset(w for w in re.sub(r"[^a-z0-9 ]", " ", s).split()
+                         if len(w) > 1 or w.isdigit())
 
     want_flags, want_comps = {}, {}      # trigram -> country names / league_id -> comp_id
     for co in cat["countries"]:
@@ -93,16 +95,38 @@ def main() -> int:
             if not lg.get("league_id"):
                 continue
             want = lgkey(lg["name"])
+            # STRICT matching (the loose token-overlap version handed the Champions League
+            # logo to every domestic league named "... League"). A nationless slug is a
+            # continental/tournament logo: only an exact name match may take it. A
+            # nation-scoped slug must be for THIS country, and may tolerate at most one
+            # missing token — never an extra one.
+            best = None                                # (score, cid): exact=2 beats loose=1
             for slug, cid in slug_to_id.items():
+                if cid not in comp_by_id:
+                    continue
                 parts = slug.split("_")
                 nation = parts[1] if len(parts) > 2 and len(parts[1]) == 3 else None
-                if nation and ctri and nation != ctri:
+                stoks = frozenset(w for w in parts[2 if nation else 1:]
+                                  if len(w) > 1 or w.isdigit())
+                if not stoks:
                     continue
-                stoks = frozenset(w for w in parts[2 if nation else 1:] if len(w) > 1)
-                if stoks and stoks <= want | stoks and (stoks & want) and \
-                        len(stoks & want) >= max(1, len(stoks) - 1) and cid in comp_by_id:
-                    want_comps[lg["league_id"]] = cid
-                    break
+                if nation:
+                    if not (ctri and nation == ctri):
+                        continue
+                    if stoks == want:
+                        score = 2
+                    elif stoks <= want and len(want - stoks) <= 1:
+                        score = 1
+                    else:
+                        continue
+                else:
+                    if stoks != want:
+                        continue
+                    score = 2
+                if best is None or score > best[0]:
+                    best = (score, cid)
+            if best is not None:
+                want_comps[lg["league_id"]] = best[1]
     print(f"countries with a flag: {sum(len(v) for v in want_flags.values())} | "
           f"leagues with a competition logo: {len(want_comps)}")
     if dry:
@@ -152,6 +176,9 @@ def main() -> int:
             if lid in extracted:
                 lg["comp_logo"] = extracted[lid]
                 nc += 1
+            else:
+                # a league that no longer earns a logo must LOSE its old (possibly wrong) one
+                lg.pop("comp_logo", None)
     CAT.write_text(json.dumps(cat, ensure_ascii=False), encoding="utf-8")
     print(f"catalog patched: {nf} country flags, {nc} league competition logos")
     return 0
