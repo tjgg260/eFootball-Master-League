@@ -30,6 +30,22 @@ public sealed partial class Session
     /// </summary>
     public PortraitInfo PortraitFor(long playerId)
     {
+        // Tier 0: the owner's own photo — custom_faces/<player_id>.<ext> beats every pack.
+        // Loaded uncached: Visuals' cache would remember a miss forever, and "Set photo"
+        // must show up without an app restart.
+        if (MatchLauncher.FindRepoRoot() is { } root)
+        {
+            foreach (var ext in new[] { "png", "jpg", "jpeg", "webp" })
+            {
+                var custom = System.IO.Path.Combine(root, "custom_faces", $"{playerId}.{ext}");
+                if (System.IO.File.Exists(custom))
+                {
+                    try { return new PortraitInfo(new Bitmap(custom), PortraitSource.Rfs, null, null); }
+                    catch { /* unreadable file — fall through to the packs */ }
+                }
+            }
+        }
+
         string? realFace = null, rfs = null;
         int? skin = null, hair = null;
         using (var cmd = Db.Connection.CreateCommand())

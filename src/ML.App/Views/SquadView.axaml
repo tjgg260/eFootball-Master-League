@@ -203,6 +203,10 @@
                 <Image Source="{Binding Selected.Portrait}" Width="96" Height="96" Stretch="UniformToFill"/>
               </Border>
             </Panel>
+            <!-- the owner's photo beats every pack: copied to custom_faces/<player_id> -->
+            <Button Content="📷 Set photo…" Click="OnSetPhoto" Classes="ml-ghost" FontSize="11"
+                    HorizontalAlignment="Center"
+                    ToolTip.Tip="Use your own image for this player — it wins over every face pack"/>
 
             <!-- ══ THE MFL CARD (UX P3): four tabs, graded statements, never a number ══ -->
             <TabControl Margin="0,4,0,0" Padding="0,10,0,0">

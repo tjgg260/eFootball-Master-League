@@ -73,7 +73,7 @@ public sealed record SquadClubOption(int TeamId, string Name);
 /// </summary>
 public sealed record SquadEntry
 {
-    public int PlayerId { get; init; }
+    public long PlayerId { get; init; }
     public int Number { get; init; }
     public string Name { get; init; } = "";
     public string Position { get; init; } = "";
@@ -202,6 +202,22 @@ public sealed partial class FilterChipVm : ObservableObject
 public sealed partial class SquadViewModel : PageViewModel
 {
     private readonly Session _s;
+
+    /// <summary>Re-resolve the selected player's portrait (after "Set photo…") — tier 0
+    /// custom faces bypass every cache, so this shows the new image immediately.</summary>
+    public void RefreshSelectedPortrait()
+    {
+        if (Selected is null) return;
+        try
+        {
+            var por = _s.PortraitFor(Selected.PlayerId);
+            var updated = Selected with { Portrait = por.Image };
+            var ix = Rows.IndexOf(Selected);
+            if (ix >= 0) Rows[ix] = updated;
+            Selected = updated;
+        }
+        catch { /* cosmetic refresh must never throw */ }
+    }
 
     public SquadViewModel(Session s)
     {
@@ -777,7 +793,7 @@ public sealed partial class SquadViewModel : PageViewModel
 
     private sealed record SquadRowDto
     {
-        public int PlayerId { get; init; }
+        public long PlayerId { get; init; }
         public int Number { get; init; }
         public string Name { get; init; } = "";
         public string Position { get; init; } = "";
