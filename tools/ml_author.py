@@ -325,7 +325,19 @@ def main() -> int:
     donors = DonorPool(REPO / "samples" / "editor-bundled-players.csv", set(t.player_idx))
     t.begin()
 
-    next_pid = PID_BASE + 1
+    # Seed the fresh-PID counter ABOVE anything already authored into this tree: tree_base is
+    # re-baselined from an installed dt200, so records at 9,000,001+ may already exist (3,704 of
+    # them at the time of writing) — restarting at PID_BASE+1 collided and tripped the verify
+    # gate ("duplicate PIDs"). The fresh block must stay below 2^24 (variant cards live above),
+    # so only PIDs inside [PID_BASE, 2^24) count toward the seed. PlayerAppearance shares the
+    # same keying, so both indexes are consulted.
+    fresh_ceiling = 1 << 24
+    existing = [p for p in list(t.player_idx) + list(t.app_idx)
+                if PID_BASE <= p < fresh_ceiling]
+    next_pid = max([PID_BASE] + existing) + 1
+    if next_pid >= fresh_ceiling - 1000:
+        sys.exit(f"fresh-PID window nearly exhausted ({next_pid:,} of {fresh_ceiling:,}) — "
+                 "rebaseline from a cleaner dt200 before authoring more players")
     authored = 0
     for club in spec["clubs"]:
         tid = club["host_team_id"]

@@ -161,6 +161,23 @@ def colors_from_logo(path: Path, count: int = 5) -> list[Rgb]:
     return [shirt, trim, shorts, shirt, trim][:count]
 
 
+def colors_from_seed(seed: int | str) -> list[Rgb]:
+    """Deterministic two-color fallback for a club with no usable logo.
+
+    Hashes the club's stable id so the same club always renders the same
+    (arbitrary but consistent) pair; the trim is forced to a contrasting
+    tone when the hash lands both colors too close to tell apart.
+    """
+    import hashlib
+
+    h = hashlib.sha1(str(seed).encode("utf-8")).digest()
+    shirt: Rgb = (h[0], h[1], h[2])
+    trim: Rgb = (h[3], h[4], h[5])
+    if _dist(shirt, trim) < 90:
+        trim = _contrast_of(shirt)
+    return [shirt, trim]
+
+
 # --------------------------------------------------------------------------
 # Authoring
 # --------------------------------------------------------------------------
@@ -196,6 +213,7 @@ def author_team_kits(
     gk_ref: str | None,
     out_root: Path,
     force: bool = False,
+    quiet: bool = False,
 ) -> list[Path]:
     d1 = _donor(DONOR_1ST, "u6058p1")
     d2 = _donor(DONOR_2ND, "u6058p2")
@@ -224,8 +242,9 @@ def author_team_kits(
     written = []
     for path, data, colors, r in plan:
         path.write_bytes(data)
-        cols = "/".join(f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}" for c in colors)
-        print(f"wrote {path}  [{len(data)}B plaintext]  ref={r}  {cols}")
+        if not quiet:
+            cols = "/".join(f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}" for c in colors)
+            print(f"wrote {path}  [{len(data)}B plaintext]  ref={r}  {cols}")
         written.append(path)
     return written
 

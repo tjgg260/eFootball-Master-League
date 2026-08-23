@@ -25,6 +25,14 @@ Deploy
     patch — it is a full cpkmakec rebuild at align=512 (proven to boot; align 2048 is silently
     ignored). We rebuild from a fresh copy of the pristine build/tree_base every time, so matches
     never accumulate edits.
+
+Kits
+    Host placeholders wear generic US kits, so each compile also authors the fixture clubs' own
+    colors (median-cut palette from master.db teams.logo_path, else a deterministic id-hash pair)
+    as raw plaintext kit descriptors into the working tree's uniform/team/<slot>/ via
+    tools/kit_author.py. On by default; --no-kits skips it. Real eFootball slots keep their
+    shipped kit configs. --compile-only stops after the tree is staged (before cpkmakec) so the
+    result can be inspected without building or installing anything.
 """
 from __future__ import annotations
 
@@ -49,6 +57,7 @@ from rfs_import import RfsDb          # noqa: E402
 from rfs_translate import translate    # noqa: E402
 import wesys                           # noqa: E402
 import pesdb                           # noqa: E402
+import kit_author                      # noqa: E402
 
 RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
 TREE_BASE = REPO / "build" / "tree_base"
@@ -396,6 +405,59 @@ def rename_slot(tree: Path, slot_id: int, real_name: str) -> bool:
     return False
 
 
+def _club_kit_colors(db_path: str, team_id: int) -> tuple[kit_author.Kit, str]:
+    """The club's five kit colors + a note about where they came from.
+
+    Logo-first: teams.logo_path in master.db (repo-relative) feeds kit_author's
+    --from-logo median-cut palette (shirt = dominant, trim = second, ...). No
+    usable logo file -> kit_author.colors_from_seed: two deterministic colors
+    hashed from the DB team id, so a club always renders the same pair.
+    """
+    import sqlite3
+    con = sqlite3.connect(db_path)
+    try:
+        row = con.execute("SELECT logo_path FROM teams WHERE id=?", (team_id,)).fetchone()
+    finally:
+        con.close()
+    logo = None
+    if row and row[0]:
+        p = Path(row[0])
+        if not p.is_absolute():
+            p = REPO / p
+        if p.exists():
+            logo = p
+    if logo is not None:
+        try:
+            return kit_author.expand_colors(kit_author.colors_from_logo(logo)), f"logo {logo.name}"
+        except Exception as exc:
+            print(f"  kit: palette from {logo.name} failed ({exc}) — using id-hash colors")
+    return kit_author.expand_colors(kit_author.colors_from_seed(team_id)), "id-hash colors"
+
+
+def author_fixture_kits(tree: Path, db_path: str, clubs) -> None:
+    """Stage per-fixture kit descriptors for the two clubs of THIS fixture.
+
+    clubs: (slot_id, db_team_id | None, club_name) per side. Runs after the
+    working tree is populated and before the CPK rebuild. Each slot's
+    DEF_1st/2nd/GK1st trio in the WORKING tree's uniform/team/<slot>/ is
+    replaced (force semantics — slots are reused between fixtures, so
+    clobbering the previous occupant's kit is the point) with raw plaintext
+    descriptors in the club's colors, pointing at the donor texture refs
+    kit_author embeds (u6058p1/p2/g1, guaranteed pak-side). 2nd and GK kits
+    are auto-derived by kit_author. A club without a DB id (pure RFS-name
+    compile) has no color source of truth and keeps the slot's shipped kit.
+    """
+    for slot_id, tid, label in clubs:
+        if tid is None:
+            print(f"  kit: slot {slot_id} ({label}) keeps shipped colors — no DB club id to source from")
+            continue
+        first, src = _club_kit_colors(db_path, tid)
+        kit_author.author_team_kits(slot_id, first, None, None, None, None, tree,
+                                    force=True, quiet=True)
+        cols = "/".join(f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}" for c in first)
+        print(f"  kit: slot {slot_id} <- {label} colors {cols} ({src})")
+
+
 def _sha1(path: Path) -> str:
     import hashlib
     h = hashlib.sha1()
@@ -681,6 +743,12 @@ def real_slot_match(home_real, away_real, home_name, away_name, args) -> int:
             # only if the club has them saved; otherwise eFootball's own shape stays untouched.
             if apply_custom_formation(tree, slot, args.db, tid):
                 print(f"  tactics {label}: own-formation geometry + style applied")
+    # No kit authoring here: a real eFootball slot already carries the club's own shipped kit
+    # config, which is strictly more real than a logo-palette guess would be.
+    print("  kit: real eFootball slots keep their shipped kit configs")
+    if args.compile_only:
+        print(f"COMPILE-ONLY: working tree staged at {tree} — stopped before cpkmakec (no CPK, no install)")
+        return 0
     rebuild_and_install(tree, Path(args.out), args.install)
     print(f"\nPlay it:  eFootball -> Exhibition/League -> {home_name}  vs  {away_name}")
     print("          real names, your 26/27 squads, real faces, kits and badges — tactics applied.")
@@ -696,6 +764,10 @@ def main() -> int:
     ap.add_argument("--db", default=str(REPO / "build" / "master.db"), help="master DB for --home-id/--away-id")
     ap.add_argument("--install", action="store_true", help="copy the rebuilt dt200 into the game")
     ap.add_argument("--out", default=str(REPO / "build" / "dt200_console_all.cpk"))
+    ap.add_argument("--no-kits", dest="no_kits", action="store_true",
+                    help="skip per-fixture kit authoring (host slots keep their placeholder kits)")
+    ap.add_argument("--compile-only", dest="compile_only", action="store_true",
+                    help="stop after the working tree is staged: no cpkmakec rebuild, no install")
     args = ap.parse_args()
 
     if not TREE_BASE.exists():
@@ -763,6 +835,19 @@ def main() -> int:
         for host, tid in ((host_home, args.home_id), (host_away, args.away_id)):
             if apply_custom_formation(tree, host, args.db, tid, always=True):
                 print(f"  tactics: host {host} <- team {tid}'s own formation geometry + style")
+
+    # Per-fixture kit authoring (on by default, --no-kits to skip): a host placeholder's kit
+    # config is unrelated to the club occupying it, so both slots get descriptors in the
+    # clubs' own colors, straight into the working tree before the rebuild.
+    if not args.no_kits:
+        author_fixture_kits(tree, args.db, [
+            (host_home, args.home_id, home_name),
+            (host_away, args.away_id, away_name),
+        ])
+
+    if args.compile_only:
+        print(f"COMPILE-ONLY: working tree staged at {tree} — stopped before cpkmakec (no CPK, no install)")
+        return 0
 
     rebuild_and_install(tree, Path(args.out), args.install)
     print("\nPlay it:  eFootball -> Exhibition / Match -> find the host league (American League 2)")

@@ -130,20 +130,44 @@ python tools/kit_author.py --team 5002 --ref u0101p1 --gk-ref u0101g1 --colors .
   standing note: strip the two stray `.bak` files from tree_base before any
   rebuild).
 
-## How play_match uses this (just-in-time per-fixture authoring)
+## play_match integration (WIRED 2026-08-23 — boot test still pending)
 
-The game has 981 Team.bin slots; a career renders one match at a time. So
+The game has 981 Team.bin slots; a career renders one match at a time, so
 kits for arbitrary ML clubs are a per-fixture projection, not a bulk import.
-When `play_match` stages a fixture:
+`tools/play_match.py` now does that projection on every compile, **on by
+default**; `--no-kits` skips it. `--compile-only` (also new) stops the
+compile after the working tree is staged — before cpkmakec, before any
+install — so the staged kits can be inspected.
 
-1. Look up both clubs' colors in master.db (club identity / DVX logo via
-   `team_identity.fm_club_id`); fall back to `--from-logo` extraction from
-   `assets/dvx_logos/<id>.webp`.
-2. Call `kit_author.author_team_kits()` for the two dt200 slots the fixture
-   occupies, writing plaintext descriptors into the tree (`--force`, since
-   slots are reused between fixtures).
-3. Rebuild + install dt200 via the existing proven deploy path, alongside the
-   crest override pak (step 2 of the kit pipeline — the IoStore writer is the
-   missing capability there).
-4. After the match, the slots simply get re-authored for the next fixture;
-   the DB remains the single source of truth, the tree is a render target.
+What runs, per fixture, on the host-slot path (at least one club is not a
+real eFootball team), after the tree copy and squad/tactics authoring and
+before the CPK rebuild — `author_fixture_kits()` in play_match:
+
+1. **Colors** (`_club_kit_colors`): `teams.logo_path` in master.db
+   (repo-relative, e.g. `assets/dvx_logos/1300111.webp`) feeds
+   `kit_author.colors_from_logo` — the same median-cut palette as the CLI's
+   `--from-logo`. No usable logo file → `kit_author.colors_from_seed`: two
+   deterministic colors hashed from the DB team id, so a club always renders
+   the same pair. 2nd/GK kits are auto-derived as usual.
+2. **Authoring**: `kit_author.author_team_kits(..., force=True)` replaces
+   each host slot's `<slot>_DEF_1st/2nd/GK1st.bin` trio in the WORKING tree
+   (`build/tree_match`, never `tree_base`) with raw plaintext descriptors
+   pointing at the donor `u6058p1/p2/g1` texture refs. Force is the intended
+   semantics: slots are reused between fixtures. One log line per club:
+   `kit: slot 5833 <- Belshina Bobruisk colors #fffffe/#000000/... (logo 1300111.webp)`.
+3. **Skips**: an RFS-name compile carries no DB club id, hence no color
+   source of truth — the slot keeps its shipped kit (logged). The real-slot
+   path (both clubs are real eFootball teams) never authors: those slots
+   already carry the club's own shipped kit config, which is more real than
+   a palette guess.
+4. Then the normal deploy continues (cpkmakec align=512 → `--install`).
+
+Verified 2026-08-23 on a `--compile-only` staging of Belshina Bobruisk
+(logo palette) vs Torpedo-BelAZ Zhodino (id-hash fallback) into host slots
+5833/5971: all six authored bins parse+serialize byte-exact, the whole-tree
+gate stays PROVEN (2,907 bins, plain/92B 153→159, stored/96B 1650→1644,
+zero failures), and the tree diff vs `tree_base` is exactly those six files.
+
+Still to do: **an in-game boot test of an authored kit** (nothing authored
+by this path has been rendered in-game yet), and the crest override pak
+(step 2 of the pipeline — the IoStore writer is the missing capability).
