@@ -18,6 +18,10 @@ column inspection, so new tables are picked up automatically):
 
   * Career id ranges (mirrors career_seed.py constants + ML.App/SessionYouth.cs):
       players     20,000,000 - 699,999,999    (world RFS players start at 700M)
+                  plus the curated overlay 45-46bn (tools/update_career_squad.py): those
+                  players are attached to CAREER squads only, so they must travel with the
+                  save. A snapshot carrying the memberships without the players left 53
+                  dangling squad rows (found 2026-08-23).
       teams          800,000 -     899,999    plus U21/U18 youth sides 9,000,000 - 9,199,999
       fixtures     9,000,000+
       seasons          9,000+
@@ -56,6 +60,7 @@ CAREERS_DIR = REPO / "careers"
 
 # ── career id ranges ────────────────────────────────────────────────────────────────────────
 PLAYER_LO, PLAYER_HI = 20_000_000, 700_000_000
+CURATED_LO, CURATED_HI = 45_000_000_000, 46_000_000_000   # update_career_squad.py overlay
 TEAM_LO, TEAM_HI = 800_000, 900_000
 YOUTH_LO, YOUTH_HI = 9_000_000, 9_200_000      # ML.App SessionYouth: 9M + (parent-800k)*2
 FIXTURE_LO = 9_000_000
@@ -96,7 +101,8 @@ INTERNAL_TABLES = ("_snapshot_info", "_snapshot_manifest")
 def _pred_for(kind: str, col: str) -> str:
     c = f'"{col}"'
     if kind == "player":
-        return f"({c} >= {PLAYER_LO} AND {c} < {PLAYER_HI})"
+        return (f"(({c} >= {PLAYER_LO} AND {c} < {PLAYER_HI}) "
+                f"OR ({c} >= {CURATED_LO} AND {c} < {CURATED_HI}))")
     if kind == "team":
         return (f"(({c} >= {TEAM_LO} AND {c} < {TEAM_HI}) "
                 f"OR ({c} >= {YOUTH_LO} AND {c} < {YOUTH_HI}))")
@@ -315,6 +321,24 @@ def restore(snap_path: Path, db_path: Path, backup: bool = True) -> None:
         if n:
             deleted += n
             print(f"  {table:24s} -{n:,d} (career rows cleared — table unknown to snapshot)")
+    # Integrity gate: never commit a career whose squad rows reference players that exist in
+    # neither the snapshot nor the target's world. World signings (eF/RFS/FM ids) resolve
+    # against the target; career-band and curated-band players travel inside the snapshot.
+    # Snapshots taken before 2026-08-23 dropped the curated 45-46bn overlay, and restoring one
+    # would silently empty its clubs' squads, so refuse and point at the repair tool.
+    orphans = con.execute(
+        "SELECT COUNT(*) FROM main.squad_members sm WHERE ((sm.team_id >= ? AND sm.team_id < ?)"
+        " OR (sm.team_id >= ? AND sm.team_id < ?)) AND NOT EXISTS "
+        "(SELECT 1 FROM main.players p WHERE p.id = sm.player_id)",
+        (TEAM_LO, TEAM_HI, YOUTH_LO, YOUTH_HI)).fetchone()[0]
+    if orphans:
+        con.execute("ROLLBACK")
+        con.close()
+        raise SystemExit(
+            f"RESTORE ABORTED (rolled back): it would leave {orphans:,} squad rows referencing "
+            f"players present in neither the snapshot nor {db_path}. Pre-2026-08-23 snapshots "
+            "lack the curated 45-46bn overlay players; repair the snapshot first: "
+            f"python tools/repair_career_refs.py '{snap_path}' --apply")
     con.commit()
     con.execute("DETACH snap")
     con.close()

@@ -286,9 +286,16 @@ def main() -> int:
     # carrying facepack real_face_path; an open-ended ">= base" DELETE would wipe them, so every
     # career DELETE is upper-bounded to stay below the import ranges.
     RFS_PLAYER_BASE, RFS_TEAM_BASE, INF = 700_000_000, 3_000_000, 1 << 62
+    # The curated 2026/27 overlay (tools/update_career_squad.py) lives at 45-46bn and is only
+    # ever ATTACHED to career squads — its memberships are career state and must fall with the
+    # career. Its player rows are NOT deleted here: they pair 1:1 with player_identity spine
+    # rows (kind='curated', validate gate 7) that update_career_squad does not re-mint, and the
+    # overlay ids are stable across reseeds by construction.
+    CURATED_LO, CURATED_HI = 45_000_000_000, 46_000_000_000
     for tbl, col, base, cap in (
             ("player_attributes", "player_id", PLAYER_BASE, RFS_PLAYER_BASE),
             ("squad_members", "team_id", TEAM_BASE, RFS_TEAM_BASE),
+            ("squad_members", "player_id", CURATED_LO, CURATED_HI),
             ("team_tactics", "team_id", TEAM_BASE, RFS_TEAM_BASE),
             ("coaches", "team_id", TEAM_BASE, RFS_TEAM_BASE),
             ("results", "fixture_id", FIXTURE_BASE, INF),
@@ -492,6 +499,20 @@ def main() -> int:
     con.execute("INSERT INTO fixtures(id,season_id,league_id,matchday,home_team_id,away_team_id,"
                 "played,kind) VALUES(?,?,?,0,?,?,0,'friendly')", (fid, SEASON_ID, managed_lg,
                 managed_tid, rival))
+
+    # Membership integrity sweep (audit 2026-08-23): a career squad row must never reference a
+    # player id with no players row. Two id families legitimately sit OUTSIDE the career band
+    # and therefore outside every bounded DELETE above — world signings (eF/RFS/FM ids) and the
+    # curated 45-46bn overlay — so band arithmetic cannot prove them. Existence is the test:
+    # a membership whose player row is missing is a dangling ghost that silently empties every
+    # per-squad query for that club, and it dies here.
+    con.execute(
+        "DELETE FROM squad_members WHERE ((team_id >= ? AND team_id < ?) "
+        "OR (team_id >= 9000000 AND team_id < 9200000)) "
+        "AND player_id NOT IN (SELECT id FROM players)", (TEAM_BASE, RFS_TEAM_BASE))
+    swept = con.execute("SELECT changes()").fetchone()[0]
+    if swept:
+        print(f"integrity sweep: removed {swept} squad rows that referenced missing players")
 
     con.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('current_team_id',?)", (str(managed_tid),))
     con.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('current_season_id',?)", (str(SEASON_ID),))
