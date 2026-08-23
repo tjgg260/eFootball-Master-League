@@ -17,9 +17,9 @@ namespace ML.App;
 /// </summary>
 public sealed partial class Session
 {
-    private readonly Dictionary<int, (double Steadiness, double Proneness)> _intrinsics = new();
+    private readonly Dictionary<long, (double Steadiness, double Proneness)> _intrinsics = new();
 
-    private (double Steadiness, double Proneness) IntrinsicsOf(int playerId)
+    private (double Steadiness, double Proneness) IntrinsicsOf(long playerId)
     {
         if (_intrinsics.TryGetValue(playerId, out var cached)) return cached;
 
@@ -61,11 +61,11 @@ public sealed partial class Session
 
     /// <summary>How consistent a player's form is (0 flaky .. 1 metronome). Native eFootball
     /// Condition where we have it, professionalism otherwise.</summary>
-    internal double SteadinessOf(int playerId) => IntrinsicsOf(playerId).Steadiness;
+    internal double SteadinessOf(long playerId) => IntrinsicsOf(playerId).Steadiness;
 
     /// <summary>Injury-odds multiplier (≈0.5 iron .. 1.6 glass), from eFootball Injury Resistance;
     /// neutral 1.0 when unknown.</summary>
-    internal double PronenessOf(int playerId) => IntrinsicsOf(playerId).Proneness;
+    internal double PronenessOf(long playerId) => IntrinsicsOf(playerId).Proneness;
 
     /// <summary>
     /// A team's strength ON THE DAY: its XI strength plus a random off-day / inspired-day swing.
@@ -87,14 +87,14 @@ public sealed partial class Session
     /// <summary>Average steadiness of a team's likely XI (slots 0-10), 0..1.</summary>
     internal double SquadSteadinessOf(int teamId)
     {
-        var ids = new List<int>();
+        var ids = new List<long>();
         using (var cmd = Db.Connection.CreateCommand())
         {
             cmd.CommandText = "SELECT player_id FROM squad_members WHERE team_id=$t " +
                               "AND slot BETWEEN 0 AND 10";
             cmd.Parameters.AddWithValue("$t", teamId);
             using var r = cmd.ExecuteReader();
-            while (r.Read()) ids.Add(r.GetInt32(0));
+            while (r.Read()) ids.Add(r.GetInt64(0));
         }
         return ids.Count == 0 ? 0.5 : ids.Average(id => SteadinessOf(id));
     }

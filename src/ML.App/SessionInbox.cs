@@ -4,7 +4,7 @@ namespace ML.App;
 
 public sealed record InboxMessage(
     long Id, int? Matchday, string Category, string Subject, string Body, bool IsRead,
-    int? PlayerId);
+    long? PlayerId);
 
 /// <summary>
 /// The persistent, event-driven inbox: messages are written into the DB the moment something
@@ -15,7 +15,7 @@ public sealed partial class Session
 {
     /// <summary>Write one message into the inbox; a player id lets the news feed show his face.</summary>
     public void PostInbox(string category, string subject, string body, int? matchday = null,
-                          int? playerId = null)
+                          long? playerId = null)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
@@ -44,13 +44,13 @@ public sealed partial class Session
             rows.Add(new InboxMessage(
                 r.GetInt64(0), r.IsDBNull(1) ? null : r.GetInt32(1),
                 r.GetString(2), r.GetString(3), r.GetString(4), r.GetInt32(5) == 1,
-                r.IsDBNull(6) ? null : r.GetInt32(6)));
+                r.IsDBNull(6) ? null : r.GetInt64(6)));
         }
         return rows;
     }
 
     /// <summary>Portrait path + skin tone for a news face (either may be missing).</summary>
-    public (string? PortraitPath, int? SkinTone) NewsFaceOf(int playerId)
+    public (string? PortraitPath, int? SkinTone) NewsFaceOf(long playerId)
     {
         // Follow the app's portrait precedence: eFootball real face (real_face_path) beats the RFS
         // photo. The generic avatar tier is drawn by the caller when both paths are absent.
@@ -66,9 +66,9 @@ public sealed partial class Session
     }
 
     /// <summary>The market ticker with identities: latest moves, fees and faces.</summary>
-    public IReadOnlyList<(int PlayerId, string Player, string ToTeam, long Fee)> TransfersFeed(int count = 8)
+    public IReadOnlyList<(long PlayerId, string Player, string ToTeam, long Fee)> TransfersFeed(int count = 8)
     {
-        var rows = new List<(int, string, string, long)>();
+        var rows = new List<(long, string, string, long)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT t.player_id, p.name, t.to_team_id, t.fee FROM transfers t " +
@@ -78,7 +78,7 @@ public sealed partial class Session
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
-            rows.Add((r.GetInt32(0), r.GetString(1), TeamName(r.GetInt32(2)),
+            rows.Add((r.GetInt64(0), r.GetString(1), TeamName(r.GetInt32(2)),
                 r.IsDBNull(3) ? 0 : r.GetInt64(3)));
         }
         return rows;

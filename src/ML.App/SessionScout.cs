@@ -124,7 +124,7 @@ public sealed partial class Session
         return (true, summary, $"Scout's plan: {line} (Try {shape}, {style} — sets up YOUR side only.)");
     }
 
-    private string PlayerNameOf(int playerId)
+    private string PlayerNameOf(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT name FROM players WHERE id=$p";
@@ -186,7 +186,7 @@ public sealed partial class Session
     }
 
     /// <summary>The player dossier, depth-gated by scout quality, with a fit verdict.</summary>
-    public string PlayerScoutReport(int playerId)
+    public string PlayerScoutReport(long playerId)
     {
         var quality = StaffFor("Scout")?.Quality ?? 1;
         string name = "?", position = "CMF";

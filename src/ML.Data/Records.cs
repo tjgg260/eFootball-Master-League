@@ -42,9 +42,11 @@ public sealed record CoachRow
     public string? Nationality { get; init; }
 }
 
+// PLAYER ids are long: the id namespaces run past Int32 (curated 45–46bn, generated ≥50bn).
+// Team/league/fixture ids stay int — their namespaces are all well under 2^31.
 public sealed record PlayerRow
 {
-    public int Id { get; init; }
+    public long Id { get; init; }
     public int GamePid { get; init; }
     public int? BasePid { get; init; }
     public int? DonorPid { get; init; }
@@ -63,7 +65,7 @@ public sealed record PlayerRow
 
 public sealed record PlayerAttributeRow
 {
-    public int PlayerId { get; init; }
+    public long PlayerId { get; init; }
     public string Attribute { get; init; } = "";
     public int Value { get; init; }
 }
@@ -71,7 +73,7 @@ public sealed record PlayerAttributeRow
 public sealed record SquadMemberRow
 {
     public int TeamId { get; init; }
-    public int PlayerId { get; init; }
+    public long PlayerId { get; init; }
     public int SquadNumber { get; init; }
     public int Slot { get; init; }
     public int Role { get; init; }
@@ -79,7 +81,7 @@ public sealed record SquadMemberRow
 
 public sealed record PlayerConditionRow
 {
-    public int PlayerId { get; init; }
+    public long PlayerId { get; init; }
     public int Fatigue { get; init; }
     public int? InjuredUntilMd { get; init; }
     public double Form { get; init; }

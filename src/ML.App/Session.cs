@@ -461,7 +461,7 @@ public sealed partial class Session
     // Age every player across both divisions and nudge ratings: youth improve, veterans decline.
     private void AgeAndDevelopSquads()
     {
-        var players = new List<(int Id, int Age, int Ovr)>();
+        var players = new List<(long Id, int Age, int Ovr)>();
         using (var q = Db.Connection.CreateCommand())
         {
             // Career divisions + THEIR YOUTH SIDES + the academy: U21/U18 teams carry league_id
@@ -475,15 +475,15 @@ public sealed partial class Session
                 "SELECT p.id, COALESCE(p.age,17), COALESCE(p.overall_rating,50) " +
                 "FROM players p JOIN academy a ON a.player_id=p.id";
             using var r = q.ExecuteReader();
-            while (r.Read()) players.Add((r.GetInt32(0), r.GetInt32(1), r.GetInt32(2)));
+            while (r.Read()) players.Add((r.GetInt64(0), r.GetInt32(1), r.GetInt32(2)));
         }
         var rng = new SeededRandom((SeasonId * 7919 + 3) ^ WorldSeed);
         // Character + potential drive development (P1/P2): determined professionals grow harder
         // and decline softer; growth aims at each player's stored ceiling, with rare breakout
         // seasons for kids far below theirs. Computed before the transaction opens (TraitsOf /
         // PotentialOf write their own rows).
-        var growth = new Dictionary<int, double>();
-        var ceilings = new Dictionary<int, int>();
+        var growth = new Dictionary<long, double>();
+        var ceilings = new Dictionary<long, int>();
         foreach (var (id, age0, ovr0) in players)
         {
             try
@@ -758,7 +758,7 @@ public sealed partial class Session
     /// match reconcile puts their real record (real face/rating) into your team; a squad that grows
     /// past 32 drops its lowest-rated reserve so it stays legal.
     /// </summary>
-    public string SignPlayer(int playerId)
+    public string SignPlayer(long playerId)
     {
         var squad = Repo.Squad(CurrentTeamId);
         if (squad.Any(s => s.PlayerId == playerId))
@@ -809,8 +809,8 @@ public sealed partial class Session
     /// </summary>
     public void SaveCustomFormation(
         int styleIndex, bool fluid,
-        IReadOnlyList<(int Index, int PlayerId, string Position, string Role, int X, int Y)> mainSlots,
-        IReadOnlyList<(int Index, int PlayerId, string Position, string Role, int X, int Y)>? subSlots)
+        IReadOnlyList<(int Index, long PlayerId, string Position, string Role, int X, int Y)> mainSlots,
+        IReadOnlyList<(int Index, long PlayerId, string Position, string Role, int X, int Y)>? subSlots)
     {
         var (fid0, fid1) = OwnFormationIds();
         WriteFormation(fid0, mainSlots);
@@ -833,7 +833,7 @@ public sealed partial class Session
     }
 
     private void WriteFormation(
-        int fid, IReadOnlyList<(int Index, int PlayerId, string Position, string Role, int X, int Y)> slots)
+        int fid, IReadOnlyList<(int Index, long PlayerId, string Position, string Role, int X, int Y)> slots)
     {
         if (fid <= 0 || slots.Count == 0) return;
         var rows = slots.Select(s => new FormationSlotRow
@@ -847,11 +847,11 @@ public sealed partial class Session
             rows);
     }
 
-    private void PersistRole(int playerId, string role) => PersistRoleKind(playerId, role, "primary");
+    private void PersistRole(long playerId, string role) => PersistRoleKind(playerId, role, "primary");
 
     /// <summary>Persist a player's in- (kind='primary') or out-of-possession (kind='secondary')
     /// role. Only that kind's row is touched, so setting one never wipes the other.</summary>
-    private void PersistRoleKind(int playerId, string role, string kind)
+    private void PersistRoleKind(long playerId, string role, string kind)
     {
         if (playerId <= 0) return;
         using (var del = Db.Connection.CreateCommand())
@@ -873,10 +873,10 @@ public sealed partial class Session
     }
 
     /// <summary>Set a player's out-of-possession (defensive) role.</summary>
-    public void SetSecondaryRole(int playerId, string role) =>
+    public void SetSecondaryRole(long playerId, string role) =>
         PersistRoleKind(playerId, role, "secondary");
 
-    private string RoleOfKind(int playerId, string kind, string fallback)
+    private string RoleOfKind(long playerId, string kind, string fallback)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT playstyle FROM player_playstyles WHERE player_id=$p AND kind=$k LIMIT 1";
@@ -886,10 +886,10 @@ public sealed partial class Session
     }
 
     /// <summary>A player's saved in-possession role — "Basic" when none is set.</summary>
-    public string RoleOf(int playerId) => RoleOfKind(playerId, "primary", "Basic");
+    public string RoleOf(long playerId) => RoleOfKind(playerId, "primary", "Basic");
 
     /// <summary>A player's saved out-of-possession role — "None" when none is set.</summary>
-    public string SecondaryRoleOf(int playerId) => RoleOfKind(playerId, "secondary", "None");
+    public string SecondaryRoleOf(long playerId) => RoleOfKind(playerId, "secondary", "None");
 
     /// <summary>Whether the club last saved with a fluid (distinct Sub) shape.</summary>
     public bool SavedFluid() => GetMeta($"tactics_fluid_{CurrentTeamId}") == "1";
@@ -907,7 +907,7 @@ public sealed partial class Session
         foreach (var teamId in new[] { homeTeamId, awayTeamId })
         {
             var conditions = Repo.ConditionsFor(teamId).ToDictionary(c => c.PlayerId);
-            bool InjuredNow(int pid) =>
+            bool InjuredNow(long pid) =>
                 conditions.TryGetValue(pid, out var c) && c.InjuredUntilMd is int u && u >= matchday;
 
             // Your hand-picked XI is respected: the AI only steps in for players who are out.
@@ -965,7 +965,7 @@ public sealed partial class Session
         }
     }
 
-    private void SwapSlots(int teamId, int playerA, int playerB)
+    private void SwapSlots(int teamId, long playerA, long playerB)
     {
         var members = Repo.Squad(teamId);
         var a = members.FirstOrDefault(m => m.PlayerId == playerA);
@@ -1045,7 +1045,7 @@ public sealed partial class Session
     }
 
     /// <summary>Injury roll honouring the Settings frequency (Low halves, High adds a chance).</summary>
-    internal int? RollInjury(int matchday, int playerId)
+    internal int? RollInjury(int matchday, long playerId)
     {
         var proneness = PronenessOf(playerId);
         var rolled = ConditionModel.InjuryRoll(SeasonId, matchday, playerId, proneness);

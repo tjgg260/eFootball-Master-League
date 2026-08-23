@@ -45,7 +45,7 @@ public sealed partial class Session
         }
         tx.Commit();
 
-        void Write(Microsoft.Data.Sqlite.SqliteTransaction t, int pid, string kind, string? role)
+        void Write(Microsoft.Data.Sqlite.SqliteTransaction t, long pid, string kind, string? role)
         {
             if (role is null) return;
             using var del = Db.Connection.CreateCommand();
@@ -65,9 +65,9 @@ public sealed partial class Session
         }
     }
 
-    private Dictionary<int, Dictionary<string, int>> LoadAbilitiesFor(IReadOnlyList<int> pids)
+    private Dictionary<long, Dictionary<string, int>> LoadAbilitiesFor(IReadOnlyList<long> pids)
     {
-        var map = new Dictionary<int, Dictionary<string, int>>();
+        var map = new Dictionary<long, Dictionary<string, int>>();
         if (pids.Count == 0) return map;
         var inClause = string.Join(",", pids);
         using var cmd = Db.Connection.CreateCommand();

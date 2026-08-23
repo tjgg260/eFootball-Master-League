@@ -103,7 +103,7 @@ public sealed partial class Session
     /// A player's season-by-season line for the card. The club per season is reconstructed from
     /// the transfer log (last move at or before that season wins; otherwise today's club).
     /// </summary>
-    public IReadOnlyList<CareerHistoryRow> PlayerCareerHistory(int playerId)
+    public IReadOnlyList<CareerHistoryRow> PlayerCareerHistory(long playerId)
     {
         // Transfer trail, oldest first: (season, to_team).
         var moves = new List<(int Season, int ToTeam)>();

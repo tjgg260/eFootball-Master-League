@@ -35,13 +35,13 @@ public sealed partial class Session
         var order = Enumerable.Range(0, slots.Count)
             .OrderByDescending(i => Visuals.PositionCategory(Visuals.RoleCodeLabel(slots[i].Position)) == "GK" ? 1 : 0)
             .ToList();
-        var used = new HashSet<int>();
-        var chosen = new int[slots.Count];
+        var used = new HashSet<long>();
+        var chosen = new long[slots.Count];
         foreach (var i in order)
         {
             var wantLabel = Visuals.RoleCodeLabel(slots[i].Position);
             var wantCat = Visuals.PositionCategory(wantLabel);
-            var best = -1;
+            long best = -1;
             var bestScore = int.MinValue;
             foreach (var p in squad)
             {
@@ -60,7 +60,7 @@ public sealed partial class Session
 
         // Write the chosen XI into slots 0-10; everyone else keeps a bench slot.
         var benchStart = 11;
-        var starters = new HashSet<int>(chosen.Where(c => c != 0));
+        var starters = new HashSet<long>(chosen.Where(c => c != 0));
         for (var i = 0; i < slots.Count; i++)
         {
             if (chosen[i] == 0) continue;
@@ -92,7 +92,7 @@ public sealed partial class Session
         }
     }
 
-    private void SetSlot(int teamId, int playerId, int slot)
+    private void SetSlot(int teamId, long playerId, int slot)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE squad_members SET slot=$s WHERE team_id=$t AND player_id=$p";

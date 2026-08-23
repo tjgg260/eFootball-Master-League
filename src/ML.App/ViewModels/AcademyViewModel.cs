@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace ML.App.ViewModels;
 
 public sealed record AcademyEntry(
-    int PlayerId, string Name, string Position, int Age, int Rating, IBrush RatingBrush,
+    long PlayerId, string Name, string Position, int Age, int Rating, IBrush RatingBrush,
     string Potential, IBrush FaceBrush, Avalonia.Media.Imaging.Bitmap? Portrait = null)
 {
     public string Mark => Visuals.PlayerMark(Name);

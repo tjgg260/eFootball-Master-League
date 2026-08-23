@@ -586,7 +586,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     }
 
     /// <summary>Knowledge gate for opponent players shown on the Office (letters, never numbers).</summary>
-    private int OppKnowledgeOf(int playerId)
+    private int OppKnowledgeOf(long playerId)
     {
         try { return _s.FmAttributeMode ? _s.KnowledgeOf(playerId) : 100; }
         catch { return 100; }

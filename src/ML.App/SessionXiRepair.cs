@@ -52,7 +52,7 @@ public sealed partial class Session
         }
     }
 
-    private void SwapSlots(int teamId, int pidA, int slotA, int pidB, int slotB)
+    private void SwapSlots(int teamId, long pidA, int slotA, long pidB, int slotB)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =

@@ -436,7 +436,7 @@ public sealed partial class Session
     }
 
     /// <summary>True when a stored deal runs out at this season's end (no row = unknown = false).</summary>
-    private bool ContractExpiresThisSeason(int playerId)
+    private bool ContractExpiresThisSeason(long playerId)
     {
         using var q = Db.Connection.CreateCommand();
         q.CommandText = "SELECT expires_season FROM contracts WHERE player_id=$p AND team_id=$t";
@@ -460,7 +460,7 @@ public sealed partial class Session
     public int YouthCoachIntakeBonus() => (StaffPersonFor("Youth Coach")?.Youth ?? 0) >= 13 ? 2 : 0;
 
     /// <summary>GK Coach: goalkeepers develop faster under a proper specialist.</summary>
-    public double GkCoachMultiplier(int playerId)
+    public double GkCoachMultiplier(long playerId)
     {
         var coach = StaffPersonFor("GK Coach");
         if (coach is null || coach.Coaching < 12) return 1.0;

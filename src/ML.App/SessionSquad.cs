@@ -27,7 +27,7 @@ public sealed partial class Session
 
     public const int PositionSessions = 6;   // RoleTraining's bar: six sessions to learn a position
 
-    public (string? Focus, int Progress) TrainingOf(int playerId)
+    public (string? Focus, int Progress) TrainingOf(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT focus, progress FROM training_focus WHERE player_id=$p";
@@ -36,7 +36,7 @@ public sealed partial class Session
         return r.Read() ? (r.GetString(0), r.GetInt32(1)) : (null, 0);
     }
 
-    public void SetTraining(int playerId, string? focus)
+    public void SetTraining(long playerId, string? focus)
     {
         using var cmd = Db.Connection.CreateCommand();
         if (string.IsNullOrEmpty(focus))
@@ -53,7 +53,7 @@ public sealed partial class Session
         cmd.ExecuteNonQuery();
     }
 
-    public IReadOnlyList<string> LearnedPositions(int playerId)
+    public IReadOnlyList<string> LearnedPositions(long playerId)
     {
         var list = new List<string>();
         using var cmd = Db.Connection.CreateCommand();
@@ -74,15 +74,15 @@ public sealed partial class Session
     {
         var notes = new List<string>();
         var squad = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id);
-        var focused = new List<(int PlayerId, string Focus, int Progress)>();
+        var focused = new List<(long PlayerId, string Focus, int Progress)>();
         using (var q = Db.Connection.CreateCommand())
         {
             q.CommandText = "SELECT player_id, focus, progress FROM training_focus";
             using var r = q.ExecuteReader();
             while (r.Read())
             {
-                if (squad.ContainsKey(r.GetInt32(0)))
-                    focused.Add((r.GetInt32(0), r.GetString(1), r.GetInt32(2)));
+                if (squad.ContainsKey(r.GetInt64(0)))
+                    focused.Add((r.GetInt64(0), r.GetString(1), r.GetInt32(2)));
             }
         }
 
@@ -156,7 +156,7 @@ public sealed partial class Session
     /// missing from the list is appended, so every player always holds a unique slot — a partial
     /// order must never leave two players sharing one.
     /// </summary>
-    public void SaveSquadOrder(IReadOnlyList<int> playerIdsInOrder, bool manual)
+    public void SaveSquadOrder(IReadOnlyList<long> playerIdsInOrder, bool manual)
     {
         var order = playerIdsInOrder.Distinct().ToList();
         foreach (var m in Repo.Squad(CurrentTeamId).OrderBy(m => m.Slot))
@@ -179,7 +179,7 @@ public sealed partial class Session
     }
 
     /// <summary>The AI's suggested order for YOUR club (doesn't persist — preview for the UI).</summary>
-    public IReadOnlyList<int> SuggestXi()
+    public IReadOnlyList<long> SuggestXi()
     {
         var (fid0, _) = OwnFormationIds();
         var slotPositions = Repo.FormationSlots(fid0).OrderBy(s => s.SlotIndex)
@@ -198,7 +198,7 @@ public sealed partial class Session
         var registered = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id, p => p.Position);
         // Position-adjusted overalls drive the pick: a slot rates each candidate on ITS core
         // abilities (winger-in-goal ≈ his gk_* ≈ 40), so nobody strong ever fills the wrong slot.
-        var abilities = new Dictionary<int, IReadOnlyDictionary<string, int>>();
+        var abilities = new Dictionary<long, IReadOnlyDictionary<string, int>>();
         foreach (var pid in registered.Keys)
         {
             try { abilities[pid] = Repo.Attributes(pid); } catch { /* rating fallback */ }
@@ -224,10 +224,10 @@ public sealed partial class Session
         ("ckr", "Corners (right)", 1),
     };
 
-    public int? TakerOf(string kind) =>
-        int.TryParse(GetMeta($"taker_{kind}_{CurrentTeamId}"), out var v) ? v : null;
+    public long? TakerOf(string kind) =>
+        long.TryParse(GetMeta($"taker_{kind}_{CurrentTeamId}"), out var v) ? v : null;
 
-    public void SetTaker(string kind, int? playerId) =>
+    public void SetTaker(string kind, long? playerId) =>
         SetMeta($"taker_{kind}_{CurrentTeamId}", playerId?.ToString() ?? "");
 
     // Individual Instructions (Game Plan replica). Planning state only: the game reads these
@@ -239,14 +239,14 @@ public sealed partial class Session
 
     // ------------------------------------------------------------------ captain / release / list
 
-    public int? Captain
+    public long? Captain
     {
-        get => int.TryParse(GetMeta($"captain_{CurrentTeamId}"), out var v) ? v : null;
+        get => long.TryParse(GetMeta($"captain_{CurrentTeamId}"), out var v) ? v : null;
         set => SetMeta($"captain_{CurrentTeamId}", value?.ToString() ?? "");
     }
 
     /// <summary>Release a player on a free — squad must stay a legal size.</summary>
-    public string ReleasePlayer(int playerId)
+    public string ReleasePlayer(long playerId)
     {
         var squad = Repo.Squad(CurrentTeamId);
         if (squad.All(s => s.PlayerId != playerId)) return "Not in your squad.";
@@ -258,10 +258,10 @@ public sealed partial class Session
         return "Released on a free. Their wages come off the bill.";
     }
 
-    public bool IsTransferListed(int playerId) =>
+    public bool IsTransferListed(long playerId) =>
         (GetMeta($"listed_{CurrentTeamId}") ?? "").Split(',').Contains(playerId.ToString());
 
-    public void SetTransferListed(int playerId, bool listed)
+    public void SetTransferListed(long playerId, bool listed)
     {
         var ids = (GetMeta($"listed_{CurrentTeamId}") ?? "")
             .Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
@@ -276,7 +276,7 @@ public sealed partial class Session
     /// A player's contract expiry season-year, synthesised deterministically on first sight
     /// (1-3 seasons) and persisted, so every squad shows real, stable contract lengths.
     /// </summary>
-    public int ContractYear(int playerId)
+    public int ContractYear(long playerId)
     {
         using (var q = Db.Connection.CreateCommand())
         {
@@ -301,7 +301,7 @@ public sealed partial class Session
 
     // ------------------------------------------------------------------ negotiation v2 (B3)
 
-    private (int Rating, int? Age, string Name) PlayerBasics(int playerId)
+    private (int Rating, int? Age, string Name) PlayerBasics(long playerId)
     {
         using var q = Db.Connection.CreateCommand();
         q.CommandText = "SELECT COALESCE(overall_rating,65), age, name FROM players WHERE id=$p";
@@ -313,7 +313,7 @@ public sealed partial class Session
     }
 
     /// <summary>The agent's opening ask for the squad card's negotiation panel.</summary>
-    public (long Demand, string Line) ContractDemand(int playerId, int years, string? status)
+    public (long Demand, string Line) ContractDemand(long playerId, int years, string? status)
     {
         var (rating, age, name) = PlayerBasics(playerId);
         var demand = ML.Core.Selection.ContractNegotiation.WeeklyDemand(
@@ -329,7 +329,7 @@ public sealed partial class Session
     /// contract promise.
     /// </summary>
     public (bool Accepted, bool Over, string Message) OfferContract(
-        int playerId, long weeklyOffer, int years, string? status, int round)
+        long playerId, long weeklyOffer, int years, string? status, int round)
     {
         var (rating, age, name) = PlayerBasics(playerId);
         var demand = ML.Core.Selection.ContractNegotiation.WeeklyDemand(
@@ -383,7 +383,7 @@ public sealed partial class Session
     }
 
     /// <summary>Extend a contract two seasons for a signing bonus (10% of value).</summary>
-    public string RenewContract(int playerId)
+    public string RenewContract(long playerId)
     {
         int rating = 65;
         int? age = null;

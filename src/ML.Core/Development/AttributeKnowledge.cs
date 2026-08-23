@@ -50,7 +50,7 @@ public static class AttributeKnowledge
     /// (player, attribute): the same partial dossier always shows the same subset, and more
     /// knowledge only ever reveals MORE (monotonic).
     /// </summary>
-    public static bool IsRevealed(int playerId, string attribute, int knowledge)
+    public static bool IsRevealed(long playerId, string attribute, int knowledge)
     {
         if (knowledge >= 100) return true;
         if (knowledge <= 0) return false;
@@ -119,7 +119,7 @@ public static class AttributeKnowledge
     /// and the flaws an opponent would target. Only revealed attributes are quotable.
     /// </summary>
     public static IReadOnlyList<string> CoachReport(
-        int playerId, IReadOnlyDictionary<string, int> abilities, bool isGk, int knowledge)
+        long playerId, IReadOnlyDictionary<string, int> abilities, bool isGk, int knowledge)
     {
         var relevant = abilities
             .Where(a => a.Key.StartsWith("gk_") == isGk || (!isGk && !a.Key.StartsWith("gk_")))

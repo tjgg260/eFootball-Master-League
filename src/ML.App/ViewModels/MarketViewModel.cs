@@ -9,7 +9,7 @@ namespace ML.App.ViewModels;
 // --- Transfermarket (browse the full master DB, with real fees) -------------------
 
 public sealed record MarketPlayer(
-    int Id, string Name, string Position, int Overall, int? Age, long ValueRaw, string Club,
+    long Id, string Name, string Position, int Overall, int? Age, long ValueRaw, string Club,
     string? PortraitPath = null, int? SkinTone = null, int Knowledge = 100,
     string? TransferStatus = null)
 {
@@ -40,7 +40,7 @@ public sealed record MarketPlayer(
     public Avalonia.Media.IBrush FaceBrush => Visuals.SkinBrush(SkinTone);
 }
 
-public sealed record OfferRow(int PlayerId, string Line);
+public sealed record OfferRow(long PlayerId, string Line);
 
 public sealed partial class MarketViewModel : PageViewModel
 {
@@ -184,7 +184,7 @@ public sealed partial class MarketViewModel : PageViewModel
         if (MinRating > 40) cmd.Parameters.AddWithValue("$min", (int)MinRating);
 
         var cap = CapOf(ValueCap);
-        var found = new List<(int Id, string Name, string Pos, int Rating, int? Age, long Value,
+        var found = new List<(long Id, string Name, string Pos, int Rating, int? Age, long Value,
             string Club, string? Portrait, int? Skin, string? Status)>();
         using (var r = cmd.ExecuteReader())
         {
@@ -192,7 +192,7 @@ public sealed partial class MarketViewModel : PageViewModel
             {
                 var rating = r.GetInt32(3);
                 int? age = r.IsDBNull(4) ? null : r.GetInt32(4);
-                var id = r.GetInt32(0);
+                var id = r.GetInt64(0);           // player ids run past Int32 (curated/generated bands)
                 var club = r.IsDBNull(7) ? "Free agent" : r.GetString(7);
                 if (FreeAgentsOnly && club != "Free agent") continue;
                 var value = _s.MarketValueOf(id, rating, age);
@@ -202,7 +202,7 @@ public sealed partial class MarketViewModel : PageViewModel
                     r.IsDBNull(8) ? null : r.GetString(8)));
             }
         }
-        IEnumerable<(int Id, string Name, string Pos, int Rating, int? Age, long Value,
+        IEnumerable<(long Id, string Name, string Pos, int Rating, int? Age, long Value,
             string Club, string? Portrait, int? Skin, string? Status)> sorted = SortBy switch
         {
             "Youngest" => found.OrderBy(p => p.Age ?? 99).ThenByDescending(p => p.Rating),
@@ -219,7 +219,7 @@ public sealed partial class MarketViewModel : PageViewModel
         }
     }
 
-    private int KnowledgeSafe(int id)
+    private int KnowledgeSafe(long id)
     {
         try { return _s.FmAttributeMode ? _s.KnowledgeOf(id) : 100; }
         catch { return 100; }

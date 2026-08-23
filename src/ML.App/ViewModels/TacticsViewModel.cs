@@ -32,7 +32,7 @@ public sealed record RoleOption(string Name, string Description)
 
 /// <summary>A bench player — click him and click a starter (either order) and they swap.</summary>
 public sealed record BenchEntry(
-    int PlayerId, int Number, string Name, string Position, int Rating, string? PortraitPath,
+    long PlayerId, int Number, string Name, string Position, int Rating, string? PortraitPath,
     int Fatigue, bool Injured, IReadOnlyList<string> Learned)
 {
     public Avalonia.Media.IBrush RatingBrush => Visuals.RatingBrush(Rating);
@@ -49,7 +49,7 @@ public sealed record BenchEntry(
 /// <summary>A draggable player token: identity + condition + positional fit ring.</summary>
 public sealed partial class PitchPlayer : ObservableObject
 {
-    public PitchPlayer(int playerId, int number, string name, int rating, string? portraitPath,
+    public PitchPlayer(long playerId, int number, string name, int rating, string? portraitPath,
                        string position, string role, double left, double top,
                        string registeredPosition = "", IReadOnlyList<string>? learned = null,
                        int fatigue = 0, bool injured = false,
@@ -72,7 +72,7 @@ public sealed partial class PitchPlayer : ObservableObject
         _top = top;
     }
 
-    public int PlayerId { get; }
+    public long PlayerId { get; }
     public int Number { get; }
     public string Name { get; }
     public int Rating { get; }
@@ -355,7 +355,7 @@ public sealed partial class TacticsViewModel : PageViewModel
         // labelled with the fid's slot role code — NOT best-rating-first. The rest form the bench.
         var conditions = s.Repo.ConditionsFor(s.CurrentTeamId).ToDictionary(c => c.PlayerId);
         var md = s.NextFixture()?.Matchday ?? 0;
-        (int Fatigue, bool Injured) CondOf(int pid)
+        (int Fatigue, bool Injured) CondOf(long pid)
         {
             conditions.TryGetValue(pid, out var c);
             return (c?.Fatigue ?? 0, c?.InjuredUntilMd is int u && u >= md);
@@ -480,7 +480,7 @@ public sealed partial class TacticsViewModel : PageViewModel
 
     private void InitTakers()
     {
-        PitchPlayer? ById(int? id) =>
+        PitchPlayer? ById(long? id) =>
             id is null ? null : Players.FirstOrDefault(p => p.PlayerId == id);
         TakerFk = ById(_s.TakerOf("fk"));
         TakerPk = ById(_s.TakerOf("pk"));
@@ -826,7 +826,7 @@ public sealed partial class TacticsViewModel : PageViewModel
     }
 
     /// <summary>A player's abilities for position-adjusted grades; null degrades to native rating.</summary>
-    private IReadOnlyDictionary<string, int>? AttrsOf(int pid)
+    private IReadOnlyDictionary<string, int>? AttrsOf(long pid)
     {
         try { return pid > 0 ? _s.Repo.Attributes(pid) : null; } catch { return null; }
     }
@@ -1127,9 +1127,9 @@ public sealed partial class TacticsViewModel : PageViewModel
                      $"XI — applies in-game on the next compile.{warn}";
     }
 
-    private List<(int Index, int PlayerId, string Position, string Role, int X, int Y)> SlotsFor(int phase)
+    private List<(int Index, long PlayerId, string Position, string Role, int X, int Y)> SlotsFor(int phase)
     {
-        var slots = new List<(int, int, string, string, int, int)>();
+        var slots = new List<(int, long, string, string, int, int)>();
         for (var i = 0; i < Players.Count && i < _phase[phase].Length; i++)
         {
             var (left, top, pos) = _phase[phase][i];

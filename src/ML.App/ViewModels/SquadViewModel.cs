@@ -100,7 +100,7 @@ public static class PlayerCard
     /// </summary>
     public static IReadOnlyList<AbilityEntry> BuildAbilityList(
         IReadOnlyDictionary<string, int> abilities, bool isGk,
-        bool fmMode = false, int knowledge = 100, int playerId = 0)
+        bool fmMode = false, int knowledge = 100, long playerId = 0)
     {
         var rows = isGk
             ? abilities.Where(a => a.Key.StartsWith("gk_")).OrderBy(a => a.Key)
@@ -129,7 +129,7 @@ public static class PlayerCard
             .Select(w => w == "gk" ? "GK" : char.ToUpperInvariant(w[0]) + w[1..]));
 }
 
-public sealed record LoanRowVm(int PlayerId, string Line, bool IsOut);
+public sealed record LoanRowVm(long PlayerId, string Line, bool IsOut);
 
 public sealed partial class SquadViewModel : PageViewModel
 {
@@ -496,7 +496,7 @@ public sealed partial class SquadViewModel : PageViewModel
         RefreshPlayTimeLine(Selected.PlayerId, value);
     }
 
-    private void RefreshPlayTimeLine(int playerId, string status)
+    private void RefreshPlayTimeLine(long playerId, string status)
     {
         try
         {
@@ -675,7 +675,7 @@ public sealed partial class SquadViewModel : PageViewModel
 
     private static IReadOnlyList<AbilityEntry> BuildAbilityList(
         IReadOnlyDictionary<string, int> abilities, bool isGk,
-        bool fmMode = false, int knowledge = 100, int playerId = 0) =>
+        bool fmMode = false, int knowledge = 100, long playerId = 0) =>
         PlayerCard.BuildAbilityList(abilities, isGk, fmMode, knowledge, playerId);
 
     private sealed record SquadRowDto

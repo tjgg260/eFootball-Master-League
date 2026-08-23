@@ -28,7 +28,7 @@ public sealed partial class Session
     ///   3. eFootball generic face    — drawn from skin tone + hair colour (never fails)
     /// Tiers 1 and 2 only win if the file actually loads; otherwise we fall through to the avatar.
     /// </summary>
-    public PortraitInfo PortraitFor(int playerId)
+    public PortraitInfo PortraitFor(long playerId)
     {
         string? realFace = null, rfs = null;
         int? skin = null, hair = null;

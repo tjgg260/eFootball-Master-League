@@ -24,7 +24,7 @@ public sealed class StatsViewModel : PageViewModel
         var table = s.Table();
         static string Rate(int count, int apps) =>
             apps > 0 ? $"{count / (double)apps:0.00}/game" : "";
-        Avalonia.Media.Imaging.Bitmap? Face(int pid)
+        Avalonia.Media.Imaging.Bitmap? Face(long pid)
         { try { return s.PortraitFor(pid).Image; } catch { return null; } }
         Avalonia.Media.Imaging.Bitmap? Crest(int tid)
         { try { return Visuals.LoadBitmap(s.TeamLogoPath(tid)); } catch { return null; } }

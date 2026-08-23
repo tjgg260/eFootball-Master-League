@@ -85,7 +85,7 @@ public class XiSelectorTests
 
         var order = XiSelector.SelectOrder(squad, new[] { "MID" });
 
-        Assert.Equal(new[] { 4, 6, 2, 9 }, order);
+        Assert.Equal(new long[] { 4, 6, 2, 9 }, order);
     }
 
     [Fact]
@@ -127,6 +127,6 @@ public class XiSelectorTests
 
         var order = XiSelector.SelectOrder(squad, new[] { "GK" });
 
-        Assert.Equal(new[] { 1, 3, 2, 4 }, order);
+        Assert.Equal(new long[] { 1, 3, 2, 4 }, order);
     }
 }

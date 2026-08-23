@@ -16,7 +16,7 @@ public sealed partial class Session
     // ------------------------------------------------------------------ traits & personality
 
     /// <summary>A player's traits — seeded deterministically on first read, then stored.</summary>
-    public (int Determination, int Professionalism, int Ambition, int Temperament) TraitsOf(int playerId)
+    public (int Determination, int Professionalism, int Ambition, int Temperament) TraitsOf(long playerId)
     {
         using (var q = Db.Connection.CreateCommand())
         {
@@ -42,7 +42,7 @@ public sealed partial class Session
         return seeded;
     }
 
-    public string PersonalityOf(int playerId)
+    public string PersonalityOf(long playerId)
     {
         var (d, p, a, t) = TraitsOf(playerId);
         return PersonalityModel.Personality(d, p, a, t);
@@ -50,7 +50,7 @@ public sealed partial class Session
 
     // ------------------------------------------------------------------ skills
 
-    public IReadOnlyList<string> SkillsOf(int playerId)
+    public IReadOnlyList<string> SkillsOf(long playerId)
     {
         var rows = new List<string>();
         using var cmd = Db.Connection.CreateCommand();
@@ -66,7 +66,7 @@ public sealed partial class Session
     /// Track Back for mid/fwd), the innate set excluded, known skills excluded, and old dogs
     /// excluded entirely.
     /// </summary>
-    public IReadOnlyList<string> LearnableSkillsFor(int playerId)
+    public IReadOnlyList<string> LearnableSkillsFor(long playerId)
     {
         var p = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(x => x.Id == playerId);
         if (p is null) return Array.Empty<string>();
@@ -79,7 +79,7 @@ public sealed partial class Session
     }
 
     /// <summary>Start (or switch) skill training. One skill per player at a time.</summary>
-    public string StartSkillTraining(int playerId, string skill)
+    public string StartSkillTraining(long playerId, string skill)
     {
         var p = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(x => x.Id == playerId);
         if (p is null) return "Not in your squad.";
@@ -168,7 +168,7 @@ public sealed partial class Session
     /// <summary>Season growth multiplier for a player — determined professionals develop,
     /// lifted (or dragged) by the personalities around them and, for your club, by your
     /// facilities and coaches.</summary>
-    internal double GrowthMultiplierOf(int playerId)
+    internal double GrowthMultiplierOf(long playerId)
     {
         var (det, prof, _, _) = TraitsOf(playerId);
         var env = SquadEnvironmentMultiplier(playerId);   // who you share a dressing room with
@@ -190,7 +190,7 @@ public sealed partial class Session
     /// who develops. FM-real traits (from the data pass) feed this directly; unseeded mates fall
     /// out of the average and land it near neutral.
     /// </summary>
-    internal double SquadEnvironmentMultiplier(int playerId)
+    internal double SquadEnvironmentMultiplier(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
@@ -213,7 +213,7 @@ public sealed partial class Session
     /// current rating and determination (young + driven = higher ceiling). Academy prospects
     /// get theirs written explicitly at intake.
     /// </summary>
-    public int PotentialOf(int playerId, int? age = null, int? rating = null)
+    public int PotentialOf(long playerId, int? age = null, int? rating = null)
     {
         using (var q = Db.Connection.CreateCommand())
         {
@@ -239,7 +239,7 @@ public sealed partial class Session
         return potential;
     }
 
-    internal void SetPotential(int playerId, int potential)
+    internal void SetPotential(long playerId, int potential)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO player_potential(player_id,potential) VALUES($p,$v) " +
@@ -250,7 +250,7 @@ public sealed partial class Session
     }
 
     /// <summary>Potential as scouting stars for the UI (rounded half-up onto 1-5).</summary>
-    public int PotentialStars(int playerId) => PotentialOf(playerId) switch
+    public int PotentialStars(long playerId) => PotentialOf(playerId) switch
     {
         >= 86 => 5, >= 79 => 4, >= 71 => 3, >= 62 => 2, _ => 1,
     };

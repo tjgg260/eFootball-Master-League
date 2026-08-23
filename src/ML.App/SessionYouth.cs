@@ -82,7 +82,7 @@ public sealed partial class Session
         }
     }
 
-    private int? AgeOf(int playerId)
+    private int? AgeOf(long playerId)
     {
         using var q = Db.Connection.CreateCommand();
         q.CommandText = "SELECT age FROM players WHERE id=$p";
@@ -110,13 +110,13 @@ public sealed partial class Session
     }
 
     /// <summary>Promote a youth player to the senior squad.</summary>
-    public string PromoteToSenior(int playerId, int parentTeamId)
+    public string PromoteToSenior(long playerId, int parentTeamId)
     {
         return MovePlayer(playerId, parentTeamId, "first");
     }
 
     /// <summary>Send a player down to a youth side (U21/U18).</summary>
-    public string DemoteToYouth(int playerId, int parentTeamId, string kind)
+    public string DemoteToYouth(long playerId, int parentTeamId, string kind)
     {
         var age = AgeOf(playerId) ?? 25;
         if (kind == "u18" && age > 18) return "Too old for the U18s.";
@@ -124,7 +124,7 @@ public sealed partial class Session
         return MovePlayer(playerId, parentTeamId, kind);
     }
 
-    private string MovePlayer(int playerId, int parentTeamId, string toKind)
+    private string MovePlayer(long playerId, int parentTeamId, string toKind)
     {
         var dest = toKind == "first" ? parentTeamId : YouthTeamId(parentTeamId, toKind);
         // remove from whichever of the three sides currently holds him

@@ -46,7 +46,7 @@ public static class ConditionModel
         return Math.Clamp(f, 4.0, 9.0);
     }
 
-    public static int? InjuryRoll(int seasonId, int matchday, int playerId) =>
+    public static int? InjuryRoll(int seasonId, int matchday, long playerId) =>
         InjuryRoll(seasonId, matchday, playerId, 1.0);
 
     /// <summary>
@@ -54,7 +54,7 @@ public static class ConditionModel
     /// Injury Resistance inverted — robust ~0.5, fragile ~1.6). Glass players pick up knocks two to
     /// three times as often as iron men. Still fully deterministic in (season, matchday, player).
     /// </summary>
-    public static int? InjuryRoll(int seasonId, int matchday, int playerId, double proneness)
+    public static int? InjuryRoll(int seasonId, int matchday, long playerId, double proneness)
     {
         var h = Mix(seasonId, matchday, playerId);
         var threshold = (uint)Math.Clamp(200.0 * proneness, 0.0, 9999.0);
@@ -64,14 +64,15 @@ public static class ConditionModel
     }
 
     /// <summary>SplitMix64 over the three inputs — full-avalanche, no Random, no shared state.</summary>
-    private static ulong Mix(int a, int b, int c)
+    private static ulong Mix(int a, int b, long c)
     {
         unchecked
         {
+            // (ulong)c == (uint)c for the old int-range ids, so existing careers keep their rolls.
             var z = 0x9E3779B97F4A7C15UL;
             z = SplitMix(z + (uint)a);
             z = SplitMix(z + (uint)b);
-            z = SplitMix(z + (uint)c);
+            z = SplitMix(z + (ulong)c);
             return z;
         }
     }

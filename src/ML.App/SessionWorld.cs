@@ -573,7 +573,7 @@ public sealed partial class Session
         }
     }
 
-    private void MoveIntoSquad(int teamId, int playerId)
+    private void MoveIntoSquad(int teamId, long playerId)
     {
         var used = Repo.Squad(teamId).Select(s => s.SquadNumber).ToHashSet();
         var shirt = Enumerable.Range(1, 99).FirstOrDefault(n => !used.Contains(n), 99);
@@ -581,7 +581,7 @@ public sealed partial class Session
         { TeamId = teamId, PlayerId = playerId, SquadNumber = shirt, Slot = Repo.Squad(teamId).Count });
     }
 
-    private void RecordPaidTransfer(int playerId, int fromTeam, int toTeam, long fee)
+    private void RecordPaidTransfer(long playerId, int fromTeam, int toTeam, long fee)
     {
         using var t = Db.Connection.CreateCommand();
         t.CommandText = "INSERT INTO transfers(player_id,from_team_id,to_team_id,fee,window,season_id) " +
@@ -816,9 +816,9 @@ public sealed partial class Session
     }
 
     /// <summary>Promote an academy prospect into the senior squad.</summary>
-    public string PromoteAcademy(int playerId) => PromoteAcademy(playerId, CurrentTeamId);
+    public string PromoteAcademy(long playerId) => PromoteAcademy(playerId, CurrentTeamId);
 
-    private string PromoteAcademy(int playerId, int teamId)
+    private string PromoteAcademy(long playerId, int teamId)
     {
         using (var del = Db.Connection.CreateCommand())
         {
@@ -1030,7 +1030,7 @@ public sealed partial class Session
         }
     }
 
-    private void AddEvent(int fixtureId, int playerId, string type, int minute)
+    private void AddEvent(int fixtureId, long playerId, string type, int minute)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO match_events(fixture_id,player_id,event_type,minute) " +
@@ -1118,7 +1118,7 @@ public sealed partial class Session
 
     /// <summary>Season line for one player: the four stats the game gives + apps.</summary>
     public (int Apps, int Goals, int Assists, int Yellows, int Reds, double? AvgRating)
-        PlayerSeasonStats(int playerId)
+        PlayerSeasonStats(long playerId)
     {
         var counts = new Dictionary<string, int>();
         using (var cmd = Db.Connection.CreateCommand())
@@ -1239,7 +1239,7 @@ public sealed partial class Session
     }
 
     /// <summary>Competitive appearances ('app' events) per player this season.</summary>
-    public int AppsOf(int playerId)
+    public int AppsOf(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM match_events e JOIN fixtures f ON f.id=e.fixture_id " +
@@ -1250,13 +1250,13 @@ public sealed partial class Session
     }
 
     // Squad cache for CPU goal attribution: (player id, weight) per team, weighted to the front.
-    private Dictionary<int, List<(int Id, int Weight)>>? _shooterPool;
+    private Dictionary<int, List<(long Id, int Weight)>>? _shooterPool;
 
     /// <summary>Attribute a simmed team's goals to plausible players (FWD-weighted, seeded).</summary>
     private void AttributeGoals(int fixtureId, int teamId, int goals, IRandomSource rng)
     {
         if (goals <= 0) return;
-        _shooterPool ??= new Dictionary<int, List<(int, int)>>();
+        _shooterPool ??= new Dictionary<int, List<(long, int)>>();
         if (!_shooterPool.TryGetValue(teamId, out var pool))
         {
             pool = Repo.SquadPlayers(teamId)
@@ -1268,7 +1268,7 @@ public sealed partial class Session
         }
         if (pool.Count == 0) return;
         var total = pool.Sum(x => x.Weight);
-        int Pick()
+        long Pick()
         {
             var roll = rng.Next(total);
             foreach (var (id, w) in pool)
@@ -1316,7 +1316,7 @@ public sealed partial class Session
     }
 
     /// <summary>A player's goals this season (for the squad card).</summary>
-    public int GoalsThisSeason(int playerId)
+    public int GoalsThisSeason(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM match_events e JOIN fixtures f ON f.id=e.fixture_id " +
@@ -1345,7 +1345,7 @@ public sealed partial class Session
     /// one, otherwise the synthetic rating/age curve. This is what makes a bid for Bellingham cost
     /// £162m instead of a formula guess.
     /// </summary>
-    public long MarketValueOf(int playerId, int rating, int? age)
+    public long MarketValueOf(long playerId, int rating, int? age)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT value FROM player_market WHERE player_id=$p";
@@ -1357,7 +1357,7 @@ public sealed partial class Session
     }
 
     /// <summary>The agent's weekly wage floor: the real FM wage if imported, else the model demand.</summary>
-    public long RealWageDemand(int playerId, int rating, int age, int years)
+    public long RealWageDemand(long playerId, int rating, int age, int years)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT wage FROM player_market WHERE player_id=$p";
@@ -1369,7 +1369,7 @@ public sealed partial class Session
     }
 
     /// <summary>Which club (if any) in the career world currently holds this player.</summary>
-    private (int TeamId, string Name)? OwningClub(int playerId)
+    private (int TeamId, string Name)? OwningClub(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT s.team_id, t.name FROM squad_members s JOIN teams t ON t.id=s.team_id " +
@@ -1402,7 +1402,7 @@ public sealed partial class Session
     /// Free agents take fair value; a club holding the player wants a premium (they may counter),
     /// won't sell if it leaves them short, and pockets the fee when they do.
     /// </summary>
-    public string BuyPlayer(int playerId, int bidPct = 100)
+    public string BuyPlayer(long playerId, int bidPct = 100)
     {
         if (!TransferWindowOpen())
         {
@@ -1502,7 +1502,7 @@ public sealed partial class Session
     // FromTeamId is the AUTHORITATIVE buyer (audit: resolving by name string could pick the
     // wrong club or none — and a null buyer VAPORIZED the player). Name is display only.
     // Old saved offers deserialize with FromTeamId=0 and fall back to the name lookup.
-    public sealed record TransferOffer(int PlayerId, string PlayerName, string FromTeam, long Fee,
+    public sealed record TransferOffer(long PlayerId, string PlayerName, string FromTeam, long Fee,
                                        int FromTeamId = 0);
 
     /// <summary>Standing offers from CPU clubs for your players (generated each preseason).</summary>
@@ -1559,7 +1559,7 @@ public sealed partial class Session
         SaveOffers(offers);
     }
 
-    public string AcceptOffer(int playerId)
+    public string AcceptOffer(long playerId)
     {
         var offer = PendingOffers().FirstOrDefault(o => o.PlayerId == playerId);
         if (offer is null) return "That offer is no longer on the table.";
@@ -1623,7 +1623,7 @@ public sealed partial class Session
         return $"Sold {offer.PlayerName} to {offer.FromTeam} for £{offer.Fee:N0}.";
     }
 
-    public void RejectOffer(int playerId) =>
+    public void RejectOffer(long playerId) =>
         SaveOffers(PendingOffers().Where(o => o.PlayerId != playerId).ToList());
 
     // ------------------------------------------------------------------ undo + cup conditions

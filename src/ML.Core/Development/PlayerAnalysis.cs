@@ -185,7 +185,7 @@ public static class PlayerAnalysis
     /// <summary>Build the graded panels. Statements whose attributes aren't revealed at this
     /// knowledge level are omitted — an unscouted player shows a thin, honest dossier.</summary>
     public static IReadOnlyList<Panel> Build(
-        int playerId, IReadOnlyDictionary<string, int> abilities, bool isGk, int knowledge)
+        long playerId, IReadOnlyDictionary<string, int> abilities, bool isGk, int knowledge)
     {
         var catalog = isGk ? Keeper : Outfield;
         var panels = new List<Panel>();

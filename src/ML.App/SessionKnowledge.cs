@@ -24,7 +24,7 @@ public sealed partial class Session
     // ------------------------------------------------------------------ knowledge
 
     /// <summary>Knowledge 0-100: stored level (scouting, meetings) or the derived baseline.</summary>
-    public int KnowledgeOf(int playerId)
+    public int KnowledgeOf(long playerId)
     {
         var stored = 0;
         using (var q = Db.Connection.CreateCommand())
@@ -39,7 +39,7 @@ public sealed partial class Session
 
     /// <summary>What you know without ever scouting: your club fully, your league partly.
     /// The Settings masking strictness moves the baselines (Relaxed/Standard/Strict).</summary>
-    private int BaselineKnowledge(int playerId)
+    private int BaselineKnowledge(long playerId)
     {
         using var q = Db.Connection.CreateCommand();
         q.CommandText =
@@ -60,7 +60,7 @@ public sealed partial class Session
         return league == LeagueId ? sameLeague : league is TopFlight or Division2 ? otherDiv : 0;
     }
 
-    public void BumpKnowledge(int playerId, int floor)
+    public void BumpKnowledge(long playerId, int floor)
     {
         var level = Math.Clamp(Math.Max(KnowledgeOf(playerId), floor), 0, 100);
         using var cmd = Db.Connection.CreateCommand();
@@ -80,13 +80,13 @@ public sealed partial class Session
         }
     }
 
-    public string KnowledgeLabelOf(int playerId) =>
+    public string KnowledgeLabelOf(long playerId) =>
         AttributeKnowledge.KnowledgeLabel(KnowledgeOf(playerId));
 
     // ------------------------------------------------------------------ reports (forever)
 
     /// <summary>The coach's verbal read — only quotes what your knowledge has revealed.</summary>
-    public IReadOnlyList<string> CoachReportOf(int playerId, string position)
+    public IReadOnlyList<string> CoachReportOf(long playerId, string position)
     {
         var abilities = Repo.Attributes(playerId);
         if (abilities.Count == 0) return Array.Empty<string>();
@@ -95,7 +95,7 @@ public sealed partial class Session
     }
 
     /// <summary>The analyst's numbers line: what the season data says (knowledge-gated).</summary>
-    public string AnalystLineOf(int playerId)
+    public string AnalystLineOf(long playerId)
     {
         if (KnowledgeOf(playerId) < 45) return "";
         try

@@ -10,7 +10,7 @@ namespace ML.App;
 /// </summary>
 public sealed partial class Session
 {
-    public int MoraleOf(int playerId)
+    public int MoraleOf(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT value FROM morale WHERE player_id=$p";
@@ -19,7 +19,7 @@ public sealed partial class Session
         return v is null or DBNull ? MoraleModel.Neutral : Convert.ToInt32(v);
     }
 
-    private void SetMorale(int playerId, int value)
+    private void SetMorale(long playerId, int value)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO morale(player_id,value) VALUES($p,$v) " +
@@ -64,7 +64,7 @@ public sealed partial class Session
     }
 
     /// <summary>Morale's pull on the selector's form term (±1.8), used for YOUR club.</summary>
-    public double MoraleFormAdjustment(int playerId) =>
+    public double MoraleFormAdjustment(long playerId) =>
         MoraleModel.FormAdjustment(MoraleOf(playerId));
 
     // ------------------------------------------------------------------ team talks (C2)
@@ -128,7 +128,7 @@ public sealed partial class Session
     // ------------------------------------------------------------------ talks & promises (B2)
 
     /// <summary>A private word — praise or criticism. One talk per player per matchday.</summary>
-    public string TalkTo(int playerId, string playerName, bool praise)
+    public string TalkTo(long playerId, string playerName, bool praise)
     {
         var md = NextFixture()?.Matchday ?? 0;
         var guard = $"talk_{playerId}_{SeasonId}_{md}";
@@ -144,7 +144,7 @@ public sealed partial class Session
     }
 
     /// <summary>Promise "more starts" (3+ in 6 matchdays) or "a new contract" (renew by the deadline).</summary>
-    public string MakePromise(int playerId, string playerName, string kind)
+    public string MakePromise(long playerId, string playerName, string kind)
     {
         using (var q = Db.Connection.CreateCommand())
         {
@@ -173,7 +173,7 @@ public sealed partial class Session
     }
 
     /// <summary>Any open promise line for the squad card ("holding you to: more starts (MD14)").</summary>
-    public string PromiseLine(int playerId)
+    public string PromiseLine(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT kind, deadline_md FROM promises WHERE player_id=$p AND done=0 LIMIT 1";
@@ -185,7 +185,7 @@ public sealed partial class Session
     }
 
     /// <summary>Called by RenewContract — a pending contract promise is thereby KEPT.</summary>
-    public void FulfilContractPromise(int playerId, int matchday)
+    public void FulfilContractPromise(long playerId, int matchday)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE promises SET done=1 WHERE player_id=$p AND kind='contract' AND done=0";
@@ -202,14 +202,14 @@ public sealed partial class Session
     /// <summary>Settle promises whose deadline has passed (runs in the matchday pass).</summary>
     private void CheckPromises(int matchday)
     {
-        var open = new List<(long Id, int PlayerId, string Kind, int MadeMd)>();
+        var open = new List<(long Id, long PlayerId, string Kind, int MadeMd)>();
         using (var q = Db.Connection.CreateCommand())
         {
             q.CommandText = "SELECT id, player_id, kind, made_md FROM promises " +
                             "WHERE done=0 AND deadline_md<=$m";
             q.Parameters.AddWithValue("$m", matchday);
             using var r = q.ExecuteReader();
-            while (r.Read()) open.Add((r.GetInt64(0), r.GetInt32(1), r.GetString(2), r.GetInt32(3)));
+            while (r.Read()) open.Add((r.GetInt64(0), r.GetInt64(1), r.GetString(2), r.GetInt32(3)));
         }
         var names = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id, p => p.Name);
         foreach (var (id, pid, kind, madeMd) in open)

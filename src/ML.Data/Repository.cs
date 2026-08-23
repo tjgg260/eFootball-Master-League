@@ -78,12 +78,12 @@ public sealed class Repository
         "height_cm HeightCm,weight_kg WeightKg,overall_rating OverallRating,portrait_path PortraitPath " +
         "FROM players ORDER BY id").ToList();
 
-    public void SetAttribute(int playerId, string attribute, int value) => _c.Execute(
+    public void SetAttribute(long playerId, string attribute, int value) => _c.Execute(
         "INSERT INTO player_attributes(player_id,attribute,value) VALUES(@playerId,@attribute,@value) " +
         "ON CONFLICT(player_id,attribute) DO UPDATE SET value=excluded.value",
         new { playerId, attribute, value });
 
-    public IReadOnlyDictionary<string, int> Attributes(int playerId) =>
+    public IReadOnlyDictionary<string, int> Attributes(long playerId) =>
         _c.Query<(string Attribute, int Value)>(
             "SELECT attribute Attribute,value Value FROM player_attributes WHERE player_id=@playerId",
             new { playerId }).ToDictionary(x => x.Attribute, x => x.Value);
@@ -102,10 +102,10 @@ public sealed class Repository
         "SELECT team_id TeamId,player_id PlayerId,squad_number SquadNumber,slot Slot,role Role " +
         "FROM squad_members WHERE team_id=@teamId ORDER BY slot", new { teamId }).ToList();
 
-    public void RemoveSquadMember(int teamId, int playerId) => _c.Execute(
+    public void RemoveSquadMember(int teamId, long playerId) => _c.Execute(
         "DELETE FROM squad_members WHERE team_id=@teamId AND player_id=@playerId", new { teamId, playerId });
 
-    public void RecordTransfer(int playerId, int toTeamId, int seasonId) => _c.Execute(
+    public void RecordTransfer(long playerId, int toTeamId, int seasonId) => _c.Execute(
         "INSERT INTO transfers(player_id,to_team_id,season_id,window) " +
         "VALUES(@playerId,@toTeamId,@seasonId,'signing')", new { playerId, toTeamId, seasonId });
 

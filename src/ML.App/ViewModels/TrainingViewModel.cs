@@ -8,7 +8,7 @@ namespace ML.App.ViewModels;
 // --- Training (weekly development: ability groups, new positions, player skills) ---
 
 public sealed record TrainingRow(
-    int PlayerId, string Name, string Position, int Age, int Rating, IBrush RatingBrush,
+    long PlayerId, string Name, string Position, int Age, int Rating, IBrush RatingBrush,
     string Focus, string Progress, string Personality, int Determination, string Skills)
 {
     public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // own squad

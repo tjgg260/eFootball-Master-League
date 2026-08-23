@@ -6,7 +6,7 @@ namespace ML.Core.Selection;
 /// player_condition table via <see cref="ConditionModel"/>.
 /// </summary>
 public sealed record CandidatePlayer(
-    int PlayerId, int Rating, string PositionCategory, int Fatigue, double Form, bool Injured);
+    long PlayerId, int Rating, string PositionCategory, int Fatigue, double Form, bool Injured);
 
 /// <summary>
 /// Deterministic AI matchday selection. Given a squad and the formation's slot categories
@@ -24,11 +24,11 @@ public static class XiSelector
     /// descending, with injured players last (also by score). Score = Rating - Fatigue/4 + Form;
     /// ties break by score desc, then Rating desc, then PlayerId asc.
     /// </summary>
-    public static IReadOnlyList<int> SelectOrder(
+    public static IReadOnlyList<long> SelectOrder(
         IReadOnlyList<CandidatePlayer> squad, IReadOnlyList<string> slotCategories)
     {
-        var picked = new HashSet<int>();
-        var order = new List<int>(squad.Count);
+        var picked = new HashSet<long>();
+        var order = new List<long>(squad.Count);
 
         foreach (var category in slotCategories)
         {
@@ -55,14 +55,14 @@ public static class XiSelector
     /// (chosen only when nobody in the unit is available). Ordering guarantees match
     /// <see cref="SelectOrder(IReadOnlyList{CandidatePlayer},IReadOnlyList{string})"/>.
     /// </summary>
-    public static IReadOnlyList<int> SelectOrder(
+    public static IReadOnlyList<long> SelectOrder(
         IReadOnlyList<CandidatePlayer> squad,
         IReadOnlyList<string> slotPositions,
-        Func<int, (string Registered, IReadOnlyCollection<string> Learned)> positionsOf,
-        Func<int, string, int?>? ratingAt = null)
+        Func<long, (string Registered, IReadOnlyCollection<string> Learned)> positionsOf,
+        Func<long, string, int?>? ratingAt = null)
     {
-        var picked = new HashSet<int>();
-        var order = new List<int>(squad.Count);
+        var picked = new HashSet<long>();
+        var order = new List<long>(squad.Count);
 
         double SlotScore(CandidatePlayer p, string slot)
         {
@@ -126,7 +126,7 @@ public static class XiSelector
     }
 
     private static void AppendByScore(
-        List<int> order, IReadOnlyList<CandidatePlayer> squad, Func<CandidatePlayer, bool> eligible)
+        List<long> order, IReadOnlyList<CandidatePlayer> squad, Func<CandidatePlayer, bool> eligible)
     {
         var group = new List<CandidatePlayer>();
         foreach (var p in squad)

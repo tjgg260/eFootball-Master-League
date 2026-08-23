@@ -6,7 +6,7 @@ using ML.Data;
 namespace ML.App;
 
 public sealed record NegotiationView(
-    int PlayerId, string PlayerName, string SellerName, int Round, long Ask, string State,
+    long PlayerId, string PlayerName, string SellerName, int Round, long Ask, string State,
     long MarketValue, string Stance);
 
 /// <summary>
@@ -19,7 +19,7 @@ public sealed partial class Session
 {
     // ------------------------------------------------------------------ open/read
 
-    public NegotiationView? NegotiationFor(int playerId)
+    public NegotiationView? NegotiationFor(long playerId)
     {
         using var q = Db.Connection.CreateCommand();
         q.CommandText = "SELECT seller_id, round, ask, state FROM negotiations WHERE player_id=$p";
@@ -36,7 +36,7 @@ public sealed partial class Session
     }
 
     /// <summary>Open talks: the club states its ask (free agents skip straight to terms).</summary>
-    public string StartNegotiation(int playerId)
+    public string StartNegotiation(long playerId)
     {
         if (!TransferWindowOpen()) return TransferWindowLabel() + ". No talks outside the window.";
         if (Repo.Squad(CurrentTeamId).Any(s => s.PlayerId == playerId))
@@ -88,7 +88,7 @@ public sealed partial class Session
 
     // ------------------------------------------------------------------ the rounds
 
-    public int DealLikelihood(int playerId, long fee, int sellOnPct, bool instalments)
+    public int DealLikelihood(long playerId, long fee, int sellOnPct, bool instalments)
     {
         var n = NegotiationFor(playerId);
         return n is null ? 0
@@ -97,7 +97,7 @@ public sealed partial class Session
 
     /// <summary>One round: send the package, get accept / counter / the door.</summary>
     public (string Message, bool Agreed, bool Dead) SendClubOffer(
-        int playerId, long fee, int sellOnPct, bool instalments)
+        long playerId, long fee, int sellOnPct, bool instalments)
     {
         var n = NegotiationFor(playerId);
         if (n is null || n.State != "open") return ("No open negotiation.", false, false);
@@ -140,9 +140,9 @@ public sealed partial class Session
         }
     }
 
-    public void WalkAwayFromNegotiation(int playerId) => SetNegotiationState(playerId, "dead");
+    public void WalkAwayFromNegotiation(long playerId) => SetNegotiationState(playerId, "dead");
 
-    private void SetNegotiationState(int playerId, string state)
+    private void SetNegotiationState(long playerId, string state)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "UPDATE negotiations SET state=$s WHERE player_id=$p";
@@ -158,7 +158,7 @@ public sealed partial class Session
     /// contract (no more £500 stubs for signings), stores the sell-on clause, moves the
     /// player. Wage demand comes from the existing agent model.
     /// </summary>
-    public string CompleteSigning(int playerId, long fee, int sellOnPct, bool instalments,
+    public string CompleteSigning(long playerId, long fee, int sellOnPct, bool instalments,
                                   long weeklyWage, int years)
     {
         var n = NegotiationFor(playerId);
@@ -234,7 +234,7 @@ public sealed partial class Session
     }
 
     /// <summary>The agent's asking wage for the UI's default (deal-done discount applied).</summary>
-    public long SigningWageDemand(int playerId, int years)
+    public long SigningWageDemand(long playerId, int years)
     {
         var (rating, age, _) = PlayerBasics(playerId);
         return ContractNegotiation.WeeklyDemand(rating, age ?? 25, 60, years) * 92 / 100;
@@ -243,7 +243,7 @@ public sealed partial class Session
     // ------------------------------------------------------------------ sell-on payouts
 
     /// <summary>When a player YOU sold with a sell-on moves again, the clause pays you.</summary>
-    private void PaySellOnIfDue(int playerId, long fee)
+    private void PaySellOnIfDue(long playerId, long fee)
     {
         if (GetMeta($"sellon_{playerId}") is not { } raw) return;
         var parts = raw.Split(':');

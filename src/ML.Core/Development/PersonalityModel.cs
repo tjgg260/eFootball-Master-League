@@ -13,7 +13,7 @@ public static class PersonalityModel
     /// seeded by the player id, so the same player always rolls the same character.
     /// </summary>
     public static (int Determination, int Professionalism, int Ambition, int Temperament)
-        SeedTraits(int playerId)
+        SeedTraits(long playerId)
     {
         // Three xorshift-style draws per trait, averaged: mean 10.5, tails rare (FM-like).
         int Draw(int salt)

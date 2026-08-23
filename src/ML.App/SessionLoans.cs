@@ -3,7 +3,7 @@ using ML.Data;
 
 namespace ML.App;
 
-public sealed record LoanRow(int PlayerId, string Player, string OtherClub, string Direction);
+public sealed record LoanRow(long PlayerId, string Player, string OtherClub, string Direction);
 
 /// <summary>
 /// Loans (FM-style): park your youngsters at a host club for minutes (they develop faster
@@ -26,13 +26,13 @@ public sealed partial class Session
         {
             var dir = r.GetString(4);
             var other = dir == "out" ? r.GetInt32(2) : r.GetInt32(3);
-            rows.Add(new LoanRow(r.GetInt32(0), r.GetString(1), TeamName(other), dir));
+            rows.Add(new LoanRow(r.GetInt64(0), r.GetString(1), TeamName(other), dir));
         }
         return rows;
     }
 
     /// <summary>Send one of yours to a lower-half club for the season.</summary>
-    public string LoanOut(int playerId)
+    public string LoanOut(long playerId)
     {
         if (!TransferWindowOpen()) return TransferWindowLabel() + ". Loans need an open window.";
         var p = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(x => x.Id == playerId);
@@ -56,7 +56,7 @@ public sealed partial class Session
     }
 
     /// <summary>Borrow an owned player for the season at 10% of value (no option to buy).</summary>
-    public string LoanIn(int playerId)
+    public string LoanIn(long playerId)
     {
         if (!TransferWindowOpen()) return TransferWindowLabel() + ". Loans need an open window.";
         if (Repo.Squad(CurrentTeamId).Any(s => s.PlayerId == playerId)) return "He is already yours.";
@@ -82,7 +82,7 @@ public sealed partial class Session
     }
 
     /// <summary>Bring your loanee home (January window onward).</summary>
-    public string RecallLoan(int playerId)
+    public string RecallLoan(long playerId)
     {
         var next = NextFixture();
         if (next is not null && next.Matchday < 17)
@@ -106,10 +106,10 @@ public sealed partial class Session
         using var q = Db.Connection.CreateCommand();
         q.CommandText = "SELECT player_id, owner_team, host_team, direction FROM loans WHERE season_id=$s";
         q.Parameters.AddWithValue("$s", SeasonId);
-        var rows = new List<(int Pid, int Owner, int Host, string Dir)>();
+        var rows = new List<(long Pid, int Owner, int Host, string Dir)>();
         using (var r = q.ExecuteReader())
         {
-            while (r.Read()) rows.Add((r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetString(3)));
+            while (r.Read()) rows.Add((r.GetInt64(0), r.GetInt32(1), r.GetInt32(2), r.GetString(3)));
         }
         foreach (var (pid, owner, host, dir) in rows)
         {
@@ -136,7 +136,7 @@ public sealed partial class Session
         _shooterPool = null;
     }
 
-    private void RecordLoan(int playerId, int owner, int host, string direction)
+    private void RecordLoan(long playerId, int owner, int host, string direction)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO loans(player_id,owner_team,host_team,season_id,direction) " +
@@ -150,7 +150,7 @@ public sealed partial class Session
         cmd.ExecuteNonQuery();
     }
 
-    private void DeleteLoan(int playerId)
+    private void DeleteLoan(long playerId)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "DELETE FROM loans WHERE player_id=$p";

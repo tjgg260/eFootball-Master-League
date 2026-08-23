@@ -44,7 +44,7 @@ public sealed partial class Session
     /// A player's status: stored if the manager set one, otherwise derived from where his
     /// rating ranks in his squad (the same derivation prices CPU clubs' players).
     /// </summary>
-    public string PlayTimeStatusOf(int playerId)
+    public string PlayTimeStatusOf(long playerId)
     {
         using (var q = Db.Connection.CreateCommand())
         {
@@ -55,7 +55,7 @@ public sealed partial class Session
         return DerivedStatus(playerId);
     }
 
-    private string DerivedStatus(int playerId)
+    private string DerivedStatus(long playerId)
     {
         using var q = Db.Connection.CreateCommand();
         q.CommandText = "SELECT s.team_id FROM squad_members s WHERE s.player_id=$p LIMIT 1";
@@ -81,7 +81,7 @@ public sealed partial class Session
     /// The manager sets a status: promotions please, demotions sting, and Surplus lists him
     /// in all but name (the market comes calling).
     /// </summary>
-    public string SetPlayTimeStatus(int playerId, string status)
+    public string SetPlayTimeStatus(long playerId, string status)
     {
         if (!PlayTimeStatuses.Contains(status)) return "Unknown status.";
         var before = PlayTimeStatusOf(playerId);
@@ -116,7 +116,7 @@ public sealed partial class Session
     }
 
     /// <summary>Starts (XI appearances) in the last six matchdays for one of your players.</summary>
-    public int StartsInLastSix(int playerId, int uptoMatchday)
+    public int StartsInLastSix(long playerId, int uptoMatchday)
     {
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
