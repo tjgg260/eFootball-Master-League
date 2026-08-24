@@ -2,8 +2,10 @@ using ML.Data;
 
 namespace ML.App;
 
+// Player ids run past Int32 (the imported world is unbounded) — the id is a long everywhere else
+// in the app, and must be one here too or YouthSquad throws on read.
 public sealed record YouthPlayerRow(
-    int PlayerId, string Name, int Age, int Overall, string Position, int Potential, string Level);
+    long PlayerId, string Name, int Age, int Overall, string Position, int Potential, string Level);
 
 /// <summary>
 /// U21 / U18 youth sides (the youth-teams vision): every senior club owns two youth teams, players
@@ -104,8 +106,11 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$t", yid);
         using var r = cmd.ExecuteReader();
         while (r.Read())
-            rows.Add(new YouthPlayerRow(r.GetInt32(0), r.GetString(1), r.GetInt32(2),
-                r.GetInt32(3), r.GetString(4), PotentialOf(r.GetInt32(0)), kind.ToUpperInvariant()));
+        {
+            var pid = r.GetInt64(0);
+            rows.Add(new YouthPlayerRow(pid, r.GetString(1), r.GetInt32(2),
+                r.GetInt32(3), r.GetString(4), PotentialOf(pid), kind.ToUpperInvariant()));
+        }
         return rows;
     }
 
@@ -126,6 +131,12 @@ public sealed partial class Session
 
     private string MovePlayer(long playerId, int parentTeamId, string toKind)
     {
+        // The youth side must exist before anyone is moved into it. EnsureYouthTeams runs once
+        // behind a meta flag, so a club that missed it (created later, promoted in) would swallow
+        // the player into a team id with no row — he'd vanish from every squad view.
+        // EnsureYouthSide is idempotent, so this costs one lookup in the normal case.
+        if (toKind != "first") EnsureYouthSide(parentTeamId, TeamName(parentTeamId), toKind);
+
         var dest = toKind == "first" ? parentTeamId : YouthTeamId(parentTeamId, toKind);
         // remove from whichever of the three sides currently holds him
         foreach (var tid in new[] { parentTeamId, YouthTeamId(parentTeamId, "u21"),

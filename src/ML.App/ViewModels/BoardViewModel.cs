@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -8,9 +9,25 @@ namespace ML.App.ViewModels;
 
 // --- Board (board confidence, job security, manager career + job offers) ----------
 
-public sealed record JobOfferRow(int TeamId, string Line, Avalonia.Media.Imaging.Bitmap? Crest);
+public sealed record JobOfferRow(int TeamId, string Club, string Line, Avalonia.Media.Imaging.Bitmap? Crest)
+{
+    /// <summary>Accepting ends your current post, so it is a two-step: the label is the arm state.</summary>
+    public const string AcceptIdle = "Accept job";
 
-public sealed record ObjectiveLine(string Icon, string Description, string Progress, string Importance);
+    public string AcceptLabel { get; init; } = AcceptIdle;
+}
+
+/// <summary>
+/// One board objective. NavPage is the screen that actually answers it — a league finish is a
+/// question about the table, a cup run about the cup. Objectives whose kind has no obvious
+/// home (youth starts, home goals, the derby) carry no link rather than a guessed one.
+/// </summary>
+public sealed record ObjectiveLine(
+    string Icon, string Description, string Progress, string Importance, string NavPage = "")
+{
+    public bool HasNav => NavPage.Length > 0;
+    public string LinkText => $"{Description}  →";
+}
 
 public sealed partial class BoardViewModel : PageViewModel
 {
@@ -43,9 +60,16 @@ public sealed partial class BoardViewModel : PageViewModel
         {
             foreach (var o in s.Objectives())
             {
+                // Kind is stored on the row, so the click-through is read, never inferred.
+                var page = o.Kind switch
+                {
+                    "league_finish" => "Table",
+                    "cup_run" => "Cup",
+                    _ => "",
+                };
                 Objectives.Add(new ObjectiveLine(
                     o.Status == 1 ? "✅" : o.Status == 2 ? "❌" : "◻",
-                    o.Description, o.Progress, o.Importance.ToUpperInvariant()));
+                    o.Description, o.Progress, o.Importance.ToUpperInvariant(), page));
             }
         }
         catch { /* objectives are additive */ }
@@ -97,16 +121,20 @@ public sealed partial class BoardViewModel : PageViewModel
         try { ChairmanName = s.Chairman(); } catch { ChairmanName = ""; }
 
         Offers = new ObservableCollection<JobOfferRow>(
-            s.JobOffers().Select(o => new JobOfferRow(o.TeamId,
+            s.JobOffers().Select(o => new JobOfferRow(o.TeamId, o.Club,
                 $"{o.Club}  ·  {o.League}  ·  {ML.Core.Development.AttributeKnowledge.Grade(o.SquadRating)} squad",
                 Visuals.LoadBitmap(s.TeamLogoPath(o.TeamId)))));
         RefreshFacilities();
+        RefreshOffersNote();
+    }
+
+    private void RefreshOffersNote() =>
         OffersNote = Offers.Count > 0
-            ? "Accepting ends your current post immediately and reopens the app at your new club."
+            ? "Accepting ends your current post immediately and reopens the app at your new club. " +
+              "Right-click a club to look at the squad first."
             : Sacked
                 ? "No offers on the table yet — they arrive in the inbox as your name recovers."
                 : "No clubs are courting you right now. Results and silverware change that.";
-    }
 
     public override string Title => "Board";
     public override string Icon => "🏛️";
@@ -122,7 +150,6 @@ public sealed partial class BoardViewModel : PageViewModel
     public string ReputationLabel { get; }
     public string CareerLine { get; }
     public ObservableCollection<JobOfferRow> Offers { get; }
-    public string OffersNote { get; }
     public string ChairmanName { get; } = "";
     public string ChairmanLine => $"Chairman · {ChairmanName}";
     public string ChairmanMark => Visuals.Initials(ChairmanName);
@@ -141,6 +168,9 @@ public sealed partial class BoardViewModel : PageViewModel
 
     [ObservableProperty] private string _leverStatus = "";
     [ObservableProperty] private string _facilitiesLine = "";
+    [ObservableProperty] private string _offersNote = "";
+    /// <summary>The offers panel's own status line — engine verbs land here verbatim.</summary>
+    [ObservableProperty] private string _offerStatus = "";
 
     [RelayCommand]
     private void RequestBudget()
@@ -167,10 +197,34 @@ public sealed partial class BoardViewModel : PageViewModel
         FacilitiesLine = $"Training ground: level {_s.TrainingLevel}/5 · Academy: level {_s.AcademyLevel}/5" +
                          $" · Manager: {_s.ManagerName}";
 
-    /// <summary>Take the job, then reload the whole app on the new club's Session.</summary>
+    /// <summary>Open the screen that actually answers this objective (table, cup).</summary>
+    [RelayCommand]
+    private void OpenObjective(ObjectiveLine line)
+    {
+        if (line.HasNav) Nav.Go(line.NavPage);
+    }
+
+    // --- job offers: two-step accept, a real decline, and a look before you leap --------
+
+    private int _armedOfferId;
+
+    /// <summary>
+    /// Take the job, then reload the whole app on the new club's Session. Two-step, because
+    /// this is the single most irreversible button in the app: the first click arms the row.
+    /// </summary>
     [RelayCommand]
     private void AcceptOffer(JobOfferRow offer)
     {
+        if (_armedOfferId != offer.TeamId)
+        {
+            ArmOffer(offer.TeamId);
+            OfferStatus = Sacked
+                ? $"Take the {offer.Club} job? Click again to confirm."
+                : $"Leaving {_s.CurrentTeamName} for {offer.Club} ends your post immediately. " +
+                  "Click again to confirm.";
+            return;
+        }
+        ArmOffer(0);
         _s.AcceptJobOffer(offer.TeamId);
         if (Avalonia.Application.Current?.ApplicationLifetime
                 is IClassicDesktopStyleApplicationLifetime desktop
@@ -183,4 +237,39 @@ public sealed partial class BoardViewModel : PageViewModel
             old?.Close();
         }
     }
+
+    /// <summary>Turn an approach down: the club comes off the list and the season goes on.</summary>
+    [RelayCommand]
+    private void DeclineOffer(JobOfferRow offer)
+    {
+        ArmOffer(0);
+        OfferStatus = _s.DeclineJobOffer(offer.TeamId);
+        if (Offers.FirstOrDefault(o => o.TeamId == offer.TeamId) is { } row) Offers.Remove(row);
+        RefreshOffersNote();
+    }
+
+    /// <summary>Arm exactly one offer row (0 = none) by re-stamping the accept labels.</summary>
+    private void ArmOffer(int teamId)
+    {
+        _armedOfferId = teamId;
+        for (var i = 0; i < Offers.Count; i++)
+        {
+            var want = teamId != 0 && Offers[i].TeamId == teamId
+                ? (Sacked ? "Confirm — take the job?" : $"Confirm — leave {_s.CurrentTeamName}?")
+                : JobOfferRow.AcceptIdle;
+            if (Offers[i].AcceptLabel != want)
+                Offers[i] = Offers[i] with { AcceptLabel = want };
+        }
+    }
+
+    /// <summary>Turning your attention to another offer disarms the primed one.</summary>
+    public void FocusOffer(JobOfferRow offer)
+    {
+        if (_armedOfferId != 0 && _armedOfferId != offer.TeamId) ArmOffer(0);
+    }
+
+    /// <summary>The shared club menu on an offer row: look at the squad before you decide.</summary>
+    public ContextMenu? MenuFor(JobOfferRow offer) =>
+        EntityActions.BuildMenu(_s, EntityRef.Club(offer.TeamId, offer.Club),
+            status: t => OfferStatus = t);
 }

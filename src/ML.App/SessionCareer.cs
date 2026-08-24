@@ -167,7 +167,8 @@ public sealed partial class Session
         {
             PostInbox("Board", $"Job offer: {TeamName(tid)}",
                 $"{TeamName(tid)} have approached you about their vacant manager's position. " +
-                "Accept from the Board screen — your current post ends the moment you do.", stampMd);
+                "Accept from the Board screen — your current post ends the moment you do.", stampMd,
+                teamId: tid, requiresAction: true);
         }
     }
 
@@ -200,7 +201,18 @@ public sealed partial class Session
         SetMeta("board_threat_streak", "0");
         PostInbox("Board", $"Welcome to {TeamName(teamId)}",
             $"The {TeamName(teamId)} board welcomes you as their new manager. " +
-            "The squad, the academy and the training ground are yours.", NextFixture()?.Matchday);
+            "The squad, the academy and the training ground are yours.", NextFixture()?.Matchday,
+            teamId: teamId);
+    }
+
+    /// <summary>Turn down a standing job offer: the club comes off the list and life goes on.</summary>
+    public string DeclineJobOffer(int teamId)
+    {
+        var ids = (GetMeta("job_offers") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (!ids.Remove(teamId.ToString())) return "That offer is no longer on the table.";
+        SetMeta("job_offers", string.Join(",", ids));
+        var club = Repo.Teams().FirstOrDefault(t => t.Id == teamId)?.Name ?? "the club";
+        return $"You turn down {club}. The story continues here.";
     }
 
     /// <summary>Season rollover: the big rep swing, a fresh board slate, and new suitors.</summary>

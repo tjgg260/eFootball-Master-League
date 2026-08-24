@@ -51,6 +51,22 @@
                 Width="110" VerticalAlignment="Center"/>
       <CheckBox Content="Free agents" IsChecked="{Binding FreeAgentsOnly}"
                 Foreground="{StaticResource MlTextMuted}" FontSize="12" VerticalAlignment="Center"/>
+      <!-- ⭐ the saved list: on, it shows exactly who you starred and ignores every filter above -->
+      <Button Classes="ml-ghost" Padding="0" Background="Transparent" VerticalAlignment="Center"
+              Command="{Binding ToggleShortlistCommand}"
+              ToolTip.Tip="Show only the players on your club's shortlist">
+        <Border Classes="ml-chip" Classes.ml-gold="{Binding ShortlistOnly}">
+          <TextBlock Text="⭐ SHORTLIST"/>
+        </Border>
+      </Button>
+      <!-- a club focus arriving from another screen, always visible and always removable -->
+      <Button Classes="ml-ghost" Padding="0" Background="Transparent" VerticalAlignment="Center"
+              Command="{Binding ClearClubFilterCommand}" IsVisible="{Binding HasClubFilter}"
+              ToolTip.Tip="Clear the club filter">
+        <Border Classes="ml-chip ml-info">
+          <TextBlock Text="{Binding ClubFilterChip}"/>
+        </Border>
+      </Button>
       <StackPanel Orientation="Horizontal" Spacing="6">
         <TextBlock Text="Sort" Classes="ml-muted" VerticalAlignment="Center"/>
         <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SortBy}"
@@ -59,13 +75,15 @@
       <ComboBox ItemsSource="{Binding BidOptions}" SelectedItem="{Binding SelectedBid}"
                 Width="145" VerticalAlignment="Center"
                 ToolTip.Tip="Your offer vs market value — clubs want a premium, lowballs get countered"/>
-      <Button Content="＋ Bid" Command="{Binding SignCommand}" Classes="ml-primary ml-go"/>
+      <Button Content="＋ Bid" Command="{Binding SignCommand}" Classes="ml-primary ml-go"
+              IsEnabled="{Binding !ProfileIsMine}"/>
     </WrapPanel>
     <TextBlock DockPanel.Dock="Bottom" Text="{Binding SignStatus}" Classes="ml-body"
                Foreground="#9FE6B4" FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
     <Grid ColumnDefinitions="*,330">
       <Panel Grid.Column="0">
-        <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedPlayer}" IsReadOnly="True"
+        <DataGrid x:Name="MarketGrid"
+                  ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedPlayer}" IsReadOnly="True"
                   GridLinesVisibility="Horizontal" HeadersVisibility="Column">
           <DataGrid.Columns>
             <DataGridTemplateColumn Header="" Width="46">
@@ -99,12 +117,17 @@
             <DataGridTemplateColumn Header="" Width="98">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:MarketPlayer">
-                  <!-- semantic status colour stays bound; the chip anatomy comes from ml-chip -->
-                  <Border Classes="ml-chip" Background="{Binding StatusBrush}"
-                          HorizontalAlignment="Left" VerticalAlignment="Center"
-                          IsVisible="{Binding HasStatus}">
-                    <TextBlock Text="{Binding StatusLabel}"/>
-                  </Border>
+                  <Panel HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <!-- semantic status colour stays bound; the chip anatomy comes from ml-chip -->
+                    <Border Classes="ml-chip" Background="{Binding StatusBrush}"
+                            IsVisible="{Binding ShowStatus}">
+                      <TextBlock Text="{Binding StatusLabel}"/>
+                    </Border>
+                    <!-- your own man: nothing to bid for here — the right-click menu has his verbs -->
+                    <Border Classes="ml-chip" IsVisible="{Binding Mine}">
+                      <TextBlock Text="YOURS" Foreground="{StaticResource MlTextMuted}"/>
+                    </Border>
+                  </Panel>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
@@ -174,6 +197,9 @@
               <TextBlock Text="{Binding ProfileKnowledgeLine}" Classes="ml-muted" FontSize="12"
                          Foreground="{StaticResource MlWarn}"/>
               <TextBlock Text="{Binding ProfileCoachLine}" Classes="ml-muted" TextWrapping="Wrap"/>
+              <!-- the scout's bottom line only — the full dossier lives on the Scouting screen -->
+              <TextBlock Text="{Binding ProfileVerdictLine}" Classes="ml-muted" TextWrapping="Wrap"
+                         IsVisible="{Binding ProfileHasVerdict}"/>
 
               <!-- hexagon radar, same maths as the Squad card -->
               <Panel Width="200" Height="200" HorizontalAlignment="Center">
@@ -188,13 +214,28 @@
                            VerticalAlignment="Bottom"/>
               </Panel>
 
-              <!-- negotiation v2 (P5): open talks, structure the package, close the deal -->
-              <Button Content="🤝 Open negotiation" Command="{Binding OpenTalksCommand}"
-                      Classes="ml-primary ml-go" HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Center"/>
-              <Button Content="↔ Loan until June (10% of value)" Command="{Binding LoanInCommand}"
-                      Classes="ml-secondary" HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Center"/>
+              <!-- the action row. Your own player has no buy side: he gets a chip and his
+                   real verbs come from the right-click menu. -->
+              <Border Classes="ml-chip" HorizontalAlignment="Left" IsVisible="{Binding ProfileIsMine}">
+                <TextBlock Text="YOURS — RIGHT-CLICK FOR SQUAD ACTIONS"
+                           Foreground="{StaticResource MlTextMuted}"/>
+              </Border>
+              <StackPanel Spacing="8" IsVisible="{Binding !ProfileIsMine}">
+                <!-- negotiation v2 (P5): open talks, structure the package, close the deal -->
+                <Button Content="🤝 Open negotiation" Command="{Binding OpenTalksCommand}"
+                        Classes="ml-primary ml-go" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"/>
+                <Button Content="↔ Loan until June (10% of value)" Command="{Binding LoanInCommand}"
+                        Classes="ml-secondary" HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"/>
+                <!-- the two cheap moves: look before you bid, ask before you look -->
+                <Button Content="{Binding ScoutButtonLabel}" Command="{Binding SendScoutCommand}"
+                        IsEnabled="{Binding CanScout}" Classes="ml-secondary" FontSize="12"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+                <Button Content="💬 Enquire" Command="{Binding EnquireCommand}"
+                        Classes="ml-secondary" FontSize="12"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+              </StackPanel>
               <Border Classes="ml-card" Padding="12" IsVisible="{Binding Negotiating}">
                 <StackPanel Spacing="8">
                   <TextBlock Text="{Binding NegStance}" Foreground="#E7D9B8" FontSize="12"

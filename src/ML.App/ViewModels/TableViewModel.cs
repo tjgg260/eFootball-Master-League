@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
 using ML.Core.Domain;
 using ML.Core.Scheduling;
 using ML.Core.Tables;
@@ -8,13 +10,19 @@ namespace ML.App.ViewModels;
 
 // --- League table -----------------------------------------------------------------
 
+/// <summary>A standings row. It carries the club's id, not just its name: the table is the
+/// most natural place in the app to right-click a rival, and arriving here from elsewhere
+/// (Nav.Go("Table", club)) has to be able to find the row again.</summary>
 public sealed record TableEntry(
     int Pos, string Team, int P, int W, int D, int L, int GF, int GA, int GD, int Pts, bool IsMine,
     Avalonia.Media.Imaging.Bitmap? Logo, string Badge, IBrush BadgeBrush,
-    IBrush? ZoneBrush, IBrush PosBrush, FontWeight Weight, string Movement, IBrush MovementBrush);
+    IBrush? ZoneBrush, IBrush PosBrush, FontWeight Weight, string Movement, IBrush MovementBrush,
+    int TeamId = 0);
 
-public sealed class TableViewModel : PageViewModel
+public sealed partial class TableViewModel : PageViewModel, IFocusTarget
 {
+    private readonly Session _s;
+
     // Token hex mirrors Theme.axaml (MlGold/MlSuccess/MlDanger/MlSuccessText/MlTextBody) —
     // zone assignment is per-row data, so the brushes come from the VM like HistoryViewModel's.
     private static readonly IBrush Gold = Visuals.Brush("#D4AC0D");
@@ -26,6 +34,7 @@ public sealed class TableViewModel : PageViewModel
 
     public TableViewModel(Session s)
     {
+        _s = s;
         // Zone sizes come from league data, never hardcoded: the leagues table carries
         // promotion_places/relegation_places for the division the user is sitting in.
         var league = s.Repo.Leagues().FirstOrDefault(l => l.Id == s.LeagueId);
@@ -91,7 +100,7 @@ public sealed class TableViewModel : PageViewModel
                 Visuals.LoadBitmap(s.TeamLogoPath(id)), Visuals.Initials(name),
                 Visuals.Brush(s.TeamColor(id)),
                 zone, posBrush, mine ? FontWeight.Bold : FontWeight.Normal,
-                movement, movementBrush));
+                movement, movementBrush, id));
         }
 
         // Legend in words, built from the zones this league actually has.
@@ -143,4 +152,29 @@ public sealed class TableViewModel : PageViewModel
     public string WormLabel { get; } = "";
     public bool LegendVisible { get; }
     public string LegendText { get; } = "";
+
+    /// <summary>The highlighted row — set by a click, by right-click, or by arriving focused.</summary>
+    [ObservableProperty] private TableEntry? _selected;
+
+    /// <summary>Verb results land here, verbatim.</summary>
+    [ObservableProperty] private string _status = "";
+
+    /// <summary>Right-click a standings row: the shared club menu (squad, scout, head-to-head).</summary>
+    public ContextMenu? MenuFor(TableEntry r) =>
+        r.TeamId <= 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Club(r.TeamId, r.Team), status: t => Status = t);
+
+    /// <summary>Arriving from elsewhere on a club ("where are they in the table?") — the row
+    /// is selected, not merely present. Anything else focusable here is still just a club.</summary>
+    public void Focus(EntityRef target)
+    {
+        var tid = target.Kind == EntityKind.Club ? (int)target.Id
+            : target.Kind == EntityKind.Player ? _s.ClubOfPlayer(target.Id).TeamId ?? 0
+            : 0;
+        if (tid <= 0) return;
+        var row = Rows.FirstOrDefault(r => r.TeamId == tid);
+        if (row is null) return;
+        Selected = row;
+        Status = $"{row.Team} — {Ordinal(row.Pos)}, {row.Pts} pts.";
+    }
 }

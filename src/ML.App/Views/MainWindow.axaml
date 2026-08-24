@@ -111,9 +111,20 @@
           </StackPanel>
           <TextBlock Classes="ml-label" Text="{Binding DateLine}"
                      Foreground="{StaticResource MlSuccessText}" Margin="0,10,0,0"/>
-          <TextBlock Classes="ml-label" Text="{Binding ActionsLine}"
-                     Foreground="{StaticResource MlDanger}" Margin="0,4,0,0"
-                     IsVisible="{Binding HasActions}" TextWrapping="Wrap"/>
+          <!-- pending decisions: each line is a button to the screen that resolves it -->
+          <ItemsControl ItemsSource="{Binding Alerts}" Margin="0,4,0,0"
+                        IsVisible="{Binding HasActions}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ActionAlert">
+                <Button Classes="ml-ghost" Padding="4,2" HorizontalAlignment="Left"
+                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenAlertCommand}"
+                        CommandParameter="{Binding}">
+                  <TextBlock Classes="ml-label" Foreground="{StaticResource MlDanger}"
+                             Text="{Binding Text}" TextWrapping="Wrap"/>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
           <Button Classes="ml-primary ml-go" Content="Continue →"
                   Command="{Binding ContinueToOfficeCommand}"
                   FontSize="12" FontWeight="Bold"

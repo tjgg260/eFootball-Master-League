@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ActionsSmoke</RootNamespace>
+  </PropertyGroup>
+
+  <!-- References ML.App itself rather than re-globbing the engine files: the verbs under test
+       must be the exact code the app runs, and TacticsSmoke's hand-maintained file list has
+       drifted out of sync with the engine. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ML.App\ML.App.csproj" />
+  </ItemGroup>
+
+</Project>

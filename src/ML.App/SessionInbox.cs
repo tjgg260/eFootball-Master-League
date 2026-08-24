@@ -4,7 +4,7 @@ namespace ML.App;
 
 public sealed record InboxMessage(
     long Id, int? Matchday, string Category, string Subject, string Body, bool IsRead,
-    long? PlayerId, int? TeamId = null);
+    long? PlayerId, int? TeamId = null, bool RequiresAction = false);
 
 /// <summary>
 /// The persistent, event-driven inbox: messages are written into the DB the moment something
@@ -30,20 +30,22 @@ public sealed partial class Session
     }
 
     /// <summary>Write one message into the inbox; a player id lets the news feed show his face,
-    /// a team id lets it show a club crest when there is no face.</summary>
+    /// a team id lets it show a club crest when there is no face, and requiresAction flags the
+    /// letters that are waiting on a decision from you (offers, bids, approaches).</summary>
     public void PostInbox(string category, string subject, string body, int? matchday = null,
-                          long? playerId = null, int? teamId = null)
+                          long? playerId = null, int? teamId = null, bool requiresAction = false)
     {
         EnsureInboxTeamIdColumn();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
             "INSERT INTO inbox(season_id,matchday,category,subject,body,is_read,requires_action,player_id,team_id) " +
-            "VALUES($s,$m,$c,$subj,$b,0,0,$p,$t)";
+            "VALUES($s,$m,$c,$subj,$b,0,$act,$p,$t)";
         cmd.Parameters.AddWithValue("$s", SeasonId);
         cmd.Parameters.AddWithValue("$m", (object?)matchday ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$c", category);
         cmd.Parameters.AddWithValue("$subj", subject);
         cmd.Parameters.AddWithValue("$b", body);
+        cmd.Parameters.AddWithValue("$act", requiresAction ? 1 : 0);
         cmd.Parameters.AddWithValue("$p", (object?)playerId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$t", (object?)teamId ?? DBNull.Value);
         cmd.ExecuteNonQuery();
@@ -55,8 +57,8 @@ public sealed partial class Session
         var rows = new List<InboxMessage>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
-            "SELECT id, matchday, category, subject, body, is_read, player_id, team_id FROM inbox " +
-            "ORDER BY id DESC LIMIT $n";
+            "SELECT id, matchday, category, subject, body, is_read, player_id, team_id, " +
+            "requires_action FROM inbox ORDER BY id DESC LIMIT $n";
         cmd.Parameters.AddWithValue("$n", count);
         using var r = cmd.ExecuteReader();
         while (r.Read())
@@ -65,7 +67,8 @@ public sealed partial class Session
                 r.GetInt64(0), r.IsDBNull(1) ? null : r.GetInt32(1),
                 r.GetString(2), r.GetString(3), r.GetString(4), r.GetInt32(5) == 1,
                 r.IsDBNull(6) ? null : r.GetInt64(6),
-                r.IsDBNull(7) ? null : r.GetInt32(7)));
+                r.IsDBNull(7) ? null : r.GetInt32(7),
+                !r.IsDBNull(8) && r.GetInt32(8) == 1));
         }
         return rows;
     }

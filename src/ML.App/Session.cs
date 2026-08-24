@@ -332,7 +332,8 @@ public sealed partial class Session
         foreach (var o in PendingOffers())
         {
             PostInbox("Transfer", $"Offer: {o.FromTeam} want {o.PlayerName}",
-                $"£{o.Fee:N0} on the table. Accept or reject it on the Market screen.");
+                $"£{o.Fee:N0} on the table. Accept or reject it on the Market screen.",
+                playerId: o.PlayerId, requiresAction: true);
         }
         BackupCareer();            // season boundary = backup point
 

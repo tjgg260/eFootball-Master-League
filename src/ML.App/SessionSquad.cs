@@ -368,7 +368,8 @@ public sealed partial class Session
                 try { FulfilContractPromise(playerId, md); } catch { /* bonus */ }
                 PostInbox("Player", $"Contract agreed: {name}",
                     $"{name} signs until {2026 + (SeasonId + years - 9000)} at £{weeklyOffer:N0}/week" +
-                    (st is not null ? $" with {st} status — he'll hold you to the starts." : "."));
+                    (st is not null ? $" with {st} status — he'll hold you to the starts." : "."),
+                    playerId: playerId);
                 return (true, true, $"{name} signs — £{weeklyOffer:N0}/week until " +
                                     $"{2026 + (SeasonId + years - 9000)}{(st is not null ? $", {st} status promised" : "")}.");
 

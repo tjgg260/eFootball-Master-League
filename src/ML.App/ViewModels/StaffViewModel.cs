@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -27,11 +28,16 @@ internal static class NameAvatar
 
 public sealed record BackroomCard(
     long Id, string Role, string Name, string AgeLine, string Stars, string Wage,
-    string StyleLine, string AttrLine, bool Filled)
+    string StyleLine, string AttrLine, bool Filled, string ContractLine = "")
 {
+    /// <summary>Release is a two-step confirm — the label carries the arm state per desk.</summary>
+    public const string ReleaseIdle = "⛔ Release";
+    public const string ReleaseArm = "⛔ Sure?";
+
     // No staff photos exist anywhere in the pipeline — the initials avatar IS the treatment.
     public Avalonia.Media.IBrush AvatarBrush => NameAvatar.For(Name);
     public string Mark => Filled ? Visuals.Initials(Name) : "";
+    public string ReleaseLabel { get; init; } = ReleaseIdle;
 }
 
 public sealed record StaffMarketRow(
@@ -63,6 +69,9 @@ public sealed partial class DelegationToggle : ObservableObject
     partial void OnIsOnChanged(bool value) => _s.SetDelegation(Key, value);
 
     public string Hint => RoleFilled ? "" : $"needs {("AEIOU".Contains(RoleNeeded[0]) ? "an" : "a")} {RoleNeeded}";
+
+    /// <summary>The hint as an offer of help: clicking it aims the market at the empty desk.</summary>
+    public string HintLink => RoleFilled ? "" : $"{Hint} — browse candidates →";
 }
 
 /// <summary>The staff database: your backroom, the market per role, and delegation.</summary>
@@ -105,12 +114,43 @@ public sealed partial class StaffViewModel : PageViewModel
         _ => "",
     };
 
+    /// <summary>
+    /// The whole 1-20 sheet, in the same words the desk cards use. The staff database stores
+    /// eight attributes but only the role-relevant two or three ever reached the screen — this
+    /// is the missing profile, surfaced where you actually decide: the right-click on a candidate.
+    /// </summary>
+    private static readonly (string Label, Func<StaffPerson, int> Value)[] AttrFields =
+    {
+        ("Coaching", p => p.Coaching),
+        ("Working with youngsters", p => p.Youth),
+        ("Fitness", p => p.Fitness),
+        ("Physiotherapy", p => p.Physio),
+        ("Judging ability", p => p.JudgingAbility),
+        ("Judging potential", p => p.JudgingPotential),
+        ("Tactical knowledge", p => p.Tactical),
+        ("Man management", p => p.ManManagement),
+    };
+
     /// <summary>Top style strengths, e.g. "Overload · Quick Counter" — the styles he drills best.</summary>
     private static string StylesSummary(StaffPerson p) =>
         string.Join(" · ", p.StyleStrengths.Take(3).Select(s => s.Style));
 
+    /// <summary>
+    /// "under contract to 2029" — ContractUntil is a season id, turned into a calendar year the
+    /// same way the rest of the app does it (no base-year literals: offset from this season).
+    /// </summary>
+    private string ContractLineFor(StaffPerson p)
+    {
+        if (p.ContractUntil is not { } until) return "no fixed term";
+        var year = _s.SeasonYear + (until - _s.SeasonId);
+        return until <= _s.SeasonId
+            ? $"contract expires this summer ({year}) — renew or lose him"
+            : $"under contract to {year}";
+    }
+
     private void Reload()
     {
+        _releaseArmedId = 0;   // rebuilt cards come back disarmed
         Backroom.Clear();
         var mine = _s.MyBackroom().ToDictionary(p => p.Role);
         foreach (var role in Session.StaffRoles)
@@ -118,7 +158,7 @@ public sealed partial class StaffViewModel : PageViewModel
             Backroom.Add(mine.TryGetValue(role, out var p)
                 ? new BackroomCard(p.Id, role, p.Name, $"{p.Age} yrs", StarLine(p.Stars),
                     $"£{p.Wage:N0}/wk", $"prefers {p.PrefFormation} · {StylesSummary(p)}",
-                    AttrSummary(p), true)
+                    AttrSummary(p), true, ContractLineFor(p))
                 : new BackroomCard(0, role, "— vacant —", "", "", "", "", "", false));
         }
         WageLine = $"Backroom wage bill: £{_s.StaffWages():N0}/week across {mine.Count} of 9 desks";
@@ -135,10 +175,12 @@ public sealed partial class StaffViewModel : PageViewModel
     private void ReloadMarket()
     {
         Market.Clear();
+        _marketPeople.Clear();
         if (SelectedRole is not null)
         {
             foreach (var p in _s.StaffMarket(SelectedRole))
             {
+                _marketPeople[p.Id] = p;   // the row is a summary; the menu needs the whole person
                 Market.Add(new StaffMarketRow(p.Id, p.Name, p.Age.ToString(),
                     StarLine(p.Stars), AttrSummary(p),
                     $"prefers {p.PrefFormation} · {StylesSummary(p)}", $"£{p.Wage:N0}/wk"));
@@ -155,6 +197,9 @@ public sealed partial class StaffViewModel : PageViewModel
     public ObservableCollection<string> RoleOptions { get; } = new();
     public ObservableCollection<StaffMarketRow> Market { get; } = new();
     public ObservableCollection<DelegationToggle> Toggles { get; } = new();
+
+    /// <summary>The full people behind the market rows, keyed by id — the menu's source.</summary>
+    private readonly Dictionary<long, StaffPerson> _marketPeople = new();
 
     [ObservableProperty] private string? _selectedRole;
     [ObservableProperty] private StaffMarketRow? _selectedCandidate;
@@ -179,13 +224,105 @@ public sealed partial class StaffViewModel : PageViewModel
     // Clicking a desk card points the market picker at that desk's role (P6) — the
     // natural next move on a vacant desk is "show me who I could hire for it".
     [RelayCommand]
-    private void SelectDesk(BackroomCard card) => SelectedRole = card.Role;
+    private void SelectDesk(BackroomCard card)
+    {
+        // Moving your attention to a DIFFERENT desk resets a primed release, exactly as
+        // changing the selection does on the squad screen. Re-clicking the armed card doesn't.
+        if (_releaseArmedId != card.Id) ArmRelease(0);
+        AimAtRole(card.Role);
+    }
+
+    /// <summary>Point the market picker at a role. Shared by the desk cards and the
+    /// delegation hints — "needs a Scout" is a link to the Scout market, not a dead label.</summary>
+    [RelayCommand]
+    private void AimAtRole(string role)
+    {
+        if (role.Length == 0) return;
+        SelectedRole = role;
+        Status = $"Staff market: {role}.";
+    }
+
+    [RelayCommand]
+    private void Renew(BackroomCard card)
+    {
+        if (!card.Filled) return;
+        ArmRelease(0);
+        Status = _s.RenewStaffContract(card.Id);
+        Reload();
+    }
+
+    // --- release: two-step, because a desk you empty is a desk your rivals can fill ------
+    private long _releaseArmedId;
 
     [RelayCommand]
     private void Release(BackroomCard card)
     {
         if (!card.Filled) return;
+        if (_releaseArmedId != card.Id)
+        {
+            ArmRelease(card.Id);
+            Status = $"Release {card.Name} ({card.Role})? Click again to confirm.";
+            return;
+        }
+        ArmRelease(0);
         Status = _s.ReleaseStaff(card.Id);
         Reload();
+    }
+
+    /// <summary>Arm exactly one desk (0 = none) by re-stamping the cards' button labels.</summary>
+    private void ArmRelease(long id)
+    {
+        _releaseArmedId = id;
+        for (var i = 0; i < Backroom.Count; i++)
+        {
+            var want = id != 0 && Backroom[i].Id == id
+                ? BackroomCard.ReleaseArm : BackroomCard.ReleaseIdle;
+            if (Backroom[i].ReleaseLabel != want)
+                Backroom[i] = Backroom[i] with { ReleaseLabel = want };
+        }
+    }
+
+    // --- the candidate menu: hire, the full 1-20 sheet, and the man he'd replace --------
+
+    /// <summary>
+    /// Right-click on a market candidate. Hand-built rather than EntityActions: staff are not
+    /// players or clubs, and the payload here is the attribute profile that has no screen of
+    /// its own. Info rows are disabled MenuItems — the same chrome, read-only.
+    /// </summary>
+    public ContextMenu? MenuFor(StaffMarketRow row)
+    {
+        if (!_marketPeople.TryGetValue(row.Id, out var p)) return null;
+
+        var menu = new ContextMenu();
+        void Info(string header) => menu.Items.Add(new MenuItem { Header = header, IsEnabled = false });
+        void Sep() => menu.Items.Add(new Separator());
+
+        Info($"{p.Name} · {p.Age} · {p.Role}");
+        Sep();
+
+        var hire = new MenuItem { Header = $"✒ Hire {p.Name}" };
+        hire.Click += (_, _) =>
+        {
+            SelectedCandidate = row;
+            Hire();
+        };
+        menu.Items.Add(hire);
+        Sep();
+
+        foreach (var (label, value) in AttrFields) Info($"{label} · {Word(value(p))}");
+        Info($"{StarLine(p.Stars)} · £{p.Wage:N0}/wk");
+        Info($"prefers {p.PrefFormation} · drills {StylesSummary(p)}");
+
+        // The comparison you'd otherwise have to hold in your head: the man already at the desk.
+        StaffPerson? incumbent = null;
+        try { incumbent = _s.StaffPersonFor(p.Role); } catch { /* the comparison is additive */ }
+        if (incumbent is not null && incumbent.Id != p.Id)
+        {
+            Sep();
+            Info($"⚖ vs {incumbent.Name} ({incumbent.Age}): {AttrSummary(incumbent)}");
+            Info($"   {StarLine(incumbent.Stars)} · £{incumbent.Wage:N0}/wk · {ContractLineFor(incumbent)}");
+            Info("   hiring here releases him");
+        }
+        return menu;
     }
 }

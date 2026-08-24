@@ -15,14 +15,15 @@ namespace ML.App.ViewModels;
 /// <summary>One W/D/L letter square in a form strip.</summary>
 public sealed record FormChipVm(string Letter, IBrush Bg);
 
-/// <summary>One schedule line: matchday label, opponent (with crest), and a result chip ("2-1" or "—").</summary>
+/// <summary>One schedule line: matchday label, opponent (with crest), and a result chip ("2-1" or "—").
+/// Carries the ids too — a row you can right-click is a row that must know WHO it is.</summary>
 public sealed record ScheduleRowVm(string Md, string Opponent, string Chip, IBrush ChipBg, IBrush ChipFg,
-    Avalonia.Media.Imaging.Bitmap? Crest = null);
+    Avalonia.Media.Imaging.Bitmap? Crest = null, int TeamId = 0, int FixtureId = 0);
 
 /// <summary>One mini-table line (or the dim "· · ·" separator when you sit outside the top six).</summary>
 public sealed record MiniRowVm(
     string Pos, string Team, string P, string Gd, string Pts, IBrush Bg, IBrush Fg, FontWeight Weight,
-    Avalonia.Media.Imaging.Bitmap? Crest = null);
+    Avalonia.Media.Imaging.Bitmap? Crest = null, int TeamId = 0);
 
 // --- Dashboard (the MFL "Office", FM-portal style) --------------------------------
 
@@ -624,6 +625,10 @@ public sealed partial class DashboardViewModel : PageViewModel
         if (!HasNextMatch)
         {
             HasOpposition = false;
+            OppId = 0;
+            KeyPlayerId = 0;
+            KeyPlayerName = "";
+            CanScoutOpp = false;
             return;
         }
 
@@ -631,6 +636,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         // UX audit, glaring): the core identity is established first and HasOpposition set EARLY,
         // so a failure in any enrichment below degrades one line, not the whole panel.
         var oppId = _homeId == _s.CurrentTeamId ? _awayId : _homeId;
+        OppId = oppId;
         OppName = _s.TeamName(oppId);
         OppBadgeText = Visuals.Initials(OppName);
         try
@@ -704,28 +710,101 @@ public sealed partial class DashboardViewModel : PageViewModel
         try
         {
             var key = _s.KeyPlayer(oppId);
+            // The id survives the sentence: a line you can right-click must know WHO it names.
+            KeyPlayerId = key?.Id ?? 0;
+            KeyPlayerName = key?.Name ?? "";
             KeyPlayerLine = key is null ? ""
                 : $"Key player: {key.Name}  ({key.Position} " +
                   $"{ML.Core.Development.AttributeKnowledge.GradeMasked(key.OverallRating ?? 0, OppKnowledgeOf(key.Id))})";
         }
-        catch { KeyPlayerLine = ""; }
+        catch { KeyPlayerLine = ""; KeyPlayerId = 0; KeyPlayerName = ""; }
 
         try { AssistantLine = _s.AssistantNote(_matchday); } catch { AssistantLine = ""; }
 
-        // The scout's briefing — only when this opponent has actually been scouted.
+        // The scout's briefing — only when this opponent has actually been scouted. When there's
+        // no dossier the card OFFERS the mission (the button below) instead of naming a screen.
+        var haveDossier = false;
         try
         {
             var (scouted, summary, suggestion) = _s.OppositionBriefingFor(oppId);
-            BriefingSummary = scouted ? summary : "No dossier on them — send your scout (Scouting screen).";
+            haveDossier = scouted;
+            BriefingSummary = scouted ? summary : "No dossier on them yet.";
             BriefingSuggestion = scouted ? suggestion : "";
         }
         catch { BriefingSummary = ""; BriefingSuggestion = ""; }
+
+        RefreshScoutGuard(haveDossier);
 
         HasOpposition = true;
     }
 
     [ObservableProperty] private string _briefingSummary = "";
     [ObservableProperty] private string _briefingSuggestion = "";
+
+    // --- "Scout them" on the opposition card: the mission is an ACT here, not a signpost ------
+
+    [ObservableProperty] private int _oppId;
+    [ObservableProperty] private long _keyPlayerId;
+    [ObservableProperty] private string _keyPlayerName = "";
+    [ObservableProperty] private string _scoutOppLabel = "🔍 Scout them";
+    [ObservableProperty] private string _scoutOppHint = "";
+    [ObservableProperty] private bool _canScoutOpp;
+
+    /// <summary>Label + enablement for the scout button — the refusal is on the button, honestly.</summary>
+    private void RefreshScoutGuard(bool haveDossier)
+    {
+        try
+        {
+            var noScout = _s.StaffFor("Scout") is null;
+            var busy = _s.ActiveScoutJob() is not null;
+            CanScoutOpp = OppId != 0 && !noScout && !busy;
+            (ScoutOppLabel, ScoutOppHint) =
+                noScout ? ("🔍 Scout them — no scout hired", "Hire a scout on the Staff screen first.")
+                : busy ? ("🔍 Scout them — scout busy", "Your scout is already on a mission — one at a time.")
+                : haveDossier ? ("🔍 Scout them again", $"Send your scout back to watch {OppName}.")
+                : ("🔍 Scout them", $"Send your scout to watch {OppName} — report in {Session.ScoutMatchdays} matchdays.");
+        }
+        catch { CanScoutOpp = false; }
+    }
+
+    [RelayCommand]
+    private void ScoutOpposition()
+    {
+        if (OppId == 0) return;
+        var line = _s.StartScoutJob("club", OppId, OppName);
+        try { BuildOpposition(); } catch { /* the card survives a failed refresh */ }
+        MatchStatus = line;
+    }
+
+    // --- cross-screen hand-offs (P9): the Office is a hub, not a cul-de-sac -------------------
+
+    [RelayCommand] private void GoToBoard() => Nav.Go("Board");
+    [RelayCommand] private void GoToMarket() => Nav.Go("Market");
+    [RelayCommand] private void GoToTable() => Nav.Go("Table");
+
+    /// <summary>Shared club menu for whoever you play next (the opposition card's right-click).</summary>
+    public Avalonia.Controls.ContextMenu? OppositionMenu() =>
+        OppId == 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Club(OppId, OppName),
+                status: t => MatchStatus = t, refresh: RefreshPortal);
+
+    /// <summary>Shared player menu for the opponent's key man.</summary>
+    public Avalonia.Controls.ContextMenu? KeyPlayerMenu() =>
+        KeyPlayerId == 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Player(KeyPlayerId, KeyPlayerName),
+                status: t => MatchStatus = t, refresh: RefreshPortal);
+
+    /// <summary>Shared club menu for a schedule row's opponent.</summary>
+    public Avalonia.Controls.ContextMenu? MenuFor(ScheduleRowVm r) =>
+        r.TeamId == 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Club(r.TeamId, _s.TeamName(r.TeamId)),
+                status: t => MatchStatus = t, refresh: RefreshPortal);
+
+    /// <summary>Shared club menu for a mini-table row (the "· · ·" spacer has no id, so no menu).</summary>
+    public Avalonia.Controls.ContextMenu? MenuFor(MiniRowVm r) =>
+        r.TeamId == 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Club(r.TeamId, r.Team),
+                status: t => MatchStatus = t, refresh: RefreshPortal);
 
     private void BuildSchedule()
     {
@@ -744,15 +823,18 @@ public sealed partial class DashboardViewModel : PageViewModel
             var bg = r is null ? NeutralChip : us > them ? WinBrush : us == them ? DrawBrush : LossBrush;
             Schedule.Add(new ScheduleRowVm(
                 MdLabel(f), OppLabel(f, myId), r is null ? "—" : $"{us}-{them}", bg, Brushes.White,
-                OppCrest(f, myId)));
+                OppCrest(f, myId), OppIdOf(f, myId), f.Id));
         }
 
         foreach (var f in mine.Where(f => !f.Played).Take(4))
         {
             Schedule.Add(new ScheduleRowVm(MdLabel(f), OppLabel(f, myId), "—", NeutralChip, DimBrush,
-                OppCrest(f, myId)));
+                OppCrest(f, myId), OppIdOf(f, myId), f.Id));
         }
     }
+
+    private static int OppIdOf(FixtureRow f, int myId) =>
+        f.HomeTeamId == myId ? f.AwayTeamId : f.HomeTeamId;
 
     private string MdLabel(FixtureRow f) =>
         ML.Core.Scheduling.SeasonCalendar.ShortLabel(_s.DateOfFixture(f));
@@ -795,7 +877,8 @@ public sealed partial class DashboardViewModel : PageViewModel
             you ? YouRowBg : Brushes.Transparent,
             you ? YouRowFg : TextBrush,
             you ? FontWeight.Bold : FontWeight.Normal,
-            Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value)));
+            Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value)),
+            r.TeamId.Value);
     }
 
     [RelayCommand]

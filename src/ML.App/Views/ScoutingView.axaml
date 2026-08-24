@@ -7,8 +7,13 @@
   <DockPanel Margin="20">
     <TextBlock DockPanel.Dock="Top" Text="Scouting" Classes="ml-h1" Margin="0,0,0,4"/>
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="14" Margin="0,0,0,10">
-      <TextBlock Text="{Binding ScoutLine}" Classes="ml-body"/>
-      <TextBlock Text="{Binding MissionLine}" Classes="ml-body" Foreground="{StaticResource MlWarn}"/>
+      <TextBlock Text="{Binding ScoutLine}" Classes="ml-body" VerticalAlignment="Center"/>
+      <!-- the fix for "no scout" is one click away, not an instruction to go and find it -->
+      <Button Content="Hire one on the Staff screen" Command="{Binding OpenStaffCommand}"
+              IsVisible="{Binding NoScout}" Classes="ml-ghost" Padding="0"
+              Foreground="{StaticResource MlLink}" FontSize="13" VerticalAlignment="Center"/>
+      <TextBlock Text="{Binding MissionLine}" Classes="ml-body" Foreground="{StaticResource MlWarn}"
+                 VerticalAlignment="Center"/>
     </StackPanel>
     <!-- each Scout button sits beside its own picker -->
     <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,24,Auto,Auto" Margin="0,0,0,10">
@@ -31,12 +36,28 @@
       <Button Grid.Column="4" Content="🔍 Scout player" Command="{Binding ScoutPlayerCommand}"
               Margin="8,0,0,0" Classes="ml-primary"/>
     </Grid>
+    <!-- several namesakes: pick the one you meant instead of the search guessing for you -->
+    <Border DockPanel.Dock="Top" Classes="ml-card" Padding="10" Margin="0,0,0,8"
+            IsVisible="{Binding HasMatches}" HorizontalAlignment="Left" MaxWidth="420">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="ml-label" Text="WHO DID YOU MEAN?"/>
+        <ListBox ItemsSource="{Binding Matches}" SelectedItem="{Binding SelectedMatch}"
+                 Background="Transparent" BorderThickness="0" MaxHeight="190">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:PlayerMatch">
+              <TextBlock Text="{Binding Line}" Classes="ml-body"/>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </StackPanel>
+    </Border>
     <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12"
                TextWrapping="Wrap" Margin="0,0,0,8"/>
     <TextBlock DockPanel.Dock="Top" Classes="ml-muted" IsVisible="{Binding Empty}"
                Text="No dossiers yet — send the scout out; reports take two matchdays."/>
     <ScrollViewer>
-      <ItemsControl ItemsSource="{Binding Reports}">
+      <!-- right-click a dossier: it is a handle on its subject, not just prose -->
+      <ItemsControl x:Name="ReportList" ItemsSource="{Binding Reports}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ScoutReportRow">
             <Border Classes="ml-card" Margin="0,0,0,10">

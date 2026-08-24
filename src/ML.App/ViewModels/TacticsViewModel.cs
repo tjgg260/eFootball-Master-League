@@ -42,6 +42,12 @@ public sealed record BenchEntry(
     public string Tag => Injured ? "INJ" : Fatigue >= 40 ? "TIRED" : "";
     /// <summary>Amber bench flag: leggy but not injured (injury outranks tiredness).</summary>
     public bool IsTired => !Injured && Fatigue >= 40;
+    /// <summary>Plain-English condition, for the hover card (never a raw fatigue number).</summary>
+    public string CondText =>
+        Injured ? "injured" : Fatigue < 20 ? "fresh" : Fatigue < 40 ? "leggy" : "exhausted";
+    /// <summary>Hover card: everything the row can't fit — full name, grade, condition, cover.</summary>
+    public string Tip => $"{Name} · {Position} · {Grade} · {CondText}" +
+        (Learned.Count > 0 ? $" · also covers {string.Join(", ", Learned)}" : "");
     public Avalonia.Media.Imaging.Bitmap? Portrait => Visuals.LoadBitmap(PortraitPath);
     public bool HasPortrait => Portrait is not null;
     public string Mark => Visuals.PlayerMark(Name);
@@ -98,6 +104,16 @@ public sealed partial class PitchPlayer : ObservableObject
     public Avalonia.Media.IBrush CondBrush =>
         Visuals.Brush(Injured ? "#D64545" : Fatigue < 20 ? "#1F9D4D" : Fatigue < 40 ? "#E0A526" : "#D64545");
 
+    /// <summary>Plain-English condition, for the hover card (never a raw fatigue number).</summary>
+    public string CondText =>
+        Injured ? "injured" : Fatigue < 20 ? "fresh" : Fatigue < 40 ? "leggy" : "exhausted";
+
+    /// <summary>Hover card: the whole token in one line — a 52px chip can't say this much.</summary>
+    public string Tip => PlayerId == 0
+        ? $"{Position} · empty slot"
+        : $"{Name} · {Position} · {Grade} · {CondText} · " +
+          (Role == "Basic" ? "no playstyle" : Role);
+
     public bool ShowInjury => Injured;
 
     [ObservableProperty] private double _left;
@@ -109,9 +125,12 @@ public sealed partial class PitchPlayer : ObservableObject
     [NotifyPropertyChangedFor(nameof(EffectiveRating))]
     [NotifyPropertyChangedFor(nameof(Grade))]
     [NotifyPropertyChangedFor(nameof(RatingBrush))]
+    [NotifyPropertyChangedFor(nameof(Tip))]
     private string _position;
 
-    [ObservableProperty] private string _role;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Tip))]
+    private string _role;
 
     public Avalonia.Media.IBrush Fill => Visuals.PositionBrush(Position);
 
@@ -127,9 +146,14 @@ public sealed partial class PitchPlayer : ObservableObject
     });
 }
 
-/// <summary>The next opponent's read-only token on the mirrored right half of the pitch.</summary>
+/// <summary>
+/// The next opponent's token on the mirrored right half of the pitch. Read-only as a LINEUP —
+/// you can't move him — but he is a real entity: PlayerId carries his identity so the shared
+/// right-click vocabulary (scout, enquiry, shortlist, open in Market) reaches him from here.
+/// </summary>
 public sealed record OppToken(double Left, double Top, string Pos, int Rating, string Surname,
-                              Avalonia.Media.Imaging.Bitmap? Portrait, int Knowledge = 100)
+                              Avalonia.Media.Imaging.Bitmap? Portrait, int Knowledge = 100,
+                              long PlayerId = 0, string Name = "")
 {
     public bool HasPortrait => Portrait is not null;
     public string Mark => Visuals.PlayerMark(Surname);
@@ -138,6 +162,14 @@ public sealed record OppToken(double Left, double Top, string Pos, int Rating, s
     public string Grade => ML.Core.Development.AttributeKnowledge.GradeMasked(Rating, Knowledge);
     public Avalonia.Media.IBrush RatingBrush =>
         Knowledge >= 75 ? Visuals.RatingBrush(Rating) : Visuals.Brush("#8A93A2");
+
+    /// <summary>Empty formation slots carry no player — nothing to right-click there.</summary>
+    public bool IsKnown => PlayerId > 0;
+    public string FullName => Name.Length > 0 ? Name : Surname;
+    /// <summary>Hover card. The grade stays masked here exactly as it is on the token.</summary>
+    public string Tip => IsKnown
+        ? $"{FullName} · {Pos} · {Grade}" + (Knowledge >= 75 ? "" : " · not scouted yet")
+        : $"{Pos} · no player in this slot";
 }
 
 public sealed partial class TacticsViewModel : PageViewModel
@@ -714,11 +746,16 @@ public sealed partial class TacticsViewModel : PageViewModel
     private const string NoDossierNote =
         "No dossier on the next opponent — their half stays dark until your scout reports.";
 
+    /// <summary>The club on the right half — the entity the opponent header's menu acts on.</summary>
+    public int OpponentTeamId { get; private set; }
+
     private void LoadOpponent()
     {
         // Every early exit must LEAVE A VISIBLE TRACE (OpponentNote) — a silently empty half
         // reads as a bug, and did: at MD1 unseeded clubs have no team_tactics row yet.
         Opponents.Clear();
+        OppSelected = null;
+        OpponentTeamId = 0;
         OpponentNote = "";
         OpponentShape = "";
         OpponentLogo = null;
@@ -732,6 +769,7 @@ public sealed partial class TacticsViewModel : PageViewModel
                 return;
             }
             var oppId = next.HomeTeamId == _s.CurrentTeamId ? next.AwayTeamId : next.HomeTeamId;
+            OpponentTeamId = oppId;
             OpponentLabel = _s.TeamName(oppId);
             try { OpponentLogo = Visuals.LoadBitmap(_s.TeamLogoPath(oppId)); } catch { OpponentLogo = null; }
             // The AI manager fields its strongest position-correct XI + a tactic to beat you.
@@ -796,7 +834,7 @@ public sealed partial class TacticsViewModel : PageViewModel
                     catch { knowledge = 100; }
                 }
                 Opponents.Add(new OppToken(left, top, pos, pl?.OverallRating ?? 0, surname,
-                    Visuals.LoadBitmap(pl?.PortraitPath), knowledge));
+                    Visuals.LoadBitmap(pl?.PortraitPath), knowledge, pl?.Id ?? 0, name));
             }
             OpponentShape = Formations.ShapeOf(slots.Select(sl => sl.Y));
         }
@@ -804,9 +842,205 @@ public sealed partial class TacticsViewModel : PageViewModel
         {
             // A broken read must not crash the screen — but it must be SEEN, not swallowed.
             Opponents.Clear();
+            OppSelected = null;
             OpponentShape = "";
             OpponentNote = NoDossierNote;
         }
+    }
+
+    // --- the opponent you clicked: a READ-ONLY mini-card beside your own ------------------
+    // Your own selection is untouched by it, deliberately: "⇄ Swap with <starter>" in the
+    // right-click menus still means the starter YOU picked, not the opponent you just peeked at.
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOppSelected))]
+    [NotifyPropertyChangedFor(nameof(OppCardNote))]
+    private OppToken? _oppSelected;
+
+    public bool HasOppSelected => OppSelected is not null;
+
+    public string OppCardNote => OppSelected is null
+        ? ""
+        : $"{OpponentLabel} · you can look, not pick. Right-click him for scouting, an enquiry " +
+          "or the shortlist.";
+
+    [RelayCommand] private void ClearOppSelection() => OppSelected = null;
+
+    // --- the shared right-click vocabulary, wired to this screen's entities ----------------
+    // Every menu is built fresh per open, so toggle states and the "swap with <name>" label
+    // are always current. Status lands on SaveStatus verbatim; refresh re-reads only what the
+    // verb can actually have changed.
+
+    /// <summary>One screen-local extra, appended after the shared menu's own separator.</summary>
+    private Avalonia.Controls.MenuItem Extra(string header, Action act, bool enabled = true)
+    {
+        var mi = new Avalonia.Controls.MenuItem { Header = header, IsEnabled = enabled };
+        mi.Click += (_, _) =>
+        {
+            try { act(); }
+            catch (Exception ex) { SaveStatus = ex.Message; }
+        };
+        return mi;
+    }
+
+    /// <summary>Right-click on one of YOUR tokens: the shared player menu plus the duties and
+    /// the swap that only mean something on a pitch.</summary>
+    public Avalonia.Controls.ContextMenu? MenuForXi(PitchPlayer? p)
+    {
+        if (p is null || p.PlayerId <= 0) return null;   // an empty formation slot is not an entity
+        var partner = SelectedPlayer;
+        var canSwap = partner is { PlayerId: > 0 } && partner.PlayerId != p.PlayerId;
+        var extras = new List<Avalonia.Controls.MenuItem>
+        {
+            Extra("© Make captain", () =>
+            {
+                Captain = p;
+                _s.Captain = p.PlayerId;   // kept in step with the shared menu's own armband verb
+                SaveStatus = $"© {p.Name} wears the armband.";
+            }, Captain?.PlayerId != p.PlayerId),
+            Extra("🎯 Penalty taker", () =>
+            {
+                TakerPk = p;
+                SaveStatus = $"🎯 {p.Name} takes the penalties — Save to lock it in.";
+            }, TakerPk?.PlayerId != p.PlayerId),
+            Extra("🎯 Free-kick taker", () =>
+            {
+                TakerFk = p;
+                SaveStatus = $"🎯 {p.Name} takes the free kicks — Save to lock it in.";
+            }, TakerFk?.PlayerId != p.PlayerId),
+            Extra(canSwap ? $"⇄ Swap with {partner!.Surname}" : "⇄ Swap with selected",
+                  () => SwapWithSelected(p), canSwap),
+        };
+        // Our captain verb also moves the armband on the pitch, so it replaces the shared one.
+        return EntityActions.BuildMenu(_s, EntityRef.Player(p.PlayerId, p.Name),
+            status: t => SaveStatus = t, refresh: ReloadSquad, extras: extras,
+            omit: EntityActions.ItemCaptain);
+    }
+
+    /// <summary>Right-click on a bench row: the shared player menu plus "bring him on".</summary>
+    public Avalonia.Controls.ContextMenu? MenuForBench(BenchEntry? b)
+    {
+        if (b is null || b.PlayerId <= 0) return null;
+        var partner = SelectedPlayer;
+        var canBringOn = partner is { PlayerId: > 0 };
+        var extras = new List<Avalonia.Controls.MenuItem>
+        {
+            Extra(canBringOn ? $"⇄ Bring on for {partner!.Surname}" : "⇄ Bring on for selected",
+                  () => BringOn(b), canBringOn),
+        };
+        return EntityActions.BuildMenu(_s, EntityRef.Player(b.PlayerId, b.Name),
+            status: t => SaveStatus = t, refresh: ReloadSquad, extras: extras);
+    }
+
+    /// <summary>Right-click on an opponent token: the shared FOREIGN player menu (scout, enquiry,
+    /// shortlist, open in Market). Refresh re-reads the dossier — scouting unmasks his grade.</summary>
+    public Avalonia.Controls.ContextMenu? MenuForOpponent(OppToken? o)
+    {
+        if (o is null || !o.IsKnown) return null;
+        return EntityActions.BuildMenu(_s, EntityRef.Player(o.PlayerId, o.FullName),
+            status: t => SaveStatus = t, refresh: LoadOpponent);
+    }
+
+    /// <summary>The opponent half's header: the club itself (view squad, scout, head-to-head).</summary>
+    public Avalonia.Controls.ContextMenu? MenuForOpponentClub()
+    {
+        if (OpponentTeamId <= 0) return null;
+        return EntityActions.BuildMenu(_s, EntityRef.Club(OpponentTeamId, OpponentLabel),
+            status: t => SaveStatus = t, refresh: LoadOpponent);
+    }
+
+    /// <summary>Menu swap: trade the right-clicked starter with the one you have selected.</summary>
+    private void SwapWithSelected(PitchPlayer p)
+    {
+        if (SelectedPlayer is not { PlayerId: > 0 } sel || sel.PlayerId == p.PlayerId)
+        {
+            SaveStatus = "Pick the starter he swaps with first — left-click him on the pitch.";
+            return;
+        }
+        DoXiSwap(sel, p);
+    }
+
+    /// <summary>Bench double-tap / menu: this sub takes the selected starter's slot. The GK rule
+    /// lives inside DoBenchSwap, so it is enforced here too.</summary>
+    public void BringOn(BenchEntry? b)
+    {
+        if (b is null || b.PlayerId <= 0) return;
+        if (SelectedPlayer is not { PlayerId: > 0 } sel)
+        {
+            SaveStatus = "Pick the starter he replaces first — left-click a player on the pitch.";
+            return;
+        }
+        DoBenchSwap(sel, b);
+    }
+
+    /// <summary>
+    /// The refresh the shared menu calls after a verb. It deliberately does NOT rebuild the XI
+    /// while the squad still holds the same players: a rebuild reads the SAVED order back and
+    /// would silently throw away swaps you haven't pressed Save on yet. Only a verb that
+    /// actually changes who is at the club (loan out, demote, release) rebuilds.
+    /// </summary>
+    public void ReloadSquad()
+    {
+        // The shared menu can hand the armband over behind our back — follow it.
+        var armband = Players.FirstOrDefault(p => p.PlayerId > 0 && p.PlayerId == _s.Captain);
+        if (armband is not null && !ReferenceEquals(armband, Captain)) Captain = armband;
+
+        List<(PlayerRow Player, SquadMemberRow Slot)> squad;
+        try { squad = _s.Squad().OrderBy(x => x.Slot.Slot).ToList(); }
+        catch { return; }
+
+        var onScreen = Players.Where(p => p.PlayerId > 0).Select(p => p.PlayerId)
+            .Concat(Bench.Select(b => b.PlayerId)).ToHashSet();
+        if (onScreen.SetEquals(squad.Select(x => x.Player.Id))) return;   // nobody left — keep your XI
+
+        var conditions = _s.Repo.ConditionsFor(_s.CurrentTeamId).ToDictionary(c => c.PlayerId);
+        var md = _s.NextFixture()?.Matchday ?? 0;
+        (int Fatigue, bool Injured) CondOf(long pid)
+        {
+            conditions.TryGetValue(pid, out var c);
+            return (c?.Fatigue ?? 0, c?.InjuredUntilMd is int u && u >= md);
+        }
+
+        var keep = SelectedPlayer?.PlayerId ?? 0;
+        _swapping = true;
+        for (var i = 0; i < Players.Count; i++)
+        {
+            var old = Players[i];
+            PitchPlayer token;
+            if (i < squad.Count)
+            {
+                var (player, slot) = squad[i];
+                var (fat, inj) = CondOf(player.Id);
+                token = new PitchPlayer(player.Id, slot.SquadNumber, player.Name,
+                                        player.OverallRating ?? 0, player.PortraitPath, old.Position,
+                                        _s.RoleOf(player.Id), old.Left, old.Top,
+                                        player.Position, _s.LearnedPositions(player.Id), fat, inj,
+                                        AttrsOf(player.Id));
+            }
+            else
+            {
+                token = new PitchPlayer(0, 0, "—", 0, null, old.Position, "Basic", old.Left, old.Top);
+            }
+            token.PropertyChanged += OnTokenChanged;
+            old.PropertyChanged -= OnTokenChanged;
+            Players[i] = token;
+        }
+        Bench.Clear();
+        foreach (var (player, slot) in squad.Skip(Players.Count))
+        {
+            var (fat, inj) = CondOf(player.Id);
+            Bench.Add(new BenchEntry(player.Id, slot.SquadNumber, player.Name, player.Position,
+                                     player.OverallRating ?? 0, player.PortraitPath, fat, inj,
+                                     _s.LearnedPositions(player.Id)));
+        }
+        _swapping = false;
+        ClearPicks();
+        SelectedPlayer = Players.FirstOrDefault(p => p.PlayerId > 0 && p.PlayerId == keep)
+                         ?? Players.FirstOrDefault(p => p.PlayerId > 0)
+                         ?? Players.FirstOrDefault();
+        Captain = Players.FirstOrDefault(p => p.PlayerId == _s.Captain);
+        InitTakers();
+        UpdateYourShape();
     }
 
     // --- selecting vs swapping are now SEPARATE actions ---------------------------------
@@ -1139,10 +1373,13 @@ public sealed partial class TacticsViewModel : PageViewModel
 
     private void OnTokenChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender == SelectedPlayer && e.PropertyName == nameof(PitchPlayer.Position))
+        // Both sides can be null (a cleared selection raising a late event) — compare as
+        // objects so a null==null match can never dereference.
+        if (sender is PitchPlayer token && ReferenceEquals(token, SelectedPlayer)
+            && e.PropertyName == nameof(PitchPlayer.Position))
         {
             _syncingSelection = true;
-            SelectedPosition = SelectedPlayer.Position;
+            SelectedPosition = token.Position;
             _syncingSelection = false;
             RefreshRoles();
         }

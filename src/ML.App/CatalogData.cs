@@ -14,7 +14,7 @@ public sealed class CatalogTeam
     [JsonPropertyName("logo")] public string? Logo { get; set; }
 }
 
-public sealed class CatalogLeague
+public sealed partial class CatalogLeague
 {
     [JsonPropertyName("league_id")] public int CompId { get; set; }   // catalog v3 key (was comp_id)
     [JsonPropertyName("name")] public string Name { get; set; } = "";
@@ -35,10 +35,8 @@ public sealed class CatalogLeague
         }
     }
 
-    [System.Text.Json.Serialization.JsonIgnore]
-    public Avalonia.Media.Imaging.Bitmap? CompLogoBitmap => Visuals.LoadBitmap(CompLogo);
-    [System.Text.Json.Serialization.JsonIgnore]
-    public bool HasCompLogo => CompLogoBitmap is not null;
+    // CompLogoBitmap/HasCompLogo live in CatalogDataVisuals.cs: this file is compile-linked
+    // into ML.Web and tools/TacticsSmoke, which have no Avalonia reference.
     public string Summary => $"{Teams.Count} clubs";
 }
 

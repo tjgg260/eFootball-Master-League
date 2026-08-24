@@ -333,6 +333,36 @@ public sealed partial class Session
     public string FireStaff(string role) =>
         StaffPersonFor(role) is { } p ? ReleaseStaff(p.Id) : "Nobody in that role.";
 
+    /// <summary>Renew one of your own people: two more seasons on the clock and a modest raise.</summary>
+    public string RenewStaffContract(long staffId)
+    {
+        StaffPerson? p = null;
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText = $"SELECT {StaffColumns} FROM staff_people WHERE id=$id";
+            q.Parameters.AddWithValue("$id", staffId);
+            using var r = q.ExecuteReader();
+            if (r.Read()) p = ReadStaffPerson(r);
+        }
+        if (p is null) return "That person is no longer available.";
+        if (p.TeamId != CurrentTeamId) return "Not one of yours.";
+
+        var expiry = Math.Max(SeasonId, p.ContractUntil ?? SeasonId) + 2;
+        var wage = p.Wage + p.Wage / 10;   // the modest raise that keeps a good desk loyal
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "UPDATE staff_people SET contract_until=$cu, wage=$w WHERE id=$id";
+        cmd.Parameters.AddWithValue("$cu", expiry);
+        cmd.Parameters.AddWithValue("$w", wage);
+        cmd.Parameters.AddWithValue("$id", staffId);
+        cmd.ExecuteNonQuery();
+
+        var year = 2026 + (expiry - 9000);
+        PostInbox("Club", $"{p.Name} extends",
+            $"{p.Name} ({p.Role.ToLowerInvariant()}) signs a new deal running to {year} — " +
+            $"£{wage:N0}/week after the raise.", NextFixture()?.Matchday);
+        return $"{p.Name} signs on until {year}.";
+    }
+
     // ------------------------------------------------------------------ delegation
 
     public static readonly (string Key, string Label)[] Delegations =

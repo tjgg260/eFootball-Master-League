@@ -75,6 +75,48 @@
         <!-- LINEUP: selected player mini-card + swap flow + Player Details editors -->
         <ScrollViewer IsVisible="{Binding ShowLineup}">
           <StackPanel Spacing="10">
+
+            <!-- the opponent you clicked on the right half: READ-ONLY, and it says so.
+                 It sits ABOVE your own card, never replacing it — the swap menus still act
+                 on the starter you selected. Grade stays knowledge-masked. -->
+            <Border Classes="ml-card" IsVisible="{Binding HasOppSelected}" Padding="10">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="👁 Opponent" Classes="ml-label" VerticalAlignment="Center"/>
+                  <Button Grid.Column="1" Content="✕" Classes="ml-ghost" FontSize="10"
+                          Padding="7,1" HorizontalAlignment="Right"
+                          Command="{Binding ClearOppSelectionCommand}"
+                          ToolTip.Tip="Close the opponent card"/>
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Border Width="46" Height="46" CornerRadius="23" ClipToBounds="True"
+                          Background="{Binding OppSelected.MarkBrush}">
+                    <Panel>
+                      <TextBlock Text="{Binding OppSelected.Mark}" Foreground="White" FontSize="11"
+                                 FontWeight="Bold" HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                      <Image Source="{Binding OppSelected.Portrait}" Stretch="UniformToFill"
+                             IsVisible="{Binding OppSelected.HasPortrait}"/>
+                    </Panel>
+                  </Border>
+                  <StackPanel VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="{Binding OppSelected.FullName}" Classes="ml-body"
+                               FontWeight="Bold" Foreground="{StaticResource MlTextHeading}"
+                               TextWrapping="Wrap" MaxWidth="150"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding OppSelected.Pos}" Classes="ml-label"
+                                 VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding OppSelected.Grade}"
+                                 Foreground="{Binding OppSelected.RatingBrush}"
+                                 FontSize="18" FontWeight="Bold"/>
+                    </StackPanel>
+                  </StackPanel>
+                </StackPanel>
+                <TextBlock Text="{Binding OppCardNote}" Classes="ml-muted" FontSize="10"
+                           TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+
             <StackPanel Orientation="Horizontal" Spacing="10">
               <Border Width="64" Height="64" CornerRadius="6" ClipToBounds="True"
                       Background="{Binding SelectedPlayer.Fill}">
@@ -108,17 +150,21 @@
                       Classes="ml-secondary" FontSize="12" FontWeight="SemiBold" Padding="12,7"/>
             </StackPanel>
             <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                       Text="Click a player to edit his position &amp; playstyle below. To move players, select one, press ⇄ Swap, then click his partner."/>
+                       Text="Click a player to edit his position &amp; playstyle below. To move players, select one, press ⇄ Swap, then click his partner. Right-click anyone — yours, a sub or the opponent — for the full menu; double-tap a sub to bring him on."/>
 
             <!-- the ONE Substitutes list: click-to-swap, INJ/TIRED flagged, never clipped -->
             <TextBlock Text="Substitutes" Classes="ml-label"/>
             <TextBlock Classes="ml-muted" Text="No substitutes — every fit player is already in the XI."
                        IsVisible="{Binding BenchEmpty}" TextWrapping="Wrap"/>
-            <ListBox ItemsSource="{Binding Bench}" SelectedItem="{Binding PickBench}"
+            <ListBox x:Name="BenchList" ItemsSource="{Binding Bench}"
+                     SelectedItem="{Binding PickBench}"
                      Background="Transparent" BorderThickness="0">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:BenchEntry">
-                  <Grid ColumnDefinitions="30,30,*,Auto,30" Margin="0,1">
+                  <!-- double-tap = bring him on for the selected starter; right-click = the
+                       shared player menu (which never moves your selection) -->
+                  <Grid ColumnDefinitions="30,30,*,Auto,30" Margin="0,1"
+                        Background="Transparent" ToolTip.Tip="{Binding Tip}">
                     <Border Width="24" Height="24" CornerRadius="12" ClipToBounds="True"
                             Background="{Binding MarkBrush}">
                       <Panel>
@@ -399,7 +445,9 @@
                        Stroke="{Binding PhaseBrush}" StrokeThickness="2"
                        IsVisible="{Binding ShowPhaseFrame}" IsHitTestVisible="False"/>
 
-            <!-- opponent tokens (right half, read-only) -->
+            <!-- opponent tokens (right half). Read-only as a LINEUP — you can't move or swap
+                 them — but they ARE clickable: left-click shows the read-only mini-card in the
+                 left rail, right-click opens the shared foreign-player menu. -->
             <ItemsControl ItemsSource="{Binding Opponents}" Width="720" Height="430">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><Canvas Width="720" Height="430"/></ItemsPanelTemplate>
@@ -412,9 +460,13 @@
               </ItemsControl.Styles>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:OppToken">
-                  <StackPanel Width="52" Spacing="1" Opacity="0.9" IsHitTestVisible="False">
+                  <!-- token ROOT carries the DataContext (Background="Transparent" so the whole
+                       52px chip hit-tests, not just the painted parts) -->
+                  <StackPanel Width="52" Spacing="1" Opacity="0.9" Background="Transparent"
+                              ToolTip.Tip="{Binding Tip}">
                     <Border Width="38" Height="38" CornerRadius="19" ClipToBounds="True"
-                            Background="{Binding MarkBrush}" HorizontalAlignment="Center">
+                            Background="{Binding MarkBrush}" HorizontalAlignment="Center"
+                            IsHitTestVisible="False">
                       <Panel>
                         <TextBlock Text="{Binding Mark}" Foreground="White" FontSize="9"
                                    FontWeight="Bold" HorizontalAlignment="Center"
@@ -424,7 +476,7 @@
                       </Panel>
                     </Border>
                     <Border Background="#E0000000" CornerRadius="3" Padding="4,1"
-                            HorizontalAlignment="Center">
+                            HorizontalAlignment="Center" IsHitTestVisible="False">
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding Pos}" Foreground="#C7CEDA" FontSize="8"
                                    FontWeight="Bold" VerticalAlignment="Center"/>
@@ -434,7 +486,7 @@
                     </Border>
                     <TextBlock Text="{Binding Surname}" Foreground="White" FontSize="9"
                                HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="52"
-                               TextTrimming="CharacterEllipsis"/>
+                               TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -454,8 +506,9 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:PitchPlayer">
                   <!-- token ROOT carries the DataContext; inner parts are IsHitTestVisible=False
-                       so click/drag always grabs the PitchPlayer (regression guard) -->
-                  <StackPanel Width="52" Background="Transparent" Spacing="1">
+                       so click/drag/right-click always grabs the PitchPlayer (regression guard) -->
+                  <StackPanel Width="52" Background="Transparent" Spacing="1"
+                              ToolTip.Tip="{Binding Tip}">
                     <Panel Width="42" Height="42" HorizontalAlignment="Center" IsHitTestVisible="False">
                       <Border Width="42" Height="42" CornerRadius="21"
                               BorderBrush="{Binding FitBrush}" BorderThickness="2"/>
@@ -502,9 +555,12 @@
                        Foreground="White" FontSize="16" FontWeight="Bold" IsHitTestVisible="False"/>
             <TextBlock Canvas.Left="640" Canvas.Top="400" Text="{Binding OpponentShape}"
                        Foreground="White" FontSize="16" FontWeight="Bold" IsHitTestVisible="False"/>
-            <!-- opponent half header: crest + name, anchored to the top-right corner -->
-            <Border Canvas.Right="8" Canvas.Top="6" Background="#B0000000" CornerRadius="4"
-                    Padding="8,3" MaxWidth="280" IsHitTestVisible="False"
+            <!-- opponent half header: crest + name, anchored to the top-right corner.
+                 It is the CLUB entity — click or right-click it for the shared club menu
+                 (view squad, scout, head-to-head). -->
+            <Border x:Name="OppHeader" Canvas.Right="8" Canvas.Top="6" Background="#B0000000"
+                    CornerRadius="4" Padding="8,3" MaxWidth="280" Cursor="Hand"
+                    ToolTip.Tip="Click for the opponent club menu — squad, scouting, head-to-head."
                     IsVisible="{Binding HasOpponentLabel}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Image Source="{Binding OpponentLogo}" Width="18" Height="18"

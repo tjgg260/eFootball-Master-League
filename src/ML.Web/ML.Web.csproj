@@ -42,6 +42,8 @@
     <Compile Include="..\ML.App\SessionPlayTime.cs" Link="Engine\SessionPlayTime.cs" />
     <Compile Include="..\ML.App\SessionRivals.cs" Link="Engine\SessionRivals.cs" />
     <Compile Include="..\ML.App\SessionScout.cs" Link="Engine\SessionScout.cs" />
+    <Compile Include="..\ML.App\SessionEntity.cs" Link="Engine\SessionEntity.cs" />
+    <Compile Include="..\ML.App\SessionShortlist.cs" Link="Engine\SessionShortlist.cs" />
     <Compile Include="..\ML.App\SessionSquad.cs" Link="Engine\SessionSquad.cs" />
     <Compile Include="..\ML.App\SessionStaff.cs" Link="Engine\SessionStaff.cs" />
     <Compile Include="..\ML.App\SessionWorld.cs" Link="Engine\SessionWorld.cs" />

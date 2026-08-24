@@ -22,6 +22,29 @@
     <Style Selector="Button.deskCard:pressed /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="Transparent"/>
     </Style>
+    <!-- an inline hint that is also the way out of the problem it names: same weight and
+         colour as the warning text it replaces, but clickable. -->
+    <Style Selector="Button.hintLink">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="Foreground" Value="{StaticResource MlWarn}"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.hintLink /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.hintLink:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.hintLink:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource MlLink}"/>
+    </Style>
   </UserControl.Styles>
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
@@ -69,13 +92,23 @@
                     <TextBlock Classes="ml-body" FontSize="12" Text="{Binding AttrLine}"/>
                     <TextBlock Classes="ml-muted" Text="{Binding StyleLine}"
                                Foreground="{StaticResource MlLink}" FontStyle="Italic"/>
+                    <!-- the contract has always been on the record; it just never reached the card -->
+                    <TextBlock Classes="ml-muted" Text="{Binding ContractLine}"
+                               IsVisible="{Binding Filled}"/>
                     <TextBlock Classes="ml-muted" Text="Desk vacant — click to browse candidates in the market"
                                IsVisible="{Binding !Filled}"/>
                   </StackPanel>
-                  <Button Grid.Column="3" Classes="ml-secondary" Content="Release" IsVisible="{Binding Filled}"
-                          Foreground="#E08A8A" FontSize="11" VerticalAlignment="Center"
-                          Command="{Binding $parent[ItemsControl].((vm:StaffViewModel)DataContext).ReleaseCommand}"
-                          CommandParameter="{Binding}"/>
+                  <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6"
+                              VerticalAlignment="Center" IsVisible="{Binding Filled}">
+                    <Button Classes="ml-secondary" Content="📃 Renew" FontSize="11"
+                            Command="{Binding $parent[ItemsControl].((vm:StaffViewModel)DataContext).RenewCommand}"
+                            CommandParameter="{Binding}"/>
+                    <!-- two-step: the label itself becomes the confirmation -->
+                    <Button Classes="ml-secondary" Content="{Binding ReleaseLabel}"
+                            Foreground="{StaticResource MlDanger}" FontSize="11"
+                            Command="{Binding $parent[ItemsControl].((vm:StaffViewModel)DataContext).ReleaseCommand}"
+                            CommandParameter="{Binding}"/>
+                  </StackPanel>
                 </Grid>
               </Border>
             </Button>
@@ -90,7 +123,9 @@
         <TextBlock Classes="ml-label" Text="STAFF MARKET"/>
         <ComboBox ItemsSource="{Binding RoleOptions}" SelectedItem="{Binding SelectedRole}"
                   HorizontalAlignment="Stretch"/>
-        <ListBox ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedCandidate}"
+        <!-- right-click a candidate for the full 1-20 profile and the hire (code-behind) -->
+        <ListBox x:Name="MarketList"
+                 ItemsSource="{Binding Market}" SelectedItem="{Binding SelectedCandidate}"
                  Background="Transparent" BorderThickness="0" MaxHeight="330">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:StaffMarketRow">
@@ -118,6 +153,8 @@
         </ListBox>
         <TextBlock Classes="ml-muted" Text="No free agents available for this desk right now — check back next matchday."
                    TextWrapping="Wrap" IsVisible="{Binding !HasMarket}"/>
+        <TextBlock Classes="ml-muted" Text="Right-click a candidate for his full attribute profile."
+                   TextWrapping="Wrap" IsVisible="{Binding HasMarket}"/>
         <Button Classes="ml-primary ml-go" Content="Hire selected" Command="{Binding HireCommand}"/>
       </StackPanel>
     </Border>
@@ -134,8 +171,11 @@
                 <CheckBox IsChecked="{Binding IsOn}" Content="{Binding Label}"
                           IsEnabled="{Binding RoleFilled}"
                           Foreground="{StaticResource MlTextBody}" FontSize="12"/>
-                <TextBlock Classes="ml-muted" Text="{Binding Hint}" Foreground="{StaticResource MlWarn}"
-                           FontSize="10" Margin="26,0,0,0" IsVisible="{Binding !RoleFilled}"/>
+                <!-- the missing desk is now the way to fill it: aims the market at that role -->
+                <Button Classes="hintLink" Content="{Binding HintLink}"
+                        Margin="26,0,0,0" IsVisible="{Binding !RoleFilled}"
+                        Command="{Binding $parent[ItemsControl].((vm:StaffViewModel)DataContext).AimAtRoleCommand}"
+                        CommandParameter="{Binding RoleNeeded}"/>
               </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

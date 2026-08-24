@@ -24,10 +24,21 @@
     <Border DockPanel.Dock="Top" Classes="ml-panel" Margin="0,0,0,10" IsVisible="{Binding HasSkillWork}">
       <StackPanel>
         <TextBlock Classes="ml-label" Text="ON THE TRAINING PITCH" Margin="0,0,0,6"/>
-        <ItemsControl ItemsSource="{Binding SkillWork}">
+        <!-- Each line is a control, not a caption: click it to jump to his row, ✕ to call it off. -->
+        <ItemsControl x:Name="SkillWorkList" ItemsSource="{Binding SkillWork}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:SkillProgressRow">
-              <TextBlock Classes="ml-body" Text="{Binding Line}" FontSize="12" Margin="0,1"/>
+              <Grid ColumnDefinitions="*,Auto" Margin="0,1">
+                <Button Grid.Column="0" Classes="ml-ghost" Content="{Binding Line}" FontSize="12"
+                        Padding="4,3" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        ToolTip.Tip="Show him on the training list"
+                        CommandParameter="{Binding}"
+                        Command="{Binding $parent[ItemsControl].((vm:TrainingViewModel)DataContext).FocusSkillPlayerCommand}"/>
+                <Button Grid.Column="1" Classes="ml-ghost" Content="✕" FontSize="11" Padding="8,3"
+                        ToolTip.Tip="Call this skill work off — the half-learned work is not banked"
+                        CommandParameter="{Binding}"
+                        Command="{Binding $parent[ItemsControl].((vm:TrainingViewModel)DataContext).CancelSkillCommand}"/>
+              </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -36,10 +47,18 @@
     <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" Foreground="#9FE6B4"
                FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
     <Panel>
-      <DataGrid ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" IsReadOnly="True"
-                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+      <DataGrid x:Name="TrainingGrid" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}"
+                IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
         <DataGrid.Columns>
-          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+          <DataGridTemplateColumn Header="Name" Width="*">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:TrainingRow">
+                <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Who}"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" Margin="8,0"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="100"/>
           <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
           <DataGridTemplateColumn Header="Rating" Width="78">
@@ -54,7 +73,15 @@
           <DataGridTextColumn Header="Det" Binding="{Binding Determination}" Width="60"/>
           <DataGridTextColumn Header="Focus" Binding="{Binding Focus}" Width="120"/>
           <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="94"/>
-          <DataGridTextColumn Header="Skills" Binding="{Binding Skills}" Width="220"/>
+          <DataGridTemplateColumn Header="Skills" Width="220">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:TrainingRow">
+                <TextBlock Text="{Binding Skills}" ToolTip.Tip="{Binding SkillsTip}"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" Margin="8,0"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
       <!-- empty state: no squad, no roster to train -->

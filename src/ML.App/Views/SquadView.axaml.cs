@@ -10,7 +10,22 @@ namespace ML.App.Views;
 
 public partial class SquadView : UserControl
 {
-    public SquadView() => InitializeComponent();
+    public SquadView()
+    {
+        InitializeComponent();
+
+        // The shared right-click vocabulary. A roster row selects first, then opens the menu
+        // EntityActions builds for that player — own-squad verbs on your own club, the
+        // scout/enquiry/shortlist set on anyone else's, which is how you act on a browsed
+        // club at all. DataContext resolves at click time, so attaching in the ctor is safe.
+        MlMenu.Attach<SquadEntry>(this.FindControl<DataGrid>("RosterGrid")!,
+            r => (DataContext as SquadViewModel)?.MenuFor(r),
+            r => { if (DataContext is SquadViewModel vm) vm.Selected = r; });
+
+        // Loanees are players too — the strip is not a dead list of prose.
+        MlMenu.Attach<LoanRowVm>(this.FindControl<ItemsControl>("LoansList")!,
+            r => (DataContext as SquadViewModel)?.MenuForLoan(r));
+    }
 
     /// <summary>"Set photo…" — copy the owner's chosen image to custom_faces/&lt;player_id&gt;,
     /// where the portrait resolver's tier 0 picks it up ahead of every pack.</summary>

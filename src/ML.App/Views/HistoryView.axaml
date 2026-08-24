@@ -14,6 +14,9 @@
         <TextBlock Grid.Column="2" Text="{Binding ArchiveNote}" Classes="ml-muted"
                    Margin="14,0,0,0" VerticalAlignment="Center"/>
       </Grid>
+      <!-- verb results from the right-click menus, verbatim -->
+      <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"
+                 IsVisible="{Binding !!Status.Length}"/>
       <Grid ColumnDefinitions="3*,2*" >
         <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,12,0">
           <Border Classes="ml-panel"><StackPanel>
@@ -31,7 +34,7 @@
               <TextBlock Grid.Column="7" Text="GD" Classes="ml-label"/>
               <TextBlock Grid.Column="8" Text="Pts" Classes="ml-label"/>
             </Grid>
-            <ItemsControl ItemsSource="{Binding TopTable}">
+            <ItemsControl x:Name="ArchiveTopList" ItemsSource="{Binding TopTable}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ArchiveTableRow">
                   <Grid ColumnDefinitions="34,20,*,40,34,34,34,44,44" Margin="0,1">
@@ -68,7 +71,7 @@
               <TextBlock Grid.Column="7" Text="GD" Classes="ml-label"/>
               <TextBlock Grid.Column="8" Text="Pts" Classes="ml-label"/>
             </Grid>
-            <ItemsControl ItemsSource="{Binding SecondTable}">
+            <ItemsControl x:Name="ArchiveSecondList" ItemsSource="{Binding SecondTable}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ArchiveTableRow">
                   <Grid ColumnDefinitions="34,20,*,40,34,34,34,44,44" Margin="0,1">
@@ -99,7 +102,7 @@
             <TextBlock Classes="ml-label" Text="Honours" Margin="0,0,0,10"/>
             <TextBlock Text="Honours are engraved here when the season ends." Classes="ml-muted"
                        IsVisible="{Binding !SeasonHonours.Count}"/>
-            <ItemsControl ItemsSource="{Binding SeasonHonours}">
+            <ItemsControl x:Name="ArchiveHonoursList" ItemsSource="{Binding SeasonHonours}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ArchiveHonourRow">
                   <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
@@ -118,7 +121,7 @@
             <TextBlock Classes="ml-label" Text="Top scorers" Margin="0,0,0,10"/>
             <TextBlock Text="No goals on record for this season yet." Classes="ml-muted"
                        IsVisible="{Binding !SeasonScorers.Count}"/>
-            <ItemsControl ItemsSource="{Binding SeasonScorers}">
+            <ItemsControl x:Name="ArchiveScorersList" ItemsSource="{Binding SeasonScorers}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ArchiveScorerRow">
                   <Grid ColumnDefinitions="*,Auto" Margin="0,2">

@@ -55,7 +55,8 @@
               Classes="ml-card" Padding="12,8" Margin="0,10,0,0">
         <StackPanel Spacing="4">
           <TextBlock Text="LOANS" Classes="ml-label"/>
-          <ItemsControl ItemsSource="{Binding Loans}">
+          <!-- x:Name: the code-behind attaches the shared player menu to these rows -->
+          <ItemsControl x:Name="LoansList" ItemsSource="{Binding Loans}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:LoanRowVm">
                 <DockPanel Margin="0,2,0,0">
@@ -74,7 +75,8 @@
       </Border>
 
     <Panel>
-      <DataGrid ItemsSource="{Binding Rows}"
+      <!-- x:Name: right-click on a row opens the shared entity menu (see the code-behind) -->
+      <DataGrid x:Name="RosterGrid" ItemsSource="{Binding Rows}"
                 SelectedItem="{Binding Selected, Mode=TwoWay}" IsReadOnly="True"
                 GridLinesVisibility="Horizontal" HeadersVisibility="Column">
         <DataGrid.Columns>
@@ -243,10 +245,18 @@
                       <TextBlock Canvas.Left="6" Canvas.Top="142" Text="{Binding RadarLabels[4]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
                       <TextBlock Canvas.Left="6" Canvas.Top="48" Text="{Binding RadarLabels[5]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
                     </Canvas>
-                    <!-- knowledge gate (P6 fix 3): a barely-scouted player shows no polygon -->
-                    <TextBlock Classes="ml-muted" Text="Barely scouted — send a scout to reveal his game."
-                               IsVisible="{Binding RadarMasked}" TextWrapping="Wrap" TextAlignment="Center"
-                               MaxWidth="130" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <!-- knowledge gate (P6 fix 3): a barely-scouted player shows no polygon,
+                         and the prose is now an action — dispatch the scout from the card -->
+                    <StackPanel IsVisible="{Binding RadarMasked}" Spacing="8"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                      <TextBlock Classes="ml-muted" Text="Barely scouted — send a scout to reveal his game."
+                                 TextWrapping="Wrap" TextAlignment="Center" MaxWidth="130"
+                                 HorizontalAlignment="Center"/>
+                      <Button Content="{Binding ScoutButtonLabel}" Command="{Binding ScoutSelectedCommand}"
+                              Classes="ml-secondary" FontSize="11" MaxWidth="184"
+                              HorizontalAlignment="Center"
+                              IsVisible="{Binding ViewingOtherClub}" IsEnabled="{Binding CanScout}"/>
+                    </StackPanel>
                   </Panel>
                   <!-- info strip -->
                   <Border Classes="ml-card" Padding="12,10">
@@ -302,9 +312,13 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                             Text="His game is still a mystery — scout him to unlock the analysis."
-                             IsVisible="{Binding !AnalysisPanels.Count}"/>
+                  <StackPanel Spacing="8" IsVisible="{Binding !AnalysisPanels.Count}">
+                    <TextBlock Classes="ml-muted" TextWrapping="Wrap"
+                               Text="His game is still a mystery — scout him to unlock the analysis."/>
+                    <Button Content="{Binding ScoutButtonLabel}" Command="{Binding ScoutSelectedCommand}"
+                            Classes="ml-secondary" FontSize="11" HorizontalAlignment="Left"
+                            IsVisible="{Binding ViewingOtherClub}" IsEnabled="{Binding CanScout}"/>
+                  </StackPanel>
 
                   <!-- ability list -->
                   <StackPanel Spacing="6">
@@ -428,9 +442,16 @@
                   <StackPanel IsVisible="{Binding IsOwnClub}" Spacing="8">
                     <WrapPanel>
                       <Button Content="{Binding ListLabel}" Command="{Binding ToggleListCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <!-- the shop window: a label clubs read, next to the sale one -->
+                      <Button Content="{Binding LoanListLabel}" Command="{Binding ToggleLoanListCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"
+                              ToolTip.Tip="Advertise him for loan — 'Loan out' still does the moving"/>
+                      <Button Content="📢 Offer to clubs" Command="{Binding OfferToClubsCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"
+                              ToolTip.Tip="Ring round now — lists him and invites bids this window"/>
                       <Button Content="Loan out" Command="{Binding LoanOutCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
-                      <Button Content="Release" Command="{Binding ReleaseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource MlDanger}"/>
+                      <!-- two-step: a free transfer can't be undone, so the button asks once -->
+                      <Button Content="{Binding ReleaseLabel}" Command="{Binding ReleaseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource MlDanger}"/>
                     </WrapPanel>
+                    <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="#9FE6B4" TextWrapping="Wrap"/>
                   </StackPanel>
                 </StackPanel>
               </TabItem>

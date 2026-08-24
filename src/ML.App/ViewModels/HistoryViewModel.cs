@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ML.Data;
@@ -6,16 +7,21 @@ using ML.Data;
 namespace ML.App.ViewModels;
 
 // --- History (D3: the season archive + the club record book) ----------------------
+//
+// The archive is not a photograph: the clubs and players in it are still in the world, so
+// every row keeps the id of its subject and answers the same right-click as anywhere else.
 
 public sealed record ArchiveTableRow(
     int Pos, string Team, int P, int W, int D, int L, int GD, int Pts,
     IBrush TeamBrush, FontWeight TeamWeight, Avalonia.Media.Imaging.Bitmap? Crest = null,
-    string Trophy = "");
+    string Trophy = "", int TeamId = 0);
 
-public sealed record ArchiveScorerRow(string Player, string Team, int Goals);
+public sealed record ArchiveScorerRow(string Player, string Team, int Goals, long PlayerId = 0);
 
+/// <summary>An archived honour. Most were lifted by a club; Player of the Season was won by
+/// a player, so the row says which before a menu offers to open a squad.</summary>
 public sealed record ArchiveHonourRow(string Competition, string Team,
-    Avalonia.Media.Imaging.Bitmap? Crest = null);
+    Avalonia.Media.Imaging.Bitmap? Crest = null, int HolderId = 0, bool HolderIsPlayer = false);
 
 public sealed partial class HistoryViewModel : PageViewModel
 {
@@ -97,14 +103,15 @@ public sealed partial class HistoryViewModel : PageViewModel
             Fill(SecondTable, season, _division2Id);
             TopTableName = TopTable.Count > 0 ? _s.ArchiveLeagueName(_topFlightId) : "";
             SecondTableName = SecondTable.Count > 0 ? _s.ArchiveLeagueName(_division2Id) : "";
-            foreach (var (comp, team, teamId) in _s.HonoursIn(season))
+            foreach (var (comp, holder, holderId, isPlayer) in _s.HonoursInWithHolders(season))
             {
-                SeasonHonours.Add(new ArchiveHonourRow(comp, team,
-                    Visuals.LoadBitmap(_s.TeamLogoPath(teamId))));
+                SeasonHonours.Add(new ArchiveHonourRow(comp, holder,
+                    isPlayer ? Face(holderId) : Visuals.LoadBitmap(_s.TeamLogoPath(holderId)),
+                    holderId, isPlayer));
             }
-            foreach (var (player, team, goals) in _s.LeadersIn(season, "goal"))
+            foreach (var (player, team, goals, playerId, _) in _s.LeadersInWithIds(season, "goal"))
             {
-                SeasonScorers.Add(new ArchiveScorerRow(player, team, goals));
+                SeasonScorers.Add(new ArchiveScorerRow(player, team, goals, playerId));
             }
         }
         catch { /* a partial archive still renders */ }
@@ -138,7 +145,40 @@ public sealed partial class HistoryViewModel : PageViewModel
                 brush,
                 mine ? FontWeight.Bold : FontWeight.Normal,
                 Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value)),
-                champion ? "🏆" : ""));
+                champion ? "🏆" : "", r.TeamId.Value));
         }
     }
+
+    private Avalonia.Media.Imaging.Bitmap? Face(long playerId)
+    {
+        try { return _s.PortraitFor(playerId).Image; } catch { return null; }
+    }
+
+    // --- shared right-click menus ------------------------------------------------
+    // Refreshing means rebuilding the selected season, which is exactly what the season
+    // picker already does — so a verb that changes the world redraws the same archive.
+
+    private void Reload() => OnSelectedSeasonChanged(SelectedSeason);
+
+    /// <summary>Verb results land here, verbatim.</summary>
+    [ObservableProperty] private string _status = "";
+
+    /// <summary>An archived standings row is still a club today.</summary>
+    public ContextMenu? MenuFor(ArchiveTableRow r) =>
+        r.TeamId <= 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Club(r.TeamId, r.Team),
+                status: t => Status = t, refresh: Reload);
+
+    /// <summary>An archived honour: a club lifted it, or a player won the award.</summary>
+    public ContextMenu? MenuFor(ArchiveHonourRow h) =>
+        h.HolderId <= 0 ? null
+            : EntityActions.BuildMenu(_s,
+                h.HolderIsPlayer ? EntityRef.Player(h.HolderId, h.Team) : EntityRef.Club(h.HolderId, h.Team),
+                status: t => Status = t, refresh: Reload);
+
+    /// <summary>A past season's top scorer may still be signable — the player menu says so.</summary>
+    public ContextMenu? MenuFor(ArchiveScorerRow r) =>
+        r.PlayerId <= 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Player(r.PlayerId, r.Player),
+                status: t => Status = t, refresh: Reload);
 }

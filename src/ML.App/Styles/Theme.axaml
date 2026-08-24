@@ -159,4 +159,35 @@
   <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
     <Setter Property="Fill" Value="#22FFFFFF"/>
   </Style>
+
+  <!-- ── context menus (P9): the shared right-click vocabulary ─────────────────── -->
+  <!-- Built in code by EntityActions; these styles are the one place their chrome
+       is defined. Card surface, control radius, ghost-row hover — no new species. -->
+  <Style Selector="ContextMenu">
+    <Setter Property="Background" Value="{StaticResource MlSurfaceCard}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource MlBorder}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="4"/>
+  </Style>
+  <Style Selector="ContextMenu MenuItem">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextBody}"/>
+    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+  <Style Selector="ContextMenu MenuItem:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="#22FFFFFF"/>
+  </Style>
+  <Style Selector="ContextMenu MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="#22FFFFFF"/>
+  </Style>
+  <Style Selector="ContextMenu MenuItem:disabled">
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+  </Style>
+  <Style Selector="ContextMenu Separator">
+    <Setter Property="Background" Value="{StaticResource MlBorder}"/>
+    <Setter Property="Height" Value="1"/>
+    <Setter Property="Margin" Value="6,4"/>
+  </Style>
 </Styles>

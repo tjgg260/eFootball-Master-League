@@ -4,6 +4,28 @@
              xmlns:app="using:ML.App"
              x:Class="ML.App.Views.BoardView"
              x:DataType="vm:BoardViewModel">
+
+  <UserControl.Styles>
+    <!-- An objective that a screen can answer reads as a link, not a button: same body type,
+         link colour, no chrome. Objectives with no obvious home stay plain text. -->
+    <Style Selector="Button.objLink">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.objLink /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.objLink:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+  </UserControl.Styles>
+
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
   <StackPanel Margin="28" Spacing="16">
     <TextBlock Text="The Board" Classes="ml-h1"/>
@@ -39,8 +61,17 @@
           <DataTemplate x:DataType="vm:ObjectiveLine">
             <Grid ColumnDefinitions="28,*,Auto,Auto" Margin="0,3">
               <TextBlock Text="{Binding Icon}" FontSize="13"/>
-              <TextBlock Grid.Column="1" Text="{Binding Description}" Classes="ml-body"
-                         TextWrapping="Wrap"/>
+              <!-- league objectives open the table, cup objectives the cup; the rest stay text -->
+              <Panel Grid.Column="1">
+                <TextBlock Text="{Binding Description}" Classes="ml-body"
+                           TextWrapping="Wrap" IsVisible="{Binding !HasNav}"/>
+                <Button Classes="objLink" IsVisible="{Binding HasNav}"
+                        Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).OpenObjectiveCommand}"
+                        CommandParameter="{Binding}">
+                  <TextBlock Text="{Binding LinkText}" Classes="ml-body"
+                             Foreground="{StaticResource MlLink}" TextWrapping="Wrap"/>
+                </Button>
+              </Panel>
               <TextBlock Grid.Column="2" Text="{Binding Progress}" Foreground="#9FE6B4"
                          FontSize="12" Margin="10,0" VerticalAlignment="Center"/>
               <Border Grid.Column="3" Classes="ml-chip">
@@ -97,7 +128,8 @@
       <TextBlock Classes="ml-label" Margin="0,0,0,10" Text="Job offers"/>
       <TextBlock Text="{Binding OffersNote}" Classes="ml-muted" FontSize="12"
                  TextWrapping="Wrap" Margin="0,0,0,8"/>
-      <ItemsControl ItemsSource="{Binding Offers}">
+      <!-- right-click a row for the shared club menu (squad, scout, head-to-head) -->
+      <ItemsControl x:Name="OffersList" ItemsSource="{Binding Offers}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:JobOfferRow">
             <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,3">
@@ -106,13 +138,22 @@
                      VerticalAlignment="Center"/>
               <TextBlock Grid.Column="1" Text="{Binding Line}" Classes="ml-body"
                          VerticalAlignment="Center"/>
-              <Button Grid.Column="2" Content="Accept job" Classes="ml-primary ml-go"
-                      Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).AcceptOfferCommand}"
-                      CommandParameter="{Binding}"/>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                <!-- two-step: the label itself becomes the confirmation -->
+                <Button Content="{Binding AcceptLabel}" Classes="ml-primary ml-go"
+                        Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).AcceptOfferCommand}"
+                        CommandParameter="{Binding}"/>
+                <Button Content="Decline" Classes="ml-secondary"
+                        Foreground="{StaticResource MlDanger}"
+                        Command="{Binding $parent[ItemsControl].((vm:BoardViewModel)DataContext).DeclineOfferCommand}"
+                        CommandParameter="{Binding}"/>
+              </StackPanel>
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
+      <TextBlock Text="{Binding OfferStatus}" Foreground="{StaticResource MlSuccessText}"
+                 FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"/>
     </StackPanel></Border>
   </StackPanel>
   </ScrollViewer>

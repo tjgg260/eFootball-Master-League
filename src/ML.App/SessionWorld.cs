@@ -840,6 +840,24 @@ public sealed partial class Session
         return $"Promoted to the senior squad — squad number {shirt}.";
     }
 
+    /// <summary>Release an academy prospect outright — he leaves without a senior contract.</summary>
+    public string ReleaseProspect(long playerId)
+    {
+        var name = PlayerNameOf(playerId);
+        using (var del = Db.Connection.CreateCommand())
+        {
+            del.CommandText = "DELETE FROM academy WHERE player_id=$p AND team_id=$t";
+            del.Parameters.AddWithValue("$p", playerId);
+            del.Parameters.AddWithValue("$t", CurrentTeamId);
+            if (del.ExecuteNonQuery() == 0) return "That lad isn't in your academy.";
+        }
+        if (string.IsNullOrEmpty(name)) name = "The prospect";
+        PostInbox("Club", $"Released: {name}",
+            $"{name} leaves the academy without a senior deal. The coaches wish him well.",
+            NextFixture()?.Matchday, playerId: playerId);
+        return $"{name} released from the academy.";
+    }
+
     // ------------------------------------------------------------------ the bank
 
     public long LoanOutstanding => long.TryParse(GetMeta($"loan_{CurrentTeamId}"), out var v) ? v : 0;
@@ -1101,9 +1119,13 @@ public sealed partial class Session
     }
 
     /// <summary>Your recent matches with any captured stats — the match-report list.</summary>
-    public IReadOnlyList<(string When, string Line, string Stats)> MyMatchReports(int count = 6)
+    public IReadOnlyList<(string When, string Line, string Stats)> MyMatchReports(int count = 6) =>
+        MyMatchReportsWithIds(count).Select(r => (r.When, r.Line, r.Stats)).ToList();
+
+    /// <summary>The same match-report rows plus each fixture's id, for report drill-in.</summary>
+    public IReadOnlyList<(int FixtureId, string When, string Line, string Stats)> MyMatchReportsWithIds(int count = 6)
     {
-        var rows = new List<(string, string, string)>();
+        var rows = new List<(int, string, string, string)>();
         foreach (var f in Repo.Fixtures(SeasonId)
                      .Where(f => (f.HomeTeamId == CurrentTeamId || f.AwayTeamId == CurrentTeamId) && f.Played)
                      .OrderByDescending(f => f.Matchday).Take(count))
@@ -1126,7 +1148,7 @@ public sealed partial class Session
                 }
                 catch { /* legacy json shapes are fine to skip */ }
             }
-            rows.Add((ML.Core.Scheduling.SeasonCalendar.ShortLabel(DateOfFixture(f)), line, stats));
+            rows.Add((f.Id, ML.Core.Scheduling.SeasonCalendar.ShortLabel(DateOfFixture(f)), line, stats));
         }
         return rows;
     }
@@ -1609,7 +1631,7 @@ public sealed partial class Session
                 SetMeta($"sellon_{playerId}", "");
                 PostInbox("Transfer", $"Sell-on clause honoured: {offer.PlayerName}",
                     $"{TeamName(holder)}'s {pct}% sell-on takes £{cut:N0} out of the £{offer.Fee:N0} fee.",
-                    NextFixture()?.Matchday);
+                    NextFixture()?.Matchday, playerId: playerId);
             }
         }
         Finances.ReceiveTransferFee(net);
@@ -1637,12 +1659,42 @@ public sealed partial class Session
         _shooterPool = null;
         PostInbox("Transfer", $"Sold: {offer.PlayerName}",
             $"{offer.PlayerName} joins {offer.FromTeam} for £{offer.Fee:N0}. The fee is in the balance.",
-            NextFixture()?.Matchday);
+            NextFixture()?.Matchday, playerId: playerId);
         return $"Sold {offer.PlayerName} to {offer.FromTeam} for £{offer.Fee:N0}.";
     }
 
     public void RejectOffer(long playerId) =>
         SaveOffers(PendingOffers().Where(o => o.PlayerId != playerId).ToList());
+
+    /// <summary>Actively shop one of your players: he goes on the list and the agents ring round —
+    /// 0-2 clubs may bid at once (85-105% of value) instead of waiting for the preseason round.</summary>
+    public string OfferToClubs(long playerId)
+    {
+        var player = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(p => p.Id == playerId);
+        if (player is null) return "He's not in your squad — you can only offer your own players around.";
+        SetTransferListed(playerId, true);
+        var rng = new SeededRandom((int)((SeasonId * 8807 + playerId * 131 + CurrentTeamId) ^ WorldSeed));
+        var buyers = Repo.Teams()
+            .Where(t => t.LeagueId is TopFlight or Division2 && t.Id != CurrentTeamId).ToList();
+        var value = MarketValueOf(playerId, player.OverallRating ?? 65, player.Age);
+        var offers = PendingOffers().Where(o => o.PlayerId != playerId).ToList();
+        var enquiries = 0;
+        for (var i = rng.Next(3); i > 0 && buyers.Count > 0; i--)
+        {
+            var buyer = buyers[rng.Next(buyers.Count)];
+            buyers.Remove(buyer);                          // two enquiries, two different clubs
+            var fee = value * (85 + rng.Next(21)) / 100;
+            offers.Add(new TransferOffer(playerId, player.Name, buyer.Name, fee, buyer.Id));
+            enquiries++;
+        }
+        SaveOffers(offers);
+        return enquiries switch
+        {
+            2 => $"Offered {player.Name} to clubs — two enquiries already in.",
+            1 => $"Offered {player.Name} to clubs — one enquiry already in.",
+            _ => "Offered around — no takers yet. He stays listed.",
+        };
+    }
 
     // ------------------------------------------------------------------ undo + cup conditions
 

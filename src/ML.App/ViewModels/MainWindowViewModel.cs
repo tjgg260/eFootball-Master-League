@@ -58,11 +58,34 @@ public partial class MainWindowViewModel : ObservableObject
 
         RefreshShell();
 
+        // Cross-screen navigation with a subject: any page raises Nav.Go("Squad", player)
+        // and lands here. Single-handler assignment so a full-window rebuild (job accepted)
+        // replaces the old shell instead of stacking subscribers.
+        Nav.Handler = OnNavRequest;
+
         // Tooling hook: ML_PAGE=<nav title> opens straight onto that screen (screenshot runs).
         var startPage = Environment.GetEnvironmentVariable("ML_PAGE");
         var start = Pages.FirstOrDefault(p => p.Title == startPage) ?? Pages[0];
         CurrentPage = start.Build(session);
         MarkActive(start);
+    }
+
+    private void OnNavRequest(string pageTitle, EntityRef? focus)
+    {
+        var item = Pages.FirstOrDefault(p => p.Title == pageTitle);
+        if (item is null) return;
+        try
+        {
+            var page = item.Build(_session);
+            if (focus is not null && page is IFocusTarget f) f.Focus(focus);
+            CurrentPage = page;
+            MarkActive(item);
+            RefreshShell();
+        }
+        catch (Exception ex)
+        {
+            Program.Log($"Nav -> {pageTitle}", ex);
+        }
     }
 
     public string ClubName { get; }
@@ -97,17 +120,25 @@ public partial class MainWindowViewModel : ObservableObject
         catch { HasUnread = false; }
         try
         {
-            var actions = new List<string>();
-            if (_session.PendingOffers().Count > 0) actions.Add("offers on the table");
-            if (_session.IsDeadlineDay()) actions.Add("DEADLINE DAY");
-            if (_session.JobOffers().Count > 0) actions.Add("a job offer");
-            HasActions = actions.Count > 0;
-            ActionsLine = actions.Count > 0 ? "⚠ " + string.Join(" · ", actions) : "";
+            // Each pending decision knows the screen that resolves it — the sidebar line
+            // is buttons, not prose (P9: the shell used to warn and make you hunt).
+            Alerts.Clear();
+            if (_session.PendingOffers().Count > 0) Alerts.Add(new ActionAlert("⚠ offers on the table", "Market"));
+            if (_session.IsDeadlineDay()) Alerts.Add(new ActionAlert("⚠ DEADLINE DAY", "Market"));
+            if (_session.JobOffers().Count > 0) Alerts.Add(new ActionAlert("⚠ a job offer", "Board"));
+            HasActions = Alerts.Count > 0;
+            ActionsLine = "";
         }
         catch { HasActions = false; }
     }
 
     public ObservableCollection<NavItem> Pages { get; }
+
+    // Pending decisions rendered as sidebar buttons; each names the page that resolves it.
+    public ObservableCollection<ActionAlert> Alerts { get; } = new();
+
+    [RelayCommand]
+    private void OpenAlert(ActionAlert alert) => OnNavRequest(alert.Page, null);
 
     // The sidebar renders these; every NavItem inside is the same instance as in Pages,
     // so MarkActive/ML_PAGE keep working untouched.
@@ -146,6 +177,9 @@ public partial class MainWindowViewModel : ObservableObject
         foreach (var p in Pages) p.IsActive = p == current;
     }
 }
+
+/// <summary>A pending decision surfaced in the sidebar; Page is the screen that resolves it.</summary>
+public sealed record ActionAlert(string Text, string Page);
 
 /// <summary>A labeled group of nav rows ("MATCHDAY", "CLUB", ...).</summary>
 public sealed class NavSection

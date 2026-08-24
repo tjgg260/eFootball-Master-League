@@ -3,7 +3,9 @@ using ML.Data;
 
 namespace ML.App;
 
-public sealed record SkillTrainingRow(int PlayerId, string Player, string Skill, int Progress, int Target);
+// PlayerId is a long: ids in the imported world run past Int32, so reading one back as an int
+// throws the moment a high-band player starts a skill.
+public sealed record SkillTrainingRow(long PlayerId, string Player, string Skill, int Progress, int Target);
 
 /// <summary>
 /// The character-and-development layer (P1): FM-style traits (Determination 1-20 + hidden
@@ -103,6 +105,27 @@ public sealed partial class Session
         return $"{p.Name} starts working on {skill} — about {target} matchweeks at his determination.";
     }
 
+    /// <summary>Call off a player's skill training — the half-learned work is abandoned, not banked.</summary>
+    public string CancelSkillTraining(long playerId)
+    {
+        string? skill = null;
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText = "SELECT skill FROM skill_training WHERE player_id=$p";
+            q.Parameters.AddWithValue("$p", playerId);
+            var v = q.ExecuteScalar();
+            if (v is not null and not DBNull) skill = (string)v;
+        }
+        if (skill is null) return "He isn't working on a skill.";
+        using (var del = Db.Connection.CreateCommand())
+        {
+            del.CommandText = "DELETE FROM skill_training WHERE player_id=$p";
+            del.Parameters.AddWithValue("$p", playerId);
+            del.ExecuteNonQuery();
+        }
+        return $"{PlayerNameOf(playerId)} stops working on {skill}.";
+    }
+
     public IReadOnlyList<SkillTrainingRow> ActiveSkillTrainings()
     {
         var rows = new List<SkillTrainingRow>();
@@ -114,7 +137,7 @@ public sealed partial class Session
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
-            rows.Add(new SkillTrainingRow(r.GetInt32(0), r.GetString(1), r.GetString(2),
+            rows.Add(new SkillTrainingRow(r.GetInt64(0), r.GetString(1), r.GetString(2),
                 r.GetInt32(3), r.GetInt32(4)));
         }
         return rows;

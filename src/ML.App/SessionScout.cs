@@ -96,8 +96,12 @@ public sealed partial class Session
                 }
             }
             catch { /* knowledge is additive */ }
+            // The letter carries what it is about: a player dossier points at the player, a club
+            // dossier at the club — so the news feed and its menus can act on the right entity.
             PostInbox("Media", $"Scout report ready: {name}",
-                "The dossier is on your desk — open the Scouting screen to read it.", matchday);
+                "The dossier is on your desk — open the Scouting screen to read it.", matchday,
+                playerId: kind == "player" ? target : (long?)null,
+                teamId: kind == "club" ? (int)target : (int?)null);
         }
     }
 
@@ -122,14 +126,6 @@ public sealed partial class Session
                       (threat is not null ? $"; the man to stop is {threat.Name}." : ".");
         var (shape, style, line) = ML.Core.Selection.OppositionBriefing.Counter(styleIx);
         return (true, summary, $"Scout's plan: {line} (Try {shape}, {style} — sets up YOUR side only.)");
-    }
-
-    private string PlayerNameOf(long playerId)
-    {
-        using var cmd = Db.Connection.CreateCommand();
-        cmd.CommandText = "SELECT name FROM players WHERE id=$p";
-        cmd.Parameters.AddWithValue("$p", playerId);
-        return cmd.ExecuteScalar() as string ?? "?";
     }
 
     /// <summary>The club dossier, depth-gated by scout quality.</summary>
@@ -230,5 +226,33 @@ public sealed partial class Session
                     ? $"Verdict: comparable to {incumbent.Name} — squad depth."
                     : $"Verdict: below {incumbent.Name} — not worth the fee.");
         return sb.ToString();
+    }
+
+    /// <summary>FM's "offer trial": a free agent trains with you for a week — reveals him, signs nothing.</summary>
+    public string TrialPlayer(long playerId)
+    {
+        var (teamId, club) = ClubOfPlayer(playerId);
+        if (teamId is not null)
+        {
+            return $"He's under contract at {club} — a trial isn't how you get him.";
+        }
+        var name = PlayerNameOf(playerId);
+        string position;
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText = "SELECT position FROM players WHERE id=$p";
+            q.Parameters.AddWithValue("$p", playerId);
+            position = q.ExecuteScalar() as string ?? "CMF";
+        }
+        try { BumpKnowledge(playerId, 75); } catch { /* knowledge is additive */ }
+        var verdict = string.Join("  ·  ", CoachReportOf(playerId, position));
+        if (verdict.Length == 0)
+        {
+            verdict = "nothing conclusive — a week wasn't enough to get a read on him.";
+        }
+        var msg = $"{name} trained with us for a week. Coach: {verdict}";
+        PostInbox("Player", $"Trial verdict: {name}", msg,
+            NextFixture()?.Matchday ?? 0, playerId: playerId);
+        return msg;
     }
 }

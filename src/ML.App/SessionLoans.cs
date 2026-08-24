@@ -100,6 +100,28 @@ public sealed partial class Session
         return $"{PlayerNameOf(playerId)} recalled from {TeamName((int)host)}.";
     }
 
+    // ------------------------------------------------------------------ loan list (shop window)
+
+    /// <summary>Whether a player wears the loan-listed label the Squad and Market screens show.</summary>
+    public bool IsLoanListed(long playerId) =>
+        (GetMeta($"loanlisted_{CurrentTeamId}") ?? "").Split(',').Contains(playerId.ToString());
+
+    /// <summary>Every player currently loan-listed at your club.</summary>
+    public IReadOnlyList<long> LoanListedIds() =>
+        (GetMeta($"loanlisted_{CurrentTeamId}") ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(long.Parse).ToList();
+
+    /// <summary>Put a player in (or take him out of) the loan shop window — a label only; LoanOut still does the moving.</summary>
+    public void SetLoanListed(long playerId, bool on)
+    {
+        var ids = (GetMeta($"loanlisted_{CurrentTeamId}") ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        if (on) ids.Add(playerId.ToString());
+        else ids.Remove(playerId.ToString());
+        SetMeta($"loanlisted_{CurrentTeamId}", string.Join(",", ids));
+    }
+
     /// <summary>Rollover: everyone goes home; young loanees come back improved by the minutes.</summary>
     internal void ReturnAllLoans()
     {

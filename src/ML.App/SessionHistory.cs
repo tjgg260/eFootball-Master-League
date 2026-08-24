@@ -80,12 +80,21 @@ public sealed partial class Session
 
     /// <summary>Top scorers of any season — the archive variant of LeadersBy.</summary>
     public IReadOnlyList<(string Player, string Team, int Count)> LeadersIn(
+        int seasonId, string eventType, int count = 10) =>
+        LeadersInWithIds(seasonId, eventType, count)
+            .Select(x => (x.Player, x.Team, x.Count)).ToList();
+
+    /// <summary>
+    /// LeadersIn with each scorer's player id kept. An archived leaderboard row is a handle
+    /// on a real player — he may still be signable — so the id has to survive the query.
+    /// </summary>
+    public IReadOnlyList<(string Player, string Team, int Count, long PlayerId, int TeamId)> LeadersInWithIds(
         int seasonId, string eventType, int count = 10)
     {
-        var rows = new List<(string, string, int)>();
+        var rows = new List<(string, string, int, long, int)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
-            "SELECT p.name, COALESCE(s.team_id, 0), COUNT(*) AS g FROM match_events e " +
+            "SELECT p.name, COALESCE(s.team_id, 0), COUNT(*) AS g, e.player_id FROM match_events e " +
             "JOIN players p ON p.id = e.player_id " +
             "LEFT JOIN squad_members s ON s.player_id = e.player_id " +
             "JOIN fixtures f ON f.id = e.fixture_id " +
@@ -95,7 +104,44 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$s", seasonId);
         cmd.Parameters.AddWithValue("$n", count);
         using var r = cmd.ExecuteReader();
-        while (r.Read()) rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2)));
+        while (r.Read())
+        {
+            // cols: 0 name · 1 team_id · 2 count · 3 player_id
+            rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2),
+                      r.GetInt64(3), r.GetInt32(1)));
+        }
+        return rows;
+    }
+
+    /// <summary>
+    /// HonoursIn with the holder's identity kept. Award rows ('pots') store a PLAYER id in
+    /// the team column, so a caller wiring a right-click menu has to know which it is before
+    /// it offers to view a squad that does not exist.
+    /// </summary>
+    public IReadOnlyList<(string Competition, string Holder, int HolderId, bool HolderIsPlayer)>
+        HonoursInWithHolders(int seasonId)
+    {
+        var rows = new List<(string, string, int, bool)>();
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT competition, team_id FROM honours WHERE season_id=$s ORDER BY competition";
+        cmd.Parameters.AddWithValue("$s", seasonId);
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+        {
+            var raw = r.GetString(0);
+            var comp = raw switch
+            {
+                "league" => LeagueNameFor(TopFlight),
+                "division2" => LeagueNameFor(Division2),
+                "lcup" => LeagueCupName,
+                "ccup" => ContinentalName,
+                "pots" => "Player of the Season",
+                _ => CupName,
+            };
+            var isPlayer = raw == "pots";
+            var id = r.GetInt32(1);
+            rows.Add((comp, isPlayer ? PlayerNameOf(id) : TeamName(id), id, isPlayer));
+        }
         return rows;
     }
 
