@@ -28,10 +28,17 @@ $outPath = Join-Path $root $Out
 $outDir = Split-Path -Parent $outPath
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Force -Path $outDir | Out-Null }
 
+# Any ML.App left over from an earlier run holds ML.Core.dll/ML.Data.dll open and the next
+# `dotnet build` fails with MSB3027 file locks that look nothing like the real cause.
+Get-Process ML.App -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+
 $env:ML_PAGE = $Page
 $env:ML_RESUME = "1"        # skip the career picker and open the saved career straight away
 $proc = Start-Process -FilePath $exe -PassThru
 Write-Host "launched $Page (pid $($proc.Id)) - settling..."
+
+# Kill the app however this script ends - an early `exit` would otherwise leak it.
+trap { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue; break }
 
 # Give Avalonia time to build the page; a startup crash shows up as an early exit.
 for ($i = 0; $i -lt $WaitSeconds; $i++) {
