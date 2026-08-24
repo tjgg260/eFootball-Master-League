@@ -91,8 +91,9 @@ def main() -> int:
     # ---- identity spine: fm_uid -> player rows (all copies; movability decided later) ------
     uid_rows: dict[int, list[tuple[int, str, float]]] = defaultdict(list)
     for pid, kind, uid, conf in con.execute(
-            "SELECT player_id, kind, fm_uid, confidence FROM player_identity "
-            "WHERE fm_uid IS NOT NULL"):
+            "SELECT pi.player_id, pi.kind, pi.fm_uid, pi.confidence FROM player_identity pi "
+            "JOIN players p ON p.id = pi.player_id "
+            "WHERE pi.fm_uid IS NOT NULL AND p.superseded_by IS NULL"):
         uid_rows[uid].append((pid, kind, conf))
 
     # ---- current membership ----------------------------------------------------------------

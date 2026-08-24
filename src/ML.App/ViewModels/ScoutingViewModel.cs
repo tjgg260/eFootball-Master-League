@@ -105,6 +105,7 @@ public sealed partial class ScoutingViewModel : PageViewModel
         if (string.IsNullOrWhiteSpace(PlayerSearch)) { Status = "Type a player name."; return; }
         using var cmd = _s.Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT id, name FROM players WHERE name LIKE $q " +
+                          "AND superseded_by IS NULL " +
                           "ORDER BY overall_rating DESC LIMIT 1";
         cmd.Parameters.AddWithValue("$q", $"%{PlayerSearch.Trim()}%");
         using var r = cmd.ExecuteReader();

@@ -13,8 +13,15 @@ Hard-learned rules (first apply broke the gate; every one of these exists for a 
     career-only players are never placed into the world (double-membership)
   - a uid with several squad claimants = the same human as cross-club ghosts: the claimant at
     the FM club (or best source band) keeps his place, the others are UNSQUADDED
-  - an unsquadded player may be placed only with >= 20 attribute rows (compilable)
+  - an unsquadded player may be placed only with >= 20 attribute rows (compilable), and
+    "unsquadded" means NO squad row anywhere, career squads included — the first apply
+    double-placed the curated career-Liverpool XI into world Liverpool
   - catalog clubs (catalog.json) never drop below 18 players / 2 GKs — excess exits are blocked
+  - a destination already fielding the same human (name+age the spine failed to link) keeps
+    its copy and the arrival is skipped — gate 5's no-duplicate invariant, enforced here
+  - the youth-row regex must be a REAL word-boundary pattern: the first commit carried
+    invisible backspace bytes (a '\\b' written in a non-raw string, then wrapped in r"...")
+    that matched nothing, so 13,300 academy rows drove senior membership
 
     python tools/sync_membership_fm.py --dry
     python tools/sync_membership_fm.py
@@ -36,11 +43,13 @@ FLOOR, GK_FLOOR = 18, 2
 
 
 def band_rank(pid: int) -> int:
+    # Provenance priority (owner ruling 2026-08-25): eFootball, then FM, RFS LAST. This used to
+    # rank RFS (2) ahead of FM (3), which picked surname-only RFS records over FM's full ones.
     if pid < 16_700_000: return 0                       # eF-native
     if 45_000_000_000 <= pid < 47_000_000_000: return 1  # curated
-    if 700_000_000 <= pid < 10_000_000_000: return 2     # RFS
     if pid >= 50_000_000_000: return 4                   # generated
-    return 3                                             # FM
+    if 700_000_000 <= pid < 10_000_000_000: return 3     # RFS — last
+    return 2                                             # FM
 
 
 def main() -> int:
@@ -61,7 +70,7 @@ def main() -> int:
             # ("Sporting CP U19") — those rows' Club ID is the parent and must not drive
             # senior membership.
             import re as _re
-            if _re.search(r"U\s?-?(1[5-9]|2[0-3])", squad, _re.IGNORECASE):
+            if _re.search(r"\bU\s?-?(1[5-9]|2[0-3])\b", squad, _re.IGNORECASE):
                 youth_rows += 1
                 continue
             c = (r.get("Club ID") or "").strip()
@@ -81,11 +90,28 @@ def main() -> int:
             "SELECT id FROM players WHERE id >= 10000000000 AND id < 45000000000"):
         uid_of.setdefault(pid, pid - 10_000_000_000)
 
+    try:                      # superseded duplicate records are never placed anywhere
+        superseded_ids = {r[0] for r in con.execute(
+            "SELECT id FROM players WHERE superseded_by IS NOT NULL")}
+    except sqlite3.OperationalError:
+        superseded_ids = set()
     cur_team, squad_size = {}, defaultdict(int)
-    for pid, tid in con.execute("SELECT player_id, team_id FROM squad_members"):
+    squadded_any = set()      # ANY squad row, career bands included: a curated player living
+    for pid, tid in con.execute(   # in a career squad must never ALSO be placed in the world
+            "SELECT player_id, team_id FROM squad_members"):
+        squadded_any.add(pid)
         if not (800_000 <= tid < 1_000_000):
             cur_team[pid] = tid
             squad_size[tid] += 1
+
+    # gate-5 twin guard: a destination already fielding the same human (name+age the spine
+    # failed to link) keeps its copy — the arrival is skipped, never doubled
+    ident_of = {pid: (nm, age) for pid, nm, age in
+                con.execute("SELECT id, name, age FROM players")}
+    team_idents = defaultdict(set)
+    for pid, tid in con.execute("SELECT player_id, team_id FROM squad_members"):
+        if not (800_000 <= tid < 1_000_000):
+            team_idents[tid].add(ident_of.get(pid))
 
     attr_ok = {r[0] for r in con.execute(
         "SELECT player_id FROM player_attributes GROUP BY player_id HAVING COUNT(*) >= 20")}
@@ -120,6 +146,7 @@ def main() -> int:
         squad_size[tid] += 1
         if pid in gk_pid:
             gk_count[tid] += 1
+        team_idents[tid].add(ident_of.get(pid))
 
     # uid -> squad claimants (canonical only)
     claimants = defaultdict(list)
@@ -128,21 +155,27 @@ def main() -> int:
             claimants[uid].append(pid)
 
     moves, frees, ghosts = [], [], []
-    blocked = 0
+    blocked = twins = 0
     for uid, club in fm_club.items():
         ps = claimants.get(uid, [])
         want = team_of_fmclub.get(club) if club > 0 else None
 
         if not ps:
-            # nobody in a squad wears this uid; an unsquadded spine twin may be placed
+            # nobody in a squad wears this uid; an UNSQUADDED spine twin may be placed —
+            # unsquadded ANYWHERE, career squads included (first apply double-placed the
+            # curated career-Liverpool XI into the world team)
             if want is None:
                 continue
-            fp = [p for p, u in uid_of.items() if u == uid and p not in cur_team]
+            fp = [p for p, u in uid_of.items() if u == uid and p not in squadded_any
+                  and p not in superseded_ids]
             fp = [p for p in fp if p in attr_ok]
             if fp:
                 p = min(fp, key=band_rank)
-                moves.append((p, None, want))
-                do_enter(want, p)
+                if ident_of.get(p) in team_idents[want]:
+                    twins += 1
+                else:
+                    moves.append((p, None, want))
+                    do_enter(want, p)
             continue
 
         # keeper: the claimant already at the right club, else best band
@@ -172,7 +205,9 @@ def main() -> int:
         elif want is not None and cur_team[keeper] != want \
                 and fmclub_of_team.get(cur_team[keeper]) != club:
             t = cur_team[keeper]
-            if exit_ok(t, keeper):
+            if ident_of.get(keeper) in team_idents[want]:
+                twins += 1
+            elif exit_ok(t, keeper):
                 moves.append((keeper, t, want))
                 do_exit(t, keeper)
                 do_enter(want, keeper)
@@ -180,7 +215,8 @@ def main() -> int:
                 blocked += 1
 
     print(f"moves: {len(moves):,} | to free agency: {len(frees):,} | "
-          f"cross-club ghosts unsquadded: {len(ghosts):,} | blocked by floors: {blocked:,}")
+          f"cross-club ghosts unsquadded: {len(ghosts):,} | blocked by floors: {blocked:,} | "
+          f"twin already at destination: {twins:,}")
 
     def name(pid):
         r = con.execute("SELECT name FROM players WHERE id=?", (pid,)).fetchone()

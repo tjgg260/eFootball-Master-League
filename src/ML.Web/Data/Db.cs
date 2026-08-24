@@ -181,7 +181,8 @@ public sealed class Db
             "SELECT p.id, p.name, COALESCE(p.position,''), COALESCE(p.age,0), COALESCE(p.overall_rating,0), " +
             "COALESCE(p.real_face_path,p.portrait_path), COALESCE(t.name,'Free agent') " +
             "FROM players p LEFT JOIN squad_members s ON s.player_id=p.id LEFT JOIN teams t ON t.id=s.team_id " +
-            "WHERE p.name LIKE $q AND (p.id < 20000000 OR p.id >= 700000000)" + posFilter +
+            "WHERE p.name LIKE $q AND p.superseded_by IS NULL " +
+            "AND (p.id < 20000000 OR p.id >= 700000000)" + posFilter +
             (maxAge is not null ? " AND p.age <= $age" : "") +
             " ORDER BY p.overall_rating DESC LIMIT $l";
         cmd.Parameters.AddWithValue("$q", "%" + q + "%");
@@ -198,7 +199,7 @@ public sealed class Db
     {
         using var con = Open();
         using var cmd = con.CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM players";
+        cmd.CommandText = "SELECT COUNT(*) FROM players WHERE superseded_by IS NULL";
         return (long)cmd.ExecuteScalar()!;
     }
 

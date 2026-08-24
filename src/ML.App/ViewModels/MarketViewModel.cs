@@ -51,6 +51,12 @@ public sealed partial class MarketViewModel : PageViewModel
     private static readonly string[] PositionFilters =
         { "All", "GK", "CB", "LB", "RB", "DMF", "CMF", "LMF", "RMF", "AMF", "LWF", "RWF", "SS", "CF" };
 
+    /// The market lists the REFERENCE WORLD only. Career copies (20M-700M) and the curated
+    /// career overlay (45-46B) are a career's own duplicates of world players — listing them
+    /// shows the same human twice. Matches ML.Web's long-standing market filter.
+    private const string WorldOnly =
+        "(p.id < 20000000 OR (p.id >= 700000000 AND NOT (p.id >= 45000000000 AND p.id < 46000000000)))";
+
     private readonly Session _s;
 
     public MarketViewModel(Session s)
@@ -65,7 +71,8 @@ public sealed partial class MarketViewModel : PageViewModel
             using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={masterDb};Mode=ReadOnly");
             con.Open();
             using var count = con.CreateCommand();
-            count.CommandText = "SELECT COUNT(*) FROM players";
+            count.CommandText = "SELECT COUNT(*) FROM players WHERE superseded_by IS NULL " +
+                                "AND " + WorldOnly.Replace("p.id", "id");
             TotalPlayers = Convert.ToInt32(count.ExecuteScalar());
             Requery();
         }
@@ -252,7 +259,9 @@ public sealed partial class MarketViewModel : PageViewModel
             "(SELECT t.logo_path FROM squad_members s JOIN teams t ON t.id=s.team_id " +
             " WHERE s.player_id=p.id LIMIT 1) " +
             "FROM players p " +
-            (where.Count > 0 ? "WHERE " + string.Join(" AND ", where) + " " : "") +
+            "WHERE p.superseded_by IS NULL " +   // merged duplicate records stay invisible
+            "AND " + WorldOnly + " " +
+            (where.Count > 0 ? "AND " + string.Join(" AND ", where) + " " : "") +
             "ORDER BY " + order + " LIMIT 4000";
         if (!string.IsNullOrWhiteSpace(q.Search)) cmd.Parameters.AddWithValue("$q", $"%{q.Search.Trim()}%");
         if (q.Position != "All") cmd.Parameters.AddWithValue("$pos", q.Position);

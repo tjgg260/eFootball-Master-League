@@ -80,15 +80,17 @@ def synth(pid: int, overall: int, pos: str) -> dict[str, int]:
             elif a in GK_OK_OUTFIELD:
                 v = overall - jit(pid, a, 8, 16)
             else:
-                v = 38 + jit(pid, a, 0, 12)                 # keepers can't play outfield
+                v = 40 + jit(pid, a, 0, 12)                 # keepers can't play outfield
         else:
             if a in GK_ATTRS:
-                v = 38 + jit(pid, a, 0, 10)                 # outfielders can't keep
+                v = 40 + jit(pid, a, 0, 10)                 # outfielders can't keep
             elif a in core:
                 v = overall + jit(pid, a, -5, 4)
             else:
                 v = overall - jit(pid, a, 8, 18)            # weaker away from his game
-        out[a] = max(1, min(99, v))
+        # 40 is the floor of the STORAGE FORMAT (6-bit field + 40 bias, ability_bits.py) —
+        # anything lower is unrepresentable and arrives in-game as 40 anyway
+        out[a] = max(40, min(99, v))
     # meta attributes on their own small scales (match existing data)
     out["foot"] = 1 if jit(pid, "foot", 0, 9) < 2 else 0    # ~20% left-footed
     out["weak_foot_usage"] = 1 + (1 if jit(pid, "wf", 0, 9) >= 8 else 0)

@@ -74,6 +74,22 @@ Recorded so paths don't have to be rediscovered. Verify before relying on them.
   `C:\Program Files (x86)\Steam\userdata\1253972527\760\remote\1665460\screenshots`
 - Tesseract model: `tools/tessdata/eng.traineddata`
 
+### Source data — where every export actually lives
+
+**Check this table before concluding that data does not exist.** These are the owner's own
+exports and they are NOT all inside the repo; a missing DB table means the import has not been
+run, never that the source is gone.
+
+| Data | Path | Carries |
+|---|---|---|
+| FM **attributes (1-20)** | `C:\Users\tjgg2\OneDrive\Documents\Sports Interactive\Football Manager 2024\{B,c,d,…,z}.html` | 25 HTML exports, ~490k rows, 69 columns — the full technical/mental/physical/GK ladder, plus UID, **DoB**, Height, Weight, Preferred Foot, Personality, Ability, Potential |
+| FM **membership/bio** | `allavailable columns players.csv` (repo root) | Club, Club ID, Squad, Based, DoB, Unique ID — THE membership truth |
+| FM bio (older dumps) | `allplayers.csv`, `test.csv.html.csv` (repo root) | bio + Best Rating / Best Pot Rating; no attributes |
+| FM fitness | `attributes.csv`, `test.csv` (repo root) | Fitness / Con / Happiness only — despite the filename, **not** the attribute ladder |
+| FM clubs / staff | `clubs.csv`, `staff.csv` (repo root) | club finances and reputation; staff coaching 1-20 |
+| eFootball players | `samples/editor-bundled-players.csv` | 25,460 base players — real eF attributes on the 40-99 scale, playstyles, skills |
+| FM editor data | `…\Sports Interactive\Editor 26\editor data\` | sortitoutsi FM26 live data update |
+
 ## The writeback pipeline (PROVEN — Phase 0 passed 2026-08-19)
 
 A transfer, applied and confirmed in-game (Gyökeres started for Liverpool):

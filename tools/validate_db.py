@@ -2,7 +2,7 @@
 """
 validate_db.py — the blueprint's VALIDATION GATE (docs/database-blueprint.md, audit-as-build-step).
 
-master.db is a compiled artifact; this gate fails the build if the output is broken. Eight
+master.db is a compiled artifact; this gate fails the build if the output is broken. Nine
 assertions, each printing PASS/FAIL + counts; exit code 1 if ANY fails:
 
   1  zero dangling references in every player_id / team_id / fixture_id-bearing table
@@ -31,6 +31,9 @@ assertions, each printing PASS/FAIL + counts; exit code 1 if ANY fails:
          are the documented deliberate-Basic mirrors and pass)
        - player name non-empty, no NUL, <= 60 UTF-8 bytes (the Player.bin name field cut is
          byte-blind and would corrupt a longer name mid-codepoint); club name <= 480 bytes
+
+  9  superseded records dormant: a players.superseded_by mark (supersede_twins.py, one
+     record per human) implies no world squad row, an existing target, and no mark chains
 
 READ-ONLY BY DESIGN: the DB is opened with mode=ro and nothing is ever written — this tool has
 no --apply because a validation gate must never mutate what it judges. --dry is accepted for
@@ -378,6 +381,38 @@ def check_render_projection(con, gate: Gate, clubs: dict[int, dict]) -> None:
 
 # ============================================================================ main
 
+def check_superseded(con, gate: Gate) -> None:
+    """9: superseded records are dormant history (supersede_twins.py) — never squadded in the
+    world, never the target of a mark themselves (no chains), targets always exist. Absent
+    column = zero offenders (pre-supersede database)."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(players)")}
+    if "superseded_by" not in cols:
+        gate.report("9 superseded records dormant (column absent — vacuous)", 0, 0, "marks")
+        return
+    total = con.execute(
+        "SELECT COUNT(*) FROM players WHERE superseded_by IS NOT NULL").fetchone()[0]
+    detail, bad = [], 0
+    for pid, tid in con.execute(
+            "SELECT s.player_id, s.team_id FROM squad_members s "
+            "JOIN players p ON p.id=s.player_id WHERE p.superseded_by IS NOT NULL "
+            "AND NOT (s.team_id>=800000 AND s.team_id<1000000) "
+            "AND NOT (s.team_id>=9000000 AND s.team_id<9200000)"):
+        bad += 1
+        detail.append(f"superseded player {pid} still squadded at team {tid}")
+    for pid, tgt in con.execute(
+            "SELECT a.id, a.superseded_by FROM players a JOIN players b "
+            "ON b.id=a.superseded_by WHERE b.superseded_by IS NOT NULL"):
+        bad += 1
+        detail.append(f"chained mark: {pid} -> {tgt} which is itself superseded")
+    for (pid,) in con.execute(
+            "SELECT a.id FROM players a LEFT JOIN players b ON b.id=a.superseded_by "
+            "WHERE a.superseded_by IS NOT NULL AND b.id IS NULL"):
+        bad += 1
+        detail.append(f"dangling mark: {pid} -> missing player")
+    gate.report("9 superseded records dormant (unsquadded, unchained, targets exist)",
+                bad, total, "marks", detail)
+
+
 def main() -> int:
     global DB, CATALOG
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -415,10 +450,11 @@ def main() -> int:
     check_paths(con, gate, clubs)
     check_namespaces(con, gate)
     check_render_projection(con, gate, clubs)
+    check_superseded(con, gate)
     con.close()
 
     print(f"\n{'GATE PASSED' if gate.failed == 0 else 'GATE FAILED'}: "
-          f"{8 - gate.failed}/8 assertions clean")
+          f"{9 - gate.failed}/9 assertions clean")
     return 0 if gate.failed == 0 else 1
 
 
