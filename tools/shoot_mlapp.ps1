@@ -13,7 +13,9 @@ param(
     [double]$ContinueY = 0.516,
     [int]$AfterContinueSeconds = 14,
     [double]$RightClickX = 0,                # window-relative point to right-click before shooting
-    [double]$RightClickY = 0
+    [double]$RightClickY = 0,
+    [double]$LeftClickX = 0,                 # window-relative point to left-click first (tabs etc.)
+    [double]$LeftClickY = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -85,6 +87,17 @@ if ($w -le 0 -or $ht -le 0) {
     $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
     $r.Left = $b.X; $r.Top = $b.Y; $w = $b.Width; $ht = $b.Height
     Write-Host "no window rect - falling back to full screen"
+}
+
+if ($LeftClickX -gt 0) {
+    # Drive the UI a step first — switching a tab, opening a panel — then shoot what it shows.
+    [WinShot]::ForceTop($h)
+    $r = [WinShot]::Raise($h)
+    $lx = $r.Left + [int](($r.Right - $r.Left) * $LeftClickX)
+    $ly = $r.Top + [int](($r.Bottom - $r.Top) * $LeftClickY)
+    Write-Host "left-click at $lx,$ly"
+    [WinShot]::Click($lx, $ly)
+    Start-Sleep -Milliseconds 1500
 }
 
 if ($RightClickX -gt 0) {
