@@ -186,6 +186,28 @@
     </Border>
 
     <!-- content -->
-    <ContentControl Grid.Column="1" Content="{Binding CurrentPage}"/>
+    <Panel Grid.Column="1">
+      <ContentControl Content="{Binding CurrentPage}"/>
+
+      <!-- Unsaved-work guard: pages are rebuilt from the DB on every nav click, so leaving
+           used to destroy in-memory edits without a word. Nothing navigates until this is
+           answered. -->
+      <Border IsVisible="{Binding LeaveArmed}" VerticalAlignment="Top" HorizontalAlignment="Center"
+              Background="{StaticResource MlSurfaceCard}" BorderBrush="{StaticResource MlWarn}"
+              BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,14,0,0"
+              BoxShadow="0 10 30 #90000000">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="{Binding LeavePrompt}" VerticalAlignment="Center"
+                     Foreground="{StaticResource MlTextHeading}" FontSize="13" TextWrapping="Wrap"
+                     MaxWidth="420"/>
+          <Button Classes="ml-primary ml-go" Content="Save &amp; go" FontSize="12"
+                  Command="{Binding SaveAndLeaveCommand}"/>
+          <Button Classes="ml-secondary" Content="Discard &amp; go" FontSize="12"
+                  Command="{Binding DiscardAndLeaveCommand}"/>
+          <Button Classes="ml-ghost" Content="Stay" FontSize="12"
+                  Command="{Binding DismissLeaveCommand}"/>
+        </StackPanel>
+      </Border>
+    </Panel>
   </Grid>
 </Window>

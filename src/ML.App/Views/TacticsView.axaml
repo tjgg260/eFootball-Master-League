@@ -35,6 +35,10 @@
     </Style>
   </UserControl.Styles>
 
+  <!-- The root is a Panel purely so DragLayer can float the drag ghost and the drop-target
+       highlight OVER the whole screen: a drag crosses from the rail's Substitutes list onto the
+       pitch and back, so its chrome can't live inside either one. It never takes input. -->
+  <Panel>
   <DockPanel Margin="18,12">
 
     <!-- ── top: the game's pill tab bar + Save (its Done button) ─────────────────── -->
@@ -55,9 +59,21 @@
               HorizontalAlignment="Right" VerticalAlignment="Center"/>
     </Grid>
 
-    <!-- ── bottom: status toast (the game's centre-pitch toasts land here) ───────── -->
-    <TextBlock DockPanel.Dock="Bottom" Text="{Binding SaveStatus}" Foreground="#9FE6B4"
-               FontSize="12" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+    <!-- ── bottom: status strip (the game's centre-pitch toasts land here) ────────
+         Two things share the one strip, and neither is decoration:
+           · the unsaved-work chip — "you have work to lose" said HERE, before the shell has
+             to ask on the way out (it is the same sentence the leave prompt uses);
+           · the status line itself, which now carries a SEVERITY. A refusal used to look
+             exactly like a success because everything was assistant-green. -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10"
+                HorizontalAlignment="Center" Margin="0,8,0,0">
+      <Border Classes="ml-chip ml-warn" IsVisible="{Binding IsDirty}"
+              ToolTip.Tip="Save writes your XI, the shape, positions, playstyles and match duties into your career.">
+        <TextBlock Text="{Binding DirtyChip}" TextWrapping="Wrap" MaxWidth="330"/>
+      </Border>
+      <TextBlock Text="{Binding SaveStatus}" Foreground="{Binding StatusBrush}"
+                 FontSize="12" TextWrapping="Wrap" MaxWidth="860" VerticalAlignment="Center"/>
+    </StackPanel>
 
     <!-- ── right rail: crest, exactly as the game frames it ──────────────────────── -->
     <StackPanel DockPanel.Dock="Right" Width="185" Margin="12,0,0,0" Spacing="8">
@@ -150,12 +166,21 @@
                       Classes="ml-secondary" FontSize="12" FontWeight="SemiBold" Padding="12,7"/>
             </StackPanel>
             <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                       Text="Click a player to edit his position &amp; playstyle below. To move players, select one, press ⇄ Swap, then click his partner. Right-click anyone — yours, a sub or the opponent — for the full menu; double-tap a sub to bring him on."/>
+                       Text="Click a player to edit his position &amp; playstyle below. Right-click anyone — yours, a sub or the opponent — for the full menu; double-tap a sub to bring him on. Prefer keys to a mouse? Select one, press ⇄ Swap, then click his partner."/>
+            <!-- the drag hint follows the screen, not the Set Formation menu: dragging is live
+                 here on Lineup too, and nothing used to say so -->
+            <TextBlock Text="{Binding DragHint}" Classes="ml-muted" FontSize="10"
+                       TextWrapping="Wrap" IsVisible="{Binding DragEnabled}"/>
 
-            <!-- the ONE Substitutes list: click-to-swap, INJ/TIRED flagged, never clipped -->
+            <!-- the ONE Substitutes list: click-to-swap, INJ/TIRED flagged, never clipped.
+                 Bench ORDER is who comes on first, so a row can be dragged up and down it —
+                 and the right-click menu carries ▲/▼ for the no-drag path. -->
             <TextBlock Text="Substitutes" Classes="ml-label"/>
             <TextBlock Classes="ml-muted" Text="No substitutes — every fit player is already in the XI."
                        IsVisible="{Binding BenchEmpty}" TextWrapping="Wrap"/>
+            <TextBlock Classes="ml-muted" FontSize="10" TextWrapping="Wrap"
+                       IsVisible="{Binding !BenchEmpty}"
+                       Text="Top of the list comes on first. Drag a sub up or down to reorder — or right-click for ▲/▼, or Alt+↑ / Alt+↓. The order saves with your XI."/>
             <ListBox x:Name="BenchList" ItemsSource="{Binding Bench}"
                      SelectedItem="{Binding PickBench}"
                      Background="Transparent" BorderThickness="0">
@@ -224,14 +249,58 @@
                        Margin="0,6,0,0"/>
             <ComboBox ItemsSource="{Binding SecondaryRoles}"
                       SelectedItem="{Binding SelectedSecondaryRole}" HorizontalAlignment="Stretch"/>
-            <Button Content="⚡ Auto-assign roles (AI)" Command="{Binding AutoAssignRolesCommand}"
+            <!-- armed, then fired: this rewrites BOTH roles of EVERY player in the squad,
+                 hand-set ones included, and there is no undo -->
+            <Button Content="{Binding AutoRolesLabel}" Command="{Binding AutoAssignRolesCommand}"
                     Classes="ml-secondary" HorizontalAlignment="Stretch" Margin="0,8,0,2"
-                    ToolTip.Tip="Fills every player's in- and out-of-possession role from their attributes and your team playstyle."/>
+                    ToolTip.Tip="Fills every player's in- and out-of-possession role from their attributes and your team playstyle. It overwrites the ones you set by hand, so it asks once first."/>
           </StackPanel>
         </ScrollViewer>
 
-        <!-- TACTICS: the game's own menu tree -->
-        <StackPanel IsVisible="{Binding ShowTacticsTab}">
+        <!-- TACTICS: the game's own menu tree. A ScrollViewer like its two sibling sections —
+             the selected-player card above the tree costs height the fixed rail doesn't have. -->
+        <ScrollViewer IsVisible="{Binding ShowTacticsTab}">
+        <StackPanel>
+
+          <!-- Who you just clicked. The pitch is interactive on this tab too, but the rail used
+               to show nothing at all here — so a click on a token looked dead. The Registered
+               position picker rides along wherever dragging is live, because that is exactly
+               where the shape and the LABEL can start disagreeing. -->
+          <Border Classes="ml-card" Padding="10" Margin="0,0,0,10"
+                  IsVisible="{Binding HasSelectedPlayer}">
+            <StackPanel Spacing="6">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Border Width="42" Height="42" CornerRadius="6" ClipToBounds="True"
+                        Background="{Binding SelectedPlayer.Fill}">
+                  <Panel>
+                    <TextBlock Text="{Binding SelectedPlayer.Position}" Foreground="White"
+                               FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                    <Image Source="{Binding SelectedPlayer.Portrait}" Stretch="UniformToFill"
+                           IsVisible="{Binding SelectedPlayer.HasPortrait}"/>
+                  </Panel>
+                </Border>
+                <StackPanel VerticalAlignment="Center" Spacing="1">
+                  <TextBlock Text="{Binding SelectedPlayer.Name}" Classes="ml-body"
+                             FontWeight="Bold" Foreground="{StaticResource MlTextHeading}"
+                             TextWrapping="Wrap" MaxWidth="150"/>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding SelectedPlayer.Position}" Classes="ml-label"
+                               VerticalAlignment="Bottom"/>
+                    <TextBlock Text="{Binding SelectedPlayer.Grade}"
+                               Foreground="{Binding SelectedPlayer.RatingBrush}"
+                               FontSize="18" FontWeight="Bold"/>
+                  </StackPanel>
+                </StackPanel>
+              </StackPanel>
+              <TextBlock Text="Registered position" Classes="ml-muted" FontSize="10"
+                         IsVisible="{Binding DragEnabled}"/>
+              <ComboBox ItemsSource="{Binding PositionChoices}"
+                        SelectedItem="{Binding SelectedPosition}" HorizontalAlignment="Stretch"
+                        IsVisible="{Binding DragEnabled}"/>
+            </StackPanel>
+          </Border>
+
           <TextBlock Classes="menuTitle" Text="{Binding MenuTitle}"/>
 
           <!-- root: Set Formation / Team Playstyle / Individual Instructions / Sub-Tactic -->
@@ -273,10 +342,10 @@
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
-            <!-- the drag hint only appears while dragging is actually enabled -->
-            <TextBlock Text="Drag players on the pitch to edit positions. The shape saves to YOUR club's own formation records."
-                       Classes="ml-muted" FontSize="10" TextWrapping="Wrap"
-                       IsVisible="{Binding DragEnabled}"/>
+            <!-- the drag hint appears wherever dragging is live, and says what a drop MEANS on
+                 this screen (here it also moves the shape; on Lineup it only swaps) -->
+            <TextBlock Text="{Binding DragHint}" Classes="ml-muted" FontSize="10"
+                       TextWrapping="Wrap" IsVisible="{Binding DragEnabled}"/>
             <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
           </StackPanel>
 
@@ -294,24 +363,94 @@
             <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
           </StackPanel>
 
-          <!-- Individual Instructions -->
+          <!-- Individual Instructions. Each slot is a PAIRING — the instruction and the man
+               carrying it. Four bare combos named nobody, so there was no way to say who was
+               anchoring or man-marking; the picker beside each one is your XI, by surname with
+               his position and letter grade. ✕ takes the man off without clearing the
+               instruction. Both halves write through the moment they change. -->
           <StackPanel IsVisible="{Binding ShowInstructions}" Spacing="4">
+            <TextBlock Text="{x:Static vm:TacticsViewModel.InstrWhoNote}" Classes="ml-muted"
+                       FontSize="10" TextWrapping="Wrap" Margin="0,0,0,2"/>
             <Border Classes="ml-card"><StackPanel Spacing="3">
               <TextBlock Text="Attack1" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding AttackInstrNames}" SelectedItem="{Binding Attack1}"
-                        HorizontalAlignment="Stretch"/></StackPanel></Border>
+                        HorizontalAlignment="Stretch"/>
+              <TextBlock Text="Who carries it" Classes="ml-muted" FontSize="10"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Attack1Player}"
+                          HorizontalAlignment="Stretch"
+                          PlaceholderText="Nobody yet — pick a starter">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PitchPlayer">
+                      <TextBlock Text="{Binding PickerLine}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="1" Content="✕" Classes="ml-ghost" FontSize="10" Padding="7,1"
+                        Margin="4,0,0,0" VerticalAlignment="Center"
+                        Command="{Binding ClearInstructionPlayerCommand}" CommandParameter="attack1"
+                        ToolTip.Tip="Take the man off this instruction"/>
+              </Grid></StackPanel></Border>
             <Border Classes="ml-card"><StackPanel Spacing="3">
               <TextBlock Text="Attack2" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding AttackInstrNames}" SelectedItem="{Binding Attack2}"
-                        HorizontalAlignment="Stretch"/></StackPanel></Border>
+                        HorizontalAlignment="Stretch"/>
+              <TextBlock Text="Who carries it" Classes="ml-muted" FontSize="10"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Attack2Player}"
+                          HorizontalAlignment="Stretch"
+                          PlaceholderText="Nobody yet — pick a starter">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PitchPlayer">
+                      <TextBlock Text="{Binding PickerLine}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="1" Content="✕" Classes="ml-ghost" FontSize="10" Padding="7,1"
+                        Margin="4,0,0,0" VerticalAlignment="Center"
+                        Command="{Binding ClearInstructionPlayerCommand}" CommandParameter="attack2"
+                        ToolTip.Tip="Take the man off this instruction"/>
+              </Grid></StackPanel></Border>
             <Border Classes="ml-card"><StackPanel Spacing="3">
               <TextBlock Text="Defence1" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding DefenceInstrNames}" SelectedItem="{Binding Defence1}"
-                        HorizontalAlignment="Stretch"/></StackPanel></Border>
+                        HorizontalAlignment="Stretch"/>
+              <TextBlock Text="Who carries it" Classes="ml-muted" FontSize="10"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Defence1Player}"
+                          HorizontalAlignment="Stretch"
+                          PlaceholderText="Nobody yet — pick a starter">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PitchPlayer">
+                      <TextBlock Text="{Binding PickerLine}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="1" Content="✕" Classes="ml-ghost" FontSize="10" Padding="7,1"
+                        Margin="4,0,0,0" VerticalAlignment="Center"
+                        Command="{Binding ClearInstructionPlayerCommand}" CommandParameter="defence1"
+                        ToolTip.Tip="Take the man off this instruction"/>
+              </Grid></StackPanel></Border>
             <Border Classes="ml-card"><StackPanel Spacing="3">
               <TextBlock Text="Defence2" Classes="ml-label"/>
               <ComboBox ItemsSource="{Binding DefenceInstrNames}" SelectedItem="{Binding Defence2}"
-                        HorizontalAlignment="Stretch"/></StackPanel></Border>
+                        HorizontalAlignment="Stretch"/>
+              <TextBlock Text="Who carries it" Classes="ml-muted" FontSize="10"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Defence2Player}"
+                          HorizontalAlignment="Stretch"
+                          PlaceholderText="Nobody yet — pick a starter">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PitchPlayer">
+                      <TextBlock Text="{Binding PickerLine}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="1" Content="✕" Classes="ml-ghost" FontSize="10" Padding="7,1"
+                        Margin="4,0,0,0" VerticalAlignment="Center"
+                        Command="{Binding ClearInstructionPlayerCommand}" CommandParameter="defence2"
+                        ToolTip.Tip="Take the man off this instruction"/>
+              </Grid></StackPanel></Border>
             <TextBlock Text="{x:Static vm:TacticsViewModel.InstrNote}" Classes="ml-muted"
                        FontSize="10" TextWrapping="Wrap"/>
             <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
@@ -332,6 +471,7 @@
             <Button Classes="menuItem" Content="‹ Back" Command="{Binding BackMenuCommand}"/>
           </StackPanel>
         </StackPanel>
+        </ScrollViewer>
 
         <!-- TEAM: In-Match Roles (armband + set pieces, all compiled) -->
         <ScrollViewer IsVisible="{Binding ShowTeam}">
@@ -492,7 +632,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <!-- YOUR tokens (left half; drag only on Set Formation) -->
+            <!-- YOUR tokens (left half; draggable on Lineup and on Set Formation) -->
             <ItemsControl ItemsSource="{Binding Players}" Width="720" Height="430">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><Canvas Width="720" Height="430"/></ItemsPanelTemplate>
@@ -527,8 +667,13 @@
                       <TextBlock Text="✚" Foreground="#FF5B5B" FontSize="10" FontWeight="Bold"
                                  HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1,-1,0,0"
                                  IsVisible="{Binding ShowInjury}"/>
+                      <!-- drop-target wash: he is what the drag would land on right now -->
+                      <Ellipse Width="42" Height="42" Fill="{Binding HoverBrush}"/>
                     </Panel>
+                    <!-- selection outline: TRANSPARENT rather than zero-width when unselected,
+                         so picking a player can never nudge the token's layout by a pixel -->
                     <Border Background="#E0000000" CornerRadius="3" Padding="4,1"
+                            BorderBrush="{Binding SelBrush}" BorderThickness="1"
                             HorizontalAlignment="Center" IsHitTestVisible="False">
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding Position}" Foreground="#C7CEDA" FontSize="8"
@@ -537,7 +682,7 @@
                                    FontSize="8" FontWeight="Bold" VerticalAlignment="Center"/>
                       </StackPanel>
                     </Border>
-                    <TextBlock Text="{Binding Surname}" Foreground="White" FontSize="9"
+                    <TextBlock Text="{Binding Surname}" Foreground="{Binding NameBrush}" FontSize="9"
                                HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="52"
                                TextTrimming="CharacterEllipsis" IsHitTestVisible="False"/>
                   </StackPanel>
@@ -587,6 +732,21 @@
       <TextBlock Text="{Binding PitchCaption}" Classes="ml-muted"
                  HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
 
+      <!-- Geometry and the position LABEL stay independent — that separation is deliberate and
+           worth keeping. What was missing is the SENTENCE: a drop into a zone the label
+           disagrees with now says so and OFFERS the change. It is never applied silently. -->
+      <Border Classes="ml-card" Padding="12,10" MaxWidth="724"
+              IsVisible="{Binding HasZoneOffer}">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="{Binding ZoneOffer}" Classes="ml-body" TextWrapping="Wrap"
+                     MaxWidth="430" VerticalAlignment="Center"/>
+          <Button Content="{Binding ZoneOfferAccept}" Command="{Binding AcceptZoneOfferCommand}"
+                  Classes="ml-primary" FontSize="12" Padding="14,7" VerticalAlignment="Center"/>
+          <Button Content="{Binding ZoneOfferKeep}" Command="{Binding DismissZoneOfferCommand}"
+                  Classes="ml-ghost" FontSize="12" Padding="14,7" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+
       <!-- Team Playstyle detail: the game's "Player Movement" pages, verbatim -->
       <Border Classes="ml-panel" Padding="14" MaxWidth="724" IsVisible="{Binding ShowPlaystyle}">
         <ScrollViewer MaxHeight="180">
@@ -609,4 +769,9 @@
       </Border>
     </StackPanel>
   </DockPanel>
+
+    <!-- drag chrome only: the ghost that follows the pointer and the drop-target box. Populated
+         from code-behind (TacticsView.axaml.cs) and never hit-testable. -->
+    <Canvas x:Name="DragLayer" IsHitTestVisible="False"/>
+  </Panel>
 </UserControl>

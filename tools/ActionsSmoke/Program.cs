@@ -119,6 +119,16 @@ Console.WriteLine("\njob offers (new decline)");
 Check("honest about an offer that isn't there",
     s.DeclineJobOffer(rival.Id).Contains("no longer on the table"), s.DeclineJobOffer(rival.Id));
 
+Console.WriteLine("\nindividual instructions (new: they can name a player)");
+s.SetInstruction("attack1", "Anchor Man", me.Id);
+Check("name survives", s.InstructionOf("attack1") == "Anchor Man", s.InstructionOf("attack1"));
+Check("player survives", s.InstructionPlayerOf("attack1") == me.Id, $"{s.InstructionPlayerOf("attack1")}");
+s.SetInstruction("attack1", "Anchor Man");
+Check("no player = no orphan id", s.InstructionPlayerOf("attack1") == 0);
+Check("bare name still reads", s.InstructionOf("attack1") == "Anchor Man");
+s.SetInstruction("attack2", "Off");
+Check("cleared slot is clean", s.InstructionOf("attack2") == "Off" && s.InstructionPlayerOf("attack2") == 0);
+
 Console.WriteLine("\nidentity kept for the screens that lost it");
 var reps = s.MyMatchReportsWithIds(3);
 Check("match reports carry a fixture id", reps.Count == 0 || reps.All(r => r.FixtureId > 0),

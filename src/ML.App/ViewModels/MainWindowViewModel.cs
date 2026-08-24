@@ -74,18 +74,10 @@ public partial class MainWindowViewModel : ObservableObject
     {
         var item = Pages.FirstOrDefault(p => p.Title == pageTitle);
         if (item is null) return;
-        try
-        {
-            var page = item.Build(_session);
-            if (focus is not null && page is IFocusTarget f) f.Focus(focus);
-            CurrentPage = page;
-            MarkActive(item);
-            RefreshShell();
-        }
-        catch (Exception ex)
-        {
-            Program.Log($"Nav -> {pageTitle}", ex);
-        }
+        // The shared context menu offers "View profile" and "Set training" beside "Swap with X",
+        // so this path is the easiest way to walk out on unsaved work — it must be guarded too.
+        if (!ClearToLeave(() => GoTo(item, focus))) return;
+        GoTo(item, focus);
     }
 
     public string ClubName { get; }
@@ -151,9 +143,17 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void Navigate(NavItem item)
     {
+        if (!ClearToLeave(() => GoTo(item, null))) return;
+        GoTo(item, null);
+    }
+
+    private void GoTo(NavItem item, EntityRef? focus)
+    {
         try
         {
-            CurrentPage = item.Build(_session);
+            var page = item.Build(_session);
+            if (focus is not null && page is IFocusTarget f) f.Focus(focus);
+            CurrentPage = page;
             MarkActive(item);
             RefreshShell();   // badges follow you around the app
         }
@@ -162,6 +162,53 @@ public partial class MainWindowViewModel : ObservableObject
             // A page that fails to build must not take the whole app down — log it and stay put.
             Program.Log($"Navigate -> {item.Title}", ex);
         }
+    }
+
+    // ---- the unsaved-work guard -------------------------------------------------
+    // Pages are rebuilt from the DB on every nav click, so leaving a page with unsaved
+    // edits destroyed them silently. Any page that can hold unsaved work says so through
+    // PageViewModel.IsDirty and the shell asks before it throws the work away.
+
+    [ObservableProperty] private bool _leaveArmed;
+    [ObservableProperty] private string _leavePrompt = "";
+    private Action? _pendingLeave;
+
+    /// <summary>True when it is safe to leave now. False parks the trip until the user answers.</summary>
+    private bool ClearToLeave(Action resume)
+    {
+        if (CurrentPage is not { IsDirty: true } dirty) { DismissLeave(); return true; }
+        _pendingLeave = resume;
+        LeavePrompt = dirty.DirtySummary is { Length: > 0 } s
+            ? $"⚠ {s} — leaving loses it."
+            : "⚠ Unsaved changes — leaving loses them.";
+        LeaveArmed = true;
+        return false;
+    }
+
+    [RelayCommand]
+    private void SaveAndLeave()
+    {
+        (CurrentPage as ISaveablePage)?.SaveNow();
+        var go = _pendingLeave;
+        DismissLeave();
+        go?.Invoke();
+    }
+
+    [RelayCommand]
+    private void DiscardAndLeave()
+    {
+        // The resume is GoTo, which does not re-check — the user has answered, so it just goes.
+        var go = _pendingLeave;
+        DismissLeave();
+        go?.Invoke();
+    }
+
+    [RelayCommand]
+    private void DismissLeave()
+    {
+        LeaveArmed = false;
+        LeavePrompt = "";
+        _pendingLeave = null;
     }
 
     [RelayCommand]
@@ -223,4 +270,21 @@ public abstract class PageViewModel : ObservableObject
 {
     public abstract string Title { get; }
     public abstract string Icon { get; }
+
+    /// <summary>
+    /// True while the page holds edits that only exist in memory. The shell asks before it
+    /// rebuilds the page (which is how unsaved work used to disappear without a word).
+    /// Set by the page; cleared by its own save.
+    /// </summary>
+    public virtual bool IsDirty => false;
+
+    /// <summary>What would be lost, in words — "3 unsaved changes", "an unsaved formation".</summary>
+    public virtual string DirtySummary => "";
+
+}
+
+/// <summary>A page whose unsaved work the shell can commit on the user's behalf.</summary>
+public interface ISaveablePage
+{
+    void SaveNow();
 }

@@ -57,6 +57,11 @@ Add-Type -AssemblyName System.Drawing
 Add-Type -Path (Join-Path $PSScriptRoot "WinShot.cs") -ReferencedAssemblies System.Drawing
 [void][WinShot]::MakeDpiAware()
 
+# Park the cursor in the corner before the window is raised. A previous run can leave it sitting
+# on a pitch token, and the app then opens underneath it and reads the pointer as a real gesture —
+# which shows up as edits the screenshot never made.
+[void][WinShot]::SetCursorPos(5, 5)
+
 $proc.Refresh()
 $h = $proc.MainWindowHandle
 if ($h -eq [IntPtr]::Zero) { Write-Host "no main window handle - is a modal open?" }

@@ -232,10 +232,48 @@ public sealed partial class Session
 
     // Individual Instructions (Game Plan replica). Planning state only: the game reads these
     // from the user save, not team data, so they are NOT compiled — see docs/tactics-menu-map.md.
-    public string InstructionOf(string slot) => GetMeta($"instr_{slot}_{CurrentTeamId}") ?? "Off";
+    //
+    // One meta key per slot, holding "name|pid" — an instruction is nothing without the man
+    // carrying it, so the id of the anchoring/man-marking player rides along with the name.
+    // That encoding is SHARED WITH ML.Web (Pages/Tactics.razor.cs), which writes and reads the
+    // same string, so a slot set in either front-end renders the same in the other. A bare name
+    // with no "|pid" tail is the legal "nobody named" form and is what older saves hold, so
+    // reads accept bare, encoded and outright malformed values without ever throwing.
 
-    public void SetInstruction(string slot, string name) =>
-        SetMeta($"instr_{slot}_{CurrentTeamId}", name);
+    /// <summary>
+    /// The instruction on a slot, name only ("Off" when the slot is empty) — any "|pid" tail is
+    /// parsed off, so callers that only care what the instruction IS need know nothing about the
+    /// encoding.
+    /// </summary>
+    public string InstructionOf(string slot)
+    {
+        var raw = GetMeta($"instr_{slot}_{CurrentTeamId}");
+        if (string.IsNullOrEmpty(raw)) return "Off";
+        var bar = raw.IndexOf('|');
+        var name = bar < 0 ? raw : raw[..bar];
+        return name.Length > 0 ? name : "Off";
+    }
+
+    /// <summary>
+    /// The player carrying a slot's instruction, or 0 when the slot names nobody — which covers
+    /// an empty slot, a save written before ids were stored, and a tail that is simply junk.
+    /// </summary>
+    public long InstructionPlayerOf(string slot)
+    {
+        var raw = GetMeta($"instr_{slot}_{CurrentTeamId}");
+        if (string.IsNullOrEmpty(raw)) return 0;
+        var bar = raw.IndexOf('|');
+        if (bar < 0 || bar + 1 >= raw.Length) return 0;
+        return long.TryParse(raw[(bar + 1)..], out var pid) && pid > 0 ? pid : 0;
+    }
+
+    /// <summary>
+    /// Pin an instruction to a slot and to the man who carries it. Stores "name|pid" when a
+    /// player is named, and the bare name otherwise — so clearing a slot back to "Off" leaves no
+    /// orphan id behind, and a save that never named anyone keeps the exact shape it had.
+    /// </summary>
+    public void SetInstruction(string slot, string name, long playerId = 0) =>
+        SetMeta($"instr_{slot}_{CurrentTeamId}", playerId > 0 ? $"{name}|{playerId}" : name);
 
     // ------------------------------------------------------------------ captain / release / list
 
