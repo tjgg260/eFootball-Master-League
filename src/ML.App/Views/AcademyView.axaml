@@ -69,8 +69,8 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
-          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="71"/>
+          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="76"/>
           <DataGridTemplateColumn Header="Rating" Width="78">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:AcademyEntry">
@@ -115,8 +115,8 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
-          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="71"/>
+          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="76"/>
           <DataGridTemplateColumn Header="Rating" Width="78">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:YouthEntry">
@@ -133,7 +133,7 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Where he's at" Binding="{Binding Readiness}" Width="130"/>
+          <DataGridTextColumn Header="Where he's at" Binding="{Binding Readiness}" Width="141"/>
         </DataGrid.Columns>
       </DataGrid>
 

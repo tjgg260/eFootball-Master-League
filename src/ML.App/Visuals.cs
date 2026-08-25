@@ -88,13 +88,22 @@ public static class Visuals
         return ($"{words[0][0]}{words[^1][0]}").ToUpperInvariant();
     }
 
-    /// <summary>Player mark from a surname — the last word's first two letters, e.g. "Zdjelar" -> "ZD".</summary>
+    /// <summary>
+    /// The two letters standing in for a player with no portrait: his initials, first name and
+    /// surname — "Charlie Stevens" -> CS, "Ben Gannon-Doak" -> BG. One name only (a Brazilian,
+    /// or a bench token that carries the surname alone) falls back to its first two letters.
+    ///
+    /// It used to take the surname's first two letters for everyone, which collided constantly:
+    /// a U21 list showed Charlie STevens directly above Liam STokoe wearing the same badge, and
+    /// the point of the mark is to tell one row from the next at a glance.
+    /// </summary>
     public static string PlayerMark(string name)
     {
         var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var surname = words.Length > 0 ? words[^1] : name;
-        return surname.Length >= 2 ? surname[..2].ToUpperInvariant()
-             : surname.ToUpperInvariant();
+        if (words.Length == 0) return "?";
+        if (words.Length >= 2) return $"{words[0][0]}{words[^1][0]}".ToUpperInvariant();
+        var only = words[0];
+        return only.Length >= 2 ? only[..2].ToUpperInvariant() : only.ToUpperInvariant();
     }
 
     /// <summary>

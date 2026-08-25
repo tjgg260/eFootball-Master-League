@@ -114,6 +114,11 @@ public sealed record SquadEntry
     public IBrush RatingBrush => Knowledge >= 75 ? Visuals.RatingBrush(Rating) : Visuals.Brush("#8A93A2");
     public IBrush ConditionBrush => Fatigue < 20 ? CondGreen : Fatigue < 40 ? CondAmber : CondRed;
 
+    /// <summary>What the fitness dot means, in words. A coloured circle with no reading is a
+    /// puzzle: green/amber/red could be form, morale, contract or match sharpness.</summary>
+    public string ConditionLabel => Fatigue < 20 ? "Fresh"
+        : Fatigue < 40 ? "Carrying a few miles" : "Needs a rest";
+
     /// <summary>
     /// Still injured FOR THE MATCH IN QUESTION — the single truth behind the red badge, the
     /// Injured chip and the Absence line.

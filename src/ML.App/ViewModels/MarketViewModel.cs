@@ -222,8 +222,10 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
 
     [ObservableProperty] private string _selectedBid = "Market value";
     [ObservableProperty] private string _windowLine = "";
+    // It said "click one for the full profile", and a click does no such thing — it selects the
+    // row and fills the rail. The full profile is a double-click, or the button on the rail.
     [ObservableProperty] private string _signStatus =
-        "Search the world's players — click one for the full profile. Fees are real.";
+        "Search the world's players — double-click one to open him. Fees are real.";
 
     // --- async requery (P6): the 376k-row read happens off the UI thread ------------
     // Rows only ever mutate on the UI thread; a generation counter drops stale results
@@ -919,6 +921,14 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             Negotiating = false;
             DealAgreed = false;
         }
+    }
+
+    /// <summary>Leave the rail for the real screen. Same destination as double-clicking the row.</summary>
+    [RelayCommand]
+    private void OpenProfile()
+    {
+        if (Subject is not { } p) { SignStatus = "Pick a player first."; return; }
+        Nav.Go("Player", EntityRef.Player(p.Id, p.Name));
     }
 
     [RelayCommand]

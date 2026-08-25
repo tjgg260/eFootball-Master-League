@@ -103,7 +103,7 @@
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-            <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="66"/>
+            <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="71"/>
             <!-- The letter sharpens with what you know: a price-implied band while he is
                  unscouted, "B?" once part-scouted, the true grade when he is well scouted or
                  yours. The tooltip says which of the three you are looking at. -->
@@ -116,7 +116,7 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-            <DataGridTextColumn Header="Age" Binding="{Binding AgeLabel}" Width="60"/>
+            <DataGridTextColumn Header="Age" Binding="{Binding AgeLabel}" Width="71"/>
             <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="132"/>
             <DataGridTemplateColumn Header="" Width="98">
               <DataGridTemplateColumn.CellTemplate>
@@ -162,11 +162,17 @@
       <!-- the profile card: click a row, see the player -->
       <Border Grid.Column="1" Classes="ml-panel" Margin="12,0,0,0">
         <Panel>
-          <TextBlock Classes="ml-muted" Text="Select a player to open the full profile"
+          <TextBlock Classes="ml-muted" Text="Pick a player from the list and he appears here."
                      HorizontalAlignment="Center" VerticalAlignment="Center"
                      IsVisible="{Binding !HasProfile}"/>
           <ScrollViewer IsVisible="{Binding HasProfile}">
             <StackPanel Spacing="8">
+              <!-- The way OUT of the rail, at the top where the decision is made. Double-click on
+                   the row does the same thing, but a keyboard shortcut nobody is told about is
+                   not an affordance — and this rail is a preview, not the profile. -->
+              <Button Content="⤢ Open full profile" Command="{Binding OpenProfileCommand}"
+                      Classes="ml-secondary" HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center"/>
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <Border Width="64" Height="64" CornerRadius="8" ClipToBounds="True"
                         Background="{Binding ProfileFill}">

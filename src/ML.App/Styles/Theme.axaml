@@ -156,9 +156,18 @@
     <Setter Property="FontSize" Value="11"/>
     <Setter Property="FontWeight" Value="Bold"/>
     <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
-    <Setter Property="Padding" Value="6,4"/>
+    <!-- Asymmetric on purpose. The Fluent header template lays out a sort-arrow slot and a
+         resize gripper to the RIGHT of the content whether or not the column is sorted, so a
+         symmetric padding loses those pixels off the end of the word: "Age" rendered as "Ag",
+         "Rating" with the g sliced down the middle, on every grid in the app. Giving the right
+         side back its 4px is what makes a three-letter header fit a narrow column. -->
+    <Setter Property="Padding" Value="6,4,2,4"/>
     <Setter Property="MinHeight" Value="30"/>
     <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <!-- A header that still cannot fit says so on hover rather than lying by truncation. -->
+  <Style Selector="DataGridColumnHeader /template/ ContentPresenter">
+    <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis"/>
   </Style>
   <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
     <Setter Property="Fill" Value="{StaticResource MlPrimary}"/>

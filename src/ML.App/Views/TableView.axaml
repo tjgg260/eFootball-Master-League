@@ -70,14 +70,14 @@
           </DataTemplate>
         </DataGridTemplateColumn.CellTemplate>
       </DataGridTemplateColumn>
-      <DataGridTextColumn Header="P" Binding="{Binding P}" Width="46"/>
-      <DataGridTextColumn Header="W" Binding="{Binding W}" Width="46"/>
-      <DataGridTextColumn Header="D" Binding="{Binding D}" Width="46"/>
-      <DataGridTextColumn Header="L" Binding="{Binding L}" Width="46"/>
-      <DataGridTextColumn Header="GF" Binding="{Binding GF}" Width="46"/>
-      <DataGridTextColumn Header="GA" Binding="{Binding GA}" Width="46"/>
-      <DataGridTextColumn Header="GD" Binding="{Binding GD}" Width="46"/>
-      <DataGridTextColumn Header="Pts" Binding="{Binding Pts}" Width="56"/>
+      <DataGridTextColumn Header="P" Binding="{Binding P}" Width="57"/>
+      <DataGridTextColumn Header="W" Binding="{Binding W}" Width="57"/>
+      <DataGridTextColumn Header="D" Binding="{Binding D}" Width="57"/>
+      <DataGridTextColumn Header="L" Binding="{Binding L}" Width="57"/>
+      <DataGridTextColumn Header="GF" Binding="{Binding GF}" Width="64"/>
+      <DataGridTextColumn Header="GA" Binding="{Binding GA}" Width="64"/>
+      <DataGridTextColumn Header="GD" Binding="{Binding GD}" Width="64"/>
+      <DataGridTextColumn Header="Pts" Binding="{Binding Pts}" Width="71"/>
     </DataGrid.Columns>
     </DataGrid>
   </DockPanel>

@@ -60,7 +60,7 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="100"/>
-          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
+          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="71"/>
           <DataGridTemplateColumn Header="Rating" Width="78">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:TrainingRow">
@@ -70,9 +70,9 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTextColumn Header="Personality" Binding="{Binding Personality}" Width="130"/>
-          <DataGridTextColumn Header="Det" Binding="{Binding Determination}" Width="60"/>
+          <DataGridTextColumn Header="Det" Binding="{Binding Determination}" Width="71"/>
           <DataGridTextColumn Header="Focus" Binding="{Binding Focus}" Width="120"/>
-          <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="94"/>
+          <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="106"/>
           <DataGridTemplateColumn Header="Skills" Width="220">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:TrainingRow">
