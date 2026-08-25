@@ -160,6 +160,16 @@
 
     <!-- player card -->
     <Border Grid.Column="1" Margin="16,0,0,0" Classes="ml-panel" Padding="18">
+      <DockPanel>
+      <!-- THE ANSWER LIVES HERE, docked and outside the scroller.
+           It used to be three copies INSIDE the scroll, and on the default tab the visible one
+           sat at roughly y=2,520 of a 2,550px column — 3.4 screens below the fold. Every verb on
+           this screen reports through SquadStatus, including all twelve items of the shared
+           right-click menu, so choosing "Praise" looked like the app had done nothing at all.
+           A verb's answer must appear where the verb was. -->
+      <TextBlock DockPanel.Dock="Bottom" Text="{Binding SquadStatus}" FontSize="12"
+                 Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"
+                 Margin="0,10,0,0"/>
       <Panel>
         <TextBlock Text="Select a player" Classes="ml-muted" FontSize="14"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -381,7 +391,6 @@
                   </WrapPanel>
                   <TextBlock Text="{Binding PinnedName, StringFormat='Comparing against {0} (dashed blue)'}"
                              FontSize="11" Foreground="{DynamicResource MlPrimary}" IsVisible="{Binding HasPinned}"/>
-                  <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"/>
                 </StackPanel>
               </TabItem>
 
@@ -433,11 +442,6 @@
                         </StackPanel>
                       </StackPanel>
                     </Border>
-                    <!-- every command on this tab answers through SquadStatus (the renewal's
-                         "click again", the agent's last word, a refusal the club can't afford),
-                         and until this line existed none of it was visible on the Contract tab -->
-                    <TextBlock Text="{Binding SquadStatus}" FontSize="11"
-                               Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"/>
                   </StackPanel>
                 </StackPanel>
               </TabItem>
@@ -462,8 +466,7 @@
                       <!-- two-step: a free transfer can't be undone, so the button asks once -->
                       <Button Content="{Binding ReleaseLabel}" Command="{Binding ReleaseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource MlDanger}"/>
                     </WrapPanel>
-                    <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"/>
-                  </StackPanel>
+                    </StackPanel>
                 </StackPanel>
               </TabItem>
 
@@ -477,6 +480,7 @@
           </StackPanel>
         </ScrollViewer>
       </Panel>
+      </DockPanel>
     </Border>
   </Grid>
 </UserControl>
