@@ -92,11 +92,11 @@
       <TextBlock Text="{Binding FacilitiesLine}" Classes="ml-body"/>
       <WrapPanel>
         <Button Content="💷 Request budget" Command="{Binding RequestBudgetCommand}" Margin="0,2,6,0"
-                Classes="ml-secondary" FontSize="12"/>
-        <Button Content="🏋 Upgrade training ground" Command="{Binding UpgradeTrainingCommand}" Margin="0,2,6,0"
-                Classes="ml-secondary" FontSize="12"/>
-        <Button Content="🎓 Upgrade academy" Command="{Binding UpgradeAcademyCommand}" Margin="0,2,6,0"
-                Classes="ml-secondary" FontSize="12"/>
+                Classes="ml-secondary" FontSize="12" ToolTip.Tip="{Binding RequestBudgetTip}"/>
+        <Button Content="{Binding UpgradeTrainingLabel}" Command="{Binding UpgradeTrainingCommand}"
+                Margin="0,2,6,0" Classes="ml-secondary" FontSize="12"/>
+        <Button Content="{Binding UpgradeAcademyLabel}" Command="{Binding UpgradeAcademyCommand}"
+                Margin="0,2,6,0" Classes="ml-secondary" FontSize="12"/>
       </WrapPanel>
       <TextBlock Text="{Binding LeverStatus}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"/>
     </StackPanel></Border>

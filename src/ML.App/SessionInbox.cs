@@ -94,10 +94,26 @@ public sealed partial class Session
     {
         var rows = new List<(long, string, string, long)>();
         using var cmd = Db.Connection.CreateCommand();
+        // ONLY MOVES THAT TOUCH THE CAREER'S OWN TWO DIVISIONS.
+        //
+        // THE BUG THIS REPLACES: the query was "ORDER BY t.rowid DESC LIMIT n" over the whole
+        // table. The seed imports the real world's transfer history — 26,040 rows on this save —
+        // and those land last, so a rail headed AROUND THE MARKET listed nine moves into
+        // "Skala 2", "Ormeau 21" and "Somerville Eagles 21": foreign reserve sides, from before
+        // the career began, presented as this week's news. The one genuine line (a signing by a
+        // Premier League club) sat on top of them and looked like more of the same.
+        //
+        // A career club at either end is what makes a transfer news to this manager — his
+        // rivals buying, or one of them selling abroad. The seeded history touches neither end.
         cmd.CommandText =
             "SELECT t.player_id, p.name, t.to_team_id, t.fee FROM transfers t " +
-            "JOIN players p ON p.id = t.player_id WHERE t.to_team_id IS NOT NULL " +
+            "JOIN players p ON p.id = t.player_id " +
+            "WHERE t.to_team_id IS NOT NULL AND (" +
+            "  EXISTS (SELECT 1 FROM teams x WHERE x.id = t.to_team_id   AND x.league_id IN ($l1,$l2))" +
+            "  OR EXISTS (SELECT 1 FROM teams y WHERE y.id = t.from_team_id AND y.league_id IN ($l1,$l2)))" +
             "ORDER BY t.rowid DESC LIMIT $n";
+        cmd.Parameters.AddWithValue("$l1", TopFlight);
+        cmd.Parameters.AddWithValue("$l2", Division2);
         cmd.Parameters.AddWithValue("$n", count);
         using var r = cmd.ExecuteReader();
         while (r.Read())

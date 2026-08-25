@@ -209,9 +209,29 @@ public sealed partial class BoardViewModel : PageViewModel
         RefreshFacilities();
     }
 
-    private void RefreshFacilities() =>
+    // The price of a lever belongs ON the lever. These three buttons said "Upgrade training
+    // ground" and nothing else; you found out an upgrade costs £2m by pressing it, and if the
+    // money was not there the only feedback was a refusal. A costly action states its price
+    // before it is taken.
+    [ObservableProperty] private string _upgradeTrainingLabel = "";
+    [ObservableProperty] private string _upgradeAcademyLabel = "";
+    [ObservableProperty] private string _requestBudgetTip = "";
+
+    private void RefreshFacilities()
+    {
         FacilitiesLine = $"Training ground: level {_s.TrainingLevel}/5 · Academy: level {_s.AcademyLevel}/5" +
                          $" · Manager: {_s.ManagerName}";
+        UpgradeTrainingLabel = FacilityLabel("🏋 Upgrade training ground", _s.TrainingLevel,
+            "The training ground is already state of the art");
+        UpgradeAcademyLabel = FacilityLabel("🎓 Upgrade academy", _s.AcademyLevel,
+            "The academy is already elite");
+        RequestBudgetTip = "Ask the board to move money into the transfer budget. Asking costs " +
+                           "you a little of their confidence whether they say yes or no.";
+    }
+
+    private string FacilityLabel(string verb, int level, string maxed) => level >= 5
+        ? maxed
+        : $"{verb} — £{_s.FacilityUpgradeCost(level):N0}";
 
     /// <summary>Open the screen that actually answers this objective (table, cup).</summary>
     [RelayCommand]

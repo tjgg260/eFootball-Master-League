@@ -30,11 +30,13 @@
         </ComboBox.ItemTemplate>
       </ComboBox>
       <Button Grid.Column="1" Content="🔍 Scout club" Command="{Binding ScoutClubCommand}"
-              Margin="8,0,0,0" Classes="ml-primary"/>
+              Margin="8,0,0,0" Classes="ml-primary"
+              IsEnabled="{Binding CanSend}" ToolTip.Tip="{Binding SendTip}"/>
       <TextBox Grid.Column="3" Watermark="…or a player name" Text="{Binding PlayerSearch}"
                Width="240"/>
       <Button Grid.Column="4" Content="🔍 Scout player" Command="{Binding ScoutPlayerCommand}"
-              Margin="8,0,0,0" Classes="ml-primary"/>
+              Margin="8,0,0,0" Classes="ml-primary"
+              IsEnabled="{Binding CanSend}" ToolTip.Tip="{Binding SendTip}"/>
     </Grid>
     <!-- several namesakes: pick the one you meant instead of the search guessing for you -->
     <Border DockPanel.Dock="Top" Classes="ml-card" Padding="10" Margin="0,0,0,8"

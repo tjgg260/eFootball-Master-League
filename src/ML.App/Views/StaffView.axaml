@@ -89,13 +89,19 @@
                       <TextBlock Classes="ml-muted" FontSize="12" Text="{Binding AgeLine}" VerticalAlignment="Center"/>
                       <TextBlock Classes="ml-muted" FontSize="12" Text="{Binding Wage}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <TextBlock Classes="ml-body" FontSize="12" Text="{Binding AttrLine}"/>
+                    <!-- An empty TextBlock still takes a line. A vacant desk had four of them
+                         stacked under the word "vacant", so nine empty desks filled the column
+                         top to bottom with blank space and you had to scroll a list of nothing.
+                         They exist only when there is a man to describe. -->
+                    <TextBlock Classes="ml-body" FontSize="12" Text="{Binding AttrLine}"
+                               IsVisible="{Binding Filled}"/>
                     <TextBlock Classes="ml-muted" Text="{Binding StyleLine}"
-                               Foreground="{StaticResource MlLink}" FontStyle="Italic"/>
+                               Foreground="{StaticResource MlLink}" FontStyle="Italic"
+                               IsVisible="{Binding Filled}"/>
                     <!-- the contract has always been on the record; it just never reached the card -->
                     <TextBlock Classes="ml-muted" Text="{Binding ContractLine}"
                                IsVisible="{Binding Filled}"/>
-                    <TextBlock Classes="ml-muted" Text="Desk vacant — click to browse candidates in the market"
+                    <TextBlock Classes="ml-muted" Text="Click to see who is available"
                                IsVisible="{Binding !Filled}"/>
                   </StackPanel>
                   <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6"

@@ -55,9 +55,18 @@ public sealed partial class ScoutingViewModel : PageViewModel, IFocusTarget
             ? "No scout on the books —"
             : $"Scout: {scout.Name} {new string('★', scout.Quality)}";
         var active = _s.ActiveScoutJob();
-        MissionLine = active is null
-            ? "The scout is available."
+        // "The scout is available" only means anything when there IS one. With the desk vacant
+        // this line sat directly beside "No scout on the books —" and flatly contradicted it.
+        MissionLine = scout is null ? ""
+            : active is null ? "The scout is available."
             : $"On a mission — report ready at MD{active.ReadyMd}.";
+        // The engine refuses a mission with no scout and says why; a button you can press only
+        // to be told no is worse than one that says no before you press it.
+        SendTip = scout is null
+            ? "You have no scout — hire one on the Staff screen first."
+            : active is not null ? $"He is already out — his report lands at MD{active.ReadyMd}."
+            : "";
+        CanSend = scout is not null && active is null;
 
         Reports.Clear();
         foreach (var job in _s.CompletedScoutJobs())
@@ -109,6 +118,12 @@ public sealed partial class ScoutingViewModel : PageViewModel, IFocusTarget
     [ObservableProperty] private string _missionLine = "";
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private bool _empty;
+    /// <summary>Can a mission be sent at all? False with no scout, or one already out.</summary>
+    [ObservableProperty] private bool _canSend;
+
+    /// <summary>Why the send buttons are off, when they are.</summary>
+    [ObservableProperty] private string _sendTip = "";
+
     /// <summary>No scout on the books — the line ends in a link to the Staff screen.</summary>
     [ObservableProperty] private bool _noScout;
 

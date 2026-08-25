@@ -59,11 +59,28 @@ public sealed partial class Session
         }
         catch { /* rivalries are additive */ }
 
+        // The letter used to end each line with the STORED TOKEN in brackets — "[critical]",
+        // "[important]", "[bonus]" — which is a database value wearing a chairman's suit. The
+        // Board screen has always shown these as chips; in a letter they have to be sentences.
+        var byWeight = Objectives()
+            .GroupBy(o => o.Importance)
+            .ToDictionary(g => g.Key, g => g.Select(o => $"• {o.Description}").ToList());
+        var body = new List<string> { $"Chairman {Chairman()} lays it out:" };
+        void Group(string key, string lead)
+        {
+            if (!byWeight.TryGetValue(key, out var lines) || lines.Count == 0) return;
+            body.Add("");
+            body.Add(lead);
+            body.AddRange(lines);
+        }
+        Group("critical", "He will judge the season on this:");
+        Group("important", "He wants these as well:");
+        Group("bonus", "And these would please him:");
+        body.Add("");
+        body.Add("A mid-season review comes at matchday 19; the final verdict at the season's end.");
+
         PostInbox("Board", "The board sets this season's objectives",
-            $"Chairman {Chairman()} lays it out:\n" +
-            string.Join("\n", Objectives().Select(o => $"• {o.Description}  [{o.Importance}]")) +
-            "\nA mid-season review comes at matchday 19; the final verdict at the season's end.",
-            NextFixture()?.Matchday);
+            string.Join("\n", body), NextFixture()?.Matchday);
     }
 
     // ------------------------------------------------------------------ reading + progress

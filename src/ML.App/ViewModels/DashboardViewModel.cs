@@ -827,9 +827,15 @@ public sealed partial class DashboardViewModel : PageViewModel
             // The id survives the sentence: a line you can right-click must know WHO it names.
             KeyPlayerId = key?.Id ?? 0;
             KeyPlayerName = key?.Name ?? "";
+            // GradeMasked answers "?" for a man nobody has watched, and "(AMF ?)" on a card
+            // reads as a rendering fault rather than as ignorance. When there is no grade to
+            // give, the bracket carries his position alone — the card says "No dossier on them
+            // yet" two lines below, which is where that fact belongs.
+            var grade = ML.Core.Development.AttributeKnowledge
+                .GradeMasked(key?.OverallRating ?? 0, key is null ? 0 : OppKnowledgeOf(key.Id));
             KeyPlayerLine = key is null ? ""
-                : $"Key player: {key.Name}  ({key.Position} " +
-                  $"{ML.Core.Development.AttributeKnowledge.GradeMasked(key.OverallRating ?? 0, OppKnowledgeOf(key.Id))})";
+                : grade == "?" ? $"Key player: {key.Name}  ({key.Position})"
+                : $"Key player: {key.Name}  ({key.Position} {grade})";
         }
         catch { KeyPlayerLine = ""; KeyPlayerId = 0; KeyPlayerName = ""; }
 
