@@ -80,10 +80,12 @@ def main() -> int:
 
     # DB player id lookup: uid -> pid
     net = {pid - 10_000_000_000: pid for (pid,) in
-           con.execute("SELECT id FROM players WHERE id>=10000000000")}
+           con.execute("SELECT id FROM players WHERE id>=10000000000 "
+                       "AND superseded_by IS NULL")}
     overlap = {}
     for pid, face in con.execute("SELECT id, real_face_path FROM players "
-                                 "WHERE real_face_path LIKE '%face_%' AND id<10000000000"):
+                                 "WHERE real_face_path LIKE '%face_%' AND id<10000000000 "
+                                 "AND superseded_by IS NULL"):
         m = re.search(r"face_(\d+)", face or "")
         if m:
             overlap[int(m.group(1))] = pid

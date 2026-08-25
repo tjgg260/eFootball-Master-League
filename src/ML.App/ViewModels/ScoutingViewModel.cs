@@ -195,6 +195,11 @@ public sealed partial class ScoutingViewModel : PageViewModel, IFocusTarget
                 "(SELECT t.name FROM squad_members sm JOIN teams t ON t.id=sm.team_id " +
                 " WHERE sm.player_id=p.id LIMIT 1) " +
                 "FROM players p WHERE p.name LIKE $q " +
+                // One record per human: a merged duplicate stays in the table but must never
+                // be offered as a scouting target. Carried over from the single-result query
+                // this search replaced — that query also read the id with a truncating
+                // GetInt32, which is why it could not survive.
+                "AND p.superseded_by IS NULL " +
                 "ORDER BY COALESCE(p.overall_rating,0) DESC LIMIT 8";
             cmd.Parameters.AddWithValue("$q", $"%{term.Trim()}%");
             using var r = cmd.ExecuteReader();

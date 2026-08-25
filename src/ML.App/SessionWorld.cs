@@ -531,6 +531,7 @@ public sealed partial class Session
                 "SELECT p.id, p.name, p.overall_rating FROM players p " +
                 $"WHERE p.overall_rating BETWEEN $lo AND $hi AND {needClause} " +
                 "AND COALESCE(p.age, 25) <= 29 " +
+                "AND p.superseded_by IS NULL " +
                 "AND NOT EXISTS (SELECT 1 FROM squad_members s WHERE s.player_id=p.id) " +
                 "AND NOT EXISTS (SELECT 1 FROM academy a WHERE a.player_id=p.id) " +
                 "ORDER BY (p.id * 2654435761) % 100000 LIMIT 40 OFFSET $off";

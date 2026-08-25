@@ -53,7 +53,12 @@ def main() -> int:
     args = ap.parse_args()
 
     con = sqlite3.connect(DB)
-    rows = con.execute("SELECT id, name, real_face_path FROM players").fetchall()
+    # supersede model (supersede_twins.py): marked rows and their targets are kept history,
+    # never merge-deleted here
+    rows = con.execute(
+        "SELECT id, name, real_face_path FROM players WHERE superseded_by IS NULL "
+        "AND id NOT IN (SELECT superseded_by FROM players "
+        "               WHERE superseded_by IS NOT NULL)").fetchall()
 
     by_uid: dict[int, list[tuple[int, int, str]]] = defaultdict(list)  # uid -> [(prio, id, name)]
     for pid, name, face in rows:

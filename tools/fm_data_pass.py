@@ -157,12 +157,27 @@ def overall_of(ab: dict[str, int], pos: str) -> int:
     return max(1, min(99, round(ov)))
 
 
+# FM 1-20 -> eFootball, MEASURED on the 12,339 players present in both the FM exports and
+# samples/editor-bundled-players.csv (tools/fm_derive_attributes.py fits this at runtime; this
+# table is that fit, frozen). Bins 1-16 are medians over >=1,000 samples each; above 16 the
+# calibration data thins to tens of rows and wanders, so the measured slope of 2.0 eF per FM
+# point is extrapolated instead.
+FM_TO_EF = {1: 40, 2: 40, 3: 40, 4: 40, 5: 42, 6: 51, 7: 55, 8: 57, 9: 60, 10: 60,
+            11: 62, 12: 64, 13: 66, 14: 68, 15: 70, 16: 72, 17: 74, 18: 76, 19: 78, 20: 80}
+
+
 def scale(v: float) -> int:
-    """FM 1-20 -> eFootball 1-99 on an S-curve. FM compresses elite players into 15-17 (a 20 is
-    almost never awarded) while eFootball inflates the top, so a linear map would cap stars at ~80.
-    The logistic pushes the low end DOWN (FM 6 -> ~20, properly crap) and the high end UP (FM 16 ->
-    ~88, FM 18 -> ~93), matching how eFootball actually spreads ratings. Centred at FM 10 -> ~50."""
-    return max(1, min(99, round(99.0 / (1.0 + math.exp(-0.346 * (v - 10.0))))))
+    """FM 1-20 -> eFootball 40-99.
+
+    40 IS THE FLOOR OF THE FORMAT, not a preference: an ability is a 6-bit field storing
+    (value - 40) (tools/ability_bits.py), so nothing below 40 can be represented and Konami's own
+    export contains no such value. This function used to map onto 1-99 ("FM 6 -> ~20, properly
+    crap") and 57% of every value it produced fell off the bottom of the scale, where a 12, a 25
+    and a 39 all arrive in-game as the same 40."""
+    lo = max(1, min(20, int(v)))
+    hi = min(20, lo + 1)
+    f = v - lo
+    return max(40, min(99, round(FM_TO_EF[lo] * (1 - f) + FM_TO_EF[hi] * f)))
 
 
 def abilities_from_fm(fm: dict[str, int]) -> dict[str, int]:

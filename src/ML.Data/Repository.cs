@@ -76,7 +76,7 @@ public sealed class Repository
         "SELECT id Id,game_pid GamePid,base_pid BasePid,donor_pid DonorPid,is_custom IsCustom," +
         "name Name,short_name ShortName,position Position,age Age,dob Dob,nationality Nationality," +
         "height_cm HeightCm,weight_kg WeightKg,overall_rating OverallRating,portrait_path PortraitPath " +
-        "FROM players ORDER BY id").ToList();
+        "FROM players WHERE superseded_by IS NULL ORDER BY id").ToList();
 
     public void SetAttribute(long playerId, string attribute, int value) => _c.Execute(
         "INSERT INTO player_attributes(player_id,attribute,value) VALUES(@playerId,@attribute,@value) " +

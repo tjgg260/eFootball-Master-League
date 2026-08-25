@@ -100,6 +100,12 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     private static readonly string[] PositionFilters =
         { "All", "GK", "CB", "LB", "RB", "DMF", "CMF", "LMF", "RMF", "AMF", "LWF", "RWF", "SS", "CF" };
 
+    /// The market lists the REFERENCE WORLD only. Career copies (20M-700M) and the curated
+    /// career overlay (45-46B) are a career's own duplicates of world players — listing them
+    /// shows the same human twice. Matches ML.Web's long-standing market filter.
+    private const string WorldOnly =
+        "(p.id < 20000000 OR (p.id >= 700000000 AND NOT (p.id >= 45000000000 AND p.id < 46000000000)))";
+
     private readonly Session _s;
 
     public MarketViewModel(Session s)
@@ -114,9 +120,13 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={masterDb};Mode=ReadOnly");
             con.Open();
             using var count = con.CreateCommand();
-            // Count what the market can actually show you, not the raw table — the headline
-            // said 376,033 while the list filtered duplicates out beneath it.
-            count.CommandText = "SELECT COUNT(*) FROM players WHERE superseded_by IS NULL";
+            // Count what the market can actually SHOW you, not the raw table — the headline
+            // said 376,033 while the list filtered beneath it. Both filters belong here,
+            // because both are on the row query below: superseded_by drops merged duplicates,
+            // WorldOnly drops the career's own copies of a world player. A headline that
+            // counts rows the list will not print is the bug this line exists to prevent.
+            count.CommandText = "SELECT COUNT(*) FROM players WHERE superseded_by IS NULL " +
+                                "AND " + WorldOnly.Replace("p.id", "id");
             TotalPlayers = Convert.ToInt32(count.ExecuteScalar());
             Requery();
         }
@@ -400,7 +410,9 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             "(SELECT t.logo_path FROM squad_members s JOIN teams t ON t.id=s.team_id " +
             " WHERE s.player_id=p.id LIMIT 1) " +
             "FROM players p " +
-            (where.Count > 0 ? "WHERE " + string.Join(" AND ", where) + " " : "") +
+            "WHERE p.superseded_by IS NULL " +   // merged duplicate records stay invisible
+            "AND " + WorldOnly + " " +
+            (where.Count > 0 ? "AND " + string.Join(" AND ", where) + " " : "") +
             "ORDER BY " + order + " LIMIT 4000";
         if (!string.IsNullOrWhiteSpace(q.Search)) cmd.Parameters.AddWithValue("$q", $"%{q.Search.Trim()}%");
         if (q.Position != "All") cmd.Parameters.AddWithValue("$pos", q.Position);

@@ -15,6 +15,13 @@ team_identity: team_id -> fm_club_id (via fm_clubs name+country), sportsdb_id / 
 
 Career copies (20M-700M) are ephemeral render material and are EXCLUDED. Rebuildable at any time:
     python tools/build_identity.py
+
+REBUILDING IS DESTRUCTIVE. It DELETEs player_identity and team_identity, so a rebuild throws away
+every later correction: verify_identity_fm.py's club re-verification, the twin links supersede_twins.py
+writes, and any hand-made ruling. data/identity_overrides.json is re-applied automatically at the end
+(that is what keeps owner decisions), but after a rebuild you should also re-run, in order:
+    verify_identity_fm.py -> sync_membership_fm.py -> supersede_twins.py --allow-floor
+    -> rerank_slots.py -> validate_db.py
 """
 from __future__ import annotations
 
@@ -398,6 +405,15 @@ def main() -> int:
                           fm[2] if fm else 0.9))
     con.executemany("INSERT OR REPLACE INTO team_identity VALUES(?,?,?,?,?,?)", trows)
     con.commit()
+
+    # This rebuild starts by DELETEing both spine tables, so any decision a human made by hand
+    # would vanish here. data/identity_overrides.json is re-applied last and wins.
+    try:
+        from apply_identity_overrides import apply as _apply_overrides
+        _apply_overrides(con)
+        con.commit()
+    except Exception as exc:                                  # noqa: BLE001 — never block a rebuild
+        print(f"  note: identity overrides not applied ({exc})")
 
     print("player_identity:", dict(stats))
     linked = con.execute("SELECT COUNT(*) FROM player_identity WHERE fm_uid IS NOT NULL").fetchone()[0]

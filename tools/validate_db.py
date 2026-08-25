@@ -2,7 +2,7 @@
 """
 validate_db.py — the blueprint's VALIDATION GATE (docs/database-blueprint.md, audit-as-build-step).
 
-master.db is a compiled artifact; this gate fails the build if the output is broken. Eight
+master.db is a compiled artifact; this gate fails the build if the output is broken. Nine
 assertions, each printing PASS/FAIL + counts; exit code 1 if ANY fails:
 
   1  zero dangling references in every player_id / team_id / fixture_id-bearing table
@@ -15,7 +15,7 @@ assertions, each printing PASS/FAIL + counts; exit code 1 if ANY fails:
   5  no duplicate identity (full name + age) inside one squad
   6  all stored asset paths repo-relative (absolute paths allowed only under OneDrive — the RFS
      crest/portrait store lives there by design, see relativize_paths.py)
-  7  id namespaces respected for squad members: eF < 2^24 · career 20M-700M (no spine row) ·
+  7  id namespaces respected for squad members: eF < 20M · career 20M-700M (no spine row) ·
      RFS 700M-10B · FM 10-13B · curated 45-46B · generated >= 50B, and the band must agree with
      player_identity.kind — a band-gap id or a kind/band mismatch is a violation
   8  RENDER PROJECTION dry-run: for every catalog club, the top-18 squad (by squad slot — the XI
@@ -31,6 +31,9 @@ assertions, each printing PASS/FAIL + counts; exit code 1 if ANY fails:
          are the documented deliberate-Basic mirrors and pass)
        - player name non-empty, no NUL, <= 60 UTF-8 bytes (the Player.bin name field cut is
          byte-blind and would corrupt a longer name mid-codepoint); club name <= 480 bytes
+
+  9  superseded records dormant: a players.superseded_by mark (supersede_twins.py, one
+     record per human) implies no world squad row, an existing target, and no mark chains
 
 READ-ONLY BY DESIGN: the DB is opened with mode=ro and nothing is ever written — this tool has
 no --apply because a validation gate must never mutate what it judges. --dry is accepted for
@@ -72,11 +75,15 @@ PATH_COLUMNS = [
 ]
 
 # --- assertion 7: id namespace bands (docs/database-blueprint.md) -----------------------------
-EF_MAX = 1 << 24                     # eFootball native pids
-CAREER_LO, CAREER_HI = 20_000_000, 700_000_000
+# eFootball's own pids run past 2^24 — 861 of them (Nakashima Yuki at 16,782,442 and up) — so the
+# old 1<<24 line left real eFootball players in a nameless GAP band. The namespace ends where the
+# career copies begin.
+EF_MAX = CAREER_LO = 20_000_000      # eFootball native pids
+CAREER_HI = 700_000_000
 RFS_LO, RFS_HI = 700_000_000, 10_000_000_000
 FM_LO, FM_HI = 10_000_000_000, 13_000_000_000
 CUR_LO, CUR_HI = 45_000_000_000, 46_000_000_000
+CAREER_TEAM_LO, CAREER_TEAM_HI = 800_000, 1_000_000   # a save's own club records
 GEN_LO = 50_000_000_000
 
 BAND_CASE = f"""CASE
@@ -234,16 +241,25 @@ def check_catalog_clubs(con, gate: Gate, clubs: dict[int, dict]) -> None:
 
 
 def check_squad_duplicates(con, gate: Gate) -> None:
+    """A name and an age are not an identity. Altos really does field two Brazilians called
+    'Henrique', both 25, and FM gives them two different uids — that is the spine saying they are
+    two people, and it outranks the heuristic. Only groups the spine does NOT separate count."""
     total = con.execute("SELECT COUNT(*) FROM squad_members").fetchone()[0]
     rows = con.execute("""
-        SELECT sm.team_id, t.name, p.name, p.age, COUNT(*)
+        SELECT sm.team_id, t.name, p.name, p.age, COUNT(*),
+               COUNT(DISTINCT pi.fm_uid)
         FROM squad_members sm
         JOIN players p ON p.id = sm.player_id
         LEFT JOIN teams t ON t.id = sm.team_id
+        LEFT JOIN player_identity pi ON pi.player_id = p.id
         GROUP BY sm.team_id, p.name, p.age HAVING COUNT(*) > 1
         ORDER BY COUNT(*) DESC""").fetchall()
-    detail = [f"{tname or tid}: '{pname}' age {age} x{n}" for tid, tname, pname, age, n in rows]
-    gate.report("5 no duplicate (name+age) inside one squad", len(rows), total,
+    dupes = [r for r in rows if r[5] < r[4]]        # fewer distinct uids than records
+    detail = [f"{tname or tid}: '{pname}' age {age} x{n}" for tid, tname, pname, age, n, _u in dupes]
+    named = len(rows) - len(dupes)
+    if named:
+        detail.append(f"(plus {named} namesake group(s) the FM spine separates by uid)")
+    gate.report("5 no duplicate (name+age) inside one squad", len(dupes), total,
                 "squad rows", detail)
 
 
@@ -296,6 +312,26 @@ def check_namespaces(con, gate: Gate) -> None:
     bad = sum(r[2] for r in rows)
     detail = [f"band {band} but kind {kind}: {n:,} players (ids {lo:,}..{hi:,})"
               for band, kind, n, lo, hi in rows]
+
+    # The bands must also not mix ACROSS the squad row. A career save's copies belong to career
+    # teams and nowhere else: build_catalog once resolved league slots onto them because a career
+    # copy carries the full roster and therefore always looks like the biggest record of its club,
+    # and 37 of them — Chelsea, Manchester United — ended up in the browsable world.
+    mixed = con.execute(f"""
+        SELECT COUNT(*) FROM squad_members s
+        WHERE (s.team_id >= {CAREER_TEAM_LO} AND s.team_id < {CAREER_TEAM_HI})
+              != (s.player_id >= {CAREER_LO} AND s.player_id < {CAREER_HI}
+                  OR s.player_id >= {CUR_LO} AND s.player_id < {CUR_HI})""").fetchone()[0]
+    if mixed:
+        detail.append(f"{mixed:,} squad rows put a career-band player in a world team, "
+                      f"or a world player in a career team")
+        bad += mixed
+    slots = con.execute(f"""
+        SELECT COUNT(*) FROM teams t JOIN cat c ON c.team_id = t.id
+        WHERE t.id >= {CAREER_TEAM_LO} AND t.id < {CAREER_TEAM_HI}""").fetchone()[0]
+    if slots:
+        detail.append(f"{slots:,} catalog league slots are held by a career-band team")
+        bad += slots
     gate.report("7 id namespaces respected for squad members", bad, total,
                 "squad players", detail)
 
@@ -378,6 +414,38 @@ def check_render_projection(con, gate: Gate, clubs: dict[int, dict]) -> None:
 
 # ============================================================================ main
 
+def check_superseded(con, gate: Gate) -> None:
+    """9: superseded records are dormant history (supersede_twins.py) — never squadded in the
+    world, never the target of a mark themselves (no chains), targets always exist. Absent
+    column = zero offenders (pre-supersede database)."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(players)")}
+    if "superseded_by" not in cols:
+        gate.report("9 superseded records dormant (column absent — vacuous)", 0, 0, "marks")
+        return
+    total = con.execute(
+        "SELECT COUNT(*) FROM players WHERE superseded_by IS NOT NULL").fetchone()[0]
+    detail, bad = [], 0
+    for pid, tid in con.execute(
+            "SELECT s.player_id, s.team_id FROM squad_members s "
+            "JOIN players p ON p.id=s.player_id WHERE p.superseded_by IS NOT NULL "
+            "AND NOT (s.team_id>=800000 AND s.team_id<1000000) "
+            "AND NOT (s.team_id>=9000000 AND s.team_id<9200000)"):
+        bad += 1
+        detail.append(f"superseded player {pid} still squadded at team {tid}")
+    for pid, tgt in con.execute(
+            "SELECT a.id, a.superseded_by FROM players a JOIN players b "
+            "ON b.id=a.superseded_by WHERE b.superseded_by IS NOT NULL"):
+        bad += 1
+        detail.append(f"chained mark: {pid} -> {tgt} which is itself superseded")
+    for (pid,) in con.execute(
+            "SELECT a.id FROM players a LEFT JOIN players b ON b.id=a.superseded_by "
+            "WHERE a.superseded_by IS NOT NULL AND b.id IS NULL"):
+        bad += 1
+        detail.append(f"dangling mark: {pid} -> missing player")
+    gate.report("9 superseded records dormant (unsquadded, unchained, targets exist)",
+                bad, total, "marks", detail)
+
+
 def main() -> int:
     global DB, CATALOG
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -415,10 +483,11 @@ def main() -> int:
     check_paths(con, gate, clubs)
     check_namespaces(con, gate)
     check_render_projection(con, gate, clubs)
+    check_superseded(con, gate)
     con.close()
 
     print(f"\n{'GATE PASSED' if gate.failed == 0 else 'GATE FAILED'}: "
-          f"{8 - gate.failed}/8 assertions clean")
+          f"{9 - gate.failed}/9 assertions clean")
     return 0 if gate.failed == 0 else 1
 
 

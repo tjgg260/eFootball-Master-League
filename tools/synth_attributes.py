@@ -20,6 +20,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "tools"))
+from ability_bits import ABILITY_BITS   # noqa: E402
 DB = REPO / "build" / "master.db"
 
 POSITION_CORE = {
@@ -80,15 +82,17 @@ def synth(pid: int, overall: int, pos: str) -> dict[str, int]:
             elif a in GK_OK_OUTFIELD:
                 v = overall - jit(pid, a, 8, 16)
             else:
-                v = 38 + jit(pid, a, 0, 12)                 # keepers can't play outfield
+                v = 40 + jit(pid, a, 0, 12)                 # keepers can't play outfield
         else:
             if a in GK_ATTRS:
-                v = 38 + jit(pid, a, 0, 10)                 # outfielders can't keep
+                v = 40 + jit(pid, a, 0, 10)                 # outfielders can't keep
             elif a in core:
                 v = overall + jit(pid, a, -5, 4)
             else:
                 v = overall - jit(pid, a, 8, 18)            # weaker away from his game
-        out[a] = max(1, min(99, v))
+        # 40 is the floor of the STORAGE FORMAT (6-bit field + 40 bias, ability_bits.py) —
+        # anything lower is unrepresentable and arrives in-game as 40 anyway
+        out[a] = max(40, min(99, v))
     # meta attributes on their own small scales (match existing data)
     out["foot"] = 1 if jit(pid, "foot", 0, 9) < 2 else 0    # ~20% left-footed
     out["weak_foot_usage"] = 1 + (1 if jit(pid, "wf", 0, 9) >= 8 else 0)
@@ -106,6 +110,26 @@ def main() -> int:
         "JOIN players p ON p.id=s.player_id "
         "LEFT JOIN player_attributes a ON a.player_id=s.player_id "
         "WHERE a.player_id IS NULL").fetchall()
+
+    # A record whose 26 abilities hold only one or two distinct values is not attributed either —
+    # RFS wrote some players a single number across the board, so 'Dzepar' at Olympiakos Nicosia
+    # is 40 everywhere except one field. That renders as a flat player and no conversion can help
+    # it: there is no shape to convert. Clear those rows and synthesise properly.
+    ph = ",".join("?" * len(ABILITY_BITS))
+    flat = [r[0] for r in con.execute(
+        f"SELECT a.player_id FROM player_attributes a JOIN players p ON p.id=a.player_id "
+        f"JOIN squad_members s ON s.player_id=a.player_id "
+        f"WHERE a.attribute IN ({ph}) AND p.superseded_by IS NULL "
+        f"GROUP BY a.player_id HAVING COUNT(DISTINCT a.value)<=2", tuple(ABILITY_BITS))]
+    if flat:
+        print(f"  plus {len(flat):,} carrying one flat value across every ability")
+        if not dry:
+            con.executemany("DELETE FROM player_attributes WHERE player_id=?",
+                            [(i,) for i in flat])
+            con.commit()          # the write below opens its own transaction
+        rows = list(rows) + list(con.execute(
+            "SELECT p.id, p.overall_rating, p.position FROM players p WHERE p.id IN (%s)"
+            % ",".join("?" * len(flat)), flat))
     todo = [(pid, ovr or 55, pos or "CMF") for pid, ovr, pos in rows]
     print(f"squad players needing synthesised attributes: {len(todo):,}")
     if dry:

@@ -46,9 +46,16 @@ def main() -> int:
     con = sqlite3.connect(DB, timeout=60)
 
     in_squad = {r[0] for r in con.execute("SELECT DISTINCT player_id FROM squad_members")}
+    # supersede model (supersede_twins.py): marked rows are KEPT history, and rows other
+    # records point at must never be deleted (dangling superseded_by)
+    keep = {r[0] for r in con.execute(
+        "SELECT id FROM players WHERE superseded_by IS NOT NULL "
+        "UNION SELECT DISTINCT superseded_by FROM players WHERE superseded_by IS NOT NULL")}
     squad_idents = set()
     orphans = []   # (pid, name, ident)
     for pid, nm, nat, age in con.execute("SELECT id, name, nationality, age FROM players"):
+        if pid in keep and pid not in in_squad:
+            continue   # marked history is not an orphan candidate
         key = ident(nm, nat, age)
         if pid in in_squad:
             squad_idents.add(key)
@@ -74,7 +81,7 @@ def main() -> int:
         for tbl in PID_TABLES:
             try:
                 # transfer-log rows for a removed phantom would dangle — they go too (P7 gate leak)
-        con.execute(f"DELETE FROM {tbl} WHERE player_id IN ({q})", chunk)
+                con.execute(f"DELETE FROM {tbl} WHERE player_id IN ({q})", chunk)
             except sqlite3.OperationalError:
                 pass
         con.execute(f"DELETE FROM players WHERE id IN ({q})", chunk)
