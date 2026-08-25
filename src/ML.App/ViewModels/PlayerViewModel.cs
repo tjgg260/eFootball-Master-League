@@ -866,24 +866,30 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
         HasContract = ContractLine.Length > 0;
         HasPromise = PromiseLine.Length > 0;
 
-        // Market value and wage, read the way the Squad card reads them.
-        try
+        // Market value comes from the engine's own accessor, NOT a private query.
+        // THE BUG this replaces: this screen read player_market directly and printed "—" when a
+        // player had no imported row, while the Market grid falls back to the valuation curve for
+        // exactly those players. The same man showed £354,350,000 on one screen and "—" on the
+        // other. MarketValueOf is the canonical rule — the real imported fee when there is one,
+        // the curve when there is not — and until now nothing called it.
+        ValueLine = Safe(() =>
+        {
+            var b = ReadBio(id);
+            var v = _s.MarketValueOf(id, b.Rating, b.Age > 0 ? b.Age : null);
+            return v > 0 ? $"£{v:N0}" : "—";
+        }, "—");
+
+        // The wage has no such fallback: an unimported player genuinely has no wage on file, and
+        // inventing one would be a number the rest of the app does not agree with.
+        WageLine = Safe(() =>
         {
             using var cmd = _s.Db.Connection.CreateCommand();
-            cmd.CommandText = "SELECT COALESCE(value,0), COALESCE(wage,0) " +
-                              "FROM player_market WHERE player_id=$p";
+            cmd.CommandText = "SELECT COALESCE(wage,0) FROM player_market WHERE player_id=$p";
             cmd.Parameters.AddWithValue("$p", id);
-            using var r = cmd.ExecuteReader();
-            if (r.Read())
-            {
-                var value = r.GetInt64(0);
-                var wage = r.GetInt64(1);
-                ValueLine = value > 0 ? $"£{value:N0}" : "—";
-                WageLine = wage > 0 ? $"£{wage:N0}/wk" : "—";
-            }
-            else { ValueLine = "—"; WageLine = "—"; }
-        }
-        catch { ValueLine = "—"; WageLine = "—"; }
+            var w = cmd.ExecuteScalar();
+            var wage = w is null or DBNull ? 0L : Convert.ToInt64(w);
+            return wage > 0 ? $"£{wage:N0}/wk" : "—";
+        }, "—");
 
         // The audit's third finding: the transfer budget was never shown anywhere while you
         // spent it. It belongs beside the button that starts the spending.
