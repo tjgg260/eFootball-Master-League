@@ -89,6 +89,7 @@ run, never that the source is gone.
 | FM clubs / staff | `clubs.csv`, `staff.csv` (repo root) | club finances and reputation; staff coaching 1-20 |
 | eFootball players | `samples/editor-bundled-players.csv` | 25,460 base players — real eF attributes on the 40-99 scale, playstyles, skills |
 | FM editor data | `…\Sports Interactive\Editor 26\editor data\` | sortitoutsi FM26 live data update |
+| **Owner identity rulings** | `data/identity_overrides.json` | hand-made player/club identity decisions, re-applied by `apply_identity_overrides.py` — `build_identity.py` DELETEs the spine, so rulings live here or not at all |
 
 ## The writeback pipeline (PROVEN — Phase 0 passed 2026-08-19)
 

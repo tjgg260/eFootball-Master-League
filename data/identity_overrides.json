@@ -1,0 +1,21 @@
+{
+  "_readme": [
+    "Identity decisions the OWNER has made by hand. build_identity.py rebuilds the spine with",
+    "DELETE FROM player_identity / team_identity, so anything decided here would be lost on a",
+    "rebuild unless it is re-applied — which tools/apply_identity_overrides.py does, and",
+    "build_identity.py calls at the end of its run.",
+    "",
+    "player_links: player_id -> the eFootball record (ef_pid) and/or FM uid (fm_uid) it IS.",
+    "team_links:   team_id   -> the FM club id (fm_club_id) it IS.",
+    "Every entry carries why it was decided, so a later reader can re-judge it."
+  ],
+  "player_links": [
+    {
+      "player_id": 10067217524,
+      "ef_pid": 110815,
+      "why": "FM's Barcelona 'Rodri' (uid 67217524, dob 22.06.1993, 'D C, DM') is eFootball's Rodri (record 110815, DMF): same birthday once this export's consistent 3-year date shift is undone. Without the link he kept a synthesized 90 while Konami rates him 83.",
+      "ruled": "2026-08-25"
+    }
+  ],
+  "team_links": []
+}
