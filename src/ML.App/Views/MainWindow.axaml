@@ -100,6 +100,17 @@
     <Border Grid.Column="0" Background="{DynamicResource ThemePanelAltBrush}">
       <DockPanel Margin="16">
         <StackPanel DockPanel.Dock="Top" Margin="6,10,6,14">
+          <!-- Back / forward. Pages rebuild from the DB on every visit, so history holds
+               (page, focus) entries rather than ViewModels — Back replays the trip instead of
+               resurrecting a stale squad. Both routes pass the unsaved-work guard. -->
+          <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,10">
+            <Button Classes="ml-ghost" Padding="8,3" FontSize="14"
+                    Content="&#x2190;" Command="{Binding GoBackCommand}"
+                    ToolTip.Tip="{Binding BackTip}"/>
+            <Button Classes="ml-ghost" Padding="8,3" FontSize="14"
+                    Content="&#x2192;" Command="{Binding GoForwardCommand}"
+                    ToolTip.Tip="{Binding ForwardTip}"/>
+          </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="10">
             <Image Source="{Binding Crest}" Width="40" Height="40" IsVisible="{Binding HasCrest}"
                    VerticalAlignment="Center"/>

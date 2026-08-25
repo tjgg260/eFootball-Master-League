@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -68,6 +68,7 @@ public partial class MainWindowViewModel : ObservableObject
         var start = Pages.FirstOrDefault(p => p.Title == startPage) ?? Pages[0];
         CurrentPage = start.Build(session);
         MarkActive(start);
+        PushHistory(start.Title, null);   // where Back eventually returns to
     }
 
     private void OnNavRequest(string pageTitle, EntityRef? focus)
@@ -147,12 +148,13 @@ public partial class MainWindowViewModel : ObservableObject
         GoTo(item, null);
     }
 
-    private void GoTo(NavItem item, EntityRef? focus)
+    private void GoTo(NavItem item, EntityRef? focus, bool record = true)
     {
         try
         {
             var page = item.Build(_session);
             if (focus is not null && page is IFocusTarget f) f.Focus(focus);
+            if (record) PushHistory(item.Title, focus);
             CurrentPage = page;
             MarkActive(item);
             RefreshShell();   // badges follow you around the app
@@ -162,6 +164,79 @@ public partial class MainWindowViewModel : ObservableObject
             // A page that fails to build must not take the whole app down — log it and stay put.
             Program.Log($"Navigate -> {item.Title}", ex);
         }
+    }
+
+    // ---- back / forward ---------------------------------------------------------
+    // History holds ENTRIES — (page title, focus) — never ViewModel instances. Pages are
+    // deliberately rebuilt from the DB on every visit so they always show the latest state
+    // after a result or a sim; caching the VM would sail a stale squad or table back into
+    // view. Replaying an entry keeps that property and costs one rebuild.
+
+    private sealed record Visit(string Page, EntityRef? Focus);
+
+    private readonly List<Visit> _history = new();
+    private int _historyAt = -1;      // index of the entry currently on screen
+    private bool _replaying;          // suppresses recording while Back/Forward drives
+
+    public bool CanGoBack => _historyAt > 0;
+    public bool CanGoForward => _historyAt >= 0 && _historyAt < _history.Count - 1;
+
+    /// <summary>Where Back would take you, in words — the button's tooltip.</summary>
+    public string BackTip => CanGoBack ? $"Back to {Describe(_history[_historyAt - 1])}" : "Nothing behind you yet";
+    public string ForwardTip => CanGoForward ? $"Forward to {Describe(_history[_historyAt + 1])}" : "Nothing ahead";
+
+    private static string Describe(Visit v) =>
+        v.Focus is { Name.Length: > 0 } e ? $"{v.Page} · {e.Name}" : v.Page;
+
+    private void PushHistory(string page, EntityRef? focus)
+    {
+        if (_replaying) return;
+        // Re-visiting the same place (a nav row clicked twice) should not stack entries.
+        if (_historyAt >= 0 && _history[_historyAt] is { } cur
+            && cur.Page == page && cur.Focus?.Id == focus?.Id) { RaiseHistory(); return; }
+        // A new trip truncates anything ahead, exactly like a browser.
+        if (_historyAt < _history.Count - 1)
+            _history.RemoveRange(_historyAt + 1, _history.Count - 1 - _historyAt);
+        _history.Add(new Visit(page, focus));
+        _historyAt = _history.Count - 1;
+        RaiseHistory();
+    }
+
+    private void RaiseHistory()
+    {
+        OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(CanGoForward));
+        OnPropertyChanged(nameof(BackTip));
+        OnPropertyChanged(nameof(ForwardTip));
+        GoBackCommand.NotifyCanExecuteChanged();
+        GoForwardCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGoBack))]
+    private void GoBack() => Step(-1);
+
+    [RelayCommand(CanExecute = nameof(CanGoForward))]
+    private void GoForward() => Step(+1);
+
+    private void Step(int delta)
+    {
+        var to = _historyAt + delta;
+        if (to < 0 || to >= _history.Count) return;
+        // Back is a way off the page like any other — it must not skip the unsaved-work guard.
+        if (!ClearToLeave(() => Replay(to))) return;
+        Replay(to);
+    }
+
+    private void Replay(int index)
+    {
+        var visit = _history[index];
+        var item = Pages.FirstOrDefault(p => p.Title == visit.Page);
+        if (item is null) return;
+        _replaying = true;
+        try { GoTo(item, visit.Focus, record: false); }
+        finally { _replaying = false; }
+        _historyAt = index;
+        RaiseHistory();
     }
 
     // ---- the unsaved-work guard -------------------------------------------------
