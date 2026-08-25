@@ -18,6 +18,10 @@ when all of it agrees:
   - both keep goal or neither does
   - EXACTLY ONE record fits; several means the surname is common and we do not guess
 
+The full-name rule below asks for the exact position instead of keeper-or-not, because that is
+what separates two Spaniards called Alex Jimenez born a year apart: one is a right back, the
+other a centre back.
+
 The RFS record is kept and marked superseded_by, per the blueprint: it leaves every pool, keeps its
 row, and hands its face to the survivor if the survivor has none.
 
@@ -125,7 +129,7 @@ def main() -> int:
                  and same_person_name(w, words(x[1]))
                  and nat1(x[4]) == nat1(nat)
                  and x[3] is not None and age is not None and abs(x[3] - age) <= 2
-                 and (x[5] == "GK") == (pos == "GK")]
+                 and x[5] == pos]
         if len(cands) == 1:
             full.append((pid, name, rat, cands[0]))
     seen = {p[0] for p in pairs}

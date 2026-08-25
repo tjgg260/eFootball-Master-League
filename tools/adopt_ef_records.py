@@ -16,7 +16,7 @@ moving him. The FM record is superseded behind him, kept but dormant.
 
 A pair is accepted only when the eFootball record has no FM link and no club, the FM record has
 both, one name is the other with words missing or spelled out in full, nationality agrees, ages
-are within 2, and exactly one FM record fits.
+are within 2, both keep goal or neither does, and exactly one FM record fits.
 
     python tools/adopt_ef_records.py --dry
     python tools/adopt_ef_records.py
@@ -84,22 +84,22 @@ def main() -> int:
 
     squadded = {p for (p,) in con.execute("SELECT player_id FROM squad_members")}
     fm_side = []
-    for pid, name, natn, age, uid in con.execute(
-            "SELECT p.id, p.name, p.nationality, p.age, pi.fm_uid FROM players p "
+    for pid, name, natn, age, uid, pos in con.execute(
+            "SELECT p.id, p.name, p.nationality, p.age, pi.fm_uid, p.position FROM players p "
             "JOIN player_identity pi ON pi.player_id=p.id "
             "WHERE p.superseded_by IS NULL AND pi.fm_uid IS NOT NULL AND p.id>=? AND p.id<?",
             (FM_LO, FM_HI)):
         if pid in squadded:
-            fm_side.append((pid, name, nat(natn), age, uid, key(name)))
+            fm_side.append((pid, name, nat(natn), age, uid, key(name), pos))
     by_tok = defaultdict(list)
     for f in fm_side:
         for t in f[5]:
             by_tok[t].append(f)
 
     pairs, amb = [], 0
-    for pid, name, natn, age, face, port in con.execute(
-            "SELECT p.id, p.name, p.nationality, p.age, p.real_face_path, p.portrait_path "
-            "FROM players p LEFT JOIN player_identity pi ON pi.player_id=p.id "
+    for pid, name, natn, age, face, port, pos in con.execute(
+            "SELECT p.id, p.name, p.nationality, p.age, p.real_face_path, p.portrait_path, "
+            "p.position FROM players p LEFT JOIN player_identity pi ON pi.player_id=p.id "
             "WHERE p.superseded_by IS NULL AND pi.fm_uid IS NULL AND p.id<?", (EF_HI,)):
         if pid in squadded:
             continue
@@ -115,6 +115,9 @@ def main() -> int:
                 seen.add(f[0])
                 if f[2] != nat(natn) or age is None or f[3] is None or abs(f[3] - age) > 2:
                     continue
+                if (f[6] == "GK") != (pos == "GK"):
+                    continue                           # Porto's Diogo Costa keeps goal; the
+                    # right-back of the same name and age at Schoetz does not
                 if not (k == f[5] or subseq(k, f[5]) or subseq(f[5], k)):
                     continue
                 if ini and not f[5][0].startswith(ini):
@@ -147,7 +150,7 @@ def main() -> int:
     shutil.copy2(DB, str(DB) + ".bak-preadopt")
     cur.execute("BEGIN")
     for (pid, _name, face, port), f in pairs:
-        fm_pid, _fn, _fnat, _fage, uid, _fk = f
+        fm_pid, _fn, _fnat, _fage, uid, _fk, _fpos = f
         row = cur.execute(
             "SELECT team_id, squad_number, slot, role FROM squad_members WHERE player_id=?",
             (fm_pid,)).fetchone()
