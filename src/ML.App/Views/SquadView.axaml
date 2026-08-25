@@ -240,16 +240,16 @@
                   <Panel Width="200" Height="200" HorizontalAlignment="Center">
                     <Canvas Width="200" Height="200">
                       <Polygon Points="100,22 167.6,61 167.6,139 100,178 32.4,139 32.4,61"
-                               Stroke="#3A4759" StrokeThickness="1"/>
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
                       <Polygon Points="100,48 145,74 145,126 100,152 55,126 55,74"
-                               Stroke="#3A4759" StrokeThickness="1"/>
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
                       <Polygon Points="100,74 122.5,87 122.5,113 100,126 77.5,113 77.5,87"
-                               Stroke="#3A4759" StrokeThickness="1"/>
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
                       <!-- pinned comparison radar (dashed blue) under the live one -->
                       <Polygon Points="{Binding PinnedPoints}" Stroke="{DynamicResource MlPrimary}" StrokeThickness="2"
                                StrokeDashArray="4,3" Fill="#202D7DD2" IsVisible="{Binding HasPinned}"/>
-                      <Polygon Points="{Binding RadarPoints}" Stroke="#FF2D78" StrokeThickness="2"
-                               Fill="#40FF2D78" IsVisible="{Binding !RadarMasked}"/>
+                      <Polygon Points="{Binding RadarPoints}" Stroke="{StaticResource MlRadarLine}" StrokeThickness="2"
+                               Fill="{StaticResource MlRadarFill}" IsVisible="{Binding !RadarMasked}"/>
                       <TextBlock Canvas.Left="89" Canvas.Top="6" Text="{Binding RadarLabels[0]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
                       <TextBlock Canvas.Left="174" Canvas.Top="48" Text="{Binding RadarLabels[1]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
                       <TextBlock Canvas.Left="174" Canvas.Top="142" Text="{Binding RadarLabels[2]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>

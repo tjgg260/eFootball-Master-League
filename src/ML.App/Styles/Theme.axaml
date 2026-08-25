@@ -31,6 +31,14 @@
       <SolidColorBrush x:Key="MlDanger">#D64545</SolidColorBrush>
       <SolidColorBrush x:Key="MlLink">#6EA8FF</SolidColorBrush>
       <SolidColorBrush x:Key="MlGold">#D4AC0D</SolidColorBrush>
+
+      <!-- The player radar. These three were repeated as raw hex in every screen that draws a
+           hexagon (Squad, Market, Player) — the same values, copied, so a change meant finding
+           all of them. The magenta is deliberately outside the status palette: a radar is not a
+           good/bad readout, and reusing MlSuccess/MlDanger there would imply a verdict. -->
+      <SolidColorBrush x:Key="MlRadarGrid">#3A4759</SolidColorBrush>
+      <SolidColorBrush x:Key="MlRadarLine">#FF2D78</SolidColorBrush>
+      <SolidColorBrush x:Key="MlRadarFill">#40FF2D78</SolidColorBrush>
       <CornerRadius x:Key="MlRadiusCard">12</CornerRadius>
       <CornerRadius x:Key="MlRadiusControl">8</CornerRadius>
       <CornerRadius x:Key="MlRadiusChip">4</CornerRadius>

@@ -39,8 +39,14 @@ public sealed partial class StatsViewModel : PageViewModel
             apps > 0 ? $"{count / (double)apps:0.00}/game" : "";
         Avalonia.Media.Imaging.Bitmap? Face(long pid)
         { try { return s.PortraitFor(pid).Image; } catch { return null; } }
-        Avalonia.Media.Imaging.Bitmap? Crest(int tid)
-        { try { return Visuals.LoadBitmap(s.TeamLogoPath(tid)); } catch { return null; } }
+        // A HOLDER id is a long — a Roll of Honour row can be won by a club or by a PLAYER, and
+        // player ids in this world run past Int32. TeamLogoPath still takes an int because a team
+        // id genuinely is one, so narrow at the call and refuse anything that could not be a team.
+        Avalonia.Media.Imaging.Bitmap? Crest(long tid)
+        {
+            if (tid is <= 0 or > int.MaxValue) return null;
+            try { return Visuals.LoadBitmap(s.TeamLogoPath((int)tid)); } catch { return null; }
+        }
         TopScorers = new ObservableCollection<ScorerRow>(
             s.LeadersBy("goal").Select(x => new ScorerRow(x.Player, x.Team, x.Count, Rate(x.Count, x.Apps),
                 Face(x.PlayerId), x.PlayerId)));

@@ -1,5 +1,8 @@
 using System;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using ML.App.ViewModels;
 
 namespace ML.App.Views;
 
@@ -28,5 +31,25 @@ public partial class MainWindow : Window
             }
             catch { /* a clamp must never break startup */ }
         };
+
+        // Back / forward on the keyboard. The arrows in the sidebar carry a tooltip naming where
+        // they lead, but a tooltip is not discoverability — every browser, file manager and IDE
+        // binds these two, and a user who never notices the buttons still reaches for Alt+Left.
+        // Tunnel, so a focused grid or text box cannot swallow them first.
+        AddHandler(KeyDownEvent, (_, e) =>
+        {
+            if (e.KeyModifiers != KeyModifiers.Alt) return;
+            if (DataContext is not MainWindowViewModel vm) return;
+            if (e.Key == Key.Left && vm.GoBackCommand.CanExecute(null))
+            {
+                vm.GoBackCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Right && vm.GoForwardCommand.CanExecute(null))
+            {
+                vm.GoForwardCommand.Execute(null);
+                e.Handled = true;
+            }
+        }, RoutingStrategies.Tunnel);
     }
 }

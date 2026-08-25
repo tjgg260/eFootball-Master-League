@@ -86,7 +86,10 @@ public static class EntityActions
         var id = e.Id;
         var name = e.Name.Length > 0 ? e.Name : s.PlayerNameOf(id);
         var (teamId, club) = s.ClubOfPlayer(id);
-        var own = teamId == s.CurrentTeamId;
+        // Ownership is asked, not computed here: a lad in your own U21s sits in team 9,000,014,
+        // so comparing the raw side id against your club called him a rival's asset and offered
+        // you the chance to bid for your own player. IsOwnPlayer walks parent_team_id.
+        var own = s.IsOwnPlayer(id);
         var free = teamId is null;
 
         info($"{name} · {(own ? "your squad" : club)}");
