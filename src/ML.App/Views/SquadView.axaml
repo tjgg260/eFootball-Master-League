@@ -138,8 +138,10 @@
           <DataGridTemplateColumn Header="" Width="36">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:SquadEntry">
+                <!-- IsInjured is "still injured as of the matchday we are picking for", not
+                     "has an injury date on file" — see SquadEntry.IsInjured -->
                 <Border Width="18" Height="18" CornerRadius="9" Background="{DynamicResource MlDanger}"
-                        IsVisible="{Binding IsInjured}"
+                        IsVisible="{Binding IsInjured}" ToolTip.Tip="{Binding InjuryTip}"
                         HorizontalAlignment="Center" VerticalAlignment="Center">
                   <TextBlock Text="+" FontSize="13" FontWeight="Bold" Foreground="White"
                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
@@ -379,7 +381,7 @@
                   </WrapPanel>
                   <TextBlock Text="{Binding PinnedName, StringFormat='Comparing against {0} (dashed blue)'}"
                              FontSize="11" Foreground="{DynamicResource MlPrimary}" IsVisible="{Binding HasPinned}"/>
-                  <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="#9FE6B4" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"/>
                 </StackPanel>
               </TabItem>
 
@@ -400,7 +402,11 @@
                   <StackPanel IsVisible="{Binding IsOwnClub}" Spacing="8">
                     <WrapPanel>
                       <Button Content="© Captain" Command="{Binding MakeCaptainCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
-                      <Button Content="Renew +2yrs" Command="{Binding RenewCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <!-- two-step and priced: the renewal pays a signing bonus out of the
+                           transfer budget the instant it goes through, and cannot be undone -->
+                      <Button Content="{Binding RenewLabel}" Command="{Binding RenewCommand}" Classes="ml-secondary"
+                              FontSize="11" Margin="0,2,6,0" Foreground="{DynamicResource MlWarn}"
+                              ToolTip.Tip="Extends two seasons. The signing bonus shown is paid from the transfer budget on confirmation."/>
                       <Button Content="🗣 Praise" Command="{Binding PraiseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
                       <Button Content="Criticise" Command="{Binding CriticiseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
                       <Button Content="Promise starts" Command="{Binding PromiseStartsCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
@@ -427,6 +433,11 @@
                         </StackPanel>
                       </StackPanel>
                     </Border>
+                    <!-- every command on this tab answers through SquadStatus (the renewal's
+                         "click again", the agent's last word, a refusal the club can't afford),
+                         and until this line existed none of it was visible on the Contract tab -->
+                    <TextBlock Text="{Binding SquadStatus}" FontSize="11"
+                               Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"/>
                   </StackPanel>
                 </StackPanel>
               </TabItem>
@@ -451,7 +462,7 @@
                       <!-- two-step: a free transfer can't be undone, so the button asks once -->
                       <Button Content="{Binding ReleaseLabel}" Command="{Binding ReleaseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource MlDanger}"/>
                     </WrapPanel>
-                    <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="#9FE6B4" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"/>
                   </StackPanel>
                 </StackPanel>
               </TabItem>

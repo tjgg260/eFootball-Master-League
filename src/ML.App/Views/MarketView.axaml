@@ -104,11 +104,15 @@
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
             <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="66"/>
+            <!-- The letter sharpens with what you know: a price-implied band while he is
+                 unscouted, "B?" once part-scouted, the true grade when he is well scouted or
+                 yours. The tooltip says which of the three you are looking at. -->
             <DataGridTemplateColumn Header="Rating" Width="78">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:MarketPlayer">
                   <TextBlock Text="{Binding Grade}" Foreground="{Binding RatingBrush}"
-                             FontWeight="Bold" VerticalAlignment="Center" Margin="4,0"/>
+                             FontWeight="Bold" VerticalAlignment="Center" Margin="4,0"
+                             ToolTip.Tip="{Binding GradeTip}"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
@@ -178,7 +182,8 @@
                     <TextBlock Text="{Binding ProfilePosition}" Classes="ml-label" FontSize="13"
                                VerticalAlignment="Bottom"/>
                     <TextBlock Text="{Binding ProfileGrade}" Foreground="{Binding ProfileRatingBrush}"
-                               FontSize="26" FontWeight="Bold"/>
+                               FontSize="26" FontWeight="Bold"
+                               ToolTip.Tip="{Binding ProfileGradeTip}"/>
                   </StackPanel>
                   <TextBlock Text="{Binding ProfilePlaystyle}" Classes="ml-muted"
                              Foreground="{StaticResource MlWarn}"/>
@@ -201,17 +206,34 @@
               <TextBlock Text="{Binding ProfileVerdictLine}" Classes="ml-muted" TextWrapping="Wrap"
                          IsVisible="{Binding ProfileHasVerdict}"/>
 
-              <!-- hexagon radar, same maths as the Squad card -->
+              <!-- Hexagon radar, same maths as the Squad card — and now the same labels.
+                   PlayerCard.BuildRadarPoints puts axis k at k*60-90°, so the six vertices are
+                   [0] top, [1] upper-right, [2] lower-right, [3] bottom, [4] lower-left,
+                   [5] upper-left. Two labels pinned to the top and bottom of the panel could only
+                   ever name axis 0 and axis 3 — and the bottom one called axis 3 "DEF" when axis 3
+                   is SPD. All six are bound and positioned (canvas coords copied from SquadView),
+                   and they come from the ViewModel because a goalkeeper's axes are gk_* abilities
+                   with an entirely different set of names. -->
               <Panel Width="200" Height="200" HorizontalAlignment="Center">
                 <Ellipse Width="160" Height="160" Stroke="{StaticResource MlBorder}" StrokeThickness="1"/>
                 <Ellipse Width="106" Height="106" Stroke="{StaticResource MlBorder}" StrokeThickness="1"/>
                 <Ellipse Width="52" Height="52" Stroke="{StaticResource MlBorder}" StrokeThickness="1"/>
                 <Polygon Points="{Binding ProfileRadar}" Fill="#402EC4A6" Stroke="#2EC4A6"
                          StrokeThickness="2"/>
-                <TextBlock Text="SHO" Classes="ml-muted" FontSize="9" HorizontalAlignment="Center"
-                           VerticalAlignment="Top"/>
-                <TextBlock Text="DEF" Classes="ml-muted" FontSize="9" HorizontalAlignment="Center"
-                           VerticalAlignment="Bottom"/>
+                <Canvas Width="200" Height="200">
+                  <TextBlock Canvas.Left="89" Canvas.Top="6" Text="{Binding RadarLabels[0]}"
+                             Classes="ml-muted" FontSize="9"/>
+                  <TextBlock Canvas.Left="174" Canvas.Top="48" Text="{Binding RadarLabels[1]}"
+                             Classes="ml-muted" FontSize="9"/>
+                  <TextBlock Canvas.Left="174" Canvas.Top="142" Text="{Binding RadarLabels[2]}"
+                             Classes="ml-muted" FontSize="9"/>
+                  <TextBlock Canvas.Left="89" Canvas.Top="183" Text="{Binding RadarLabels[3]}"
+                             Classes="ml-muted" FontSize="9"/>
+                  <TextBlock Canvas.Left="6" Canvas.Top="142" Text="{Binding RadarLabels[4]}"
+                             Classes="ml-muted" FontSize="9"/>
+                  <TextBlock Canvas.Left="6" Canvas.Top="48" Text="{Binding RadarLabels[5]}"
+                             Classes="ml-muted" FontSize="9"/>
+                </Canvas>
               </Panel>
 
               <!-- the action row. Your own player has no buy side: he gets a chip and his

@@ -34,9 +34,54 @@ public sealed record MarketPlayer(
     });
     public string AgeLabel => Age?.ToString() ?? "—";
     public string Value => $"£{ValueRaw:N0}";
-    // The overall is shown ONLY as a qualitative letter, and masked until the player is well
-    // scouted or on your team ("?" / "B?" instead of the real grade).
-    public string Grade => ML.Core.Development.AttributeKnowledge.GradeMasked(Overall, Knowledge);
+
+    // The overall is shown ONLY as a qualitative letter, and it SHARPENS with what you know:
+    // a coarse band while he is unscouted, an approximate letter once part-scouted, the true
+    // letter when he is well scouted or already yours.
+    //
+    // THE BUG this shape fixes: FM view mode is on by default and BaselineKnowledge is 0 for
+    // anyone outside your career world — which is every player in the reference market — so
+    // GradeMasked collapsed to a bare "?" on every row of a default career and the Rating column
+    // was structurally incapable of ever showing anything else. Masking is deliberate and stays;
+    // a column that always reads "?" tells the manager nothing. The honest read a manager has
+    // WITHOUT a scout is the price — which the Value column beside this one already prints in
+    // full — so an unscouted player shows the calibre band his market price implies. Nothing is
+    // revealed here that the same row was not already shouting one column to the right.
+    public string Grade => Knowledge >= 45
+        ? ML.Core.Development.AttributeKnowledge.GradeMasked(Overall, Knowledge)
+        : ReputationBand(ValueRaw);
+
+    /// <summary>Where this row's letter comes from — the Rating cell's tooltip.</summary>
+    public string GradeTip => Knowledge >= 75
+        ? "Fully known — this is his real calibre."
+        : Knowledge >= 45
+            ? "Part-scouted — the letter is close, the question mark is the margin."
+            : "Nobody here has watched him. This is the calibre his market price implies — " +
+              "roughly right four times in five. Send a scout for the real letter.";
+
+    /// <summary>
+    /// The public read on a player nobody at the club has watched: what the market pays for him,
+    /// as a deliberately coarse two-or-three-grade band ("B/A−" = somewhere in B…A−). It brackets
+    /// his grade without ever claiming to BE it, and because a real fee also carries age, league
+    /// and hype it stays honestly imprecise — an ageing great reads low, a hyped teenager high.
+    ///
+    /// The thresholds are MEASURED, not guessed: each band is the grade window that best covers
+    /// the players actually priced in that range across the 347k imported market values in
+    /// master.db. The true grade lands inside the band for 86% of them and within one grade of it
+    /// for 94%. Re-measure if the market import is ever rebuilt on different data.
+    /// </summary>
+    private static string ReputationBand(long value) => value switch
+    {
+        >= 120_000_000 => "A/A+",
+        >= 45_000_000 => "B+/A",
+        >= 15_000_000 => "B/A-",
+        >= 5_000_000 => "B-/B+",
+        >= 1_200_000 => "C/B-",
+        >= 400_000 => "D/C",
+        > 0 => "F/C-",
+        _ => "?",           // no price and no dossier: this one is genuinely unknown
+    };
+
     public Avalonia.Media.IBrush RatingBrush =>
         Knowledge >= 75 ? Visuals.RatingBrush(Overall) : Visuals.Brush("#8A93A2");
     public Avalonia.Media.Imaging.Bitmap? Portrait => Visuals.LoadBitmap(PortraitPath);
@@ -69,7 +114,9 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={masterDb};Mode=ReadOnly");
             con.Open();
             using var count = con.CreateCommand();
-            count.CommandText = "SELECT COUNT(*) FROM players";
+            // Count what the market can actually show you, not the raw table — the headline
+            // said 376,033 while the list filtered duplicates out beneath it.
+            count.CommandText = "SELECT COUNT(*) FROM players WHERE superseded_by IS NULL";
             TotalPlayers = Convert.ToInt32(count.ExecuteScalar());
             Requery();
         }
@@ -263,6 +310,19 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         });
     }
 
+    /// <summary>
+    /// A player's market value in SQL: the imported fee when we have one, else the model curve
+    /// via the ml_value function registered below. One expression, used by the SELECT list, the
+    /// value cap and the "Most valuable" sort — so the number you filter on, the number you sort
+    /// on and the number in the Value column are always the same number.
+    /// </summary>
+    /// <remarks>The CASTs are not decoration: a few dozen players carry overall_rating as REAL,
+    /// and the function's parameters are ints.</remarks>
+    private const string ValueSql =
+        "COALESCE(NULLIF((SELECT m.value FROM player_market m WHERE m.player_id=p.id), 0), " +
+        "ml_value(CAST(COALESCE(p.overall_rating,0) AS INTEGER), " +
+        "CAST(COALESCE(p.age,25) AS INTEGER)))";
+
     /// <summary>Runs on a background thread. Touches only local connections and the Session
     /// value/knowledge lookups; it must NOT touch Rows or any other UI-bound state.</summary>
     private List<MarketPlayer> QueryRows(QuerySnapshot q)
@@ -272,9 +332,20 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         if (masterDb is null) return result;
         using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={masterDb};Mode=ReadOnly");
         con.Open();
+        // The model valuation, callable from SQL. It is the SAME pure function the rows display,
+        // so "what a player is worth" has exactly one definition and the WHERE, the ORDER BY and
+        // the Value column can never disagree about it. (Deterministic: the planner may cache it.)
+        con.CreateFunction("ml_value", (int rating, int age) => Session.ValuationOf(rating, age),
+            isDeterministic: true);
 
         using var cmd = con.CreateCommand();
         var where = new List<string>();
+        // One record per human: a merged duplicate is KEPT in the table but marked, and the
+        // standing ruling is that it is filtered out of every pool — market, scouting, CPU
+        // signings alike. Without this the world's 31,865 marked duplicates surface here as
+        // second copies of real players, and a superseded row shows as an unattached free
+        // agent you can sign (a phantom Mbappe alongside the real one at Real Madrid).
+        where.Add("p.superseded_by IS NULL");
         if (!string.IsNullOrWhiteSpace(q.Search)) where.Add("p.name LIKE $q");
         if (q.Position != "All") where.Add("p.position = $pos");
         if (q.MaxAge < 45) where.Add("COALESCE(p.age, 25) <= $age");
@@ -284,6 +355,18 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             where.Add("EXISTS (SELECT 1 FROM squad_members s2 JOIN teams t2 ON t2.id=s2.team_id " +
                       "WHERE s2.player_id=p.id AND t2.name=$club)");
         }
+        // THE BUG both of these fix: the value cap and the free-agent tick used to be applied in
+        // C# AFTER the query had already taken its top-4000 slice. With the default "Most valuable"
+        // sort that slice is the 4,000 most expensive players alive, so "show me who I can afford"
+        // sifted the world's priciest squads for anyone under £250k and came back empty — or with
+        // the cheapest of the most expensive. A filter must narrow the pool the slice is taken
+        // FROM, so both now live in SQL, ahead of the LIMIT. (Every other filter above was already
+        // in the WHERE; these two were the only after-the-slice ones.)
+        if (q.FreeAgentsOnly)
+        {
+            where.Add("NOT EXISTS (SELECT 1 FROM squad_members s3 WHERE s3.player_id=p.id)");
+        }
+        if (q.Cap != long.MaxValue) where.Add($"{ValueSql} <= $cap");
         // Shortlist mode: ids only, straight from the career DB — inlined because they are our own
         // numbers, and Requery already blanked every other filter so nothing else can narrow it.
         if (q.Shortlist is { } starred)
@@ -292,13 +375,14 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             where.Add(starred.Count == 0 ? "0" : $"p.id IN ({string.Join(",", starred)})");
         }
         // The candidate pool is ordered by the chosen sort so "Most valuable" surfaces the world's
-        // priciest players, not the highest-rated. A player's club is his ACTUAL team (any league,
-        // not just the career divisions) — so the reference world reads as real clubs, and only a
-        // genuinely unattached player is a free agent.
+        // priciest players, not the highest-rated. It sorts on the SAME value expression the rows
+        // show: ordering on the stored column alone sorted the ~28k players who have no imported
+        // fee as if they were worth nothing, so the slice could never reach them. A player's club
+        // is his ACTUAL team (any league, not just the career divisions) — so the reference world
+        // reads as real clubs, and only a genuinely unattached player is a free agent.
         var order = q.SortBy switch
         {
-            "Most valuable" => "COALESCE((SELECT value FROM player_market WHERE player_id=p.id),0) DESC, " +
-                               "p.overall_rating DESC",
+            "Most valuable" => $"{ValueSql} DESC, p.overall_rating DESC",
             "Youngest" => "COALESCE(p.age,99) ASC, p.overall_rating DESC",
             "Name A–Z" => "p.name ASC",
             _ => "p.overall_rating DESC",
@@ -310,7 +394,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             "(SELECT t.name FROM squad_members s JOIN teams t ON t.id=s.team_id " +
             " WHERE s.player_id=p.id LIMIT 1), " +
             "(SELECT transfer_status FROM player_market m WHERE m.player_id=p.id), " +
-            "COALESCE((SELECT value FROM player_market m WHERE m.player_id=p.id), 0), " +
+            ValueSql + ", " +
             "(SELECT t.logo_path FROM squad_members s JOIN teams t ON t.id=s.team_id " +
             " WHERE s.player_id=p.id LIMIT 1) " +
             "FROM players p " +
@@ -321,6 +405,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         if (q.MaxAge < 45) cmd.Parameters.AddWithValue("$age", q.MaxAge);
         if (q.MinRating > 40) cmd.Parameters.AddWithValue("$min", q.MinRating);
         if (q.Club.Length > 0) cmd.Parameters.AddWithValue("$club", q.Club);
+        if (q.Cap != long.MaxValue && q.Shortlist is null) cmd.Parameters.AddWithValue("$cap", q.Cap);
 
         var found = new List<(long Id, string Name, string Pos, int Rating, int? Age, long Value,
             string Club, string? Portrait, int? Skin, string? Status, string? ClubLogo)>();
@@ -332,12 +417,11 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
                 int? age = r.IsDBNull(4) ? null : r.GetInt32(4);
                 var id = r.GetInt64(0);           // player ids run past Int32 (curated/generated bands)
                 var club = r.IsDBNull(7) ? "Free agent" : r.GetString(7);
-                if (q.FreeAgentsOnly && club != "Free agent") continue;
                 // Value comes from THIS master connection (thread-safety: the background query
-                // must never touch the shared career Session connection); model fallback is pure.
-                var stored = r.GetInt64(9);
-                var value = stored > 0 ? stored : Session.ValuationOf(rating, age);
-                if (value > q.Cap) continue;
+                // must never touch the shared career Session connection); the model fallback is
+                // pure and now happens inside the query (ValueSql), so the cap and the free-agent
+                // tick can filter on it before the LIMIT instead of sieving the slice afterwards.
+                var value = r.GetInt64(9);
                 found.Add((id, r.GetString(1), r.GetString(2), rating, age, value, club,
                     r.IsDBNull(5) ? null : r.GetString(5), r.IsDBNull(6) ? null : r.GetInt32(6),
                     r.IsDBNull(8) ? null : r.GetString(8),
@@ -431,6 +515,8 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     [ObservableProperty] private string _profileName = "";
     [ObservableProperty] private string _profilePosition = "";
     [ObservableProperty] private string _profileGrade = "?";
+    /// <summary>Says which of the three reads the big letter is — scouted, part-scouted, or price.</summary>
+    [ObservableProperty] private string _profileGradeTip = "";
     [ObservableProperty] private Avalonia.Media.IBrush _profileRatingBrush = Visuals.Brush("#C7CEDA");
     [ObservableProperty] private Avalonia.Media.IBrush _profileFill = Visuals.Brush("#3A4759");
     [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _profilePortrait;
@@ -442,6 +528,21 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     [ObservableProperty] private bool _profileHasCrest;
     [ObservableProperty] private string _profilePlaystyle = "";
     [ObservableProperty] private Points _profileRadar = new();
+
+    // Radar axis labels follow the player, exactly as the Squad card does: a keeper's six axes
+    // are gk_* abilities (Visuals.GkRadarGroups), so outfield words would lie on his card.
+    //
+    // THE BUG: the view hard-coded two labels — "SHO" pinned to the top of the panel and "DEF"
+    // pinned to the bottom. PlayerCard.BuildRadarPoints puts axis k at k*60−90°, so the bottom
+    // vertex is axis 3, which is SPD; DEF is axis 4, down at the lower LEFT. The label named the
+    // wrong axis for every outfielder and named nothing real at all for a goalkeeper. All six are
+    // bound and positioned now, in the same order the geometry draws them.
+    private static readonly IReadOnlyList<string> OutfieldRadarLabels =
+        new[] { "SHO", "PAS", "DRI", "SPD", "DEF", "STR" };
+    private static readonly IReadOnlyList<string> GkRadarLabels =
+        new[] { "AWR", "PAS", "HAN", "REF", "PAR", "REA" };
+    [ObservableProperty] private IReadOnlyList<string> _radarLabels =
+        new[] { "SHO", "PAS", "DRI", "SPD", "DEF", "STR" };
     [ObservableProperty] private IReadOnlyList<AbilityEntry> _profileAbilities = Array.Empty<AbilityEntry>();
     [ObservableProperty] private string _profileKnowledgeLine = "";
     [ObservableProperty] private string _profileCoachLine = "";
@@ -463,7 +564,14 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
 
     partial void OnSelectedPlayerChanged(MarketPlayer? value)
     {
-        if (value is null) { _profileSubject = null; HasProfile = false; return; }
+        if (value is null)
+        {
+            _profileSubject = null;
+            HasProfile = false;
+            Negotiating = false;      // no subject, no table (the stored row survives — see below)
+            DealAgreed = false;
+            return;
+        }
         BuildProfile(value);
     }
 
@@ -491,18 +599,23 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
 
     private void BuildProfile(MarketPlayer value)
     {
-        // A new subject kills any half-open negotiation: the fee/wage boxes belong to one player.
-        if (_profileSubject?.Id != value.Id)
-        {
-            Negotiating = false;
-            DealAgreed = false;
-        }
+        // The fee/wage boxes belong to ONE player, so a new subject always re-reads the table.
+        //
+        // THE BUG: this used to just switch the negotiation UI off. The negotiations row stayed at
+        // state='open', and the only way back in was "Open negotiation", whose upsert resets
+        // round=1 and re-prices the ask — so talks silently restarted, the rounds you had already
+        // spent were binned, and an open row sat there for a player you had walked away from
+        // without ever walking away. The stored negotiation is the truth now: switching subject
+        // re-enters whatever is actually open on the new man, at his real round.
+        var changed = _profileSubject?.Id != value.Id;
         _profileSubject = value;
+        if (changed) SyncNegotiationTo(value);
         try
         {
             ProfileName = value.Name;
             ProfilePosition = value.Position;
             ProfileGrade = value.Grade;                 // gated letter, never the raw number
+            ProfileGradeTip = value.GradeTip;
             ProfileRatingBrush = value.RatingBrush;
             ProfileFill = Visuals.PositionBrush(value.Position);
             ProfileClub = value.Club;
@@ -545,6 +658,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
                 while (r.Read()) abilities[r.GetString(0)] = r.GetInt32(1);
             }
             var isGk = value.Position == "GK";
+            RadarLabels = isGk ? GkRadarLabels : OutfieldRadarLabels;
             // Knowledge gates the profile (P5): unknown players are blanks until scouted.
             var knowledge = 100;
             var fm = false;
@@ -706,8 +820,26 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     {
         if (Subject is not { } p) { SignStatus = "Pick a player first."; return; }
         if (p.Mine) { SignStatus = $"{p.Name} is already yours — right-click him for squad actions."; return; }
+        // THE BUG: the quick bid never read transfer status, so a player the row beside it labels
+        // NOT FOR SALE could be bought at the ordinary ask — while the negotiation path prices that
+        // same man at 2.2x and has his club open hostile (Session.AskPricingFor). One screen, two
+        // answers. The screen's own label wins: the quick path declines and sends you to the table,
+        // which is where the not-for-sale premium actually lives.
+        if (p.TransferStatus == "not-for-sale")
+        {
+            SignStatus = $"{p.Club} have {p.Name} down as not for sale — a one-click bid won't move " +
+                         "them. Open negotiation if you want to hear what silly money sounds like.";
+            return;
+        }
         var pct = SelectedBid.StartsWith("Lowball") ? 85 : SelectedBid.StartsWith("Premium") ? 115 : 100;
         SignStatus = _s.BuyPlayer(p.Id, pct);
+        if (SignStatus.StartsWith("Signed "))
+        {
+            // He is ours: close any table still open on him rather than leaving an orphan row.
+            try { _s.WalkAwayFromNegotiation(p.Id); } catch { /* the buy already succeeded */ }
+            Negotiating = false;
+            DealAgreed = false;
+        }
         Requery();   // club ownership may have changed hands
     }
 
@@ -736,10 +868,70 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         LikelihoodLine = $"Deal likelihood ~{pctv}% · sell-on counts as real money · round talks end at 3";
     }
 
+    /// <summary>The stored negotiation for a player, or null — never throws at a caller.</summary>
+    private NegotiationView? NegotiationSafe(long playerId)
+    {
+        try { return _s.NegotiationFor(playerId); }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// Point the negotiation UI at one player and no other: live talks come back exactly where
+    /// they stand (round, ask, agreed-or-not), and a man with no open table gets a blank one.
+    /// This is the half of the fix that stops rounds vanishing when the selection moves — the
+    /// engine already stores the round, we simply stopped ignoring it.
+    /// </summary>
+    private void SyncNegotiationTo(MarketPlayer value)
+    {
+        Negotiating = false;
+        DealAgreed = false;
+        NegLine = "";
+        NegStance = "";
+        LikelihoodLine = "";
+        if (value.Mine) return;
+        // Only inside a window: a row left open when the window shut must not put a live table
+        // (and a working "Send offer") back on screen, because the engine would honour the offer.
+        try { if (!_s.TransferWindowOpen()) return; } catch { return; }
+        var n = NegotiationSafe(value.Id);
+        if (n is null || n.State == "dead") return;
+        try
+        {
+            Negotiating = true;                  // before the fee: the likelihood line reads it
+            DealAgreed = n.State == "agreed";
+            NegStance = n.Stance;
+            NegFee = n.Ask;
+            NegWage = _s.SigningWageDemand(value.Id, int.Parse(NegYears));
+            NegLine = DealAgreed
+                ? $"{n.SellerName} have already agreed the package — settle his wages to complete."
+                : $"Talks with {n.SellerName} are still live, round {n.Round}: they want £{n.Ask:N0}.";
+            RefreshLikelihood();
+        }
+        catch
+        {
+            // Selecting a row must never take the screen down: if the table can't be restored,
+            // show none of it rather than half of it. The stored row is untouched either way.
+            Negotiating = false;
+            DealAgreed = false;
+        }
+    }
+
     [RelayCommand]
     private void OpenTalks()
     {
         if (Subject is not { } p) { SignStatus = "Pick a player first."; return; }
+        // Re-entering live talks must NOT call StartNegotiation: its upsert sets round=1 and
+        // re-prices the ask, which is exactly how the rounds you had already spent used to
+        // disappear. An open table is resumed; only a player with no table opens a new one.
+        var inWindow = true;
+        try { inWindow = _s.TransferWindowOpen(); } catch { }
+        if (inWindow && NegotiationSafe(p.Id) is { } live && live.State != "dead")
+        {
+            SyncNegotiationTo(p);
+            SignStatus = live.State == "agreed"
+                ? $"{live.SellerName} have already agreed terms for {p.Name} — finish his wages."
+                : $"Back at the table with {live.SellerName} over {p.Name} — round {live.Round}.";
+            return;
+        }
         NegLine = _s.StartNegotiation(p.Id);
         var n = _s.NegotiationFor(p.Id);
         if (n is null || n.State == "dead") { Negotiating = false; SignStatus = NegLine; return; }
