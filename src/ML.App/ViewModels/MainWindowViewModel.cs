@@ -43,6 +43,13 @@ public partial class MainWindowViewModel : ObservableObject
             new("News",     "\uE715", s => new InboxViewModel(s)),
             // pinned at the foot of the sidebar, outside the section scroll
             new("Settings", "\uE713", s => new SettingsViewModel(s)),
+            // DESTINATIONS — you reach these by clicking a player, never from the sidebar, so
+            // they are deliberately absent from Sections below. They are registered HERE
+            // because everything the shell does works off this list by Title: Nav.Go("Player",
+            // him) resolves against it, Back replays a visit to it, and ML_PAGE can open
+            // straight onto one for a screenshot run.
+            new("Player",   "\uE77B", s => new PlayerViewModel(s)),
+            new("Bidding",  "\uE8AB", s => new BiddingViewModel(s)),
         };
 
         NavItem P(string title) => Pages.First(p => p.Title == title);

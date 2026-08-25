@@ -15,5 +15,14 @@ public partial class MarketView : UserControl
             this.FindControl<DataGrid>("MarketGrid")!,
             r => (DataContext as MarketViewModel)?.MenuFor(r),
             r => { if (DataContext is MarketViewModel vm) vm.SelectedPlayer = r; });
+
+        // Double-click a market row to OPEN him: the full-width Player screen, where the
+        // bidding table is one button away — rather than the profile pane in the 330px rail
+        // that put the fee field below the fold. Single-click still just selects (the rail's
+        // profile keeps following it) and the right-click menu is untouched: a double-click
+        // is two single clicks first, so the row is already selected when this runs.
+        MlMenu.OnDoubleClick<MarketPlayer>(
+            this.FindControl<DataGrid>("MarketGrid")!,
+            r => Nav.Go("Player", EntityRef.Player(r.Id, r.Name)));
     }
 }

@@ -21,6 +21,10 @@ public static class EntityActions
     /// (Tactics' captain verb also moves the armband on the pitch).</summary>
     public const string ItemCaptain = "captain";
 
+    /// <summary>The bidding verb's key — for the Bidding screen itself, where a row that
+    /// navigates to the page you are already on is only a reload.</summary>
+    public const string ItemBidding = "bidding";
+
     public static ContextMenu BuildMenu(Session s, EntityRef e,
         Action<string>? status = null, Action? refresh = null, IEnumerable<MenuItem>? extras = null,
         params string[] omit)
@@ -52,8 +56,22 @@ public static class EntityActions
 
         if (extras is not null)
         {
-            if (items.Count > 0) Sep();
-            items.AddRange(extras);
+            // A screen may carry its own copy of a verb the shared menu has since grown — the
+            // Player screen's own "💷 Open bidding" is exactly that, and it was written before
+            // this menu had one. Two identical rows in one menu is a fault the user sees, so an
+            // extra whose header is already on the menu is dropped and the shared verb stands.
+            // The separator is only laid down if something actually survives, or a menu whose
+            // extras were all duplicates would end on a hanging line.
+            var already = items.OfType<MenuItem>()
+                .Select(m => m.Header?.ToString() ?? "")
+                .Where(h => h.Length > 0)
+                .ToHashSet(StringComparer.Ordinal);
+            var keep = extras.Where(m => !already.Contains(m.Header?.ToString() ?? "")).ToList();
+            if (keep.Count > 0)
+            {
+                if (items.Count > 0) Sep();
+                items.AddRange(keep);
+            }
         }
 
         foreach (var i in items) menu.Items.Add(i);
@@ -76,8 +94,10 @@ public static class EntityActions
 
         if (own)
         {
-            if (teamId is { } tid0)
-                Add("👤 View profile", () => Nav.Go("Squad", EntityRef.Player(id, name)));
+            // The profile is its own full-width screen now. It used to mean "go to Squad and
+            // select his row", which put a man's whole career into a 262px column beside a
+            // roster — the one implementation of a profile, for every player in the world.
+            Add("👤 View profile", () => Nav.Go("Player", EntityRef.Player(id, name)));
             var isCaptain = s.Captain == id;
             Add("© Make captain", () => { s.Captain = id; status?.Invoke($"{name} wears the armband."); }, !isCaptain, ItemCaptain);
             Add("📃 Renew contract", () => run(() => s.RenewContract(id)));
@@ -103,8 +123,20 @@ public static class EntityActions
         }
         else
         {
-            if (!free)
-                Add("👤 View profile", () => Nav.Go("Squad", EntityRef.Player(id, name)));
+            // Free agents get a profile too now: the Player screen is one man at a time and
+            // needs no club, where the old Squad-focused verb had nothing to select him in.
+            Add("👤 View profile", () => Nav.Go("Player", EntityRef.Player(id, name)));
+
+            // Buying him is a screen now, not a 330px rail. Outside the window nothing binding
+            // can be agreed, so the verb is not offered then — what IS legal (an enquiry to his
+            // club, a trial for a free agent) is right there in this same menu, a line below.
+            bool windowOpen;
+            try { windowOpen = s.TransferWindowOpen(); }
+            catch { windowOpen = true; }   // a failed read must never silently remove a verb
+            if (windowOpen)
+                Add("💷 Open bidding", () => Nav.Go("Bidding", EntityRef.Player(id, name)),
+                    true, ItemBidding);
+
             Add("🛒 Open in Market", () => Nav.Go("Market", EntityRef.Player(id, name)));
             sep();
             var scoutBusy = s.ActiveScoutJob() is not null;
@@ -158,23 +190,52 @@ public static class EntityActions
 }
 
 /// <summary>
-/// Attaches the shared menu to any list-shaped control: right-click on a row whose
-/// DataContext is T selects it (optional) and opens the menu built for it.
+/// Row gestures for any list-shaped control. Right-click on a row whose DataContext is T
+/// selects it (optional) and opens the menu built for it; double-click opens it. Both resolve
+/// the row through the same walk, so the menu and the double-click can never act on different
+/// players.
 /// </summary>
 public static class MlMenu
 {
+    /// <summary>
+    /// The nearest thing under a click that IS a T — the row the gesture is about. Every
+    /// affordance on a list resolves its subject through this one walk (right-click, and
+    /// double-click-to-open), so they can never disagree about which player was hit.
+    /// </summary>
+    public static T? RowAt<T>(object? source, Control? stopAt = null) where T : class
+    {
+        for (Visual? el = source as Visual; el is not null; el = el.GetVisualParent())
+        {
+            if (el is StyledElement se && se.DataContext is T t) return t;
+            if (ReferenceEquals(el, stopAt)) break;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Double-click a row to OPEN it. Bubbling, and it never touches selection: a double-click
+    /// is two single clicks first, so the list has already selected the row by the time this
+    /// runs — the single-click select and the right-click menu are both left exactly as they
+    /// were. Same gesture the touchline strip uses to bring a substitute on.
+    /// </summary>
+    public static void OnDoubleClick<T>(Control host, Action<T> open) where T : class
+    {
+        host.AddHandler(Gestures.DoubleTappedEvent,
+            new EventHandler<TappedEventArgs>((_, e) =>
+            {
+                if (RowAt<T>(e.Source, host) is not { } row) return;
+                open(row);
+                e.Handled = true;
+            }), RoutingStrategies.Bubble);
+    }
+
     public static void Attach<T>(Control host, Func<T, ContextMenu?> menuFor, Action<T>? select = null)
         where T : class
     {
         host.AddHandler(InputElement.PointerPressedEvent, (_, e) =>
         {
             if (!e.GetCurrentPoint(host).Properties.IsRightButtonPressed) return;
-            T? item = null;
-            for (Visual? el = e.Source as Visual; el is not null; el = el.GetVisualParent())
-            {
-                if (el is StyledElement se && se.DataContext is T t) { item = t; break; }
-                if (ReferenceEquals(el, host)) break;
-            }
+            var item = RowAt<T>(e.Source, host);
             if (item is null) return;
             select?.Invoke(item);
             var menu = menuFor(item);

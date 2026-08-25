@@ -1,0 +1,364 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             x:Class="ML.App.Views.BiddingView"
+             x:DataType="vm:BiddingViewModel">
+
+  <!-- ═══ THE BIDDING SCREEN ══════════════════════════════════════════════════════════
+       Buying a footballer, the whole window wide. The three faults it exists to fix, and
+       where each one is fixed:
+
+         1. THE MONEY WAS INVISIBLE while you spent it. The money band is DOCKED under the
+            header — cash, transfer budget, wage budget, wage bill, the fee on the table,
+            what leaves the bank today, what you are left with — and it is outside every
+            scroller, so it cannot be scrolled away from the button that spends it.
+         2. THE FEE FIELD WAS BELOW THE FOLD, the Complete button up to 570px below it.
+            The terms, the likelihood and the send button are one card, and at 1640x820
+            all of it — plus the agent's wage step — is on screen without scrolling. Its
+            column does carry a ScrollViewer, but only so a window SMALLER than that
+            scrolls rather than clipping a control.
+         3. THE TALKS READ AS A FORM. The transcript column on the right keeps every round:
+            what you offered, what they answered, which round you are on.
+
+       The docked status line at the foot carries every engine answer VERBATIM, coloured by
+       severity. Nothing on this screen rewrites a refusal.
+       ═════════════════════════════════════════════════════════════════════════════════ -->
+
+  <Panel>
+
+    <!-- Opened with nobody at the table: say what to do, never sit blank. -->
+    <StackPanel IsVisible="{Binding !HasSubject}" Spacing="16" MaxWidth="620"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="Nobody at the table" Classes="ml-h1" HorizontalAlignment="Center"/>
+      <TextBlock Text="{Binding EmptyLine}" Classes="ml-empty" FontSize="13"/>
+      <Button Content="🛒 Open the transfer market" Classes="ml-primary"
+              HorizontalAlignment="Center" Command="{Binding GoToMarketCommand}"/>
+    </StackPanel>
+
+    <DockPanel Margin="20" IsVisible="{Binding HasSubject}">
+
+      <!-- ══ who you are buying ══════════════════════════════════════════════════════
+           Right-clicking the band opens the shared player menu; the ⋯ button opens the
+           same one. Both affordances, one action list — the standing ruling. -->
+      <Border x:Name="SubjectBand" DockPanel.Dock="Top" Classes="ml-panel"
+              Padding="18,14" Margin="0,0,0,12">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+          <Panel Grid.Column="0" Width="84" Height="84" VerticalAlignment="Top" Margin="0,0,18,0">
+            <Border Width="84" Height="84" CornerRadius="42" Background="{Binding MarkBrush}">
+              <TextBlock Text="{Binding Mark}" FontSize="26" FontWeight="Bold" Foreground="White"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <Border Width="84" Height="84" CornerRadius="42" ClipToBounds="True">
+              <Image Source="{Binding Portrait}" Width="84" Height="84" Stretch="UniformToFill"
+                     IsVisible="{Binding HasPortrait}"/>
+            </Border>
+          </Panel>
+
+          <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Top">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="{Binding PlayerName}" Classes="ml-h1" VerticalAlignment="Center"/>
+              <Border CornerRadius="4" Padding="10,3" Background="{Binding PositionBrush}"
+                      VerticalAlignment="Center">
+                <TextBlock Text="{Binding PositionLabel}" FontSize="12" FontWeight="Bold"
+                           Foreground="White"/>
+              </Border>
+              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <TextBlock Text="AGE" Classes="ml-label" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding AgeDisplay}" Classes="ml-body" FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <Image Source="{Binding ClubCrest}" Height="20" Stretch="Uniform"
+                       VerticalAlignment="Center" IsVisible="{Binding HasClubCrest}"/>
+                <TextBlock Text="{Binding ClubLine}" Classes="ml-body" FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+              </StackPanel>
+              <Border Classes="ml-chip" VerticalAlignment="Center" IsVisible="{Binding IsFreeAgent}">
+                <TextBlock Text="FREE AGENT"/>
+              </Border>
+              <Border Classes="ml-chip ml-info" VerticalAlignment="Center" IsVisible="{Binding IsMine}">
+                <TextBlock Text="YOUR PLAYER"/>
+              </Border>
+            </StackPanel>
+
+            <!-- their price against his real value: the one line that says whether this
+                 is a fair ask or a mugging -->
+            <Border Classes="ml-card" Padding="14,9">
+              <StackPanel Orientation="Horizontal" Spacing="30">
+                <StackPanel Spacing="2" MinWidth="230">
+                  <TextBlock Text="SELLING CLUB" Classes="ml-label"/>
+                  <TextBlock Text="{Binding SellerLine}" Classes="ml-body" FontWeight="SemiBold"
+                             TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <StackPanel Spacing="2" MinWidth="150">
+                  <TextBlock Text="THEIR ASK" Classes="ml-label"/>
+                  <TextBlock Text="{Binding AskLine}" Classes="ml-body" FontWeight="SemiBold"/>
+                </StackPanel>
+                <StackPanel Spacing="2" MinWidth="150">
+                  <TextBlock Text="MARKET VALUE" Classes="ml-label"/>
+                  <TextBlock Text="{Binding MarketValueLine}" Classes="ml-body" FontWeight="SemiBold"/>
+                </StackPanel>
+                <StackPanel Spacing="2" MinWidth="200" VerticalAlignment="Center">
+                  <TextBlock Text="THE PREMIUM" Classes="ml-label"/>
+                  <TextBlock Text="{Binding PremiumLine}" Classes="ml-body" FontWeight="SemiBold"
+                             Foreground="{Binding PremiumBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+
+          <!-- calibre as a LETTER, and how honestly you know it -->
+          <StackPanel Grid.Column="2" Spacing="4" Margin="20,0,0,0" MinWidth="230"
+                      VerticalAlignment="Top">
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+              <TextBlock Text="{Binding Grade}" FontSize="38" FontWeight="Bold"
+                         Foreground="{Binding GradeBrush}" VerticalAlignment="Center"
+                         ToolTip.Tip="{Binding GradeTip}"/>
+              <Button x:Name="MoreButton" Content="⋯" Classes="ml-ghost" FontSize="16"
+                      Padding="12,4" Click="OnMore" VerticalAlignment="Center"
+                      ToolTip.Tip="The same actions as a menu — right-clicking him does this too"/>
+            </StackPanel>
+            <TextBlock Text="{Binding KnowledgeLine}" Classes="ml-label" HorizontalAlignment="Right"/>
+            <TextBlock Text="{Binding CurrentWageLine}" Classes="ml-muted" HorizontalAlignment="Right"
+                       TextAlignment="Right" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- ══ THE MONEY BAND (fault 1) ════════════════════════════════════════════════
+           Docked, outside every scroller: the budget can never scroll away from the
+           button that spends it. -->
+      <Border DockPanel.Dock="Top" Classes="ml-card" Padding="16,12" Margin="0,0,0,12">
+        <StackPanel Spacing="10">
+          <ItemsControl ItemsSource="{Binding Money}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><UniformGrid Columns="8"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:BidTileVm">
+                <StackPanel Spacing="3" Margin="0,0,14,0" ToolTip.Tip="{Binding Tip}">
+                  <TextBlock Text="{Binding Label}" Classes="ml-label"/>
+                  <TextBlock Text="{Binding Value}" FontSize="16" FontWeight="Bold"
+                             Foreground="{Binding ValueBrush}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <!-- said BEFORE the button is pressed, never as a refusal afterwards -->
+          <TextBlock Text="{Binding AffordLine}" Foreground="{Binding AffordBrush}" FontSize="12"
+                     TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <!-- the window may simply be shut — say so once, loudly, and disable rather than fail -->
+      <Border DockPanel.Dock="Top" Classes="ml-card" Padding="14,9" Margin="0,0,0,12"
+              BorderBrush="{StaticResource MlWarn}" IsVisible="{Binding !WindowOpen}">
+        <TextBlock Text="{Binding WindowShutLine}" Classes="ml-body" FontWeight="SemiBold"
+                   Foreground="{StaticResource MlWarn}" TextWrapping="Wrap"/>
+      </Border>
+
+      <!-- ══ THE ONE STATUS LINE ═════════════════════════════════════════════════════
+           Docked at the foot, outside every scroller, severity-coloured. Every engine
+           answer lands here word for word. -->
+      <Border DockPanel.Dock="Bottom" Classes="ml-card" Padding="16,11" Margin="0,12,0,0">
+        <TextBlock Text="{Binding StatusLine}" Foreground="{Binding StatusBrush}"
+                   FontSize="13" TextWrapping="Wrap"/>
+      </Border>
+
+      <!-- ══ the body: the table on the left, the talks on the right ═════════════════ -->
+      <Grid ColumnDefinitions="*,430">
+
+        <!-- The table column. It is NOT a scrolling region at the target size — at 1640x820
+             everything below sits on screen at once, which is the whole point of fault 2.
+             The ScrollViewer exists only so a window smaller than that scrolls instead of
+             clipping a control, which rule 7 forbids outright. -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="12" Margin="0,0,12,0">
+
+          <!-- your own player: refuse, and point at the screen that does have his verbs -->
+          <Border Classes="ml-card" IsVisible="{Binding IsMine}">
+            <StackPanel Spacing="10">
+              <TextBlock Text="HE IS ALREADY YOURS" Classes="ml-label" LetterSpacing="1.1"/>
+              <TextBlock Classes="ml-body" TextWrapping="Wrap"
+                         Text="There is nothing to bid for — you own his registration. Renewing him, transfer-listing him, loaning him out and everything else you can do with your own player lives on the Squad screen."/>
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Content="👥 Open the Squad" Classes="ml-primary"
+                        Command="{Binding GoToSquadCommand}"/>
+                <Button Content="👤 Open his profile" Classes="ml-secondary"
+                        Command="{Binding ViewProfileCommand}"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- an unscouted man is never presented as a known quantity -->
+          <Border Classes="ml-card" IsVisible="{Binding ThinlyKnown}"
+                  BorderBrush="{StaticResource MlWarn}">
+            <StackPanel Spacing="6">
+              <TextBlock Text="YOU BARELY KNOW HIM" Classes="ml-label" LetterSpacing="1.1"
+                         Foreground="{StaticResource MlWarn}"/>
+              <TextBlock Text="{Binding ThinlyKnownLine}" Classes="ml-body" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+
+          <!-- ── THE TABLE (fault 2): the fee, the sell-on, the instalments tick, the
+                  likelihood and the send button are ONE card, in that order, all of it
+                  above the fold. In the rail the fee field was the 18th child of a
+                  scroller and the button that finished the deal sat up to 570px below
+                  it; here you can reach both without moving. ───────────────────────── -->
+          <Border Classes="ml-card" Padding="16" IsVisible="{Binding !IsMine}">
+            <StackPanel Spacing="12">
+
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="THE TABLE" Classes="ml-label" LetterSpacing="1.1"
+                           VerticalAlignment="Center"/>
+                <Border Classes="ml-chip ml-info" IsVisible="{Binding Negotiating}">
+                  <TextBlock Text="{Binding RoundLabel}"/>
+                </Border>
+                <TextBlock Text="{Binding StanceLine}" Classes="ml-body" FontSize="12"
+                           FontStyle="Italic" Foreground="{StaticResource MlWarn}"
+                           VerticalAlignment="Center" TextWrapping="Wrap"
+                           IsVisible="{Binding HasStance}"/>
+              </StackPanel>
+
+              <!-- before talks: the way in, plus the two cheap moves -->
+              <StackPanel Spacing="10" IsVisible="{Binding !Negotiating}">
+                <TextBlock Classes="ml-body" TextWrapping="Wrap"
+                           Text="No talks open. Opening negotiation puts your interest on the record and makes his club name a price — you then have three rounds to argue it down."/>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button Content="{Binding OpenLabel}" Classes="ml-primary ml-go" FontSize="14"
+                          Padding="20,11" IsEnabled="{Binding CanOpen}"
+                          Command="{Binding OpenTalksCommand}"/>
+                  <Button Content="{Binding EnquireLabel}" Classes="ml-secondary"
+                          IsEnabled="{Binding CanEnquire}" Command="{Binding EnquireCommand}"
+                          ToolTip.Tip="Free and non-committal — no talks are opened and nothing is recorded"/>
+                  <Button Content="{Binding LoanLabel}" Classes="ml-secondary"
+                          IsEnabled="{Binding CanLoan}" Command="{Binding LoanForCommand}"
+                          ToolTip.Tip="Borrow him until June at 10% of his value"/>
+                </StackPanel>
+              </StackPanel>
+
+              <!-- in talks: fee, sell-on, instalments — all on one visible row -->
+              <StackPanel Spacing="12" IsVisible="{Binding Negotiating}">
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="YOUR FEE" Classes="ml-label"/>
+                    <NumericUpDown Value="{Binding Fee}" Increment="250000" Minimum="0"
+                                   FormatString="N0" Width="210" IsEnabled="{Binding !DealAgreed}"/>
+                  </StackPanel>
+                  <Button Content="Meet their ask" Classes="ml-secondary" FontSize="12"
+                          Command="{Binding MeetTheirAskCommand}" IsEnabled="{Binding !DealAgreed}"
+                          VerticalAlignment="Bottom" Margin="0,0,0,1"/>
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="SELL-ON CLAUSE" Classes="ml-label"/>
+                    <ComboBox ItemsSource="{Binding SellOnOptions}" SelectedItem="{Binding SellOn}"
+                              Width="160" IsEnabled="{Binding !DealAgreed}"
+                              ToolTip.Tip="A cut of his next transfer. They count it as real money — you pay it later"/>
+                  </StackPanel>
+                  <CheckBox Content="Pay in instalments" IsChecked="{Binding Instalments}"
+                            IsEnabled="{Binding !DealAgreed}" FontSize="12"
+                            Foreground="{StaticResource MlTextBody}" VerticalAlignment="Bottom"
+                            Margin="0,0,0,3"
+                            ToolTip.Tip="Half now, half next summer — only that half leaves the bank today"/>
+                </StackPanel>
+
+                <!-- the likelihood, in words and as a bar -->
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="{Binding LikelihoodWord}" FontSize="13" FontWeight="Bold"
+                               Foreground="{Binding LikelihoodBrush}" VerticalAlignment="Center"/>
+                    <Border Width="240" Height="10" CornerRadius="5"
+                            Background="{StaticResource MlSurfaceControl}" VerticalAlignment="Center">
+                      <Border Height="10" CornerRadius="5" HorizontalAlignment="Left"
+                              Width="{Binding LikelihoodWidth}"
+                              Background="{Binding LikelihoodBrush}"/>
+                    </Border>
+                  </StackPanel>
+                  <TextBlock Text="{Binding LikelihoodLine}" Classes="ml-muted" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button Content="📨 Send this offer" Classes="ml-primary ml-go" FontSize="14"
+                          Padding="20,11" IsEnabled="{Binding CanSend}"
+                          Command="{Binding SendOfferCommand}"/>
+                  <Button Content="{Binding WalkLabel}" Classes="ml-secondary"
+                          Foreground="{StaticResource MlDanger}" Command="{Binding WalkAwayCommand}"/>
+                  <Button Content="{Binding EnquireLabel}" Classes="ml-ghost"
+                          IsEnabled="{Binding CanEnquire}" Command="{Binding EnquireCommand}"
+                          ToolTip.Tip="Free and non-committal — it opens no talks and records nothing"/>
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- ── the agent's step: only once the club has agreed a fee ───────────────── -->
+          <Border Classes="ml-card" Padding="16" IsVisible="{Binding DealAgreed}">
+            <StackPanel Spacing="12">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="HIS AGENT" Classes="ml-label" LetterSpacing="1.1"
+                           VerticalAlignment="Center"/>
+                <Border Classes="ml-chip ml-success">
+                  <TextBlock Text="CLUB TERMS AGREED"/>
+                </Border>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="14">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="WEEKLY WAGE" Classes="ml-label"/>
+                  <NumericUpDown Value="{Binding Wage}" Increment="1000" Minimum="500"
+                                 FormatString="N0" Width="190"/>
+                </StackPanel>
+                <StackPanel Spacing="4">
+                  <TextBlock Text="LENGTH" Classes="ml-label"/>
+                  <ComboBox ItemsSource="{Binding YearsOptions}" SelectedItem="{Binding Years}"
+                            Width="130"/>
+                </StackPanel>
+                <Button Content="{Binding CompleteLabel}" Classes="ml-primary" FontSize="14"
+                        Padding="20,11" IsEnabled="{Binding CanComplete}"
+                        VerticalAlignment="Bottom" Command="{Binding CompleteDealCommand}"/>
+              </StackPanel>
+              <TextBlock Text="{Binding AgentFloorLine}" Classes="ml-muted" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        </ScrollViewer>
+
+        <!-- ── THE TALKS (fault 3): the rounds, kept ───────────────────────────────── -->
+        <Border Grid.Column="1" Classes="ml-card" Padding="16">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="THE TALKS" Classes="ml-label"
+                       LetterSpacing="1.1" Margin="0,0,0,10"/>
+            <!-- what does and does not reach the game -->
+            <TextBlock DockPanel.Dock="Bottom" Classes="ml-muted" TextWrapping="Wrap"
+                       Margin="0,10,0,0"
+                       Text="🔒 Negotiations, sell-on clauses and budgets live in this app — eFootball's save has no field for any of them. It is the finished squad that reaches the game."/>
+            <Panel>
+              <TextBlock Classes="ml-empty" IsVisible="{Binding !HasRounds}"
+                         Text="Nothing said yet. Every round of these talks — what you offered and what they answered — is kept here."/>
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                            IsVisible="{Binding HasRounds}">
+                <ItemsControl ItemsSource="{Binding Rounds}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BidRoundVm">
+                      <Border Classes="ml-card" Padding="12,10" Margin="0,0,0,8">
+                        <StackPanel Spacing="4">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{Binding Stamp}" Classes="ml-label"/>
+                            <TextBlock Text="{Binding Speaker}" FontSize="11" FontWeight="Bold"
+                                       Foreground="{Binding SpeakerBrush}"/>
+                          </StackPanel>
+                          <TextBlock Text="{Binding Line}" Classes="ml-body" FontSize="12"
+                                     TextWrapping="Wrap"/>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Panel>
+          </DockPanel>
+        </Border>
+      </Grid>
+    </DockPanel>
+  </Panel>
+</UserControl>

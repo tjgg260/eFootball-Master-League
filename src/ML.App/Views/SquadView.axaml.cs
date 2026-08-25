@@ -25,6 +25,17 @@ public partial class SquadView : UserControl
         // Loanees are players too — the strip is not a dead list of prose.
         MlMenu.Attach<LoanRowVm>(this.FindControl<ItemsControl>("LoansList")!,
             r => (DataContext as SquadViewModel)?.MenuForLoan(r));
+
+        // Double-click a man to OPEN him: his whole profile, the full width of the window,
+        // instead of the card that used to be squeezed into the 262px column beside this
+        // grid. The gesture resolves the row exactly as the right-click menu does, and it
+        // leaves single-click selection and the menu alone — a double-click is two single
+        // clicks first, so the row is already selected and the card beside the grid still
+        // follows the keyboard.
+        MlMenu.OnDoubleClick<SquadEntry>(this.FindControl<DataGrid>("RosterGrid")!,
+            r => Nav.Go("Player", EntityRef.Player(r.PlayerId, r.Name)));
+        MlMenu.OnDoubleClick<LoanRowVm>(this.FindControl<ItemsControl>("LoansList")!,
+            r => Nav.Go("Player", EntityRef.Player(r.PlayerId, r.Name)));
     }
 
     /// <summary>"Set photo…" — copy the owner's chosen image to custom_faces/&lt;player_id&gt;,

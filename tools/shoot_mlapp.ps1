@@ -15,7 +15,9 @@ param(
     [double]$RightClickX = 0,                # window-relative point to right-click before shooting
     [double]$RightClickY = 0,
     [double]$LeftClickX = 0,                 # window-relative point to left-click first (tabs etc.)
-    [double]$LeftClickY = 0
+    [double]$LeftClickY = 0,
+    [double]$DoubleClickX = 0,               # window-relative point to double-click (opens detail screens)
+    [double]$DoubleClickY = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -92,6 +94,19 @@ if ($w -le 0 -or $ht -le 0) {
     $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
     $r.Left = $b.X; $r.Top = $b.Y; $w = $b.Width; $ht = $b.Height
     Write-Host "no window rect - falling back to full screen"
+}
+
+if ($DoubleClickX -gt 0) {
+    [WinShot]::ForceTop($h)
+    $r = [WinShot]::Raise($h)
+    $dx = $r.Left + [int](($r.Right - $r.Left) * $DoubleClickX)
+    $dy = $r.Top + [int](($r.Bottom - $r.Top) * $DoubleClickY)
+    Write-Host "double-click at $dx,$dy"
+    [WinShot]::DoubleClick($dx, $dy)
+    Start-Sleep -Seconds 4
+    $proc.Refresh()
+    if ($proc.MainWindowHandle -ne [IntPtr]::Zero) { $h = $proc.MainWindowHandle }
+    $r = [WinShot]::Raise($h)
 }
 
 if ($LeftClickX -gt 0) {

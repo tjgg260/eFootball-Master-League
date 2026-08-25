@@ -79,6 +79,18 @@ public static class WinShot
         mouse_event(0x0004, 0, 0, 0, IntPtr.Zero);   // LEFTUP
     }
 
+    /// <summary>Double-click a point in screen coordinates (opens detail screens).</summary>
+    public static void DoubleClick(int x, int y)
+    {
+        SetCursorPos(x, y);
+        System.Threading.Thread.Sleep(250);
+        mouse_event(0x0002, 0, 0, 0, IntPtr.Zero);
+        mouse_event(0x0004, 0, 0, 0, IntPtr.Zero);
+        System.Threading.Thread.Sleep(90);   // inside the OS double-click interval
+        mouse_event(0x0002, 0, 0, 0, IntPtr.Zero);
+        mouse_event(0x0004, 0, 0, 0, IntPtr.Zero);
+    }
+
     /// <summary>Restore, raise and focus a window, returning its screen rectangle.</summary>
     public static RECT Raise(IntPtr h)
     {
