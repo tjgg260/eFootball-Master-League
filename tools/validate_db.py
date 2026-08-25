@@ -237,16 +237,25 @@ def check_catalog_clubs(con, gate: Gate, clubs: dict[int, dict]) -> None:
 
 
 def check_squad_duplicates(con, gate: Gate) -> None:
+    """A name and an age are not an identity. Altos really does field two Brazilians called
+    'Henrique', both 25, and FM gives them two different uids — that is the spine saying they are
+    two people, and it outranks the heuristic. Only groups the spine does NOT separate count."""
     total = con.execute("SELECT COUNT(*) FROM squad_members").fetchone()[0]
     rows = con.execute("""
-        SELECT sm.team_id, t.name, p.name, p.age, COUNT(*)
+        SELECT sm.team_id, t.name, p.name, p.age, COUNT(*),
+               COUNT(DISTINCT pi.fm_uid)
         FROM squad_members sm
         JOIN players p ON p.id = sm.player_id
         LEFT JOIN teams t ON t.id = sm.team_id
+        LEFT JOIN player_identity pi ON pi.player_id = p.id
         GROUP BY sm.team_id, p.name, p.age HAVING COUNT(*) > 1
         ORDER BY COUNT(*) DESC""").fetchall()
-    detail = [f"{tname or tid}: '{pname}' age {age} x{n}" for tid, tname, pname, age, n in rows]
-    gate.report("5 no duplicate (name+age) inside one squad", len(rows), total,
+    dupes = [r for r in rows if r[5] < r[4]]        # fewer distinct uids than records
+    detail = [f"{tname or tid}: '{pname}' age {age} x{n}" for tid, tname, pname, age, n, _u in dupes]
+    named = len(rows) - len(dupes)
+    if named:
+        detail.append(f"(plus {named} namesake group(s) the FM spine separates by uid)")
+    gate.report("5 no duplicate (name+age) inside one squad", len(dupes), total,
                 "squad rows", detail)
 
 

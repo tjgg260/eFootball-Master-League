@@ -228,6 +228,15 @@ def main() -> int:
         r = con.execute("SELECT name FROM teams WHERE id=?", (tid,)).fetchone()
         return r[0] if r else str(tid)
 
+    # Twelve lines is a sample, not a review. Write the whole list so a sync can actually be
+    # checked before it is applied (that is the point of --dry).
+    rep = REPO / "build" / "membership_moves.csv"
+    with open(rep, "w", encoding="utf-8-sig", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["player_id", "player", "from_team", "to_team"])
+        for pid, now, want in moves:
+            w.writerow([pid, name(pid), tname(now), tname(want)])
+    print(f"  full move list -> {rep}")
     for pid, now, want in moves[:12]:
         print(f"  MOVE  {name(pid)}: {tname(now)} -> {tname(want)}")
     for pid, t in ghosts[:6]:
