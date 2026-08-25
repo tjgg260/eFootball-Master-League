@@ -670,7 +670,13 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             ProfileRadar = !fm || knowledge >= 45
                 ? PlayerCard.BuildRadarPoints(Visuals.RadarAxes(abilities, isGk))
                 : new Points();
-            ProfileAbilities = PlayerCard.BuildAbilityList(abilities, isGk, fm, knowledge, value.Id);
+            // The reveal order carries his world reputation: a famous man's headline abilities
+            // are visible on the Market before you have spent a scout on him, exactly as they
+            // are on his own screen.
+            ML.Core.Development.RevealOrder order;
+            try { order = _s.RevealOrderOf(value.Id, value.Position); }
+            catch { order = ML.Core.Development.RevealOrder.Anonymous(value.Id); }
+            ProfileAbilities = PlayerCard.BuildAbilityList(abilities, isGk, fm, knowledge, value.Id, order);
             try { ProfileCoachLine = string.Join("  ·  ", _s.CoachReportOf(value.Id, value.Position)); }
             catch { ProfileCoachLine = ""; }
             LoadVerdict(value, fm, knowledge);

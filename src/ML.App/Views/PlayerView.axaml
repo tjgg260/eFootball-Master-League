@@ -248,7 +248,7 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                   <TextBlock Text="{Binding CoachNote}" Classes="ml-muted" TextWrapping="Wrap"
-                             IsVisible="{Binding !HasCoachLines}"/>
+                             IsVisible="{Binding CoachNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                   <TextBlock Text="{Binding AnalystLine}" Classes="ml-body" FontSize="12"
                              TextWrapping="Wrap" Margin="0,6,0,0"
                              IsVisible="{Binding AnalystLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
@@ -264,7 +264,7 @@
               <!-- unscouted: ONE deliberate card, not four blank sections -->
               <Border Classes="ml-card" IsVisible="{Binding IsUnknown}">
                 <StackPanel Spacing="8">
-                  <TextBlock Text="NOT SCOUTED" Classes="ml-label" LetterSpacing="1.1"/>
+                  <TextBlock Text="{Binding UnknownHeading}" Classes="ml-label" LetterSpacing="1.1"/>
                   <TextBlock Text="{Binding UnknownLine}" Classes="ml-body" TextWrapping="Wrap"/>
                 </StackPanel>
               </Border>

@@ -69,6 +69,11 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
     /// The Squad radar, the Market profile and the Tactics rail all mask at this same 45.</summary>
     private const int ScoutFloor = 45;
 
+    /// <summary>The reputation at which this screen starts speaking about a man as KNOWN rather
+    /// than unwatched. Roughly the top 2% of the world — below it, "nobody has watched him" is
+    /// still the truth, and the old copy is still the right copy.</summary>
+    private const int FameFloor = 20;
+
     /// <summary>This screen's own menu extras. Matching on these constants when the menu is
     /// projected into buttons is safe — they are ours, not EntityActions'.</summary>
     private const string BidHeader = "💷 Open bidding";
@@ -85,7 +90,13 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
     private string _club = "";
     private bool _mine;
     private bool _free;
+    /// <summary>Everything you can see of him — scouting, proximity AND world reputation.</summary>
     private int _knowledge;
+    /// <summary>What your club has actually earned. Reputation is deliberately NOT in here:
+    /// being famous reveals a man's football, never his character or his ceiling.</summary>
+    private int _scouted;
+    /// <summary>His standing in the world, 0-100.</summary>
+    private int _reputation;
     private bool _fm;
     /// <summary>"u21"/"u18" when he is in one of YOUR youth sides — the promote verb's guard.</summary>
     private string _youthKind = "";
@@ -191,6 +202,11 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
     partial void OnIsKnownChanged(bool value) => OnPropertyChanged(nameof(IsUnknown));
     [ObservableProperty] private string _unknownLine = "";
 
+    /// <summary>The heading on the unscouted card. "NOT SCOUTED" is a lie about a man the whole
+    /// game has an opinion on, so a famous player gets a heading that says what he actually is:
+    /// known to the world, unknown to your staff.</summary>
+    [ObservableProperty] private string _unknownHeading = "NOT SCOUTED";
+
     [ObservableProperty] private bool _isMine;
     [ObservableProperty] private bool _isFreeAgent;
     /// <summary>Anyone who is not yours: the bidding half of the screen is for these.</summary>
@@ -233,6 +249,8 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
 
     [ObservableProperty] private IReadOnlyList<string> _coachLines = Array.Empty<string>();
     [ObservableProperty] private bool _hasCoachLines;
+    /// <summary>The line under the coach's report. It has to survive a report that DOES have
+    /// lines: a famous man's report is half a report, and the missing half needs explaining.</summary>
     [ObservableProperty] private string _coachNote = "";
     [ObservableProperty] private string _analystLine = "";
     [ObservableProperty] private string _analystNote = "";
@@ -511,15 +529,34 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
         // --- what you are allowed to see --------------------------------------------------
         // Your own player is fully known by definition; the engine owns the rest, and a failed
         // read falls to 0 rather than pretending.
+        // Two numbers, deliberately. SCOUTED is what your club has earned and it alone opens the
+        // dossier; KNOWLEDGE adds what the world already says about him, and drives his football.
+        _scouted = _mine ? 100 : Safe(() => _s.ScoutedKnowledgeOf(id), 0);
         _knowledge = _mine ? 100 : Safe(() => _s.KnowledgeOf(id), 0);
+        _reputation = _mine ? 0 : Safe(() => _s.ReputationOf(id), 0);
         _fm = Safe(() => _s.FmAttributeMode, true);
-        IsKnown = _mine || _knowledge >= ScoutFloor;
+        IsKnown = _mine || _scouted >= ScoutFloor;
+        var fame = _mine ? "" : Safe(() => _s.FameLabelOf(id), "");
+        var knownFor = _mine ? "" : Safe(() => _s.FameHeadlineOf(id, bio.Position), "");
+        // "Well known" means the game has an opinion worth repeating AND something concrete to
+        // repeat. A trace of reputation with nothing showing yet is still an unknown man.
+        var wellKnown = _reputation >= FameFloor && fame.Length > 0 && knownFor.Length > 0;
         var label = Safe(() => _s.KnowledgeLabelOf(id), _mine ? "Fully known" : "Unknown");
-        KnowledgeLine = _mine ? "Fully known — one of yours" : label;
-        UnknownLine =
-            $"{label}. You know where {name} stands and nothing else — his skills, his character " +
-            "and the coach's read on him stay dark until somebody watches him play. Send a scout " +
-            "from the actions above and this whole column fills in.";
+        KnowledgeLine = _mine
+            ? "Fully known — one of yours"
+            : fame.Length > 0 ? $"{label}  ·  {fame}" : label;
+
+        // The unscouted card. A £354m forward is not "not scouted" in any sense a manager would
+        // recognise — the game knows exactly what he does. What it does not know is the man.
+        UnknownHeading = wellKnown ? "WHAT THE GAME KNOWS" : "NOT SCOUTED";
+        UnknownLine = wellKnown
+            ? $"{fame}. Nobody had to watch {name} to tell you about {knownFor} — that much is " +
+              "common knowledge, and it is already on this screen. What reputation cannot tell " +
+              "you is the rest of him: his weaknesses, his character, his ceiling and the read " +
+              "your own coach would give. Send a scout from the actions above for those."
+            : $"{label}. You know where {name} stands and nothing else — his skills, his character " +
+              "and the coach's read on him stay dark until somebody watches him play. Send a scout " +
+              "from the actions above and this whole column fills in.";
 
         Grade = AttributeKnowledge.GradeMasked(bio.Rating, _knowledge);
         GradeBrush = _knowledge >= 75 ? Visuals.RatingBrush(bio.Rating) : Visuals.Brush("#8A93A2");
@@ -527,7 +564,9 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
             ? "Fully known — this is his real calibre."
             : _knowledge >= ScoutFloor
                 ? "Part-scouted — the letter is close, the question mark is the margin."
-                : "Nobody at the club has watched him. Scout him for a real letter.";
+                : _reputation >= FameFloor
+                    ? "This is his reputation, not a scouting report. Watch him for a real letter."
+                    : "Nobody at the club has watched him. Scout him for a real letter.";
 
         LoadAbility(id, bio);
         LoadDossier(id, name);
@@ -601,20 +640,28 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
         RadarLabels = isGk ? GkRadarLabels : OutfieldRadarLabels;
         HasAbilities = abilities.Count > 0;
 
+        // The reveal ORDER is where reputation lands: at his fame level the abilities the world
+        // already talks about come off the top, and the ones it never mentions stay masked.
+        // The radar is an aggregate of ALL of them, so it stays behind the scouting gate — a
+        // full shape drawn from a headline would be a guess dressed up as data.
+        var order = Safe(() => _s.RevealOrderOf(id, bio.Position), RevealOrder.Anonymous(id));
         var belowFloor = _fm && !IsKnown;
         RadarMasked = !HasAbilities || belowFloor;
         RadarPoints = RadarMasked
             ? new Points()
             : PlayerCard.BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
         Abilities = HasAbilities
-            ? PlayerCard.BuildAbilityList(abilities, isGk, _fm, _knowledge, id)
+            ? PlayerCard.BuildAbilityList(abilities, isGk, _fm, _knowledge, id, order)
             : Array.Empty<AbilityEntry>();
 
         AbilityNote = !HasAbilities
             ? "No abilities on file for him in your world. He can still be signed — his numbers " +
               "arrive with him."
             : belowFloor
-                ? "Barely scouted — the shape of his game is guesswork until someone watches him."
+                ? _reputation >= FameFloor
+                    ? "Reputation, not scouting — what is showing here is what the game already " +
+                      "says about him. The rest of his game stays masked until someone watches him."
+                    : "Barely scouted — the shape of his game is guesswork until someone watches him."
                 : "";
         HasAbilityNote = AbilityNote.Length > 0;
 
@@ -630,18 +677,29 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
                 ? "Nothing stands out either way — no strong qualities and no obvious flaws on file."
                 : $"Your coach has seen enough of {_name} to place him, not enough to call out a " +
                   "strength or a weakness.";
+        // A famous man's praise is free and his flaws are not: the coach can repeat what the
+        // game says he is good at long before anyone has found what he is bad at. Say so, or
+        // the one-sided report reads like a bug.
+        if (coach.Count > 0 && !_mine && _scouted < ScoutFloor && _reputation >= FameFloor)
+        {
+            CoachNote = "Reputation only — these are the qualities everyone already credits him " +
+                        "with. Scout him and your coach will tell you where he can be got at.";
+        }
 
         AnalystLine = Safe(() => _s.AnalystLineOf(id), "");
         AnalystNote = AnalystLine.Length > 0
             ? ""
             : IsKnown
                 ? "Your analyst has nothing to add on him this season."
-                : "Below the knowledge floor — your analyst won't put his name to a read on a " +
-                  "player nobody has watched.";
+                : _reputation >= FameFloor
+                    ? "Below the knowledge floor. Your analyst can read his reputation as well as " +
+                      "anyone; he won't put his name to a season read until somebody watches him."
+                    : "Below the knowledge floor — your analyst won't put his name to a read on a " +
+                      "player nobody has watched.";
 
         try
         {
-            AnalysisPanels = PlayerAnalysis.Build(id, abilities, isGk, _knowledge)
+            AnalysisPanels = PlayerAnalysis.Build(id, abilities, isGk, _knowledge, order)
                 .Select(p => new SquadViewModel.AnalysisPanelVm(
                     p.Name,
                     p.Lines.Select(l => new SquadViewModel.AnalysisLineVm(

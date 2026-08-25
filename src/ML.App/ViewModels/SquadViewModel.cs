@@ -177,9 +177,15 @@ public static class PlayerCard
     /// colour band instead — and only for attributes your knowledge of the player has
     /// revealed. Unrevealed attributes show a dash in BOTH modes' FM variant.
     /// </summary>
+    /// <summary>
+    /// The ability list, knowledge-masked. Pass <paramref name="order"/> — the player's world
+    /// reputation reveal order — and a famous man's headline abilities come first, so the pace
+    /// and the finishing everyone already knows about are not hidden behind a dice roll.
+    /// </summary>
     public static IReadOnlyList<AbilityEntry> BuildAbilityList(
         IReadOnlyDictionary<string, int> abilities, bool isGk,
-        bool fmMode = false, int knowledge = 100, long playerId = 0)
+        bool fmMode = false, int knowledge = 100, long playerId = 0,
+        ML.Core.Development.RevealOrder? order = null)
     {
         var rows = isGk
             ? abilities.Where(a => a.Key.StartsWith("gk_")).OrderBy(a => a.Key)
@@ -194,7 +200,8 @@ public static class PlayerCard
                 return new AbilityEntry(TitleCase(a.Key), a.Value.ToString(),
                     Visuals.RatingBrush(a.Value), MaskedBrush, false);
             }
-            var revealed = ML.Core.Development.AttributeKnowledge.IsRevealed(playerId, a.Key, knowledge);
+            var revealed = ML.Core.Development.AttributeKnowledge
+                .IsRevealed(playerId, a.Key, knowledge, order);
             return revealed
                 ? new AbilityEntry(TitleCase(a.Key), "", MaskedBrush,
                     BandBrushes[ML.Core.Development.AttributeKnowledge.Band(a.Value)], true)
@@ -659,14 +666,18 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
         // would be a guess dressed up as data, so it hides behind a scout-him note.
         RadarMasked = value.Knowledge < 45;
         RadarPoints = RadarMasked ? new Points() : BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
-        // Knowledge-gated: your club is fully known, a browsed club only as deep as scouted.
-        Abilities = BuildAbilityList(abilities, isGk, FmMode, value.Knowledge, value.PlayerId);
+        // Knowledge-gated: your club is fully known, a browsed club only as deep as scouted —
+        // and a famous man gives up what he is famous for whether you have watched him or not.
+        ML.Core.Development.RevealOrder order;
+        try { order = _s.RevealOrderOf(value.PlayerId, value.Position); }
+        catch { order = ML.Core.Development.RevealOrder.Anonymous(value.PlayerId); }
+        Abilities = BuildAbilityList(abilities, isGk, FmMode, value.Knowledge, value.PlayerId, order);
 
         // The MFL analysis panels (UX P3): six graded-statement categories — the north star.
         try
         {
             AnalysisPanels = ML.Core.Development.PlayerAnalysis
-                .Build(value.PlayerId, abilities, isGk, value.Knowledge)
+                .Build(value.PlayerId, abilities, isGk, value.Knowledge, order)
                 .Select(p => new AnalysisPanelVm(p.Name, p.Lines.Select(l => new AnalysisLineVm(
                     l.Text, l.Grade,
                     l.Tone switch
@@ -1138,8 +1149,9 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
 
     private static IReadOnlyList<AbilityEntry> BuildAbilityList(
         IReadOnlyDictionary<string, int> abilities, bool isGk,
-        bool fmMode = false, int knowledge = 100, long playerId = 0) =>
-        PlayerCard.BuildAbilityList(abilities, isGk, fmMode, knowledge, playerId);
+        bool fmMode = false, int knowledge = 100, long playerId = 0,
+        ML.Core.Development.RevealOrder? order = null) =>
+        PlayerCard.BuildAbilityList(abilities, isGk, fmMode, knowledge, playerId, order);
 
     private sealed record SquadRowDto
     {
