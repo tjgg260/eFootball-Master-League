@@ -14,9 +14,17 @@
 
   <Panel>
 
-    <!-- Opened with nobody: say what to do, never sit blank. -->
-    <TextBlock Classes="ml-empty" MaxWidth="560" FontSize="13"
-               Text="{Binding EmptyLine}" IsVisible="{Binding !HasSubject}"/>
+    <!-- Opened with nobody: say what to do, never sit blank. Same anatomy as the Bidding
+         screen's — a headline, the explanation, and a way out — because two destinations you
+         reach the same way should not greet you two different ways. This one was a paragraph
+         of muted text floating on its own in the middle of an empty screen. -->
+    <StackPanel IsVisible="{Binding !HasSubject}" Spacing="16" MaxWidth="620"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="No player open" Classes="ml-h1" HorizontalAlignment="Center"/>
+      <TextBlock Text="{Binding EmptyLine}" Classes="ml-empty" FontSize="13"/>
+      <Button Content="👥 Open your squad" Classes="ml-primary"
+              HorizontalAlignment="Center" Command="{Binding GoToSquadCommand}"/>
+    </StackPanel>
 
     <DockPanel Margin="20" IsVisible="{Binding HasSubject}">
 

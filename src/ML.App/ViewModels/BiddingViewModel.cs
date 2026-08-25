@@ -142,7 +142,7 @@ public sealed partial class BiddingViewModel : PageViewModel, IFocusTarget
         Rounds.Clear();
         OnPropertyChanged(nameof(HasRounds));
         EmptyLine = line ??
-            "No player at the table. Find a man in the transfer market — or on any list in the " +
+            "Find a man in the transfer market — or on any list in the " +
             "app — and choose “Open bidding”. His club, their asking price and every penny it " +
             "would cost you open here.";
         StatusLine = "";

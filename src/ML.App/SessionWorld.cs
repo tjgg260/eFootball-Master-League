@@ -994,6 +994,30 @@ public sealed partial class Session
     /// <summary>MFL-style financial overview: budget split into transfer and wage pots. The
     /// weekly bill covers players (NEGOTIATED wages where a real contract exists — stub rows at
     /// £500 fall back to the rating formula) AND the backroom staff.</summary>
+    /// <summary>
+    /// What one player costs you a week. THE one formula: his career contract when he has one,
+    /// otherwise the same floor-plus-rating line the wage bill is summed from, so a wage shown
+    /// on a player's page always adds up to the bill on the Finances screen.
+    ///
+    /// The Player screen used to read player_market.wage directly and print "—" for anyone
+    /// without an imported market row — which is most of a squad. A club paying £111,240 a week
+    /// showed no wage at all for the goalkeeper it was paying.
+    /// </summary>
+    public long WeeklyWageOf(long playerId, int? teamId = null)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText =
+            "SELECT CASE WHEN c.weekly_wage > 500 THEN c.weekly_wage " +
+            "ELSE 500 + COALESCE(p.overall_rating, 60) * 40 END " +
+            "FROM players p LEFT JOIN contracts c ON c.player_id = p.id " +
+            (teamId is null ? "" : "AND c.team_id = $t ") +
+            "WHERE p.id = $p LIMIT 1";
+        cmd.Parameters.AddWithValue("$p", playerId);
+        if (teamId is { } t) cmd.Parameters.AddWithValue("$t", t);
+        var v = cmd.ExecuteScalar();
+        return v is null or DBNull ? 0L : Convert.ToInt64(v);
+    }
+
     public (long TransferBudget, long WageBudget, long WeeklyWages) FinancialOverview()
     {
         long weekly;

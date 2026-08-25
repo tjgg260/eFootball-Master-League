@@ -132,7 +132,7 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
             }
             if (!Load(target.Id, target.Name)) return;
             Say(_mine
-                ? $"{_name} — one of yours. Every action below works on him."
+                ? $"{_name} — one of yours. Every action in the bar above works on him."
                 : _free
                     ? $"{_name} is a free agent. Open bidding to put terms to him."
                     : $"{_name} of {_club}. Open bidding to put an offer to them.", Tone.Muted);
@@ -162,7 +162,7 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
         Actions.Clear();
         OnPropertyChanged(nameof(HasActions));
         EmptyLine = line ??
-            "No player open. Right-click any name in the app and choose “View profile”, or " +
+            "Right-click any name in the app and choose “View profile”, or " +
             "pick a man from your squad, the transfer market or a scouting report — his whole " +
             "profile, and everything you can do about him, opens here.";
         StatusLine = "";
@@ -432,6 +432,10 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
             Say("That action didn't go through — nothing was changed.", Tone.Bad);
         }
     }
+
+    /// <summary>The way out of an empty profile: your own squad, where every name opens one.</summary>
+    [RelayCommand]
+    private void GoToSquad() => Nav.Go("Squad", null);
 
     [RelayCommand]
     private void OpenBidding()
@@ -879,15 +883,13 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
             return v > 0 ? $"£{v:N0}" : "—";
         }, "—");
 
-        // The wage has no such fallback: an unimported player genuinely has no wage on file, and
-        // inventing one would be a number the rest of the app does not agree with.
+        // Same rule as the market value above: ask the ENGINE, not a private query. This read
+        // player_market.wage on its own and printed "—" for anyone with no imported market row,
+        // which is most of a squad — so a club paying £111,240 a week showed no wage for its own
+        // goalkeeper. WeeklyWageOf is the line the wage bill itself is summed from.
         WageLine = Safe(() =>
         {
-            using var cmd = _s.Db.Connection.CreateCommand();
-            cmd.CommandText = "SELECT COALESCE(wage,0) FROM player_market WHERE player_id=$p";
-            cmd.Parameters.AddWithValue("$p", id);
-            var w = cmd.ExecuteScalar();
-            var wage = w is null or DBNull ? 0L : Convert.ToInt64(w);
+            var wage = _s.WeeklyWageOf(id, _s.ClubOfPlayer(id).TeamId);
             return wage > 0 ? $"£{wage:N0}/wk" : "—";
         }, "—");
 
