@@ -39,10 +39,12 @@ public partial class TacticsView : UserControl
     {
         InitializeComponent();
 
-        // Substitutes: double-tap brings him on (with no starter picked the VM now falls back to
-        // the weakest man he covers rather than lecturing); right-click opens the shared player
-        // menu. The menu deliberately does NOT move the selection — "⇄ Bring on for <starter>"
-        // has to keep meaning the starter you picked on the pitch.
+        // Substitutes (the touchline strip under the pitch): double-tap brings him on (with no
+        // starter picked the VM now falls back to the weakest man he covers rather than
+        // lecturing); right-click opens the shared player menu. The menu deliberately does NOT
+        // move the selection — "⇄ Bring on for <starter>" has to keep meaning the starter you
+        // picked on the pitch. The control is still the ListBox named BenchList: it moved and
+        // changed shape, it did not change identity, so every hook below is untouched.
         if (this.FindControl<ListBox>("BenchList") is ListBox bench)
         {
             _bench = bench;
@@ -59,14 +61,16 @@ public partial class TacticsView : UserControl
 
             // Bench order decides who comes on first, so it needs a no-mouse path too:
             // Alt+↑/↓ (or Ctrl+↑/↓, since a window's access-key handler can claim Alt) mirror
-            // the right-click menu's ▲ Move up / ▼ Move down.
+            // the right-click menu's ▲ Move up / ▼ Move down. The bench is a horizontal
+            // TOUCHLINE STRIP now, so ←/→ do the same thing — the gesture has to match the
+            // geometry the user is looking at, and ↑/↓ stay because the menu still says ▲/▼.
             bench.AddHandler(InputElement.KeyDownEvent,
                 new EventHandler<KeyEventArgs>((_, e) =>
                 {
                     if (DataContext is not TacticsViewModel vm) return;
                     if (e.KeyModifiers is not (KeyModifiers.Alt or KeyModifiers.Control)) return;
-                    if (e.Key == Key.Up) { vm.MoveBench(vm.PickBench, -1); e.Handled = true; }
-                    else if (e.Key == Key.Down) { vm.MoveBench(vm.PickBench, 1); e.Handled = true; }
+                    if (e.Key is Key.Up or Key.Left) { vm.MoveBench(vm.PickBench, -1); e.Handled = true; }
+                    else if (e.Key is Key.Down or Key.Right) { vm.MoveBench(vm.PickBench, 1); e.Handled = true; }
                 }), RoutingStrategies.Tunnel);
         }
 
@@ -82,8 +86,9 @@ public partial class TacticsView : UserControl
         }
 
         // The bench drag lives on the WHOLE view, not on the list: it has to survive the pointer
-        // leaving the rail and crossing onto the pitch. Press only RECORDS — nothing is handled,
-        // so the ListBox keeps its own selection, double-tap and right-click untouched.
+        // leaving the touchline strip and crossing up onto the pitch. Press only RECORDS —
+        // nothing is handled, so the ListBox keeps its own selection, double-tap and
+        // right-click untouched.
         // Tunnel throughout: these fire on the way DOWN, before a ListBoxItem marks the event
         // handled for its own selection, and they still reach us when the pointer is captured.
         AddHandler(InputElement.PointerPressedEvent, OnAnyPressed, RoutingStrategies.Tunnel);
@@ -202,7 +207,7 @@ public partial class TacticsView : UserControl
         if (DataContext is not TacticsViewModel vm) return;
 
         var here = e.GetPosition(this);
-        // The Substitutes list first: a token dragged there is a substitution, not a reposition.
+        // The touchline strip first: a token dragged down there is a substitution, not a reposition.
         if (OverBench(vm, here))
         {
             var (row, _) = BenchRowAt(here);
@@ -309,18 +314,23 @@ public partial class TacticsView : UserControl
         return best;
     }
 
-    /// <summary>Is a view-space point over the Substitutes list? The list only exists on Lineup,
-    /// so a stale arranged rect can never make the Tactics tab claim a drop.</summary>
+    /// <summary>Is a view-space point over the touchline strip? The strip is only on screen on
+    /// Lineup and Team (ShowBenchStrip), so a stale arranged rect can never make the Tactics tab
+    /// claim a drop — the pitch owns that band there. View space, not canvas space: the strip
+    /// lives outside the Viewbox, so it is measured in the same coordinates the drag reports.</summary>
     private bool OverBench(TacticsViewModel vm, Point p)
     {
-        if (_bench is null || !vm.ShowLineup) return false;
+        if (_bench is null || !vm.ShowBenchStrip) return false;
         if (_bench.Bounds.Width <= 0 || _bench.Bounds.Height <= 0) return false;
         if (_bench.TranslatePoint(new Point(0, 0), this) is not { } o) return false;
         return p.X >= o.X && p.X <= o.X + _bench.Bounds.Width
             && p.Y >= o.Y && p.Y <= o.Y + _bench.Bounds.Height;
     }
 
-    /// <summary>The bench row under a view-space point, with its container (for the highlight).</summary>
+    /// <summary>The bench chip under a view-space point, with its container (for the highlight).
+    /// The chips are laid out horizontally now, so the container rect is a ~98x105 box rather
+    /// than a full-width row — ShowBox draws the highlight straight from those bounds, so no
+    /// coordinate maths had to change when the list turned into a strip.</summary>
     private (BenchEntry? Row, Control? Container) BenchRowAt(Point p)
     {
         if (_bench is null) return (null, null);

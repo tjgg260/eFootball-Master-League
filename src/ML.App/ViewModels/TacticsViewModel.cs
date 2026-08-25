@@ -42,6 +42,10 @@ public sealed record BenchEntry(
     public string Tag => Injured ? "INJ" : Fatigue >= 40 ? "TIRED" : "";
     /// <summary>Amber bench flag: leggy but not injured (injury outranks tiredness).</summary>
     public bool IsTired => !Injured && Fatigue >= 40;
+    /// <summary>What the touchline chip can actually carry. A sub on the strip is drawn as a
+    /// pitch token — the same 92px anatomy the XI wears — so, like a token, he wears his
+    /// surname alone. The full name still reaches the reader through <see cref="Tip"/>.</summary>
+    public string Surname => Name.Contains(' ') ? Name[(Name.LastIndexOf(' ') + 1)..] : Name;
     /// <summary>Plain-English condition, for the hover card (never a raw fatigue number).</summary>
     public string CondText =>
         Injured ? "injured" : Fatigue < 20 ? "fresh" : Fatigue < 40 ? "leggy" : "exhausted";
@@ -391,6 +395,14 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
     // Player identity/role live on the shared tokens; only the shape differs per phase.
     private readonly (double Left, double Top, string Position)[][] _phase = new (double, double, string)[2][];
 
+    /// <summary>The matchday the screen is preparing for (0 = no fixture ahead), resolved once
+    /// in the constructor and reused by the rail rather than re-queried per click.</summary>
+    private readonly int _matchday;
+
+    /// <summary>player_condition.form for YOUR squad, taken from the rows the constructor
+    /// already read. A player with no row is fresh, not out of form (see <see cref="FormOf"/>).</summary>
+    private readonly Dictionary<long, double> _formByPlayer;
+
     public TacticsViewModel(Session s)
     {
         _s = s;
@@ -417,6 +429,11 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         // labelled with the fid's slot role code — NOT best-rating-first. The rest form the bench.
         var conditions = s.Repo.ConditionsFor(s.CurrentTeamId).ToDictionary(c => c.PlayerId);
         var md = s.NextFixture()?.Matchday ?? 0;
+        // The next fixture is resolved ONCE here, for the opponent preview and the condition
+        // read. The rail's 📈 Form tab counts a man's last six starts up to that same matchday,
+        // and the form trend comes out of the very rows just read — neither costs a new query.
+        _matchday = md;
+        _formByPlayer = conditions.ToDictionary(kv => kv.Key, kv => kv.Value.Form);
         (int Fatigue, bool Injured) CondOf(long pid)
         {
             conditions.TryGetValue(pid, out var c);
@@ -814,6 +831,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
     [NotifyPropertyChangedFor(nameof(GeometryEditable))]
     [NotifyPropertyChangedFor(nameof(DragHint))]
     [NotifyPropertyChangedFor(nameof(PitchCaption))]
+    [NotifyPropertyChangedFor(nameof(ShowBenchStrip))]
     private int _section;
 
     /// <summary>Leaving a screen retires its pending offer — it named a spot on that screen.</summary>
@@ -822,6 +840,15 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
     public bool ShowLineup => Section == 0;
     public bool ShowTacticsTab => Section == 1;
     public bool ShowTeam => Section == 2;
+
+    /// <summary>
+    /// The touchline strip under the pitch — the Substitutes, drawn as tokens walking on. It
+    /// belongs to the screens where WHO plays is the question (Lineup, and Team where duties are
+    /// handed out); on Tactics the pitch takes that band back, because Set Formation is about
+    /// where men STAND. The code-behind gates the bench drop zone on this same flag, so a strip
+    /// that isn't on screen can never claim a drop.
+    /// </summary>
+    public bool ShowBenchStrip => Section == 0 || Section == 2;
     // The game's pill bar: the active tab is a WHITE pill with dark text.
     public Avalonia.Media.IBrush Tab0Brush => SectionBrush(0);
     public Avalonia.Media.IBrush Tab1Brush => SectionBrush(1);
@@ -1078,6 +1105,10 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         OpponentNote = "";
         OpponentShape = "";
         OpponentLogo = null;
+        // This doubles as the refresh behind the opponent menus, and scouting a man CHANGES WHAT
+        // YOU KNOW — so the rail's cached dossiers are dropped and the tab in view re-read. A
+        // scout's report that left "not scouted" on screen would look like the verb did nothing.
+        InvalidateRail();
         try
         {
             var next = _s.NextFixture();
@@ -1175,6 +1206,10 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
     [NotifyPropertyChangedFor(nameof(HasOppSelected))]
     [NotifyPropertyChangedFor(nameof(OppCardNote))]
     private OppToken? _oppSelected;
+
+    /// <summary>Opening (or closing) his card changes WHO the dossier tabs are reading, so the
+    /// tab in view re-publishes. Closing it hands the rail back to your own selected starter.</summary>
+    partial void OnOppSelectedChanged(OppToken? value) => RefreshRail();
 
     public bool HasOppSelected => OppSelected is not null;
 
@@ -1336,6 +1371,10 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         // Everything here is the screen catching up with what the career file ALREADY says, so
         // none of it counts as unsaved work of the user's.
         Quietly(ReloadSquadCore);
+        // A shared-menu verb can move what the dossier tabs say about a man (a promise, a
+        // contract, his playing-time status), so they are dropped and re-read rather than left
+        // quoting the career file as it was before the verb ran.
+        InvalidateRail();
     }
 
     private void ReloadSquadCore()
@@ -2046,6 +2085,13 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         {
             foreach (var p in AllPositions.Where(p => p != "GK")) PositionChoices.Add(p);
         }
+
+        // The list is built from his REGISTERED position, but the combo shows the position he is
+        // playing in this slot — and those can disagree (an outfielder standing in goal after an
+        // XI repair). A value the list does not contain renders as an EMPTY control, which reads
+        // as broken rather than as unusual, so the current position is always an option.
+        var here = SelectedPlayer.Position;
+        if (here is { Length: > 0 } && !PositionChoices.Contains(here)) PositionChoices.Insert(0, here);
     }
 
     partial void OnSelectedPositionChanged(string? value)
@@ -2067,6 +2113,12 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         SelectedPosition = value?.Position;
         _syncingSelection = false;
         RefreshRoles();
+        // The rail's fixed header names the man the tabs are about. RailTab is deliberately
+        // NOT touched here — the chosen tab survives changing who you are looking at.
+        RefreshHeader();
+        // ...and the tab in view follows him. Nothing is read on ⚙ Role, and nothing is read
+        // twice for the same man: RefreshRail publishes from the cached dossier.
+        RefreshRail();
         // A squad-wide overwrite armed while looking at one player must not still be loaded
         // when the user has moved on to another.
         DisarmAutoRoles();
@@ -2075,6 +2127,460 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
     /// <summary>The selected man's identity for the rail on screens without the full Lineup card
     /// (Set Formation shows the pitch, so it has to show WHO you clicked too).</summary>
     public bool HasSelectedPlayer => SelectedPlayer is { PlayerId: > 0 };
+
+    // --- the left rail: a tabbed inspector -----------------------------------------------
+    // The rail used to be one scroller with six things stacked in it, which is why the role
+    // list had to be capped at 200px to leave the Substitutes any room at all. The bench now
+    // lives on the touchline strip under the pitch, and what is left is split across three
+    // tabs under a FIXED identity header.
+    //
+    // The chosen tab PERSISTS across selecting a different player. That is the whole point: a
+    // manager comparing two men's form clicks one, then the other, and being thrown back to
+    // Role on every click would make the Form tab unusable. So nothing in
+    // OnSelectedPlayerChanged touches RailTab.
+
+    // 0 = Role (default), 1 = Player, 2 = Form.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRoleTab))]
+    [NotifyPropertyChangedFor(nameof(IsPlayerTab))]
+    [NotifyPropertyChangedFor(nameof(IsFormTab))]
+    [NotifyPropertyChangedFor(nameof(ShowRailSubjectNote))]
+    private int _railTab;
+
+    /// <summary>Switching TO a dossier tab is the moment its data is allowed to be read — the
+    /// two career-file tabs cost nothing at all while you are on ⚙ Role.</summary>
+    partial void OnRailTabChanged(int value) => RefreshRail();
+
+    public bool IsRoleTab => RailTab == 0;
+    public bool IsPlayerTab => RailTab == 1;
+    public bool IsFormTab => RailTab == 2;
+
+    /// <summary>The tab chips bind these MUTUALLY EXCLUSIVE flags to ml-primary / ml-ghost.
+    /// Theme.axaml declares ml-secondary and ml-ghost AFTER ml-primary, so a button wearing
+    /// two of them takes the later rule and the active tab stops reading as active — learned
+    /// the hard way on Academy. One class per state, never both.</summary>
+    [RelayCommand] private void SelectTab(string index) => RailTab = int.Parse(index);
+
+    // --- the rail's fixed identity header --------------------------------------------------
+    // Pinned above the tabs so WHO you are inspecting never scrolls away. It has to read
+    // correctly with nobody selected too: a header showing an empty ring and no words looks
+    // like a bug, so it says what to do instead.
+
+    private const string NoOneName = "Nobody selected";
+    private const string NoOneLine = "click a man on the pitch";
+
+    [ObservableProperty] private string _headerName = NoOneName;
+    [ObservableProperty] private string _headerLine = NoOneLine;
+    [ObservableProperty] private string _headerMorale = "";
+    [ObservableProperty] private string _headerMoraleText = "";
+    [ObservableProperty] private string _headerCondText = "";
+    [ObservableProperty] private Avalonia.Media.IBrush _headerRingBrush = Visuals.Brush("#26313F");
+    [ObservableProperty] private Avalonia.Media.IBrush _headerCondBrush = Visuals.Brush("#00000000");
+
+    /// <summary>
+    /// Re-read the header from the selected token. Age and morale come from the career file, so
+    /// they are read ONCE per selection and cached into properties rather than fetched from a
+    /// binding getter on every layout pass. The rating stays a LETTER, as it is everywhere else.
+    /// </summary>
+    private void RefreshHeader()
+    {
+        var p = SelectedPlayer;
+        if (p is null || p.PlayerId <= 0)
+        {
+            HeaderName = NoOneName;
+            HeaderLine = NoOneLine;
+            HeaderMorale = "";
+            HeaderMoraleText = "";
+            HeaderCondText = "";
+            HeaderRingBrush = Visuals.Brush("#26313F");
+            HeaderCondBrush = Visuals.Brush("#00000000");
+            return;
+        }
+        HeaderName = p.Name;
+        int? age = null;
+        try { age = _s.PlayerAgeOf(p.PlayerId); } catch { /* the line reads fine without it */ }
+        HeaderLine = age is > 0
+            ? $"{p.Position} · {age} · {p.Grade}"
+            : $"{p.Position} · {p.Grade}";
+        var morale = MoraleModel.Neutral;
+        try { morale = _s.MoraleOf(p.PlayerId); } catch { /* neutral is a safe read */ }
+        HeaderMorale = MoraleFace(morale);
+        HeaderMoraleText = $"Morale: {MoraleModel.Label(morale)}";
+        HeaderCondText = $"Condition: {p.CondText}";
+        HeaderRingBrush = p.FitBrush;
+        HeaderCondBrush = p.CondBrush;
+    }
+
+    /// <summary>The app's morale face — ONE mapping, shared by the rail header and the 📈 Form
+    /// tab, so the same man never wears two different moods on one screen.</summary>
+    private static string MoraleFace(int morale) =>
+        morale >= 75 ? "😀" : morale >= 60 ? "🙂" : morale >= 40 ? "😐" : morale >= 25 ? "🙁" : "😡";
+
+    // ═══ the rail's 👤 Player and 📈 Form tabs ═══════════════════════════════════════════
+    //
+    // This is a TACTICS BOARD. A click on a token moves a man, and it must not cost a dozen
+    // SQLite reads for panels nobody is looking at, so the dossier is read:
+    //   · only when the SUBJECT changes (not on every pitch click — selecting the same man
+    //     again, or a click that only completes a swap, publishes from cache),
+    //   · only for the TAB IN VIEW (the ⚙ Role tab reads nothing from the career file at all),
+    //   · once per player, then cached for the life of the screen.
+    // Every engine call goes through Safe(...): one failing read blanks its own line and says
+    // so, and can never take the rest of the rail down with it.
+    //
+    // The dossier must read correctly in four states that all really happen here: nobody
+    // selected, an empty formation slot, a player with no attributes on file, and an opponent
+    // you have never scouted. The last one is not an error — it is the argument for scouting —
+    // so it gets ONE deliberate card rather than four blank sections.
+
+    /// <summary>The knowledge floor the rest of the app already masks at (the Market profile and
+    /// Squad's radar use the same 45): below it we do not pretend to know a man.</summary>
+    private const int ScoutFloor = 45;
+
+    /// <summary>Read one thing from the career file without letting a single failure blank the
+    /// whole rail.</summary>
+    private static T Safe<T>(Func<T> read, T fallback)
+    {
+        try { return read(); } catch { return fallback; }
+    }
+
+    /// <summary>One man's dossier, built lazily per tab and kept for the life of the screen.</summary>
+    private sealed class RailDossier
+    {
+        public bool Mine, Known, PlayerDone, FormDone;
+        public string Label = "", UnknownLine = "";
+
+        // 👤 Player
+        public List<string> Skills = new();
+        public string SkillsNote = "", Coach = "", CoachNote = "", Personality = "", Traits = "",
+                      Potential = "", PotentialNote = "", Contract = "", PlayTime = "";
+
+        // 📈 Form
+        public string Apps = "0", Goals = "0", Assists = "0", Avg = "—", StatsNote = "",
+                      Form = "", Starts = "", Morale = "", Analyst = "", AnalystNote = "",
+                      OutsideNote = "", CareerNote = "";
+        public Avalonia.Media.IBrush FormBrush = Visuals.Brush("#C7CEDA");
+        public List<string> Career = new();
+    }
+
+    private readonly Dictionary<long, RailDossier> _dossiers = new();
+
+    // Whose dossier each tab body is currently HOLDING. long.MinValue means "nothing published
+    // yet", so even the no-selection state gets written once.
+    private long _playerTabShown = long.MinValue;
+    private long _formTabShown = long.MinValue;
+
+    /// <summary>
+    /// Who the two dossier tabs are reading. The opponent you clicked WINS while his card is
+    /// open: that card sits directly above these tabs and the rail is the only place his
+    /// dossier can live. Your own identity header never moves, so the tab body says whose data
+    /// it is showing (<see cref="RailSubjectNote"/>) rather than letting the two disagree in
+    /// silence.
+    /// </summary>
+    private (long Id, string Name, string Position, bool Mine) RailSubject()
+    {
+        if (OppSelected is { IsKnown: true } o) return (o.PlayerId, o.FullName, o.Pos, false);
+        if (SelectedPlayer is { PlayerId: > 0 } p) return (p.PlayerId, p.Name, p.RegisteredPosition, true);
+        return (0, "", "", false);
+    }
+
+    /// <summary>Publish the tab in view for the current subject — the ONE entry point, called
+    /// when the selection changes, when the opponent card opens or closes, and when you switch
+    /// tabs. On ⚙ Role it does nothing at all.</summary>
+    private void RefreshRail()
+    {
+        if (RailTab == 1) ShowRailPlayer();
+        else if (RailTab == 2) ShowRailForm();
+    }
+
+    /// <summary>Throw the cached dossiers away and re-read the tab in view. Called after the
+    /// shared right-click verbs, which can change both what a man IS and what you KNOW about
+    /// him — a cache is only allowed to outlive a read, never an edit.</summary>
+    private void InvalidateRail()
+    {
+        _dossiers.Clear();
+        _playerTabShown = long.MinValue;
+        _formTabShown = long.MinValue;
+        RefreshRail();
+    }
+
+    /// <summary>His dossier, created (and knowledge-graded) on first sight, then cached.</summary>
+    private RailDossier DossierFor(long id, string name, bool mine)
+    {
+        if (_dossiers.TryGetValue(id, out var cached)) return cached;
+        // The engine owns what you know; "mine ||" is only the floor, so a failed read can never
+        // hide your own player from you.
+        var knowledge = Safe(() => _s.KnowledgeOf(id), mine ? 100 : 0);
+        var d = new RailDossier
+        {
+            Mine = mine,
+            Known = mine || knowledge >= ScoutFloor,
+            Label = Safe(() => _s.KnowledgeLabelOf(id), mine ? "Fully known" : "Unknown"),
+        };
+        d.UnknownLine =
+            $"{d.Label}. You know where {name} stands and nothing else — his skills, the coach's " +
+            "read and his character stay dark until someone watches him. Right-click him on the " +
+            "pitch to put a scout on it.";
+        _dossiers[id] = d;
+        return d;
+    }
+
+    // --- 👤 Player ------------------------------------------------------------------------
+
+    private void ShowRailPlayer()
+    {
+        var (id, name, position, mine) = RailSubject();
+        if (id == _playerTabShown) return;            // already on screen — no read, no work
+        _playerTabShown = id;
+        RailSubjectNote = mine || id <= 0 ? "" : $"👁 Reading {name} — the opponent";
+        if (id <= 0)
+        {
+            RailEmpty = true;
+            RailKnown = false;
+            RailUnknown = false;
+            RailMine = false;
+            return;
+        }
+        var d = DossierFor(id, name, mine);
+        LoadRailPlayer(d, id, name, position);
+        RailEmpty = false;
+        RailMine = d.Mine;
+        RailKnown = d.Known;
+        RailUnknown = !d.Known;
+        RailUnknownLine = d.UnknownLine;
+
+        RailSkills.Clear();
+        foreach (var skill in d.Skills) RailSkills.Add(skill);
+        HasRailSkills = d.Skills.Count > 0;
+        RailSkillsNote = d.SkillsNote;
+        RailCoach = d.Coach;
+        HasRailCoach = d.Coach.Length > 0;
+        RailCoachNote = d.CoachNote;
+        RailPersonality = d.Personality;
+        RailTraits = d.Traits;
+        RailPotential = d.Potential;
+        RailPotentialNote = d.PotentialNote;
+        RailContract = d.Contract;
+        HasRailContract = d.Contract.Length > 0;
+        RailPlayTime = d.PlayTime;
+    }
+
+    private void LoadRailPlayer(RailDossier d, long id, string name, string position)
+    {
+        if (d.PlayerDone) return;
+        d.PlayerDone = true;
+        if (!d.Known) return;     // the unscouted card says it all; nothing else is read
+
+        d.Skills = Safe(() => _s.SkillsOf(id).ToList(), new List<string>());
+        d.SkillsNote = d.Skills.Count > 0 ? "" : "No signature skills on record.";
+
+        // The coach only quotes what your knowledge has revealed, so an empty report is a real
+        // answer — it just has to be SAID, or an unwatched player looks like a broken panel.
+        // Position matters for one reason: a keeper is read on his goalkeeping.
+        var lines = Safe(() => _s.CoachReportOf(id, position).ToList(), new List<string>());
+        d.Coach = string.Join(" · ", lines);
+        d.CoachNote = d.Coach.Length > 0
+            ? ""
+            : d.Mine
+                ? "Nothing stands out either way — no strong qualities and no obvious flaws on file."
+                : $"{d.Label} — your coach has seen enough of {name} to place him, not enough to " +
+                  "call out a strength or a weakness.";
+
+        d.Personality = Safe(() => _s.PersonalityOf(id), "");
+        var (det, prof, amb, temp) = Safe(() => _s.TraitsOf(id), default);
+        // Traits are 1–20 in the engine and WORDS on screen — this app never shows a raw score.
+        // The determination bands are Squad's, kept identical on purpose so one man reads the
+        // same on both screens (there is no shared helper to call: ML.Core carries the maths,
+        // not the vocabulary).
+        d.Traits = det <= 0 ? "" : string.Join("\n", new[]
+        {
+            $"Determination · {TraitWord(det, "Driven", "Steady", "Inconsistent", "Flaky")}",
+            $"Professionalism · {TraitWord(prof, "Model pro", "Professional", "Casual", "Unprofessional")}",
+            $"Ambition · {TraitWord(amb, "Hungry", "Ambitious", "Content", "Unambitious")}",
+            $"Temperament · {TraitWord(temp, "Unflappable", "Level-headed", "Volatile", "Hot-headed")}",
+        });
+
+        var stars = Safe(() => _s.PotentialStars(id), 0);
+        d.Potential = Stars(stars);
+        d.PotentialNote = stars <= 0 ? "no read on his ceiling yet"
+            : d.Mine ? "your coaches' read on his ceiling"
+            : "your scouts' read on his ceiling";
+
+        // ContractYear is written against YOUR club, so it is asked ONLY about your own players —
+        // calling it on an opponent would file him a contract at your club behind your back.
+        d.Contract = d.Mine ? Safe(() => $"until {_s.ContractYear(id)}", "") : "";
+        d.PlayTime = Safe(() => _s.PlayTimeStatusOf(id), "");
+    }
+
+    /// <summary>A 1–20 trait as one word. Four bands, the same shape for every trait.</summary>
+    private static string TraitWord(int v, string high, string mid, string low, string worst) =>
+        v >= 16 ? high : v >= 11 ? mid : v >= 6 ? low : worst;
+
+    /// <summary>Potential as filled/hollow stars — the game's own currency for a ceiling.</summary>
+    private static string Stars(int n)
+    {
+        if (n <= 0) return "";
+        var filled = Math.Clamp(n, 1, 5);
+        return new string('★', filled) + new string('☆', 5 - filled);
+    }
+
+    // --- 📈 Form --------------------------------------------------------------------------
+
+    private void ShowRailForm()
+    {
+        var (id, name, _, mine) = RailSubject();
+        if (id == _formTabShown) return;
+        _formTabShown = id;
+        RailSubjectNote = mine || id <= 0 ? "" : $"👁 Reading {name} — the opponent";
+        if (id <= 0)
+        {
+            RailEmpty = true;
+            RailKnown = false;
+            RailUnknown = false;
+            RailMine = false;
+            return;
+        }
+        var d = DossierFor(id, name, mine);
+        LoadRailForm(d, id, name);
+        RailEmpty = false;
+        RailMine = d.Mine;
+        RailKnown = d.Known;
+        RailUnknown = !d.Known;
+        RailUnknownLine = d.UnknownLine;
+
+        RailApps = d.Apps;
+        RailGoals = d.Goals;
+        RailAssists = d.Assists;
+        RailAvg = d.Avg;
+        RailStatsNote = d.StatsNote;
+        HasRailStatsNote = d.StatsNote.Length > 0;
+        RailForm = d.Form;
+        RailFormBrush = d.FormBrush;
+        RailStarts = d.Starts;
+        RailMorale = d.Morale;
+        RailOutsideNote = d.OutsideNote;
+        RailAnalyst = d.Analyst;
+        HasRailAnalyst = d.Analyst.Length > 0;
+        RailAnalystNote = d.AnalystNote;
+        RailCareer.Clear();
+        foreach (var row in d.Career) RailCareer.Add(row);
+        HasRailCareer = d.Career.Count > 0;
+        RailCareerNote = d.CareerNote;
+    }
+
+    private void LoadRailForm(RailDossier d, long id, string name)
+    {
+        if (d.FormDone) return;
+        d.FormDone = true;
+
+        // Appearances and goals are STATISTICS, not ability — digits are correct here. (The
+        // letter-grade rule is about how good a player is, which is a different question.)
+        var (apps, goals, assists, _, _, avg) = Safe(() => _s.PlayerSeasonStats(id), default);
+        d.Apps = apps.ToString();
+        d.Goals = goals.ToString();
+        d.Assists = assists.ToString();
+        d.Avg = avg is { } a ? $"{a:0.0}" : "—";
+        d.StatsNote = apps == 0
+            ? $"No competitive minutes this season — {name}'s numbers start when he plays."
+            : avg is null
+                ? "No match ratings on file yet — the average fills in as he plays."
+                : "";
+
+        if (d.Mine)
+        {
+            var form = FormOf(id);
+            d.Form = form >= 8.0 ? "▲ Flying"
+                : form >= 7.2 ? "▲ In form"
+                : form > 5.8 ? "▬ Steady"
+                : form >= 5.0 ? "▼ Off the boil"
+                : "▼ Out of form";
+            d.FormBrush = Visuals.Brush(form >= 7.2 ? "#9FE6B4" : form > 5.8 ? "#C7CEDA" : "#E0A526");
+            var starts = Safe(() => _s.StartsInLastSix(id, _matchday), 0);
+            d.Starts = _matchday <= 0
+                ? "No matchday ahead yet — his run of starts begins with the season."
+                : $"{starts} of the last 6 starts";
+            var morale = Safe(() => _s.MoraleOf(id), MoraleModel.Neutral);
+            d.Morale = $"{MoraleFace(morale)} {MoraleModel.Label(morale)}";
+        }
+        else
+        {
+            // Form and mood are your own dressing room's business — reading a neutral 50 back
+            // for another club's player and calling it "Content" would be inventing a fact.
+            d.OutsideNote = $"Form and morale are your own dressing room's — for {name} you have " +
+                            "the record above and whatever your analyst can see.";
+        }
+
+        d.Analyst = Safe(() => _s.AnalystLineOf(id), "");
+        d.AnalystNote = d.Analyst.Length > 0
+            ? ""
+            : d.Known
+                ? "Your analyst has nothing to add on him this season."
+                : $"Below the knowledge floor: {d.Label.ToLowerInvariant()} is not enough for your " +
+                  $"analyst to put his name to a read on {name}. Scout him and the line appears.";
+
+        var career = Safe(() => _s.PlayerCareerHistory(id).ToList(), new List<CareerHistoryRow>());
+        d.Career = career.Take(4)
+            .Select(h => $"{h.Year}/{(h.Year + 1) % 100:00}  ·  {h.Club}  ·  {h.Apps} apps · {h.Goals}g")
+            .ToList();
+        d.CareerNote = d.Career.Count > 0 ? "" : "No seasons on record yet.";
+    }
+
+    /// <summary>His form out of the condition rows the screen already read. No row means fresh,
+    /// never "out of form" — a zero would libel every player the season hasn't touched yet.</summary>
+    private double FormOf(long playerId) =>
+        _formByPlayer.TryGetValue(playerId, out var f) && f > 0 ? f : ConditionModel.NeutralForm;
+
+    // --- what the two tab bodies bind to ---------------------------------------------------
+    // Flat properties rather than a bound object: the values are PUBLISHED once per subject
+    // change, so no binding getter ever reaches the database during layout.
+
+    /// <summary>Nobody to read (no selection, or an empty formation slot).</summary>
+    [ObservableProperty] private bool _railEmpty = true;
+    /// <summary>One of yours — form, morale and his contract are only honest for these.</summary>
+    [ObservableProperty] private bool _railMine;
+    /// <summary>Scouted enough to have a character and a coach's read.</summary>
+    [ObservableProperty] private bool _railKnown;
+    /// <summary>Somebody, but not scouted: the one deliberate "not scouted" card.</summary>
+    [ObservableProperty] private bool _railUnknown;
+    [ObservableProperty] private string _railUnknownLine = "";
+
+    /// <summary>Named when the tabs are reading an OPPONENT, because the identity header above
+    /// them still shows your own man.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowRailSubjectNote))]
+    private string _railSubjectNote = "";
+    public bool ShowRailSubjectNote => RailTab != 0 && RailSubjectNote.Length > 0;
+
+    public ObservableCollection<string> RailSkills { get; } = new();
+    [ObservableProperty] private bool _hasRailSkills;
+    [ObservableProperty] private string _railSkillsNote = "";
+    [ObservableProperty] private string _railCoach = "";
+    [ObservableProperty] private bool _hasRailCoach;
+    [ObservableProperty] private string _railCoachNote = "";
+    [ObservableProperty] private string _railPersonality = "";
+    [ObservableProperty] private string _railTraits = "";
+    [ObservableProperty] private string _railPotential = "";
+    [ObservableProperty] private string _railPotentialNote = "";
+    [ObservableProperty] private string _railContract = "";
+    [ObservableProperty] private bool _hasRailContract;
+    [ObservableProperty] private string _railPlayTime = "";
+
+    [ObservableProperty] private string _railApps = "0";
+    [ObservableProperty] private string _railGoals = "0";
+    [ObservableProperty] private string _railAssists = "0";
+    [ObservableProperty] private string _railAvg = "—";
+    [ObservableProperty] private string _railStatsNote = "";
+    [ObservableProperty] private bool _hasRailStatsNote;
+    [ObservableProperty] private string _railForm = "";
+    [ObservableProperty] private Avalonia.Media.IBrush _railFormBrush = Visuals.Brush("#C7CEDA");
+    [ObservableProperty] private string _railStarts = "";
+    [ObservableProperty] private string _railMorale = "";
+    [ObservableProperty] private string _railOutsideNote = "";
+    [ObservableProperty] private string _railAnalyst = "";
+    [ObservableProperty] private bool _hasRailAnalyst;
+    [ObservableProperty] private string _railAnalystNote = "";
+    public ObservableCollection<string> RailCareer { get; } = new();
+    [ObservableProperty] private bool _hasRailCareer;
+    [ObservableProperty] private string _railCareerNote = "";
 
     private void OnTokenChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -2087,6 +2593,8 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
             SelectedPosition = token.Position;
             _syncingSelection = false;
             RefreshRoles();
+            // The header carries his position and his grade AT THAT SLOT — both just moved.
+            RefreshHeader();
         }
     }
 
