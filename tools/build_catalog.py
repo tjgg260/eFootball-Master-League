@@ -42,6 +42,15 @@ MIN_CLUBS = 8
 MIN_SQUAD = 8   # thin-but-real clubs (Celta 10, Mallorca 8) must not be dropped from their league
 MAX_TIERS = 6
 YOUTH = ("U21", "U-21", "U20", "U-20", "U23", "U-23", "U19", "U-18", "Olympic")
+# The tuple lists 'U-18' but not 'U18', and no reserve sides at all, so 'Arsenal U18' and
+# 'Rennes Reserves' read as senior clubs to anything using it.
+YOUTH_RE = re.compile(r"\bU-?(1[5-9]|2[0-3])\b|\bReserves?\b|\bB Team\b|Olympic", re.I)
+
+
+def is_youth(name: str) -> bool:
+    return bool(YOUTH_RE.search(name or "")) or any(y in (name or "") for y in YOUTH)
+
+
 ARTEFACT_RE = re.compile(
     r"playoff|play-off|relegation|aggregate|zone|reducido|ranking|supercup|super cup|"
     r"championsip|championship_|_relegation|draw|apertura|clausura", re.I)
@@ -56,6 +65,24 @@ def norm(s: str) -> str:
 
 
 ALIASES = {"utd": "united", "&": "and", "st.": "st"}
+
+# The two sides spell some countries differently: squads carry FM's nationality strings
+# ("Turkiye", "Czechia", "N.Ireland") while RFS's countries table is older ("Turkey", "Czech
+# Republic", "Holland"). resolve() compares them, so every mismatch silently DROPPED the club
+# from its league — the Sueper Lig listed five clubs and Galatasaray, Fenerbahce and Trabzonspor
+# sat in the database with full squads and no league at all. Keys are norm()ed FM spellings.
+COUNTRY_SYN = {
+    "turkiye": "turkey",
+    "netherlands": "holland",
+    "czechia": "czech republic",
+    "n ireland": "northern ireland",
+    "bosnia herzegovina": "bosnia",
+}
+
+
+def cnorm(s: str) -> str:
+    n = norm(s)
+    return COUNTRY_SYN.get(n, n)
 
 
 def club_key(s: str) -> str:
@@ -89,7 +116,7 @@ def main() -> int:
     tname_master: dict[int, tuple[str, str | None]] = {}
     for tid, name, logo in con.execute(
             "SELECT id, name, logo_path FROM teams WHERE name IS NOT NULL AND name<>''"):
-        if any(y in name for y in YOUTH):
+        if is_youth(name):
             continue
         if stats.get(tid, (0, 0))[0] < MIN_SQUAD:
             continue
@@ -118,10 +145,10 @@ def main() -> int:
                     break
         if not cands:
             return None
-        wc = norm(want_country)
+        wc = cnorm(want_country)
         scored = []
         for t in cands:
-            tc = norm(team_country.get(t, ""))
+            tc = cnorm(team_country.get(t, ""))
             scored.append((0 if tc == wc else 1, -stats[t][0], t))
         scored.sort()
         # if the best candidate's country actively disagrees, drop it (Everton Chile trap)
@@ -137,7 +164,7 @@ def main() -> int:
         chosen_sq = stats.get(chosen, (0,))[0]
         if chosen_sq < 18:
             twins = [t for t in by_key.get(club_key(rfs_name), [])
-                     if t != chosen and norm(team_country.get(t, "")) == wc
+                     if t != chosen and cnorm(team_country.get(t, "")) == wc
                      and stats.get(t, (0,))[0] >= max(18, chosen_sq * 2)]
             if len(twins) == 1:
                 return twins[0]
@@ -189,7 +216,7 @@ def main() -> int:
         seen = set()
         for rid in members:
             nm = rfs_tname.get(rid, "")
-            if not nm or any(y in nm for y in YOUTH) or nm in country_names:
+            if not nm or is_youth(nm) or nm in country_names:
                 continue
             tid = resolve(nm, cname)
             if tid is None or tid in seen:
