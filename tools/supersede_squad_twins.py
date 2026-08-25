@@ -108,7 +108,7 @@ def main() -> int:
                         (kid, o[0], kid))
             if (ku is None and ou is not None) or (ke is None and oe is not None):
                 cur.execute("INSERT OR IGNORE INTO player_identity(player_id, kind, confidence) "
-                            "VALUES(?, 'merged', 0.9)", (kid,))
+                            "VALUES(?, 'ef', 0.9)", (kid,))
                 cur.execute("UPDATE player_identity SET fm_uid=COALESCE(fm_uid,?), "
                             "ef_pid=COALESCE(ef_pid,?) WHERE player_id=?", (ou, oe, kid))
                 ku, ke = ku or ou, ke or oe

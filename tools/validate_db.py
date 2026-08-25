@@ -15,7 +15,7 @@ assertions, each printing PASS/FAIL + counts; exit code 1 if ANY fails:
   5  no duplicate identity (full name + age) inside one squad
   6  all stored asset paths repo-relative (absolute paths allowed only under OneDrive — the RFS
      crest/portrait store lives there by design, see relativize_paths.py)
-  7  id namespaces respected for squad members: eF < 2^24 · career 20M-700M (no spine row) ·
+  7  id namespaces respected for squad members: eF < 20M · career 20M-700M (no spine row) ·
      RFS 700M-10B · FM 10-13B · curated 45-46B · generated >= 50B, and the band must agree with
      player_identity.kind — a band-gap id or a kind/band mismatch is a violation
   8  RENDER PROJECTION dry-run: for every catalog club, the top-18 squad (by squad slot — the XI
@@ -75,8 +75,11 @@ PATH_COLUMNS = [
 ]
 
 # --- assertion 7: id namespace bands (docs/database-blueprint.md) -----------------------------
-EF_MAX = 1 << 24                     # eFootball native pids
-CAREER_LO, CAREER_HI = 20_000_000, 700_000_000
+# eFootball's own pids run past 2^24 — 861 of them (Nakashima Yuki at 16,782,442 and up) — so the
+# old 1<<24 line left real eFootball players in a nameless GAP band. The namespace ends where the
+# career copies begin.
+EF_MAX = CAREER_LO = 20_000_000      # eFootball native pids
+CAREER_HI = 700_000_000
 RFS_LO, RFS_HI = 700_000_000, 10_000_000_000
 FM_LO, FM_HI = 10_000_000_000, 13_000_000_000
 CUR_LO, CUR_HI = 45_000_000_000, 46_000_000_000
