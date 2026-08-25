@@ -46,6 +46,26 @@ public sealed partial class CupViewModel : PageViewModel
                 }
                 rounds.Add(new CupRound(round, list));
             }
+
+            // THE ROAD TO THE FINAL, drawn or not. Only rounds with fixtures came back from
+            // CupDrawFor, so in July a knockout cup was ONE column of sixteen ties with seventeen
+            // hundred pixels of empty pitch beside it — a bracket that shows no bracket. Every
+            // round of every cup is declared up front in Session.Cups; the ones not yet drawn now
+            // stand as empty ties, so you can see the shape of the run from the first day.
+            if (rounds.Count > 0)
+            {
+                var drawn = rounds.Select(r => r.Name).ToHashSet();
+                foreach (var (size, _, name) in cup.Rounds)
+                {
+                    if (drawn.Contains(name)) continue;
+                    var blanks = new ObservableCollection<CupTie>();
+                    for (var i = 0; i < size / 2; i++)
+                    {
+                        blanks.Add(new CupTie("—", "—", "", false, false, Brushes.Transparent));
+                    }
+                    rounds.Add(new CupRound($"{name} · to come", blanks));
+                }
+            }
             var status = rounds.Count == 0
                 ? "The draw is made at the start of each season."
                 : rounds.Any(r => r.Ties.Any(t => t.Mine && !t.Played))
