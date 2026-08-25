@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
 import_dvx_logos.py — real club logos from the DVX Logos megapack (FM2024 + v2/v3 change packs).
+
+Assignment is BY VERIFIED ID FIRST. The pack is keyed by FM club id and so is team_identity, so any
+club whose id we have verified takes its own crest before the name matcher runs. The name matcher
+only ever sees what is left, which is what it is for — it once handed Liverpool the crest of AFC
+Liverpool because 'afc' was being thrown away as noise.
 DVX filenames carry the FM club id (dvx24\\clubs\\primary\\<fmid>_<confed>_<nation>.png), and
 fm_clubs (Genie export) maps fmid -> name + nation, so logos join to our teams BY DATA, not
 guesswork. Space-efficient: only logos that actually match a DB team are extracted, downscaled to
@@ -35,8 +40,11 @@ PACKS = [REPO / "dvx_logos_2024.01.rar",            # base
          REPO / "dvxlogos_fm2024_v2_changes.rar",   # then v2 overrides
          REPO / "dvxlogos_fm2024_v3_changes.rar"]   # then v3 overrides
 
+# 'afc' is NOT in here. It is the only token separating AFC Liverpool (fm id 29036085, a fan-owned
+# non-league club) from Liverpool FC (676), and dropping it put a stranger's crest on Liverpool —
+# and, through the career seed, on the user's own club.
 STOP = {"fc", "cf", "cd", "rc", "ud", "sc", "sad", "calcio", "ssd", "ac", "as", "ss", "de", "club",
-        "the", "afc", "rcd", "sd", "cp", "und", "sv", "vfl", "vfb", "tsg", "fsv", "us", "acf",
+        "the", "rcd", "sd", "cp", "und", "sv", "vfl", "vfb", "tsg", "fsv", "us", "acf",
         "ca", "kf", "fk", "nk", "if", "bk", "sk", "ks"}
 
 
@@ -111,6 +119,19 @@ def main() -> int:
     assign: dict[int, int] = {}      # team_id -> fmid
     claimed: set[int] = set()
     exact = fuzzy = 0
+
+    # A VERIFIED ID BEATS ANY NAME. team_identity.fm_club_id was established from squad content by
+    # verify_identity_fm, and the megapack is keyed by that same number, so those clubs are settled
+    # before the name matcher runs and neither the team nor the crest is available to it afterwards.
+    by_id = 0
+    for tid, fc in con.execute(
+            "SELECT team_id, fm_club_id FROM team_identity WHERE fm_club_id IS NOT NULL"):
+        if fc in dvx and tid in teams and tid not in claimed:
+            assign[tid] = fc
+            claimed.add(tid)
+            by_id += 1
+    taken_ids = set(assign.values())
+    print(f"settled by verified FM club id before any name matching: {by_id:,}")
     for fmid, (pack_ref) in dvx.items():
         if fmid not in fm:
             continue
@@ -138,6 +159,8 @@ def main() -> int:
             if best is not None and bestj >= 0.62:
                 pick = best
                 fuzzy += 1
+        if fmid in taken_ids:
+            continue                 # this crest already went to the club whose id it is
         if pick is not None and pick not in claimed:
             assign[pick] = fmid
             claimed.add(pick)

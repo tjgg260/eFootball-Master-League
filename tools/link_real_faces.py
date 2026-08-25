@@ -5,6 +5,12 @@ same player already carries. RFS/career records are often surname-only with stal
 Duberry, 21' vs FM's 'Amario Cozier-Duberry, 24'), so the old surname+nationality+age-within-2
 backfill missed them and they fell back to generated Uran portraits.
 
+LAST RESORT ONLY. A player who carries an fm_uid is served by tools/link_faces_by_fm_id.py, which
+joins his own uid to his own file and cannot be wrong about who he is; this tool never sees him.
+What is left are records with no identity at all, and for those a surname is the only handle there
+is — so the uniqueness guard below is doing real work, and a miss here costs nothing but a
+generic face.
+
 Match rule (conservative, uniqueness-guarded):
   key = normalized surname (accents/hyphens stripped) + nationality.
   - If every faced candidate under that key shares ONE face file -> link it (a unique
@@ -60,7 +66,9 @@ def main() -> int:
 
     updates, ambiguous = [], 0
     for pid, nm, nat, age in con.execute(
-            "SELECT id, name, nationality, age FROM players WHERE real_face_path IS NULL"):
+            "SELECT p.id, p.name, p.nationality, p.age FROM players p "
+            "LEFT JOIN player_identity pi ON pi.player_id=p.id "
+            "WHERE p.real_face_path IS NULL AND pi.fm_uid IS NULL"):
         key = (surname(nm), nat_of(nat))
         cands = faced.get(key)
         if not cands:

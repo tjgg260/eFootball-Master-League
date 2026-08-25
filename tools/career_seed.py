@@ -395,12 +395,24 @@ def main() -> int:
             if club["rfs_id"] == chosen["rfs_id"]:
                 managed_tid, managed_lg = tid, lg
             short = club["name"].replace("FK ", "").replace("FC ", "").replace(" FC", "").split(" ")[0]
+            # The crest comes from the LIVE team row, not from club['logo'] — the catalog is a
+            # snapshot and a career club would otherwise keep whatever crest the world happened to
+            # be wearing on the day it was seeded. That is how a career Liverpool ended up in AFC
+            # Liverpool's badge long after the world's had been corrected.
+            live_logo = con.execute("SELECT logo_path FROM teams WHERE id=?",
+                                    (club["rfs_id"],)).fetchone()
             con.execute(
                 "INSERT INTO teams(id,game_team_id,is_custom,name,short_name,league_id,budget,logo_path)"
                 " VALUES(?,?,1,?,?,?,?,?)",
                 (tid, tid, club["name"], short[:12], lg,
                  fm_budget.get(norm_club_key(club["name"])) or (1_000_000 + (size - i) * 60_000),
-                 club.get("logo")))
+                 (live_logo[0] if live_logo and live_logo[0] else club.get("logo"))))
+            # And it carries the original's FM club id, so every id-keyed repair — crests, kits,
+            # rosters — reaches the career band too instead of stopping at the world.
+            con.execute(
+                "INSERT OR IGNORE INTO team_identity(team_id, fm_club_id, method, confidence) "
+                "SELECT ?, fm_club_id, 'career-copy', confidence FROM team_identity WHERE team_id=?",
+                (tid, club["rfs_id"]))
             con.execute("INSERT INTO coaches(id,game_coach_id,team_id,name) VALUES(?,?,?,?)",
                         (tid, tid, tid, f"{short} Manager"))
 
@@ -533,8 +545,15 @@ def main() -> int:
 
 
 def _backfill_real_faces(con) -> int:
-    """Match each career copy (20M-700M) to its reference-world counterpart by
-    surname + nationality (+ age within 2) and copy that player's real_face_path."""
+    """Match each career copy (20M-700M) to its reference-world counterpart and copy that player's
+    real_face_path.
+
+    On the FULL name, not the surname. This matched on `words[-1]` — the last word alone — plus
+    nationality and age, which is how a career squad ended up wearing other people's photographs:
+    Brazil has a great many players called Alisson, all of an age, and one of them keeps goal for
+    Liverpool. A face belongs to a person; a surname does not identify one. Anything this cannot
+    settle is left blank for tools/link_faces_by_fm_id.py, which joins on the FM uid and cannot be
+    wrong about who it is."""
     import re
     import unicodedata
 
@@ -547,18 +566,18 @@ def _backfill_real_faces(con) -> int:
     for nm, nat, age, face in con.execute(
             "SELECT name, nationality, age, real_face_path FROM players "
             "WHERE real_face_path IS NOT NULL AND (id<20000000 OR id>=700000000)"):
-        words = norm(nm).split()
-        if words:
-            canon.setdefault((words[-1], norm(nat or "")), []).append((age or 0, face))
+        words = tuple(sorted(norm(nm).split()))
+        if len(words) > 1:
+            canon.setdefault((words, norm(nat or "")), []).append((age or 0, face))
 
     hit = 0
     for pid, nm, nat, age in con.execute(
             "SELECT id, name, nationality, age FROM players "
             "WHERE id BETWEEN 20000000 AND 699999999 AND real_face_path IS NULL").fetchall():
-        words = norm(nm).split()
-        if not words:
-            continue
-        faces = {f for ca, f in canon.get((words[-1], norm(nat or "")), [])
+        words = tuple(sorted(norm(nm).split()))
+        if len(words) < 2:
+            continue                      # a mononym is not enough to hang a face on
+        faces = {f for ca, f in canon.get((words, norm(nat or "")), [])
                  if abs(ca - (age or 0)) <= 2}
         if len(faces) == 1:
             con.execute("UPDATE players SET real_face_path=? WHERE id=?", (faces.pop(), pid))

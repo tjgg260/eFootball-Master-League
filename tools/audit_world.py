@@ -267,6 +267,44 @@ class Audit:
         self.report(16, "top divisions with an implausible club count", len(sizes), "leagues",
                     [f"{c} / {l}: {n}" for (c, l), n in sizes.items()])
 
+    # 18 ------------------------------------------------------ pictures
+    def pictures(self):
+        """The two ways a squad screen lies: a player wearing nobody's face, and a club wearing
+        another club's crest. Both are id-keyed joins, so both should sit at zero."""
+        faces_dir = REPO / "facepack" / "webp"
+        have = {f.stem[5:] for f in faces_dir.glob("face_*.webp")}
+        unused = [(nm, uid) for nm, uid, rf in self.con.execute(
+            "SELECT p.name, pi.fm_uid, p.real_face_path FROM players p "
+            "JOIN player_identity pi ON pi.player_id=p.id JOIN squad_members s ON s.player_id=p.id "
+            "WHERE pi.fm_uid IS NOT NULL AND p.superseded_by IS NULL")
+            if str(uid) in have and rf != f"facepack/webp/face_{uid}.webp"]
+        self.report(18, "squadded players not wearing their own photograph", len(unused),
+                    "players", [f"{nm!r} (uid {uid})" for nm, uid in unused])
+
+        blank = [(tid, nm) for tid, nm, lp in self.con.execute(
+            "SELECT id, name, logo_path FROM teams WHERE id IN (%s)"
+            % ",".join(str(t) for t in (self.incat | {t for t in self.tname
+                                                      if 800_000 <= t < 1_000_000}) or {0}))
+            if not lp or not (REPO / lp).exists()]
+        self.report(19, "clubs you can browse or manage with no crest on disk", len(blank),
+                    "clubs", [f"{nm!r} (team {tid})" for tid, nm in blank])
+
+        wrong = [(tid, nm) for tid, nm, lp, fc in self.con.execute(
+            "SELECT t.id, t.name, t.logo_path, ti.fm_club_id FROM teams t "
+            "JOIN team_identity ti ON ti.team_id=t.id "
+            "WHERE ti.fm_club_id IS NOT NULL AND t.logo_path LIKE 'assets/dvx_logos/%'")
+            if Path(lp).stem != str(fc)]
+        seen = self.incat | {t for t in self.tname if 800_000 <= t < 1_000_000}
+        visible = [w for w in wrong if w[0] in seen]
+        self.report(20, "browsable clubs wearing a crest filed under another club's FM id",
+                    len(visible), "clubs", [f"{nm!r} (team {tid})" for tid, nm in visible],
+                    limit="near-namesakes whose own id has no art in the megapack — 'Borac' beside "
+                          "'Borac (O)', both Serbian; the crest they wear is the other club of "
+                          "that name, and there is no third option")
+        if len(wrong) - len(visible):
+            print(f"        (plus {len(wrong) - len(visible)} clubs in no league and no career, "
+                  f"same near-namesake cause)")
+
     # 16 -------------------------------------------------------------- faces
     def faces(self):
         n, have = self.con.execute(
@@ -285,7 +323,7 @@ def main() -> int:
     a = Audit(con, json.loads(CAT.read_text(encoding="utf-8")))
     checks = [("1", a.names), ("3", a.shirts), ("4", a.shape), ("7", a.identity),
               ("9", a.ages), ("10", a.attributes), ("12", a.ratings), ("14", a.clubs),
-              ("16", a.faces)]
+              ("18", a.pictures), ("16", a.faces)]
     for num, fn in checks:
         if not want or num in want:
             fn()
