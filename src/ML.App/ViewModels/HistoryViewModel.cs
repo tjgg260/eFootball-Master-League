@@ -75,6 +75,9 @@ public sealed partial class HistoryViewModel : PageViewModel
     private readonly List<int> _seasonIds = new();
     public ObservableCollection<string> SeasonChoices { get; } = new();
 
+    /// <summary>Is there anything to pick between? Drives the season box's existence.</summary>
+    public bool HasSeasons => SeasonChoices.Count > 0;
+
     [ObservableProperty] private string? _selectedSeason;
     [ObservableProperty] private string _archiveNote = "";
     public ObservableCollection<ArchiveTableRow> TopTable { get; } = new();

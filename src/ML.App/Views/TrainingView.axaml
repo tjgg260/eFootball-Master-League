@@ -8,8 +8,11 @@
     <TextBlock DockPanel.Dock="Top" Classes="ml-h1" Text="Training Ground" Margin="0,0,0,8"/>
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
       <TextBlock Classes="ml-label" Text="FOCUS" VerticalAlignment="Center"/>
+      <!-- The SKILL box next to it has always prompted; this one opened blank, so the first
+           control on the screen read as a broken empty field rather than a question. -->
       <ComboBox ItemsSource="{Binding FocusOptions}" SelectedItem="{Binding SelectedFocus}"
-                Width="170" MaxDropDownHeight="380"/>
+                Width="200" MaxDropDownHeight="380"
+                PlaceholderText="What should he work on?"/>
       <Button Content="Assign to selected player" Command="{Binding AssignCommand}"
               Classes="ml-primary ml-go"/>
       <TextBlock Classes="ml-label" Text="SKILL" VerticalAlignment="Center" Margin="18,0,0,0"/>
@@ -69,8 +72,10 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Personality" Binding="{Binding Personality}" Width="130"/>
-          <DataGridTextColumn Header="Det" Binding="{Binding Determination}" Width="71"/>
+          <DataGridTextColumn Header="Personality" Binding="{Binding Personality}" Width="176"/>
+          <!-- "Det" was a column of three letters over a bare number. The word is what the rest of
+               the screen already says in its tooltips and status lines. -->
+          <DataGridTextColumn Header="Determination" Binding="{Binding Determination}" Width="141"/>
           <DataGridTextColumn Header="Focus" Binding="{Binding Focus}" Width="120"/>
           <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" Width="106"/>
           <DataGridTemplateColumn Header="Skills" Width="220">
