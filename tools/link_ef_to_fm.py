@@ -38,8 +38,34 @@ NAT_SYN = {"u s a": "united states", "usa": "united states", "turkiye": "turkey"
 
 
 def key(s):
+    """Name tokens IN ORDER. Sorting them would make 'Seo Min-Woo' and 'Seo Woo-Min' the same
+    person, which they are not — and order is safe to rely on because FM's surname-first form is
+    flipped before it gets here, so a real match agrees on sequence, not just on membership."""
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
-    return tuple(sorted(t for t in re.sub(r"[^a-z ]", " ", s).split() if len(t) > 1))
+    return tuple(t for t in re.sub(r"[^a-z ]", " ", s).split() if len(t) > 1)
+
+
+def subseq(a, b):
+    """a is b with words missing: 'jose palomino' inside 'jose luis palomino'."""
+    it = iter(b)
+    return len(a) < len(b) and all(t in it for t in a)
+
+
+def initial(name):
+    """eFootball abbreviates a given name to an initial ('T. Alexander-Arnold'). The letter is
+    dropped from the token list but it still rules out most candidates: 'F. Di Francesco' is
+    Federico, never Paolo."""
+    m = re.match(r"\s*([A-Za-z])\.", name or "")
+    return m.group(1).lower() if m else None
+
+
+def flip(name):
+    """FM writes 'Eze, Ebere'; the world writes given name first."""
+    n = (name or "").strip()
+    if "," in n:
+        last, first = n.split(",", 1)
+        return f"{first.strip()} {last.strip()}".strip()
+    return n
 
 
 def nat(s):
@@ -70,19 +96,58 @@ def main() -> int:
                 continue
             d = (r.get("Date Of Birth") or "").strip()
             fa = SEASON - int(d[-4:]) - SHIFT if len(d) >= 4 and d[-4:].isdigit() else None
-            cands[key(r.get("Name"))].append((int(u), r.get("Name"), nat(r.get("Nation")), fa))
+            cands[key(flip(r.get("Name")))].append(
+                (int(u), flip(r.get("Name")), nat(r.get("Nation")), fa))
+
+    def agrees(p, f):
+        return p[2] == f[2] and (p[3] is None or f[3] is None or abs(p[3] - f[3]) <= 2)
 
     pairs, amb = [], 0
     for k, mine in ours.items():
         theirs = cands.get(k)
         if not theirs:
             continue
-        ok = [(p, f) for p in mine for f in theirs
-              if p[2] == f[2] and (p[3] is None or f[3] is None or abs(p[3] - f[3]) <= 2)]
+        ok = [(p, f) for p in mine for f in theirs if agrees(p, f)]
         if len(ok) == 1:
             pairs.append(ok[0])
         elif ok:
             amb += 1
+
+    # Rule two: the same name, written shorter. eFootball prints 'Marc ter Stegen' and
+    # 'T. Alexander-Arnold' where FM has 'ter Stegen, Marc-Andre' and 'Alexander-Arnold, Trent',
+    # so an exact token-set match never fires and the player ends up in the world with no club at
+    # all. A proper subset is accepted when the surname is carried, nationality and age still
+    # agree, and exactly one row on each side fits.
+    linked_now = {p[0] for p, _f in pairs}
+    used_uid = {f[0] for _p, f in pairs}
+    by_sur = defaultdict(list)
+    for k, lst in cands.items():
+        for f in lst:
+            if f[0] in used_uid:
+                continue
+            for t in k:
+                by_sur[t].append((k, f))
+    for k, mine in ours.items():
+        if len(k) < 2:
+            continue
+        for p in mine:
+            if p[0] in linked_now:
+                continue
+            hits = []
+            for t in k:
+                for fk, f in by_sur.get(t, []):
+                    if not subseq(k, fk) or not agrees(p, f):
+                        continue
+                    ini = initial(p[1])
+                    if ini and not fk[0].startswith(ini):
+                        continue
+                    hits.append(f)
+            hits = list({h[0]: h for h in hits}.values())
+            if len(hits) == 1:
+                pairs.append((p, hits[0]))
+                linked_now.add(p[0])
+            elif hits:
+                amb += 1
 
     seen = defaultdict(int)
     for p, f in pairs:

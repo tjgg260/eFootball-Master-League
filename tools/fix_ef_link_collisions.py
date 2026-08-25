@@ -86,6 +86,14 @@ def main():
     drop = {pid for pid, _ep in bad_pos}
 
     # ---- rule 2: one eFootball record, one claimant
+    # A record whose own id IS the eFootball id is that eFootball player, by construction. Any
+    # other record claiming the same ef_pid is a name match on top of the real thing, and loses —
+    # Bristol City's Leo Pecover and the FM row for their U21 side both pointed at eF 172103.
+    owners = {ep for pid, ep, _m in links if pid == ep}
+    for pid, ep, _m in links:
+        if pid != ep and ep in owners and pid in live:
+            drop.add(pid)
+
     claims = defaultdict(list)
     for pid, ep, _m in links:
         if pid != ep and pid in live and pid in squadded and pid not in drop:

@@ -83,6 +83,7 @@ CAREER_HI = 700_000_000
 RFS_LO, RFS_HI = 700_000_000, 10_000_000_000
 FM_LO, FM_HI = 10_000_000_000, 13_000_000_000
 CUR_LO, CUR_HI = 45_000_000_000, 46_000_000_000
+CAREER_TEAM_LO, CAREER_TEAM_HI = 800_000, 1_000_000   # a save's own club records
 GEN_LO = 50_000_000_000
 
 BAND_CASE = f"""CASE
@@ -311,6 +312,26 @@ def check_namespaces(con, gate: Gate) -> None:
     bad = sum(r[2] for r in rows)
     detail = [f"band {band} but kind {kind}: {n:,} players (ids {lo:,}..{hi:,})"
               for band, kind, n, lo, hi in rows]
+
+    # The bands must also not mix ACROSS the squad row. A career save's copies belong to career
+    # teams and nowhere else: build_catalog once resolved league slots onto them because a career
+    # copy carries the full roster and therefore always looks like the biggest record of its club,
+    # and 37 of them — Chelsea, Manchester United — ended up in the browsable world.
+    mixed = con.execute(f"""
+        SELECT COUNT(*) FROM squad_members s
+        WHERE (s.team_id >= {CAREER_TEAM_LO} AND s.team_id < {CAREER_TEAM_HI})
+              != (s.player_id >= {CAREER_LO} AND s.player_id < {CAREER_HI}
+                  OR s.player_id >= {CUR_LO} AND s.player_id < {CUR_HI})""").fetchone()[0]
+    if mixed:
+        detail.append(f"{mixed:,} squad rows put a career-band player in a world team, "
+                      f"or a world player in a career team")
+        bad += mixed
+    slots = con.execute(f"""
+        SELECT COUNT(*) FROM teams t JOIN cat c ON c.team_id = t.id
+        WHERE t.id >= {CAREER_TEAM_LO} AND t.id < {CAREER_TEAM_HI}""").fetchone()[0]
+    if slots:
+        detail.append(f"{slots:,} catalog league slots are held by a career-band team")
+        bad += slots
     gate.report("7 id namespaces respected for squad members", bad, total,
                 "squad players", detail)
 
