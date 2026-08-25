@@ -24,6 +24,7 @@ then: rerank_slots.py, validate_db.py
 """
 from __future__ import annotations
 
+import csv
 import re
 import shutil
 import sqlite3
@@ -36,6 +37,8 @@ REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "build" / "master.db"
 EF_HI = 20_000_000
 FM_LO, FM_HI = 10_000_000_000, 13_000_000_000
+MEMBER = REPO / "allavailable columns players.csv"
+MR_MARGIN = 15.0     # how far ahead FM's own rating must be before it decides a shortlist
 NAT_SYN = {"u s a": "united states", "usa": "united states", "turkiye": "turkey",
            "korea republic": "south korea", "china pr": "china", "czechia": "czech republic"}
 
@@ -65,6 +68,19 @@ def main() -> int:
     dry = "--dry" in sys.argv
     con = sqlite3.connect(DB, timeout=300)
     cur = con.cursor()
+
+    def pct(x):
+        try:
+            return float((x or "0").replace("%", ""))
+        except ValueError:
+            return 0.0
+
+    mr = {}
+    with open(MEMBER, encoding="cp1252", errors="replace", newline="") as fh:
+        for r in csv.DictReader(fh, delimiter=";"):
+            u = (r.get("Unique ID") or "").strip()
+            if u.isdigit():
+                mr[int(u)] = pct(r.get("MR Rating"))
 
     squadded = {p for (p,) in con.execute("SELECT player_id FROM squad_members")}
     fm_side = []
@@ -107,7 +123,15 @@ def main() -> int:
         if len(hits) == 1:
             pairs.append(((pid, name, face, port), hits[0]))
         elif hits:
-            amb += 1
+            # A shortlist of namesakes is usually one famous player and several amateurs, and FM
+            # rates them accordingly: Matheus Cunha at Manchester United scores 79.6 where the
+            # next Brazilian Matheus Cunha scores 44.3. Take the leader only when the gap is wide
+            # — the three Diogo Costas sit at 51.7, 46.6 and 46.5, and that is not a decision.
+            ranked = sorted(hits, key=lambda f: -mr.get(f[4], 0.0))
+            if mr.get(ranked[0][4], 0.0) - mr.get(ranked[1][4], 0.0) >= MR_MARGIN:
+                pairs.append(((pid, name, face, port), ranked[0]))
+            else:
+                amb += 1
 
     print(f"eFootball records with no club whose player IS in the world as an FM record: "
           f"{len(pairs):,} (ambiguous, left alone: {amb:,})")
