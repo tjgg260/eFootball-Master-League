@@ -545,6 +545,44 @@ def main() -> int:
     n_content = sum(surname_pass(ct, st, "content-pair") for ct, st in content_pairs)
     print(f"clubs paired by squad content: {len(content_pairs):,} | twins merged: {n_content:,}")
 
+    # ---------- 2c. an UNIDENTIFIED record duplicating an IDENTIFIED one ----------
+    # A record with no fm_uid can never meet its twin through the spine, so the same man ends up
+    # squadded at two rendering clubs — Wan-Bissaka at West Ham (RFS, no identity) and at Aston
+    # Villa, where the export actually places him. Two records that share a full name, a
+    # nationality, a position and an age to within a year are the same human; the identified one
+    # wins because it is the one the export can vouch for.
+    ident_by = defaultdict(list)
+    unident_by = defaultdict(list)
+    for pid, tid in list(world_team.items()):
+        if pid in superseded or pid not in P:
+            continue
+        t = toks(P[pid][0])
+        if len(t) < 2:
+            continue                                  # a single token is not an identity
+        k = (t, frozenset(P[pid][2]))
+        (ident_by if ident.get(pid, (None,) * 5)[1] else unident_by)[k].append(pid)
+    n_unid = 0
+    for k, ghosts in unident_by.items():
+        real = ident_by.get(k, [])
+        if len(real) != 1 or len(ghosts) != 1:
+            continue                                  # any ambiguity and we leave it alone
+        g, r = ghosts[0], real[0]
+        if world_team.get(g) == world_team.get(r):
+            continue
+        if P[g][3] != P[r][3] or not age_ok(P[g][1], P[r][1], 1):
+            continue
+        t = world_team.get(g)
+        if t is not None:
+            if not exit_ok(t, g):
+                continue
+            unsquads.append((t, g))
+            do_unsquad(t, g)
+            del world_team[g]
+            members[t].remove(g)
+        superseded[g] = (r, "unidentified-twin")
+        n_unid += 1
+    print(f"unidentified duplicates of an identified player: {n_unid:,}")
+
     n_same = sum(surname_pass(t, t, "squad-surname") for t in list(members))
     n_drain = sum(surname_pass(tc, ts, "drained-pair") for tc, ts in drain_pairs)
     print(f"surname twins: same-squad {n_same:,} | drained-pair {n_drain:,} | "

@@ -108,10 +108,18 @@ def main() -> int:
             continue
         n_cal += 1
         ins = fm_inputs(fm)
+        keeper = (r.get("position") or "").strip().upper() == "GK"
         for ef, x in ins.items():
             v = _int(r.get(ef))
-            if v is not None and ef in ABILITIES:
-                pairs[max(1, min(20, round(x)))].append(v)
+            if v is None or ef not in ABILITIES:
+                continue
+            # eFootball writes a flat 40 for an outfielder's goalkeeping stats — that is a
+            # convention, not a measurement. Feeding those pairs into the fit dragged the whole
+            # low end down to 40, so a real keeper with poor reflexes mapped to the same floor
+            # as a striker who never keeps goal.
+            if ef.startswith("gk_") and not keeper:
+                continue
+            pairs[max(1, min(20, round(x)))].append(v)
     # Only bins with real support are measured. Above FM ~16 a weighted average almost never
     # lands, so those bins hold tens of samples and wander (19 -> 72, 20 -> 67); trusting them
     # would cap every FM-only player below what the trend says. Fit where the data is, then
@@ -188,6 +196,12 @@ def main() -> int:
         vals = {ef: conv(x) for ef, x in fm_inputs(fm).items() if ef in ABILITIES}
         if len(vals) < 20:
             continue
+        # and apply the same convention on the way out: an outfielder's goalkeeping abilities are
+        # 40, which is what eFootball itself stores for every one of them
+        if (pos.get(pid) or "").upper() != "GK":
+            for a in vals:
+                if a.startswith("gk_"):
+                    vals[a] = LO
         n_der += 1
         derive_rows += [(pid, a, v) for a, v in vals.items()]
         try:

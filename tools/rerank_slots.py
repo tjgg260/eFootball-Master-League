@@ -50,19 +50,25 @@ def order_catalog(rows):
     picked = {"DF": [], "MF": [], "FW": []}
 
     def take(posset, want, key):
+        """Take `want` players of these positions. Counts ITS OWN additions: comparing the
+        cumulative len(picked[key]) meant take({'RB'},1,'DF') returned immediately because the
+        left back had already filled the list, so 597 clubs lined up with no right back at all
+        while natural right backs sat on the bench."""
+        got = 0
         for r in by_r:
-            if len(picked[key]) >= want:
+            if got >= want:
                 return
             if r[0] not in used and r[1] in posset:
                 picked[key].append(r)
                 used.add(r[0])
+                got += 1
 
     # A back four is 2 centre-backs and 2 fullbacks, not the four best defenders by rating —
     # rating-only picking gave 19% of clubs a back line of four centre-halves and no width.
+    take({"CB"}, 2, "DF")
     take({"LB"}, 1, "DF")
     take({"RB"}, 1, "DF")
-    take({"CB"}, 2, "DF")
-    take(DF, 4, "DF")                    # shortages fall back to any defender
+    take(DF, 4 - len(picked["DF"]), "DF")   # shortages fall back to any defender
     take(MF, 4, "MF")
     take(FW, 2, "FW")
     # borrow shortages from the best remaining outfielders, kept in block order
