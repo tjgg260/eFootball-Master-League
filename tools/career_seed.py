@@ -407,12 +407,11 @@ def main() -> int:
                 (tid, tid, club["name"], short[:12], lg,
                  fm_budget.get(norm_club_key(club["name"])) or (1_000_000 + (size - i) * 60_000),
                  (live_logo[0] if live_logo and live_logo[0] else club.get("logo"))))
-            # And it carries the original's FM club id, so every id-keyed repair — crests, kits,
-            # rosters — reaches the career band too instead of stopping at the world.
-            con.execute(
-                "INSERT OR IGNORE INTO team_identity(team_id, fm_club_id, method, confidence) "
-                "SELECT ?, fm_club_id, 'career-copy', confidence FROM team_identity WHERE team_id=?",
-                (tid, club["rfs_id"]))
+            # And it records WHICH club it is a copy of. Not by copying the FM club id — that is
+            # exclusive, one club to one id, and verify_identity_fm asserts it — but through
+            # base_team_id, the pointer the schema already uses for "this team derives from that
+            # one". Every id-keyed repair can then reach the career band by following it.
+            con.execute("UPDATE teams SET base_team_id=? WHERE id=?", (club["rfs_id"], tid))
             con.execute("INSERT INTO coaches(id,game_coach_id,team_id,name) VALUES(?,?,?,?)",
                         (tid, tid, tid, f"{short} Manager"))
 

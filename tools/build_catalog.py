@@ -262,16 +262,17 @@ def main() -> int:
         if final:
             catalog["countries"].append({"name": cname, "leagues": final})
 
-    # Backfill logos: a club can resolve to a reference record with no crest while a same-named
-    # record HAS one (Chelsea 3000005 vs 800003). Prefer any available logo, matched by name.
-    def _lkey(n):
-        n = n.lower().replace("&", "and")
-        n = re.sub(r"\b(fc|afc|cf)\b", "", n)
-        return re.sub(r"[^a-z0-9]", "", n)
-    logo_by_key = {}
-    for _nm, _lp in tname_master.values():
+    # Backfill logos: a club can resolve to a record with no crest while ANOTHER record of the same
+    # club has one. Borrow across records of the SAME CLUB — by its verified FM id, never by its
+    # name. The name version of this loop stripped 'fc|afc|cf' as noise, so 'AFC Liverpool' and
+    # 'Liverpool FC' hashed alike and Liverpool inherited a fan-owned non-league club's badge.
+    fmclub_of = dict(con.execute(
+        "SELECT team_id, fm_club_id FROM team_identity WHERE fm_club_id IS NOT NULL"))
+    logo_by_fmclub: dict[int, str] = {}
+    for _tid, _fc in fmclub_of.items():
+        _lp = tname_master.get(_tid, (None, None))[1]
         if _lp:
-            logo_by_key.setdefault(_lkey(_nm), _lp)
+            logo_by_fmclub.setdefault(_fc, _lp)
     # eFootball/PES crests live at RFS/Teams/T_<pes_id>.png, and a reference club's team_id is
     # 3_000_000 + pes_id — so T_<team_id-3_000_000>.png is the club's real crest (verified 99%).
     rfs_teams = Path.home() / "OneDrive" / "Documents" / "RFS" / "Teams"
@@ -280,10 +281,16 @@ def main() -> int:
             for _t in _lg["teams"]:
                 if _t.get("logo"):
                     continue
-                _t["logo"] = logo_by_key.get(_lkey(_t["name"]))
+                _t["logo"] = logo_by_fmclub.get(fmclub_of.get(_t["team_id"]))
                 if not _t.get("logo") and 3_000_000 <= _t.get("team_id", 0) < 3_200_000:
-                    cand = rfs_teams / f"T_{_t['team_id'] - 3_000_000}.png"
-                    if cand.exists():
+                    pes = _t["team_id"] - 3_000_000
+                    # prefer the copy inside the repo (crest_from_rfs puts them there): an absolute
+                    # path is one moved folder away from a blank crest
+                    local = REPO / "assets" / "rfs_crests" / f"{pes}.webp"
+                    cand = rfs_teams / f"T_{pes}.png"
+                    if local.exists():
+                        _t["logo"] = local.relative_to(REPO).as_posix()
+                    elif cand.exists():
                         _t["logo"] = str(cand)
 
     nl = sum(len(c["leagues"]) for c in catalog["countries"])

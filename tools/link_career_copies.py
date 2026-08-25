@@ -47,6 +47,9 @@ MEMBER = REPO / "allavailable columns players.csv"
 CAREER_TEAM_LO, CAREER_TEAM_HI = 800_000, 1_000_000
 CAREER_LO, CAREER_HI = 20_000_000, 700_000_000     # a save's player copies
 CUR_LO, CUR_HI = 45_000_000_000, 46_000_000_000    # the curated overlay
+# A reserve or youth side is not the club: 'Arsenal (T)', 'Schalke 04 II', 'Orlando City B'.
+# Anchored to the END of the name and to whole words: an unanchored 'B' matches Brighton.
+RESERVE = re.compile(r"(\s(II|B|2)|\bU-?1[5-9]\b|\bU-?2[0-3]\b|\bReserves?\b|\bAcademy\b|\(T\))\s*$", re.I)
 PARTICLES = {"van", "von", "de", "del", "della", "der", "den", "di", "da", "dos", "das", "du",
              "la", "le", "el", "al", "bin", "ibn", "mac", "mc", "ter", "ten", "op", "st"}
 
@@ -179,20 +182,54 @@ def main() -> int:
             if len(uids) == 1:
                 faces.append((f"facepack/webp/face_{uids[0]}.webp", None, pid))
 
-    # ---- the clubs themselves ----
+    # ---- the back-pointer the live save never got ----
+    # career_seed now records base_team_id when it copies a club, but the save in the database
+    # predates that, so 44 career clubs and 2,508 copied players have no way back to the original.
+    # Without it every id-keyed repair stops at the world and the save keeps yesterday's crest.
+    sizes = dict(con.execute("SELECT team_id, COUNT(*) FROM squad_members GROUP BY team_id"))
     world_team = defaultdict(list)
+    world_team_ids = defaultdict(list)
     for tid, name, logo in con.execute("SELECT id, name, logo_path FROM teams"):
         if CAREER_TEAM_LO <= tid < CAREER_TEAM_HI or not name:
             continue
+        if sizes.get(tid, 0) >= 11:
+            world_team_ids[key(name)].append(tid)
         if logo and (REPO / logo).exists():
             world_team[key(name)].append((tid, name, logo))
+
+    adopt_teams = []
+    for tid, nm, base in con.execute(
+            "SELECT id, name, base_team_id FROM teams WHERE id>=? AND id<?",
+            (CAREER_TEAM_LO, CAREER_TEAM_HI)):
+        if base is not None or not nm:
+            continue
+        cands = world_team_ids.get(key(nm), [])
+        if len(cands) == 1:
+            adopt_teams.append((cands[0], tid))
+
+    # ---- the clubs themselves ----
+    logo_of = dict(con.execute("SELECT id, logo_path FROM teams"))
+    base_now = dict(con.execute(
+        "SELECT id, base_team_id FROM teams WHERE id>=? AND id<? AND base_team_id IS NOT NULL",
+        (CAREER_TEAM_LO, CAREER_TEAM_HI)))
+    base_now.update({t: b for b, t in adopt_teams})
     crests = []
     for tid, name, logo in con.execute(
             "SELECT id, name, logo_path FROM teams WHERE id>=? AND id<?",
             (CAREER_TEAM_LO, CAREER_TEAM_HI)):
+        # Follow the recorded original where there is one. The name fallback below is a shortlist
+        # of one, which is not the same thing: career Arsenal shares a folded name with Arsenal
+        # Tivat, and the day the real Arsenal's crest file goes missing that shortlist collapses to
+        # the wrong club. base_team_id cannot collapse.
+        base = base_now.get(tid)
+        if base is not None:
+            w = logo_of.get(base)
+            if w and (REPO / w).exists() and logo != w:
+                crests.append((w, tid, name, logo))
+            continue
         cands = world_team.get(key(name), [])
         want = {c[2] for c in cands}
-        if len(want) == 1:
+        if len(want) == 1 and not any(RESERVE.search(c[1]) for c in cands):
             w = cands[0][2]
             if logo != w:
                 crests.append((w, tid, name, logo))
@@ -200,6 +237,7 @@ def main() -> int:
     print(f"career copies missing something their original has: faces {len(faces)}, "
           f"ages {len(ages)}, nationalities {len(nats)} (ambiguous, left alone: {amb})")
     print(f"career copies with no abilities at all, inheriting their original's: {len(attrs)}")
+    print(f"career clubs with no recorded original, resolving to exactly one: {len(adopt_teams)}")
     print(f"career clubs wearing a different crest from their original: {len(crests)}")
     for w, tid, name, old_logo in crests[:6]:
         print(f"   {name[:26]:26} {(old_logo or 'none')[-28:]:28} -> {w[-28:]}")
@@ -209,7 +247,7 @@ def main() -> int:
     if dry:
         print("--dry: nothing written.")
         return 0
-    if not (faces or ages or nats or crests or attrs):
+    if not (faces or ages or nats or crests or attrs or adopt_teams):
         return 0
 
     con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
@@ -219,6 +257,8 @@ def main() -> int:
     con.executemany("UPDATE players SET age=? WHERE id=? AND age IS NULL", ages)
     con.executemany("UPDATE players SET nationality=? WHERE id=? AND nationality IS NULL", nats)
     con.executemany("UPDATE teams SET logo_path=? WHERE id=?", [(w, t) for w, t, _n, _o in crests])
+    con.executemany("UPDATE teams SET base_team_id=? WHERE id=? AND base_team_id IS NULL",
+                    adopt_teams)
     for pid, src in attrs:
         con.execute("INSERT OR REPLACE INTO player_attributes(player_id, attribute, value) "
                     "SELECT ?, attribute, value FROM player_attributes WHERE player_id=?",
@@ -229,7 +269,8 @@ def main() -> int:
     con.commit()
     con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     print(f"applied. {len(faces)} faces, {len(ages)} ages, {len(nats)} nationalities, "
-          f"{len(crests)} crests, {len(attrs)} ability sets inherited.")
+          f"{len(crests)} crests, {len(attrs)} ability sets inherited | "
+          f"{len(adopt_teams)} clubs now record their original.")
     return 0
 
 

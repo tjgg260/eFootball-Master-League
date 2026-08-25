@@ -53,6 +53,20 @@ def toks(s: str) -> frozenset[str]:
     return frozenset(w for w in re.sub(r"[^a-z0-9 ]", " ", s).split() if w and w not in STOP)
 
 
+def raw_toks(s: str) -> frozenset[str]:
+    """Every word, stopwords included. Two names that agree only AFTER the stopwords are thrown
+    away are not the same club: 'US Portsmouth' and 'Portsmouth FC' both reduce to {portsmouth}
+    and score a perfect 1.000, which is how a namesake gets another club's crest."""
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
+    return frozenset(w for w in re.sub(r"[^a-z0-9 ]", " ", s).split() if w)
+
+
+# A reserve or youth side is a different team from the club it belongs to, but shares almost all
+# of its name: 'Schalke 04 II' against 'FC Schalke 04' scores 0.667, over the 0.62 gate.
+RESERVE = re.compile(r"(\s(ii|b|2)|\bu-?1[5-9]\b|\bu-?2[0-3]\b|\breserves?\b|\bacademy\b)\s*$",
+                     re.I)
+
+
 def lkey(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "",
                   unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower())
@@ -118,7 +132,7 @@ def main() -> int:
     # 2) match every DVX club (that has an fm_clubs row) to a DB team
     assign: dict[int, int] = {}      # team_id -> fmid
     claimed: set[int] = set()
-    exact = fuzzy = 0
+    exact = fuzzy = refused = 0
 
     # A VERIFIED ID BEATS ANY NAME. team_identity.fm_club_id was established from squad content by
     # verify_identity_fm, and the megapack is keyed by that same number, so those clubs are settled
@@ -157,8 +171,20 @@ def main() -> int:
                 if j > bestj:
                     best, bestj = t, j
             if best is not None and bestj >= 0.62:
-                pick = best
-                fuzzy += 1
+                # Two refusals the score alone cannot make. A tie that only exists because the
+                # stopwords were dropped is not a match, and a reserve side is not its club.
+                other = teams[best][0]
+                # A club-type word on ONE side is a shortening — 'Osnabrueck' is 'VfL Osnabrueck'.
+                # A DIFFERENT club-type word on EACH side is two clubs: 'US Portsmouth' against
+                # 'Portsmouth FC' agrees on {portsmouth} and scores a perfect 1.000.
+                a, b = raw_toks(nm), raw_toks(other)
+                stop_only = bool(a - b) and bool(b - a) and toks(nm) == toks(other)
+                reserve_split = bool(RESERVE.search(nm)) != bool(RESERVE.search(other))
+                if stop_only or reserve_split:
+                    refused += 1
+                else:
+                    pick = best
+                    fuzzy += 1
         if fmid in taken_ids:
             continue                 # this crest already went to the club whose id it is
         if pick is not None and pick not in claimed:
@@ -166,6 +192,7 @@ def main() -> int:
             claimed.add(pick)
 
     fillable = {t: f for t, f in assign.items() if needs_logo(t)}
+    print(f"name matches refused (stopword-only tie, or a reserve side): {refused:,}")
     print(f"matched to DB teams: {len(assign):,} (exact {exact:,}, fuzzy {fuzzy:,}) | "
           f"teams that NEED a logo and got one: {len(fillable):,}")
     if dry:

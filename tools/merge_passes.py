@@ -97,6 +97,14 @@ def pass_b_logos(con: sqlite3.Connection, apply: bool) -> None:
     dist = Counter()
     for tid, logo in con.execute("SELECT id, logo_path FROM teams"):
         want = dvx_path(tid)
+        # Two stores outrank the pack and must not be flipped: assets/badges is hand-reconciled,
+        # and assets/rfs_crests is where the clubs the pack does not carry get their crest —
+        # Manchester United among them, whose fm id 680 has no art in DVX at all. This tool is
+        # keyed on fm_club_id, so it is right about WHICH crest; it just must not overwrite a
+        # better source with one the pack happens to have.
+        if logo and logo.startswith(("assets/badges/", "assets/rfs_crests/")):
+            dist[logo_bucket(logo)] += 1
+            continue
         if want and logo != want:
             t_updates.append((want, tid))
             flipped[logo_bucket(logo)] += 1
