@@ -49,6 +49,10 @@ public sealed partial class Session
         // the teams table (one lookup) and repairs; the full comment is on it.
         try { EnsureYouthTeamsOnLoad(); }
         catch { /* youth teams are additive */ }
+        // A first team sheet, before the manager ever sees the pitch. Import order is not a
+        // line-up: without this the first visit to Tactics showed a left midfielder in goal.
+        try { SeedOpeningXi(); }
+        catch { /* a squad in import order is still playable */ }
         // OCR paths from settings (meta), falling back to the recorded defaults.
         if (GetMeta("steam_root") is { Length: > 0 } root) ScoreImport.SteamRoot = root;
         if (GetMeta("steam_user_id") is { Length: > 0 } uid) ScoreImport.SteamUserId = uid;

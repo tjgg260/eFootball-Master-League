@@ -54,7 +54,10 @@ public sealed partial class CalendarViewModel : PageViewModel
             var oppId = f.HomeTeamId == myId ? f.AwayTeamId : f.HomeTeamId;
             var opp = s.TeamName(oppId);
             var venue = f.HomeTeamId == myId ? "(H)" : "(A)";
-            var comp = f.Kind == "cup" ? "🏆" : f.Kind == "friendly" ? "PS" : "⚽";
+            // Three marks, one alphabet. A cup tie and a league game carried an icon while a
+            // friendly carried the letters "PS" — an abbreviation nothing on the screen expands,
+            // sitting where the other two put a picture. The legend under the month names all three.
+            var comp = f.Kind == "cup" ? "🏆" : f.Kind == "friendly" ? "🤝" : "⚽";
             var r = f.Played ? s.ResultFor(f.Id) : null;
             var line2 = r is null ? venue
                 : f.HomeTeamId == myId ? $"{r.HomeGoals}-{r.AwayGoals} {venue}" : $"{r.AwayGoals}-{r.HomeGoals} {venue}";

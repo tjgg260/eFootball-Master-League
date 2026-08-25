@@ -177,6 +177,22 @@
     <Setter Property="Fill" Value="#22FFFFFF"/>
   </Style>
 
+  <!-- ── placeholders read as placeholders ────────────────────────────── -->
+  <!-- The Fluent default paints a TextBox watermark at nearly the same weight as a real
+       value, so on Settings the empty recordings folder showed "C:\Users\you\Videos" looking
+       exactly as typed-in as the Steam path above it. A hint you cannot tell from an entry is
+       worse than no hint. Same treatment for a ComboBox that has nothing selected. -->
+  <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+    <Setter Property="Opacity" Value="0.72"/>
+    <Setter Property="FontStyle" Value="Italic"/>
+  </Style>
+  <Style Selector="ComboBox /template/ TextBlock#PlaceholderTextBlock">
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+    <Setter Property="Opacity" Value="0.72"/>
+    <Setter Property="FontStyle" Value="Italic"/>
+  </Style>
+
   <!-- ── context menus (P9): the shared right-click vocabulary ─────────────────── -->
   <!-- Built in code by EntityActions; these styles are the one place their chrome
        is defined. Card surface, control radius, ghost-row hover — no new species. -->

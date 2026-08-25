@@ -178,6 +178,54 @@ public sealed partial class Session
         ManualXi = manual;
     }
 
+    /// <summary>
+    /// Give a career its first real team sheet, once.
+    ///
+    /// THE BUG THIS FIXES: squad_members.slot arrives from the seed as import order, and the
+    /// Tactics pitch mans formation slot i with squad slot i. On a brand-new career that put
+    /// Marcus Tavernier — a left midfielder, and the first name on the list — in goal, with a
+    /// centre-half at centre-forward and a defensive midfielder at left-back. The screen was
+    /// honest about it (his token read GK F, because his goalkeeping abilities really are an F),
+    /// which meant the very first look a manager got at his own side was eleven men out of
+    /// position and a row of failing grades. The order was never WRONG, exactly — nobody had
+    /// ever arranged it, and nothing arranged it until the first competitive matchday was
+    /// prepared, long after the manager had been shown the mess.
+    ///
+    /// Runs at most once per club (meta xi_seeded_&lt;team&gt;), and only when the side is plainly
+    /// unarranged — which is tested by asking who is in goal, not by reading the ManualXi flag.
+    /// ManualXi is set by pressing Save on the Tactics screen, so it can read "hand-picked" over
+    /// an order nobody ever arranged; an OUTFIELD PLAYER IN THE GOALKEEPER'S SLOT cannot be a
+    /// decision anyone made on purpose, and that is the signal we trust.
+    /// </summary>
+    public void SeedOpeningXi()
+    {
+        var key = $"xi_seeded_{CurrentTeamId}";
+        if (GetMeta(key) is not null) return;
+        SetMeta(key, "1");            // set first: a failure below must not retry every load
+        if (!KeeperSlotHasNoKeeper()) return;
+        var picked = SuggestXi();
+        if (picked.Count == 0) return;
+        // manual:false — this is the assistant's arrangement, not the manager's, so the AI is
+        // still free to re-pick on matchday and the "you picked this yourself" rules stay off.
+        SaveSquadOrder(picked, manual: false);
+    }
+
+    /// <summary>Is the man standing in the formation's goalkeeping slot not a goalkeeper?</summary>
+    private bool KeeperSlotHasNoKeeper()
+    {
+        var (fid0, _) = OwnFormationIds();
+        var slots = Repo.FormationSlots(fid0).OrderBy(sl => sl.SlotIndex).ToList();
+        var gkIndex = slots.FindIndex(sl => Visuals.RoleCodeLabel(sl.Position) == "GK");
+        if (gkIndex < 0) return false;                     // a shape with no keeper: not ours to judge
+        var order = Repo.Squad(CurrentTeamId).OrderBy(m => m.Slot).ToList();
+        if (gkIndex >= order.Count) return false;
+        var pid = order[gkIndex].PlayerId;
+        var registered = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(x => x.Id == pid)?.Position ?? "";
+        if (registered == "GK") return false;
+        try { return !LearnedPositions(pid).Contains("GK"); }
+        catch { return true; }
+    }
+
     /// <summary>The AI's suggested order for YOUR club (doesn't persist — preview for the UI).</summary>
     public IReadOnlyList<long> SuggestXi()
     {
