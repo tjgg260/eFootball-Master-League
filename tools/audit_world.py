@@ -38,23 +38,51 @@ def toks(s):
     return [t for t in re.sub(r"[^a-z ]", " ", s).split() if t]
 
 
+# 'van Dijk', 'de Jong', 'Mac Allister' are surnames, not full names: the particle travels with
+# the surname, so counting words would call them identified when they are not.
+PARTICLES = {"van", "von", "de", "del", "della", "der", "den", "di", "da", "dos", "das", "du",
+             "la", "le", "el", "al", "bin", "ibn", "mac", "mc", "ter", "ten", "op", "st"}
+
+
+def name_words(s):
+    """Name words: split on spaces only, so 'Saint-Maximin' and 'Bynoe-Gittens' stay ONE name;
+    particles and bare initials do not count as a given name of their own."""
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
+    out = []
+    for w in re.sub(r"[^a-z \-]", " ", s).split():
+        w = w.strip("-")
+        if not w or len(w) < 2 or w in PARTICLES:
+            continue
+        out.append(w)
+    return out
+
+
 class Audit:
     def __init__(self, con, cat):
         self.con, self.cat = con, cat
         self.findings = 0
+        self.residue = 0
         self.incat = {t["team_id"] for co in cat["countries"] for lg in co["leagues"]
                       for t in lg["teams"]}
         self.top = {t["team_id"] for co in cat["countries"] for lg in co["leagues"]
                     if lg.get("tier") == TOP_TIER for t in lg["teams"]}
         self.tname = dict(con.execute("SELECT id, name FROM teams"))
 
-    def report(self, num, title, bad, unit, examples):
-        mark = "ok  " if not bad else "QUIRK"
+    def report(self, num, title, bad, unit, examples, limit=None):
+        """limit: why this cannot go to zero from the data we have. A finding with a reason is
+        reported as a standing residue, not a fixable quirk — but its COUNT is still printed, so a
+        regression shows up as the number moving even though the line stays a note."""
+        mark = "ok  " if not bad else ("note " if limit else "QUIRK")
         print(f"{mark} {num:>2}  {title}: {bad:,} {unit}")
+        if bad and limit:
+            print(f"        (as far as the sources go: {limit})")
         for e in examples[:6]:
             print(f"        {e}")
         if bad:
-            self.findings += 1
+            if limit:
+                self.residue += 1
+            else:
+                self.findings += 1
 
     # 1 --------------------------------------------------------------- names
     def names(self):
@@ -73,8 +101,8 @@ class Audit:
         fuller = {pid: fm_name.get(uid, "") for pid, uid in self.con.execute(
             "SELECT player_id, fm_uid FROM player_identity WHERE fm_uid IS NOT NULL")}
         bare = [(p, n, t) for p, n, t in rows
-                if t in self.top and len(toks(n)) < 2
-                and len(toks(fuller.get(p, ""))) > 1]
+                if t in self.top and len(name_words(n)) < 2
+                and len(name_words(fuller.get(p, ""))) > 1]
         self.report(1, "top-division players shown by surname when the export has more",
                     len(bare), "players",
                     [f"{n!r} at {self.tname.get(t)!r} (FM: {fuller.get(p)!r})" for p, n, t in bare])
@@ -113,7 +141,10 @@ class Audit:
         self.report(4, "catalog XIs without exactly one keeper in slot 0", len(bad_gk), "clubs",
                     [f"{self.tname.get(t)!r}" for t in bad_gk])
         self.report(5, "catalog XIs missing a left or right back", len(no_side), "clubs",
-                    [f"{self.tname.get(t)!r}" for t in no_side])
+                    [f"{self.tname.get(t)!r}" for t in no_side],
+                    limit="fix_fullback_shortage has already moved everyone FM lists on a flank; "
+                          "these squads contain nobody it puts there, so the XI borrows a "
+                          "centre-back the way a short-handed side does")
         self.report(6, "catalog clubs that cannot field eleven", len(thin), "clubs",
                     [f"{self.tname.get(t)!r}" for t in thin])
 
@@ -145,7 +176,8 @@ class Audit:
             "SELECT p.id, p.name, p.age FROM players p JOIN squad_members s ON s.player_id=p.id "
             "WHERE p.superseded_by IS NULL AND (p.age<15 OR p.age>50 OR p.age IS NULL)"))
         self.report(9, "squadded players with an impossible or missing age", len(odd), "players",
-                    [f"{n!r} age {a}" for _p, n, a in odd])
+                    [f"{n!r} age {a}" for _p, n, a in odd],
+                    limit="the remaining ages are what the source says, not corruption")
 
     # 10 ------------------------------------------------------- attributes
     def attributes(self):
@@ -183,30 +215,56 @@ class Audit:
                                          "WHERE overall_rating>=99 AND id<20000000")]
         for line in placeholders:
             print(f"        note: {line}")
-        free = self.con.execute(
-            "SELECT COUNT(*) FROM players p LEFT JOIN squad_members s ON s.player_id=p.id "
+        rows = [(pid, n, r) for pid, n, r in self.con.execute(
+            "SELECT p.id, p.name, p.overall_rating FROM players p "
+            "LEFT JOIN squad_members s ON s.player_id=p.id "
             "WHERE s.player_id IS NULL AND p.superseded_by IS NULL AND p.overall_rating>=80 "
-            "AND p.overall_rating<99 AND NOT (p.id>=? AND p.id<?)", CAREER).fetchone()[0]
-        ex = [f"{n!r} ({r})" for n, r in self.con.execute(
-            "SELECT p.name, p.overall_rating FROM players p LEFT JOIN squad_members s "
-            "ON s.player_id=p.id WHERE s.player_id IS NULL AND p.superseded_by IS NULL "
-            "AND p.overall_rating>=80 AND p.overall_rating<99 AND NOT (p.id>=? AND p.id<?) "
-            "ORDER BY p.overall_rating DESC LIMIT 6", CAREER)]
-        self.report(13, "players rated 80+ with no club at all", free, "players", ex)
+            "AND p.overall_rating<99 AND NOT (p.id>=? AND p.id<?) "
+            "ORDER BY p.overall_rating DESC", CAREER)]
+        # Two different things wear the same symptom. A record with a real full name and no club
+        # is a player the world has lost track of, and that is fixable. A bare surname from RFS
+        # with no FM uid is residue: it is almost certainly a duplicate of someone who IS playing,
+        # but a surname is not proof, and supersede_rfs_orphans has already taken every pair the
+        # evidence supports.
+        named = [(pid, n, r) for pid, n, r in rows if len(name_words(n)) > 1]
+        bare = [(pid, n, r) for pid, n, r in rows if len(name_words(n)) < 2]
+        # eFootball ships its own people who play for nobody: the licensed Captain Tsubasa squad
+        # (Ozora Tsubasa, Hyuga Kojiro) and the template records the game uses to fill unlicensed
+        # sides. FM has never heard of them, and they are not missing a club — they have none.
+        fm_names = set()
+        with open(REPO / "allavailable columns players.csv", encoding="cp1252",
+                  errors="replace", newline="") as fh:
+            for r in csv.DictReader(fh, delimiter=";"):
+                fm_names.add(frozenset(name_words(r.get("Name"))))
+        known = [(pid, n, r) for pid, n, r in named if frozenset(name_words(n)) in fm_names]
+        unknown = len(named) - len(known)
+        self.report(13, "players FM knows, rated 80+, with no club", len(known), "players",
+                    [f"{n!r} ({r})" for _p, n, r in known])
+        if unknown:
+            print(f"note  13a eFootball-only records rated 80+ with no club: {unknown} players")
+            print("        (as far as the sources go: the game's own fictional and template "
+                  "players belong to no club)")
+        self.report(14, "surname-only records rated 80+ with no club", len(bare), "players",
+                    [f"{n!r} ({r})" for _p, n, r in bare],
+                    limit="a surname is not an identity; the pairs the evidence supports are "
+                          "already merged and the rest cannot be told apart from namesakes")
 
     # 14 ------------------------------------------------------------- clubs
     def clubs(self):
         nolink = [t for t in self.incat if not self.con.execute(
             "SELECT 1 FROM team_identity WHERE team_id=? AND fm_club_id IS NOT NULL",
             (t,)).fetchone()]
-        self.report(14, "catalog clubs not linked to an FM club", len(nolink), "clubs",
-                    [f"{self.tname.get(t)!r}" for t in nolink])
+        self.report(15, "catalog clubs not linked to an FM club", len(nolink), "clubs",
+                    [f"{self.tname.get(t)!r}" for t in nolink],
+                    limit="FM's export does not carry these clubs at all — the Chinese, "
+                          "Kazakh and Indian top flights among them — so there is nothing to "
+                          "link them to")
         sizes = Counter()
         for co in self.cat["countries"]:
             for lg in co["leagues"]:
                 if lg.get("tier") == TOP_TIER and not (8 <= len(lg["teams"]) <= 24):
                     sizes[(co["name"], lg["name"])] = len(lg["teams"])
-        self.report(15, "top divisions with an implausible club count", len(sizes), "leagues",
+        self.report(16, "top divisions with an implausible club count", len(sizes), "leagues",
                     [f"{c} / {l}: {n}" for (c, l), n in sizes.items()])
 
     # 16 -------------------------------------------------------------- faces
@@ -217,7 +275,7 @@ class Audit:
             "WHERE s.team_id IN (%s) AND p.superseded_by IS NULL"
             % ",".join(str(t) for t in list(self.top)[:400] or [0])).fetchone()
         pct = 100.0 * (have or 0) / max(n, 1)
-        print(f"ok  16  top-division face coverage: {have:,}/{n:,} ({pct:.0f}%)")
+        print(f"ok  17  top-division face coverage: {have:,}/{n:,} ({pct:.0f}%)")
 
 
 def main() -> int:

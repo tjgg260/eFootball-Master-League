@@ -40,9 +40,28 @@ DB = REPO / "build" / "master.db"
 RFS_LO, RFS_HI = 700_000_000, 10_000_000_000
 
 
+PARTICLES = {"van", "von", "de", "del", "della", "der", "den", "di", "da", "dos", "das", "du",
+             "la", "le", "el", "al", "bin", "ibn", "mac", "mc", "ter", "ten", "op", "st"}
+
+
 def toks(s):
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
     return re.sub(r"[^a-z ]", " ", s).split()
+
+
+def words(s):
+    """Name words, particles folded away and hyphens kept inside one word."""
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
+    return [w for w in (w.strip("-") for w in re.sub(r"[^a-z -]", " ", s).split())
+            if len(w) > 1 and w not in PARTICLES]
+
+
+def same_person_name(a, b):
+    """Identical, or the same name written surname-first instead of given-name-first:
+    'Min-Jae Kim' and 'Kim Min-Jae' are one man, 'Seo Min-Woo' and 'Seo Woo-Min' are two."""
+    if a == b:
+        return True
+    return len(a) > 1 and (a == b[1:] + b[:1] or a == b[-1:] + b[:-1])
 
 
 def nat1(s):
@@ -85,6 +104,37 @@ def main() -> int:
 
     pool = sum(1 for r in rows
                if r[0] not in squadded and RFS_LO <= r[0] < RFS_HI and len(toks(r[1])) == 1)
+    # Second rule: the RFS record carries the FULL name, just ordered the other way round. A full
+    # name is far stronger evidence than a surname, so this pass does not need the rating window
+    # the surname rule uses — Hugo Souza is 85 in RFS and 74 as the record playing for Corinthians,
+    # which the surname rule would have refused.
+    full = []
+    by_word = defaultdict(list)
+    for r in rows:
+        w = words(r[1])
+        if len(w) > 1:
+            by_word[frozenset(w)].append(r)
+    for pid, name, rat, age, nat, pos, _f, _p in rows:
+        if pid in squadded or not (RFS_LO <= pid < RFS_HI):
+            continue
+        w = words(name)
+        if len(w) < 2:
+            continue
+        cands = [x for x in by_word.get(frozenset(w), [])
+                 if x[0] != pid and x[0] in squadded
+                 and same_person_name(w, words(x[1]))
+                 and nat1(x[4]) == nat1(nat)
+                 and x[3] is not None and age is not None and abs(x[3] - age) <= 2
+                 and (x[5] == "GK") == (pos == "GK")]
+        if len(cands) == 1:
+            full.append((pid, name, rat, cands[0]))
+    seen = {p[0] for p in pairs}
+    for f in full:
+        if f[0] not in seen:
+            pairs.append(f)
+            seen.add(f[0])
+    print(f"  paired on a full name written the other way round: {len(full)}")
+
     print(f"RFS surname-only records sitting in the signable pool: {pool:,}")
     print(f"  paired to exactly one real player: {len(pairs):,} | left alone as ambiguous: "
           f"{ambiguous:,}")

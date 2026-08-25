@@ -48,9 +48,18 @@ FM_BASE = 10_000_000_000      # an FM-band id IS the base plus the uid, which is
 FM_HI = 13_000_000_000        # regen case safe: the record's identity is not in doubt, only its name
 
 
+# 'van Dijk' and 'de Jong' are surnames, not full names — the particle travels with the surname,
+# so counting words would call them identified when they are not.
+PARTICLES = {"van", "von", "de", "del", "della", "der", "den", "di", "da", "dos", "das", "du",
+             "la", "le", "el", "al", "bin", "ibn", "mac", "mc", "ter", "ten", "op", "st"}
+
+
 def toks(s):
+    """Name words: split on spaces, so 'Saint-Maximin' stays ONE name; particles and bare
+    initials are not given names of their own."""
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
-    return [t for t in re.sub(r"[^a-z ]", " ", s).split() if t]
+    return [w for w in (w.strip("-") for w in re.sub(r"[^a-z -]", " ", s).split())
+            if len(w) > 1 and w not in PARTICLES]
 
 
 def flip(name: str) -> str:
