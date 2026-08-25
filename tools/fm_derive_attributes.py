@@ -19,6 +19,7 @@ logistic, which mapped onto 1-99 — half of it below 40, where an ability is a 
 FM's export uses short codes ('OtB', 'Fir', 'Tec'); EF_FROM_FM speaks long names. FM_CODE below is
 that dictionary and nothing more — the column names themselves came from the export.
 
+    python tools/fm_derive_attributes.py --career   # include the career-band copies
     python tools/fm_derive_attributes.py --dry     # prints the fitted curve, writes nothing
     python tools/fm_derive_attributes.py
 """
@@ -84,6 +85,12 @@ def fm_inputs(fm: dict[str, int]) -> dict[str, float]:
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     dry = "--dry" in sys.argv
+    # The career copies were seeded before the rescale and still hold pre-scale values — 20,784
+    # core abilities below 40 across 1,646 players, some as low as 4. The 6-bit field stores
+    # (value - 40), so every one of those renders as 40: a 4 and a 39 come out identical and a
+    # career academy squad reads as flat. --career re-curves them the same way as everyone else.
+    # It is opt-in because these records belong to a live career save, not to the world.
+    career = "--career" in sys.argv
     con = sqlite3.connect(DB, timeout=240)
     cur = con.cursor()
 
@@ -220,7 +227,9 @@ def main() -> int:
     done = {p for p, _a, _v in derive_rows}
     legacy_rows, n_leg = [], 0
     for pid, vals in have.items():
-        if pid in protected or pid in done or 20_000_000 <= pid < 700_000_000:
+        if pid in protected or pid in done:
+            continue
+        if 20_000_000 <= pid < 700_000_000 and not career:
             continue
         core = {a: v for a, v in vals.items() if a in ABILITIES}
         if not core or min(core.values()) >= LO:
