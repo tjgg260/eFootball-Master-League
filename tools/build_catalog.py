@@ -38,6 +38,8 @@ RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
 sys.path.insert(0, str(REPO / "tools"))
 from rfs_import import RfsDb   # noqa: E402
 
+CAREER_LO, CAREER_HI = 800_000, 1_000_000
+CAREER_YOUTH_LO, CAREER_YOUTH_HI = 9_000_000, 9_200_000
 MIN_CLUBS = 8
 MIN_SQUAD = 8   # thin-but-real clubs (Celta 10, Mallorca 8) must not be dropped from their league
 MAX_TIERS = 6
@@ -116,6 +118,12 @@ def main() -> int:
     tname_master: dict[int, tuple[str, str | None]] = {}
     for tid, name, logo in con.execute(
             "SELECT id, name, logo_path FROM teams WHERE name IS NOT NULL AND name<>''"):
+        if CAREER_LO <= tid < CAREER_HI or CAREER_YOUTH_LO <= tid < CAREER_YOUTH_HI:
+            # A career save's copies carry the FULL roster, so they are always the biggest record
+            # of their club and resolve() — which breaks ties on squad size — hands them the
+            # league slot. That put 37 career teams in the world catalog, Chelsea and Manchester
+            # United among them. Career bands are a save's render material and are never the world.
+            continue
         if is_youth(name):
             continue
         if stats.get(tid, (0, 0))[0] < MIN_SQUAD:

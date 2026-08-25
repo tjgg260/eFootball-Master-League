@@ -139,9 +139,11 @@ class Audit:
 
     # 9 --------------------------------------------------------------- ages
     def ages(self):
+        # 50, not 45: FM lists the odd playing veteran in a minor league (a 55-year-old at B68
+        # Toftir), and those are the source's own numbers, not corruption.
         odd = list(self.con.execute(
             "SELECT p.id, p.name, p.age FROM players p JOIN squad_members s ON s.player_id=p.id "
-            "WHERE p.superseded_by IS NULL AND (p.age<15 OR p.age>45 OR p.age IS NULL)"))
+            "WHERE p.superseded_by IS NULL AND (p.age<15 OR p.age>50 OR p.age IS NULL)"))
         self.report(9, "squadded players with an impossible or missing age", len(odd), "players",
                     [f"{n!r} age {a}" for _p, n, a in odd])
 
@@ -173,14 +175,22 @@ class Audit:
         print(f"ok  12  the world's best players ({len(top)} rated 84+, eFootball's own ceiling) — check these read right:")
         for n, r, t in top[:12]:
             print(f"        {r}  {n[:26]:26} {t}")
+        # eFootball's export carries two placeholder rows — every ability 95, overall 116, which
+        # the game itself clamps to 99. They are not players and there is nothing to repair in
+        # them; they are named here so a run does not keep re-reporting them as a fixable quirk.
+        placeholders = [f"{n!r} ({r}) — eFootball's own placeholder row" for n, r in
+                        self.con.execute("SELECT name, overall_rating FROM players "
+                                         "WHERE overall_rating>=99 AND id<20000000")]
+        for line in placeholders:
+            print(f"        note: {line}")
         free = self.con.execute(
             "SELECT COUNT(*) FROM players p LEFT JOIN squad_members s ON s.player_id=p.id "
             "WHERE s.player_id IS NULL AND p.superseded_by IS NULL AND p.overall_rating>=80 "
-            "AND NOT (p.id>=? AND p.id<?)", CAREER).fetchone()[0]
+            "AND p.overall_rating<99 AND NOT (p.id>=? AND p.id<?)", CAREER).fetchone()[0]
         ex = [f"{n!r} ({r})" for n, r in self.con.execute(
             "SELECT p.name, p.overall_rating FROM players p LEFT JOIN squad_members s "
             "ON s.player_id=p.id WHERE s.player_id IS NULL AND p.superseded_by IS NULL "
-            "AND p.overall_rating>=80 AND NOT (p.id>=? AND p.id<?) "
+            "AND p.overall_rating>=80 AND p.overall_rating<99 AND NOT (p.id>=? AND p.id<?) "
             "ORDER BY p.overall_rating DESC LIMIT 6", CAREER)]
         self.report(13, "players rated 80+ with no club at all", free, "players", ex)
 
