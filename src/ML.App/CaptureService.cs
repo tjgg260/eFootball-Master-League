@@ -4,9 +4,13 @@ using ML.Ingest;
 
 namespace ML.App;
 
-/// <summary>One OCR'd F12 capture: the pre-filled pending score the dashboard confirms.</summary>
+/// <summary>
+/// One OCR'd F12 capture. <paramref name="Ok"/> says whether a score was actually READ — every
+/// capture used to arrive at the dashboard as a result, so a screenshot of the squad screen (or
+/// an OCR that failed outright) read as 0-0 and took the screen over. Consumers must check it.
+/// </summary>
 public sealed record CaptureResult(
-    int Home, int Away, bool Confident, string Path, DateTime Time, string Message);
+    bool Ok, int Home, int Away, bool Confident, string Path, DateTime Time, string Message);
 
 /// <summary>
 /// The hands-off half of the core loop: watches Steam's eFootball screenshot folder while a
@@ -107,17 +111,23 @@ public sealed class CaptureService : IDisposable
     {
         try
         {
-            var r = ScoreImport.FromScreenshot(path);
-            if (r is null) return;
+            var read = ScoreImport.FromScreenshot(path);
             var result = new CaptureResult(
-                r.Value.Home, r.Value.Away, r.Value.Confident, path, DateTime.Now, r.Value.Message);
+                read.Ok, read.Home, read.Away, read.Confident, path, DateTime.Now, read.Message);
 
             Action<CaptureResult>? sink;
             lock (_gate)
             {
-                _latest = result;
                 sink = OnCaptured;
-                _latestConsumed = sink is not null;   // no dashboard? hold it for the next one
+                // Only a capture that actually carries a score is worth HOLDING: queueing a
+                // failed read would ambush the next dashboard with a stale "that wasn't the
+                // full-time screen" the moment it opened. Failures still go to a live listener,
+                // which reports them quietly and changes nothing.
+                if (read.Ok)
+                {
+                    _latest = result;
+                    _latestConsumed = sink is not null;   // no dashboard? hold it for the next one
+                }
             }
             sink?.Invoke(result);
         }

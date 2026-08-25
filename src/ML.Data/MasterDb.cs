@@ -59,6 +59,47 @@ public sealed class MasterDb : IDisposable
         AddColumn("teams", "team_kind", "TEXT NOT NULL DEFAULT 'first'");
         AddColumn("players", "personality", "TEXT");
         AddColumn("player_playstyles", "kind", "TEXT NOT NULL DEFAULT 'primary'");
+        DropHonoursTeamFk();
+    }
+
+    /// <summary>
+    /// Rebuild `honours` without its foreign key on team_id. CREATE TABLE IF NOT EXISTS cannot
+    /// change an existing table, so every database made before the schema was corrected still
+    /// carries REFERENCES teams(id) — and with foreign_keys = ON that rejected the Player of the
+    /// Season row, whose team_id is a PLAYER id. The insert sits inside season rollover's
+    /// "the gala never blocks rollover" catch, so the failure was completely silent: no award in
+    /// the Roll of Honour, and no end-of-season awards letter, in any career ever played.
+    ///
+    /// SQLite has no DROP CONSTRAINT, so this is the documented 12-step table rebuild, reduced
+    /// to what applies here (no indexes, no triggers, no views on this table). Idempotent: it
+    /// looks for the constraint first and does nothing once it is gone.
+    /// </summary>
+    private void DropHonoursTeamFk()
+    {
+        var hasFk = _connection.Query<string>("SELECT \"table\" FROM pragma_foreign_key_list('honours')")
+            .Any();
+        if (!hasFk) return;
+        // The rebuild has to run with foreign keys OFF (the pragma is a no-op inside a
+        // transaction, so it is toggled around one).
+        _connection.Execute("PRAGMA foreign_keys = OFF;");
+        try
+        {
+            _connection.Execute(
+                "BEGIN;" +
+                "CREATE TABLE honours_new (" +
+                "  season_id   INTEGER NOT NULL," +
+                "  competition TEXT    NOT NULL," +
+                "  team_id     INTEGER NOT NULL," +
+                "  PRIMARY KEY (season_id, competition));" +
+                "INSERT INTO honours_new SELECT season_id, competition, team_id FROM honours;" +
+                "DROP TABLE honours;" +
+                "ALTER TABLE honours_new RENAME TO honours;" +
+                "COMMIT;");
+        }
+        finally
+        {
+            _connection.Execute("PRAGMA foreign_keys = ON;");
+        }
     }
 
     private static string SchemaSql()

@@ -208,6 +208,14 @@
                       Classes="ml-secondary" FontSize="12"
                       ToolTip.Tip="At the full-time results screen: read team stats and player ratings from the game's live memory"/>
             </StackPanel>
+            <!-- Why the import didn't happen, next to the boxes it refused to touch — a refusal
+                 buried in the muted status line at the foot of the card is a refusal nobody reads -->
+            <Border CornerRadius="8" Padding="10,7" Background="{StaticResource MlSurfaceControl}"
+                    BorderBrush="{StaticResource MlWarn}" BorderThickness="1"
+                    IsVisible="{Binding HasImportNotice}">
+              <TextBlock Text="{Binding ImportNotice}" Foreground="{StaticResource MlWarn}"
+                         FontSize="12" TextWrapping="Wrap"/>
+            </Border>
           </StackPanel>
           <!-- XI-driven event pickers (P3): pick players, never type names -->
           <Grid ColumnDefinitions="*,*,*" Margin="0,8,0,0" IsVisible="{Binding ShowResultEntry}">
@@ -291,6 +299,10 @@
           <TextBlock Classes="cardHead" Text="{Binding SackedHeadline}" Foreground="#E08A8A"/>
           <TextBlock Text="The board have made their decision. Job offers land on the Board screen — accept one to manage again."
                      Foreground="White" FontSize="15" TextWrapping="Wrap"/>
+          <!-- the record you leave behind: it used to be written into MatchStatus, which only
+               renders inside the next-match card — the card that is hidden in this very state -->
+          <TextBlock Text="{Binding CareerSummaryLine}" Classes="ml-body" TextWrapping="Wrap"
+                     IsVisible="{Binding HasCareerSummary}"/>
           <Button Content="Go to Board  →" Command="{Binding GoToBoardCommand}" Classes="ml-primary"
                   HorizontalAlignment="Left" Margin="0,6,0,0" FontSize="14"/>
         </StackPanel>

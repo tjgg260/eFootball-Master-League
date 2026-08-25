@@ -21,6 +21,49 @@ public sealed partial class Session
     private static int YouthTeamId(int parentId, string kind) =>
         YouthTeamBase + (parentId - CareerTeamBase) * 2 + (kind == "u18" ? 1 : 0);
 
+    /// <summary>
+    /// The career-load entry point for the youth layer. Checks that the managed club's two
+    /// sides ACTUALLY EXIST before believing the migration flag, and re-runs the bulk seed
+    /// when they don't — so a career that lost them repairs itself on the next load.
+    /// </summary>
+    public void EnsureYouthTeamsOnLoad()
+    {
+        // THE BUG THIS REPLACES: the caller used to be `if (GetMeta("youth_teams_v1") is null)
+        // { EnsureYouthTeams(); SetMeta(...); }` — one shot, flag written on completion, never
+        // asked again. But tools/career_seed.py drops the whole youth layer on a reseed
+        // ("DELETE FROM teams WHERE team_kind IN ('u21','u18')") while its meta cleanup only
+        // wipes the chairman/manager/team-talk keys, so youth_teams_v1 survived at '1' over a
+        // career whose sides were gone. Verified on the real career DB: flag '1', zero rows in
+        // the youth id range, and the U21/U18 tabs reading teams that do not exist. (Demoting
+        // a player still worked — MovePlayer calls EnsureYouthSide itself — so only the browse
+        // path looked broken, which is why it survived so long.)
+        //
+        // A flag that records COMPLETION can never be the evidence that the work happened; the
+        // teams table is. Hot path stays cheap: one primary-key lookup, and the bulk pass only
+        // runs when there is something to repair.
+        if (YouthSidesExist(CurrentTeamId) && GetMeta("youth_teams_v1") is not null) return;
+        EnsureYouthTeams();
+        // …and the managed club explicitly. EnsureYouthTeams only walks the two career
+        // divisions; if yours somehow isn't in one (a hand-edited DB, a half-finished seed)
+        // the check above would stay false forever and re-run the whole bulk pass on EVERY
+        // load. A self-healing migration has to terminate, so heal the club we just tested.
+        EnsureYouthSide(CurrentTeamId, CurrentTeamName, "u21");
+        EnsureYouthSide(CurrentTeamId, CurrentTeamName, "u18");
+        SetMeta("youth_teams_v1", "1");
+    }
+
+    /// <summary>Do BOTH youth sides of this club exist? One primary-key lookup.</summary>
+    public bool YouthSidesExist(int parentTeamId)
+    {
+        using var q = Db.Connection.CreateCommand();
+        q.CommandText = "SELECT COUNT(*) FROM teams WHERE id IN ($u21,$u18)";
+        q.Parameters.AddWithValue("$u21", YouthTeamId(parentTeamId, "u21"));
+        q.Parameters.AddWithValue("$u18", YouthTeamId(parentTeamId, "u18"));
+        // A row COUNT, not an id — Int32 is correct here. (Ids in this world run past Int32;
+        // they are longs everywhere. Don't "tidy" this into a pattern for id reads.)
+        return Convert.ToInt32(q.ExecuteScalar()) == 2;
+    }
+
     /// <summary>Create any missing U21/U18 sides for the career's clubs and seed them from the
     /// club's youngest deep-squad players. Idempotent — call on career load.</summary>
     public void EnsureYouthTeams()
@@ -67,6 +110,10 @@ public sealed partial class Session
             ins.Parameters.AddWithValue("$k", kind);
             ins.ExecuteNonQuery();
         }
+        // The team cache is built once, before this runs (Session's constructor touches it on
+        // line 1). Without this drop, TeamName/TeamLogoPath answer "?" and null for a side
+        // created during this session — a youth lad's profile would show no club name.
+        _teamCache = null;
         // Seed: deep-squad players (slot > 22) young enough for this band move into the youth side,
         // so the senior XI/rotation (slots 0-22) is never disturbed.
         var (lo, hi) = kind == "u18" ? (0, 18) : (19, 21);

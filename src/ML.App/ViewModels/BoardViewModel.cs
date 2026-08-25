@@ -37,16 +37,14 @@ public sealed partial class BoardViewModel : PageViewModel
     {
         _s = s;
         Expectation = Visuals.ExpectationLabel(s.Board.Expectation);
-        Confidence = s.Board.Value;
-        ConfidenceLabel = s.Board.Label;
-        UnderThreat = s.Board.ManagerUnderThreat;
         Position = s.CurrentPosition();
         var teams = s.LeagueTeams().Count;
         Sacked = s.IsSacked;
-        JobSecurity = Sacked ? "DISMISSED — the board has made a change"
-            : s.Board.ManagerUnderThreat ? "At risk — the board expects improvement"
-            : Confidence >= 70 ? "Secure — the board backs you"
-            : "Stable — meet expectations and you're fine";
+        // Confidence is read through BoardNow, not off s.Board: s.Board is the copy the Session
+        // constructor took and never refreshed, so it showed the number from app launch however
+        // many objectives had been settled since. RefreshBoard() re-reads it, and the levers
+        // below call it again, because asking the board for money can move the board.
+        RefreshBoard();
         Summary = Sacked
             ? s.SackedLine
             : s.LeagueResultsThisSeason() == 0
@@ -136,14 +134,31 @@ public sealed partial class BoardViewModel : PageViewModel
                 ? "No offers on the table yet — they arrive in the inbox as your name recovers."
                 : "No clubs are courting you right now. Results and silverware change that.";
 
+    /// <summary>
+    /// Pull the board gauge back off the Session. Every field here is derived from one number,
+    /// so they move together or not at all — a label that disagreed with its own bar was half
+    /// of what made the dead confidence value so hard to spot.
+    /// </summary>
+    private void RefreshBoard()
+    {
+        var board = _s.BoardNow;
+        Confidence = board.Value;
+        ConfidenceLabel = board.Label;
+        UnderThreat = board.ManagerUnderThreat;
+        JobSecurity = Sacked ? "DISMISSED — the board has made a change"
+            : UnderThreat ? "At risk — the board expects improvement"
+            : Confidence >= 70 ? "Secure — the board backs you"
+            : "Stable — meet expectations and you're fine";
+    }
+
     public override string Title => "Board";
     public override string Icon => "🏛️";
     public string Expectation { get; }
-    public int Confidence { get; }
-    public string ConfidenceLabel { get; }
-    public bool UnderThreat { get; }
+    [ObservableProperty] private int _confidence;
+    [ObservableProperty] private string _confidenceLabel = "";
+    [ObservableProperty] private bool _underThreat;
     public int Position { get; }
-    public string JobSecurity { get; }
+    [ObservableProperty] private string _jobSecurity = "";
     public string Summary { get; }
     public bool Sacked { get; }
     public int Reputation { get; }
@@ -177,6 +192,7 @@ public sealed partial class BoardViewModel : PageViewModel
     {
         LeverStatus = _s.RequestBudget();
         RefreshFacilities();
+        RefreshBoard();   // a refused ask costs you confidence — the gauge says so at once
     }
 
     [RelayCommand]

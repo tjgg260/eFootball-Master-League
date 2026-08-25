@@ -1,3 +1,5 @@
+using ML.Core.Management;
+
 namespace ML.App;
 
 /// <summary>
@@ -7,6 +9,54 @@ namespace ML.App;
 /// </summary>
 public sealed partial class Session
 {
+    // ------------------------------------------------------------------ board confidence
+
+    /// <summary>
+    /// Every confidence swing the per-result gauge knows nothing about: the season verdict, the
+    /// mid-season review, a budget ask turned down.
+    ///
+    /// THE BUG: all of those used to write straight into `board_conf` and stop there, and that
+    /// was two failures in one. First, the live <see cref="Board"/> object is built ONCE in the
+    /// Session constructor, seeded from `board_conf`, and never re-read — so a season in which
+    /// you hit every objective (+8 apiece) left every gauge in the app reading exactly what it
+    /// read the day before. Second, ApplyCareerAfterResult writes the live object's value back
+    /// over `board_conf` after every league result, so those swings were not merely invisible,
+    /// they were erased at the next kick-off.
+    ///
+    /// Keeping them in a key nothing else writes, and adding them back on every read, makes the
+    /// number that is stored and the number you are shown the same number again. Keyed per club
+    /// so a new job (which resets `board_conf`) starts from a clean slate, exactly like the fan
+    /// ledger next door in SessionObjectives.
+    /// </summary>
+    private int BoardSwing
+    {
+        get => int.TryParse(GetMeta($"board_swing_{CurrentTeamId}"), out var v) ? v : 0;
+        set => SetMeta($"board_swing_{CurrentTeamId}", value.ToString());
+    }
+
+    /// <summary>Board confidence as it stands RIGHT NOW — re-read from store, never cached.</summary>
+    public int BoardConfidenceNow =>
+        Math.Clamp(StoredBoardConfidence + BoardSwing, BoardConfidence.Min, BoardConfidence.Max);
+
+    /// <summary>
+    /// The whole board gauge — value, label, under-threat — rebuilt from the stored numbers on
+    /// every read. <see cref="Board"/> still owns the expectation and the per-result maths; this
+    /// is what a screen or a rule should ASK, because it cannot go stale between two reads.
+    /// </summary>
+    public BoardConfidence BoardNow => new(Board.Expectation, BoardConfidenceNow);
+
+    /// <summary>
+    /// Move board confidence and keep the visible number clamped to 0-100. The swing is stored
+    /// as the difference from the result-driven value, so the per-result gauge can keep writing
+    /// `board_conf` underneath us without ever eating a verdict.
+    /// </summary>
+    public void MoveBoardConfidence(int delta)
+    {
+        var target = Math.Clamp(BoardConfidenceNow + delta,
+            BoardConfidence.Min, BoardConfidence.Max);
+        BoardSwing = target - StoredBoardConfidence;
+    }
+
     // ------------------------------------------------------------------ AI manager names
 
     /// <summary>Deterministic real coach name for any club's dugout; yours is your own.</summary>
@@ -49,10 +99,12 @@ public sealed partial class Session
         if (GetMeta($"budgetask_{SeasonId}") is not null)
             return "You already went to the board this season — twice would be pushing it.";
         SetMeta($"budgetask_{SeasonId}", "1");
-        var confidence = Board.Value;
+        // Ask the live number, not the constructor's copy of it: a verdict or a review earlier
+        // this session moves what the board is willing to sign off on.
+        var confidence = BoardConfidenceNow;
         if (confidence < 55)
         {
-            StoredBoardConfidence -= 2;
+            MoveBoardConfidence(-2);
             PostInbox("Board", "Budget request declined",
                 $"Chairman {Chairman()} is unmoved: \"Results first, money after.\"");
             return "Declined — the board wants results before it writes cheques.";

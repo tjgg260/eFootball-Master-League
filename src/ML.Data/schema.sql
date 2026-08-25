@@ -231,10 +231,16 @@ CREATE INDEX IF NOT EXISTS ix_players_ovr ON players(overall_rating);
 
 -- Knockout cup ties live in fixtures (kind='cup', league_id=9002); this records each season's
 -- silverware for the Roll of Honour.
+-- team_id is POLYMORPHIC and carries NO foreign key on purpose. Trophy rows hold a club;
+-- award rows ('pots' = Player of the Season) hold a PLAYER. It used to declare
+-- REFERENCES teams(id), and since MasterDb opens with PRAGMA foreign_keys = ON, the awards
+-- insert threw every single season — swallowed by the "the gala never blocks rollover" catch,
+-- so the Roll of Honour simply never gained an award row and the end-of-season letter was
+-- never posted. Readers tell the two apart by competition, never by the column.
 CREATE TABLE IF NOT EXISTS honours (
     season_id   INTEGER NOT NULL,
-    competition TEXT    NOT NULL,              -- 'league' | 'division2' | 'cup'
-    team_id     INTEGER NOT NULL REFERENCES teams(id),
+    competition TEXT    NOT NULL,              -- 'league' | 'division2' | 'cup' | 'lcup' | 'ccup' | 'pots'
+    team_id     INTEGER NOT NULL,              -- a club id, or a PLAYER id when competition='pots'
     PRIMARY KEY (season_id, competition)
 );
 

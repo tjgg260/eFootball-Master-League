@@ -187,7 +187,9 @@ public sealed partial class Session
         var pos = CurrentPosition();
         var teams = Math.Max(LeagueTeams().Count, 2);
         var onTrack = pos > 0 && pos <= ManagerCareer.TargetPosition(Board.Expectation, teams);
-        StoredBoardConfidence += onTrack ? 3 : -4;
+        // Through MoveBoardConfidence, not straight into the stored key: a raw write here was
+        // invisible to the live gauge and then overwritten by it at the next league result.
+        MoveBoardConfidence(onTrack ? 3 : -4);
         PostInbox("Board", "Mid-season review",
             (onTrack
                 ? $"Chairman {Chairman()} is satisfied at the halfway mark."
@@ -227,7 +229,9 @@ public sealed partial class Session
                 ("important", true) => +5, ("important", false) => -5,
                 (_, true) => +3, _ => 0,
             };
-            StoredBoardConfidence += swing;
+            // The verdict is the whole point of the objectives screen: hitting every one of them
+            // has to leave the board somewhere it wasn't. Same funnel as the review above.
+            MoveBoardConfidence(swing);
             if (achieved) met++;
             if (!achieved && o.Importance == "critical") failedCritical = true;
         }
@@ -248,7 +252,10 @@ public sealed partial class Session
                 ? $"\n\nThe board is delighted — £{backing:N0} of extra backing lands in the budget."
                 : failedCritical
                     ? "\n\nThe critical objective was missed. Patience is not infinite."
-                    : "\n\nA mixed year. The bar does not move."), NextFixture()?.Matchday);
+                    : "\n\nA mixed year. The bar does not move.") +
+            // Say where the verdict left them. The swing above used to move a number nobody read.
+            $"\n\nThe board's confidence in you now reads {BoardNow.Label.ToLowerInvariant()} " +
+            $"({BoardConfidenceNow} of 100).", NextFixture()?.Matchday);
     }
 
     // ------------------------------------------------------------------ the fans (P2)

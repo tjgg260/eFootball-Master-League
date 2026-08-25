@@ -63,10 +63,21 @@ public sealed partial class DelegationToggle : ObservableObject
         RoleNeeded = Session.DelegationRole(key);
         RoleFilled = s.StaffPersonFor(RoleNeeded) is not null;
         _isOn = s.DelegationOn(key);
+        // The one duty with a standing caveat: an XI you picked by hand outranks the assistant,
+        // so the weekly pass leaves it alone. Said here rather than left for you to infer from a
+        // team sheet that never changes. (Not yet bound in StaffView.axaml — the layout of that
+        // panel belongs to another pass; the letter in the inbox carries it in the meantime.)
+        Note = key == "delegate_xi" && _isOn && RoleFilled && s.ManualXi
+            ? "holding — you picked this XI by hand, and he will not overwrite it"
+            : "";
     }
 
     [ObservableProperty] private bool _isOn;
     partial void OnIsOnChanged(bool value) => _s.SetDelegation(Key, value);
+
+    /// <summary>A live caveat about this duty, or empty when it simply runs.</summary>
+    public string Note { get; }
+    public bool HasNote => Note.Length > 0;
 
     public string Hint => RoleFilled ? "" : $"needs {("AEIOU".Contains(RoleNeeded[0]) ? "an" : "a")} {RoleNeeded}";
 
@@ -209,7 +220,8 @@ public sealed partial class StaffViewModel : PageViewModel
     [ObservableProperty]
     private string _status = "Every desk has a real effect: an excellent Coach speeds training · " +
         "Physio shortens layoffs · Youth Coach lifts intakes · GK Coach develops keepers · " +
-        "DoF and Scout work the delegations below.";
+        "Assistant, DoF, Scout and Fitness Coach work the delegations below. " +
+        "Right-click a candidate for his full 1-20 sheet beside the man he would replace.";
 
     partial void OnSelectedRoleChanged(string? value) => ReloadMarket();
 
@@ -307,21 +319,46 @@ public sealed partial class StaffViewModel : PageViewModel
             Hire();
         };
         menu.Items.Add(hire);
-        Sep();
 
-        foreach (var (label, value) in AttrFields) Info($"{label} · {Word(value(p))}");
-        Info($"{StarLine(p.Stars)} · £{p.Wage:N0}/wk");
-        Info($"prefers {p.PrefFormation} · drills {StylesSummary(p)}");
-
-        // The comparison you'd otherwise have to hold in your head: the man already at the desk.
+        // The man already at the desk, fetched BEFORE the sheet is drawn so every attribute row
+        // can carry the comparison. Hiring releases him, and that is a decision you cannot take
+        // back from a screen that only showed you the newcomer.
         StaffPerson? incumbent = null;
         try { incumbent = _s.StaffPersonFor(p.Role); } catch { /* the comparison is additive */ }
-        if (incumbent is not null && incumbent.Id != p.Id)
+        if (incumbent is not null && incumbent.Id == p.Id) incumbent = null;
+
+        if (incumbent is not null)
         {
-            Sep();
-            Info($"⚖ vs {incumbent.Name} ({incumbent.Age}): {AttrSummary(incumbent)}");
-            Info($"   {StarLine(incumbent.Stars)} · £{incumbent.Wage:N0}/wk · {ContractLineFor(incumbent)}");
-            Info("   hiring here releases him");
+            Info($"   ⚠ that releases {incumbent.Name}, who holds this desk");
+        }
+        Sep();
+
+        // The real 1-20 values, not just the adjective. Two people can both be "good" four points
+        // apart, which is the whole of the decision — the word alone hid it. The word stays
+        // because it is how the rest of the screen reads; the number is what you compare.
+        Info(incumbent is null
+            ? "ATTRIBUTES · 1-20"
+            : $"ATTRIBUTES · 1-20 · {p.Name} vs {incumbent.Name}");
+        foreach (var (label, value) in AttrFields)
+        {
+            var mine = value(p);
+            if (incumbent is null)
+            {
+                Info($"{label} · {mine}  {Word(mine)}");
+                continue;
+            }
+            var his = value(incumbent);
+            var arrow = mine > his ? "▲" : mine < his ? "▼" : "=";
+            Info($"{label} · {mine}  {Word(mine)}   {arrow} {his}");
+        }
+        Sep();
+        Info($"{StarLine(p.Stars)} · £{p.Wage:N0}/wk");
+        Info($"prefers {p.PrefFormation} · drills {StylesSummary(p)}");
+        if (incumbent is not null)
+        {
+            Info($"⚖ {incumbent.Name} ({incumbent.Age}) · {StarLine(incumbent.Stars)} · " +
+                 $"£{incumbent.Wage:N0}/wk · {ContractLineFor(incumbent)}");
+            Info($"   prefers {incumbent.PrefFormation} · drills {StylesSummary(incumbent)}");
         }
         return menu;
     }

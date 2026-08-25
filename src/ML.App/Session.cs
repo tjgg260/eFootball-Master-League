@@ -42,11 +42,12 @@ public sealed partial class Session
         Board = new BoardConfidence(expectation, starting: StoredBoardConfidence);
 
         RestoreSeasonFinances();   // season income/spend survive app restarts (P0)
-        // Youth sides (U21/U18) exist for every career club — created + seeded once per career.
-        try
-        {
-            if (GetMeta("youth_teams_v1") is null) { EnsureYouthTeams(); SetMeta("youth_teams_v1", "1"); }
-        }
+        // Youth sides (U21/U18) for every career club. SELF-HEALING, not one-shot: the old
+        // `if (GetMeta("youth_teams_v1") is null)` gate let a completion flag stand in for the
+        // work itself, and a career reseed deletes the sides without clearing the flag — so the
+        // U21/U18 tabs read teams that had never been re-created. EnsureYouthTeamsOnLoad checks
+        // the teams table (one lookup) and repairs; the full comment is on it.
+        try { EnsureYouthTeamsOnLoad(); }
         catch { /* youth teams are additive */ }
         // OCR paths from settings (meta), falling back to the recorded defaults.
         if (GetMeta("steam_root") is { Length: > 0 } root) ScoreImport.SteamRoot = root;
@@ -1150,7 +1151,8 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$t", CurrentTeamId);
         cmd.Parameters.AddWithValue("$bal", Finances.Balance);
         cmd.Parameters.AddWithValue("$fans", FanHappiness());
-        cmd.Parameters.AddWithValue("$board", Board.Value);
+        // The trend chart plots what the manager was shown, so it stores the composite.
+        cmd.Parameters.AddWithValue("$board", BoardConfidenceNow);
         cmd.Parameters.AddWithValue("$elo", EloOf(CurrentTeamId));
         cmd.ExecuteNonQuery();
     }

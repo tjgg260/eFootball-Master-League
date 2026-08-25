@@ -52,68 +52,133 @@ public sealed partial class DashboardViewModel : PageViewModel
         _s = s;
         ClubName = s.CurrentTeamName;
         LeagueName = s.LeagueName;
-        BoardConfidence = s.Board.Value;
-        BoardLabel = s.Board.Label;
+        BadgeText = Visuals.Initials(ClubName);
+        BadgeBrush = Visuals.Brush(s.PrimaryColor);
+        BadgeStroke = Visuals.Brush(s.SecondaryColor);
+        Logo = Visuals.LoadBitmap(s.LogoPath);
+
+        // Every LIVE number on this screen used to be read exactly here, once. See RefreshGauges:
+        // LoadNextMatch always ends in RefreshPortal, which fills them in — first for the opening
+        // frame, and again after every result. Reading them here too would only double the queries.
+        LoadNextMatch();
+    }
+
+    // ── the office gauges ─────────────────────────────────────────────────────────────
+    // THE BUG: these were get-only auto-properties assigned ONCE in the constructor, while
+    // RefreshPortal rebuilt only the position, the opposition card, the schedule and the mini
+    // table. So the post-match report — which reads the world LIVE — printed "Board settled
+    // (dented)" over tiles still showing what they were when you walked into the Office. Three
+    // results without leaving the screen and the tiles were three matchdays stale. They are
+    // observable now, and RefreshGauges() re-reads the lot wherever the world has moved.
+
+    [ObservableProperty] private int _elo;
+    [ObservableProperty] private string _tier = "";
+    [ObservableProperty] private string _chairmanLine = "";
+    [ObservableProperty] private int _fans;
+    [ObservableProperty] private string _fansLabel = "";
+    [ObservableProperty] private string _financeLine = "";
+    [ObservableProperty] private int _boardConfidence;
+    [ObservableProperty] private string _boardLabel = "";
+    [ObservableProperty] private int _morale;
+    [ObservableProperty] private string _moraleLabel = "";
+    [ObservableProperty] private string _balance = "";
+    [ObservableProperty] private string _expectation = "";
+
+    public ObservableCollection<string> ObjectiveChips { get; } = new();
+    public bool HasObjectiveChips => ObjectiveChips.Count > 0;
+    public ObservableCollection<string> Ticker { get; } = new();
+    public bool HasTicker => Ticker.Count > 0;
+
+    /// <summary>
+    /// Re-read every gauge from the world. Called at the end of RefreshPortal (which already runs
+    /// on load and after every recorded result) and when the post-match report closes, so the
+    /// tiles can never disagree with the report sitting directly above them. Each block is guarded
+    /// on its own: one failing query dims one gauge, it never bricks the Office.
+    /// </summary>
+    private void RefreshGauges()
+    {
+        try
+        {
+            // BoardNow, not Board. `Board` is built once in Session's constructor and never
+            // re-read, so a verdict landed by the season review, a refused budget ask or the
+            // objectives pass moved a number this tile could not see. The Office gauge and the
+            // Board screen were then quietly showing different confidence for the same club.
+            BoardConfidence = _s.BoardConfidenceNow;
+            BoardLabel = _s.BoardNow.Label;
+            Expectation = Visuals.ExpectationLabel(_s.Board.Expectation);
+        }
+        catch { /* one gauge, not the screen */ }
+
         // The gauge reads the REAL per-player morale average (the old Session.Morale object
         // was a constant 60 that nothing ever updated).
-        try { Morale = s.SquadMoraleAverage(); }
+        try { Morale = _s.SquadMoraleAverage(); }
         catch { Morale = 60; }
         MoraleLabel = Morale switch
         {
             >= 85 => "Superb", >= 70 => "Very Good", >= 55 => "Good",
             >= 40 => "Okay", >= 25 => "Poor", _ => "Abject",
         };
-        Balance = $"£{s.Finances.Balance:N0}";
-        Expectation = Visuals.ExpectationLabel(s.Board.Expectation);
-        BadgeText = Visuals.Initials(ClubName);
-        BadgeBrush = Visuals.Brush(s.PrimaryColor);
-        BadgeStroke = Visuals.Brush(s.SecondaryColor);
-        Logo = Visuals.LoadBitmap(s.LogoPath);
+
+        try { Balance = $"£{_s.Finances.Balance:N0}"; } catch { /* one gauge, not the screen */ }
 
         // MFL office extras: ELO + status tier, chairman, fans gauge, financial split, ticker.
         try
         {
-            Elo = s.EloOf(s.CurrentTeamId);
-            Tier = s.ClubTier(s.CurrentTeamId);
-            ChairmanLine = $"Chairman: {s.Chairman()}";
-            // The fan gauge now carries a memory (P2): half persistent ledger, half form.
-            Fans = s.FanHappiness();
-            FansLabel = s.FanLabel;
-            foreach (var o in s.Objectives().Where(o => o.Importance != "bonus").Take(2))
-            {
-                ObjectiveChips.Add($"{(o.Status == 1 ? "✅" : o.Status == 2 ? "❌" : "◻")} {o.Description} — {o.Progress}");
-            }
-            var (transfer, wages, weekly) = s.FinancialOverview();
-            FinanceLine = $"Transfers £{transfer:N0}  ·  Wages £{wages:N0}  ·  £{weekly:N0}/wk bill";
-            foreach (var t in s.RecentTransfers(5)) Ticker.Add(t);
+            Elo = _s.EloOf(_s.CurrentTeamId);
+            Tier = _s.ClubTier(_s.CurrentTeamId);
+            ChairmanLine = $"Chairman: {_s.Chairman()}";
         }
         catch { /* office extras never brick the dashboard */ }
 
-        LoadNextMatch();
+        // The fan gauge carries a memory (P2): half persistent ledger, half form.
+        try { Fans = _s.FanHappiness(); FansLabel = _s.FanLabel; } catch { }
+
+        try
+        {
+            var (transfer, wages, weekly) = _s.FinancialOverview();
+            FinanceLine = $"Transfers £{transfer:N0}  ·  Wages £{wages:N0}  ·  £{weekly:N0}/wk bill";
+        }
+        catch { }
+
+        try
+        {
+            ObjectiveChips.Clear();
+            foreach (var o in _s.Objectives().Where(o => o.Importance != "bonus").Take(2))
+            {
+                ObjectiveChips.Add($"{(o.Status == 1 ? "✅" : o.Status == 2 ? "❌" : "◻")} {o.Description} — {o.Progress}");
+            }
+        }
+        catch { }
+        OnPropertyChanged(nameof(HasObjectiveChips));   // a plain getter over a collection
+
+        try
+        {
+            Ticker.Clear();
+            foreach (var t in _s.RecentTransfers(5)) Ticker.Add(t);
+        }
+        catch { }
+        OnPropertyChanged(nameof(HasTicker));
     }
 
-    public int Elo { get; }
-    public string Tier { get; } = "";
-    public string ChairmanLine { get; } = "";
-    public int Fans { get; }
-    public string FansLabel { get; } = "";
-    public ObservableCollection<string> ObjectiveChips { get; } = new();
-    public bool HasObjectiveChips => ObjectiveChips.Count > 0;
-    public string FinanceLine { get; } = "";
-    public ObservableCollection<string> Ticker { get; } = new();
-    public bool HasTicker => Ticker.Count > 0;
+    /// <summary>
+    /// Raise the career-state properties. THE BUG: IsSacked, SackedHeadline and SeasonOver are
+    /// plain expression-bodied properties over the Session, and the board can sack you inside
+    /// RecordResult — with nothing notifying, the SACKED card never appeared and the screen just
+    /// went card-less (SeasonOver, which reads IsSacked, went false too). Raised from the one
+    /// place that runs after every world change.
+    /// </summary>
+    private void NotifyCareerState()
+    {
+        OnPropertyChanged(nameof(IsSacked));
+        OnPropertyChanged(nameof(SackedHeadline));
+        OnPropertyChanged(nameof(SeasonOver));
+    }
 
     public override string Title => "Office";
     public override string Icon => "🏠";
 
     public string ClubName { get; }
     public string LeagueName { get; }
-    public int BoardConfidence { get; }
-    public string BoardLabel { get; }
-    public int Morale { get; }
-    public string MoraleLabel { get; }
-    public string Balance { get; }
-    public string Expectation { get; }
     public string BadgeText { get; } = "";
     public IBrush BadgeBrush { get; } = Visuals.Brush(null);
     public IBrush BadgeStroke { get; } = Visuals.Brush(null);
@@ -155,8 +220,23 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _celebrationTitle = "";
     [ObservableProperty] private string _celebrationSub = "";
 
+    /// <summary>
+    /// What the last screenshot read attempt has to say, shown ON the entry desk beside the score
+    /// boxes. A refusal ("that wasn't the full-time screen") has to appear where the user is
+    /// already looking — the muted status line at the foot of the card is not that place.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasImportNotice))]
+    private string _importNotice = "";
+
+    public bool HasImportNotice => ImportNotice.Length > 0;
+
     [RelayCommand]
-    private void OpenResultEntry() => ResultEntryOpen = true;
+    private void OpenResultEntry()
+    {
+        ImportNotice = "";
+        ResultEntryOpen = true;
+    }
 
     [RelayCommand]
     private void BackToPreMatch() => ResultEntryOpen = false;
@@ -249,7 +329,7 @@ public sealed partial class DashboardViewModel : PageViewModel
             }
 
             var moraleNow = _s.SquadMoraleAverage();
-            var boardNow = _s.Board.Value;
+            var boardNow = _s.BoardConfidenceNow;
             var fansNow = _s.FanHappiness();
             // Words, not numbers (P5): the report reads like an assistant, not a debugger.
             static string Mood(int v) => v switch
@@ -278,6 +358,9 @@ public sealed partial class DashboardViewModel : PageViewModel
     {
         ReportVisible = false;
         FtVisible = false;    // the moment ends together: banner + report leave as one
+        // The report quotes the gauges LIVE ("Board settled (dented)"). The tiles it was covering
+        // must agree with it the instant it lifts, not at the next matchday.
+        RefreshGauges();
     }
 
     // Team talks (C2): one pre-match and one post-match say per fixture.
@@ -332,10 +415,23 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     // Sacked ≠ season over: a sacked manager has no next match either, but must see the
     // SACKED card, not "SEASON COMPLETE" with a live Advance Season button.
+    // These three read the Session live, so they are always CORRECT when asked — they were just
+    // never asked again after the board acted. NotifyCareerState() is what asks; see RefreshPortal.
     public bool SeasonOver => !HasNextMatch && !IsSacked;
 
     public bool IsSacked => _s.IsSacked;
     public string SackedHeadline => IsSacked ? "SACKED — " + _s.SackedLine : "";
+
+    /// <summary>
+    /// The record you leave behind, shown ON the SACKED card. THE BUG: this line was written into
+    /// MatchStatus, which is only rendered INSIDE the next-match card — the one card that is
+    /// hidden precisely when you have been sacked. The copy could never reach a pixel.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCareerSummary))]
+    private string _careerSummaryLine = "";
+
+    public bool HasCareerSummary => CareerSummaryLine.Length > 0;
 
     // --- Next Opposition card ---
     [ObservableProperty]
@@ -522,16 +618,26 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     private void LoadNextMatch()
     {
+        ImportNotice = "";   // a new fixture starts with a clean entry desk
+
         // Sacked managers do not pick teams: the dashboard goes dark until you take a new job.
         if (_s.IsSacked)
         {
             NextMatchLabel = "SACKED — " + _s.SackedLine;
-            MatchStatus = $"Your career: {_s.CareerSummary()}\n" +
-                          "Job offers are on the Board screen — accept one to manage again.";
+            // The career line goes to the SACKED card's own property — MatchStatus only renders
+            // inside the next-match card, which is hidden in exactly this state (see above).
+            try { CareerSummaryLine = $"Your career: {_s.CareerSummary()}"; }
+            catch { CareerSummaryLine = ""; }
+            MatchStatus = "";
             HasNextMatch = false;
+            // ...and this branch used to return BEFORE RefreshPortal, so a sacked manager got no
+            // gauge refresh and — fatally — no NotifyCareerState, which is what makes the SACKED
+            // card appear at all.
+            RefreshPortal();
             return;
         }
 
+        CareerSummaryLine = "";
         var next = _s.NextFixture();
         if (next is not null)
         {
@@ -588,7 +694,10 @@ public sealed partial class DashboardViewModel : PageViewModel
     }
 
     /// <summary>
-    /// Rebuild the portal cards (opposition report, schedule, mini table, position tile). A card
+    /// Rebuild the portal cards (opposition report, schedule, mini table, position tile) AND the
+    /// gauges and career state — everything on this screen that moves when the world does. It runs
+    /// on load, after every recorded result, and as the refresh callback behind the right-click
+    /// menus, which is precisely the set of moments the tiles used to sleep through. A card
     /// failure must never brick the Office, so this swallows and moves on.
     /// </summary>
     private void RefreshPortal()
@@ -609,6 +718,11 @@ public sealed partial class DashboardViewModel : PageViewModel
                 : "";
         }
         catch { /* card-only */ }
+
+        // The tiles below the fold and the card the whole screen hangs on. Last, so a card that
+        // throws on its way here cannot cost us the gauges (each is guarded inside anyway).
+        RefreshGauges();
+        NotifyCareerState();
     }
 
     /// <summary>Knowledge gate for opponent players shown on the Office (letters, never numbers).</summary>
@@ -977,10 +1091,21 @@ public sealed partial class DashboardViewModel : PageViewModel
     private void ImportScore()
     {
         var r = ScoreImport.FromLatestScreenshot();
-        if (r is null) { MatchStatus = "No screenshot found — press F12 in eFootball at full time."; return; }
-        HomeScore = r.Value.Home;
-        AwayScore = r.Value.Away;
-        MatchStatus = r.Value.Message;
+        // THE BUG: this guard read `if (r is null)`, but every failure path in ScoreImport returned
+        // a (0, 0, false, message) TUPLE — never null — so the guard never fired once, and the two
+        // lines below happily wrote 0-0 over the score you had just typed. Ok is now the only
+        // success signal, and nothing touches the boxes without it.
+        if (!r.Ok)
+        {
+            ImportNotice = $"⚠ {r.Message}";
+            MatchStatus = r.Message;
+            return;
+        }
+        HomeScore = r.Home;
+        AwayScore = r.Away;
+        // The banner is for trouble only — a clean read speaks for itself in the score boxes.
+        ImportNotice = r.Confident ? "" : "⚠ Low OCR confidence — check the digits before you record.";
+        MatchStatus = r.Message;
     }
 
     /// <summary>Record the score you played in eFootball, then advance to the next fixture.</summary>
@@ -991,7 +1116,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         // Snapshot the gauges so the report can show what this result MOVED (P3).
         int moraleBefore = 60, boardBefore = 58, fansBefore = 55;
         try { moraleBefore = _s.SquadMoraleAverage(); } catch { }
-        try { boardBefore = _s.Board.Value; } catch { }
+        try { boardBefore = _s.BoardConfidenceNow; } catch { }
         try { fansBefore = _s.FanHappiness(); } catch { }
         FoldPicksIntoTexts();   // pickers beat typing (P3)
         _s.Repo.RecordResult(new ResultRow

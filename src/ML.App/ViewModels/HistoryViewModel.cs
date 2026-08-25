@@ -21,7 +21,7 @@ public sealed record ArchiveScorerRow(string Player, string Team, int Goals, lon
 /// <summary>An archived honour. Most were lifted by a club; Player of the Season was won by
 /// a player, so the row says which before a menu offers to open a squad.</summary>
 public sealed record ArchiveHonourRow(string Competition, string Team,
-    Avalonia.Media.Imaging.Bitmap? Crest = null, int HolderId = 0, bool HolderIsPlayer = false);
+    Avalonia.Media.Imaging.Bitmap? Crest = null, long HolderId = 0, bool HolderIsPlayer = false);
 
 public sealed partial class HistoryViewModel : PageViewModel
 {
@@ -106,8 +106,7 @@ public sealed partial class HistoryViewModel : PageViewModel
             foreach (var (comp, holder, holderId, isPlayer) in _s.HonoursInWithHolders(season))
             {
                 SeasonHonours.Add(new ArchiveHonourRow(comp, holder,
-                    isPlayer ? Face(holderId) : Visuals.LoadBitmap(_s.TeamLogoPath(holderId)),
-                    holderId, isPlayer));
+                    isPlayer ? Face(holderId) : Crest(holderId), holderId, isPlayer));
             }
             foreach (var (player, team, goals, playerId, _) in _s.LeadersInWithIds(season, "goal"))
             {
@@ -147,6 +146,14 @@ public sealed partial class HistoryViewModel : PageViewModel
                 Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value)),
                 champion ? "🏆" : "", r.TeamId.Value));
         }
+    }
+
+    /// <summary>A club crest, narrowing the long holder id — club ids are all under 10,000,
+    /// and anything that could not be one gets no crest rather than an exception.</summary>
+    private Avalonia.Media.Imaging.Bitmap? Crest(long teamId)
+    {
+        if (teamId is <= 0 or > int.MaxValue) return null;
+        try { return Visuals.LoadBitmap(_s.TeamLogoPath((int)teamId)); } catch { return null; }
     }
 
     private Avalonia.Media.Imaging.Bitmap? Face(long playerId)

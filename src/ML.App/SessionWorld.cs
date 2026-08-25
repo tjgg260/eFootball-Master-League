@@ -403,9 +403,13 @@ public sealed partial class Session
     private void SeasonAwards()
     {
         var lines = new List<string>();
-        int? potsFace = null;
+        long? potsFace = null;
 
-        (int Pid, string Name, double Avg, int Apps)? Best(int? maxAge, int minApps)
+        // Pid is a PLAYER id, so it is a long. It was an int, read with GetInt32 — an unchecked
+        // truncation of the int64 column — which meant the Player of the Season of a real world
+        // (ids to ~50bn) was written into the honours table as a wrong, usually negative, id.
+        // The Roll of Honour is permanent: a truncated id there is corruption that never heals.
+        (long Pid, string Name, double Avg, int Apps)? Best(int? maxAge, int minApps)
         {
             using var cmd = Db.Connection.CreateCommand();
             cmd.CommandText =
@@ -419,7 +423,8 @@ public sealed partial class Session
             if (maxAge is { } a2) cmd.Parameters.AddWithValue("$a", a2);
             cmd.Parameters.AddWithValue("$m", minApps);
             using var r = cmd.ExecuteReader();
-            return r.Read() ? (r.GetInt32(0), r.GetString(1), r.GetDouble(2), r.GetInt32(3)) : null;
+            // cols: 0 player_id (LONG) · 1 name · 2 average rating · 3 rated games
+            return r.Read() ? (r.GetInt64(0), r.GetString(1), r.GetDouble(2), r.GetInt32(3)) : null;
         }
 
         if (Best(null, 8) is { } pots)
@@ -448,10 +453,15 @@ public sealed partial class Session
         }
     }
 
-    /// <summary>The Roll of Honour: every season's champions, newest first.</summary>
-    public IReadOnlyList<(int Year, string Competition, string Team, int HolderId, bool HolderIsPlayer)> Honours()
+    /// <summary>
+    /// The Roll of Honour: every season's champions, newest first. HolderId is a LONG because
+    /// most rows hold a club but award rows hold a PLAYER, and player ids run past Int32 — read
+    /// as an int, the Player of the Season came back truncated (negative, in fact), so the row
+    /// showed no name and its right-click menu refused to open.
+    /// </summary>
+    public IReadOnlyList<(int Year, string Competition, string Team, long HolderId, bool HolderIsPlayer)> Honours()
     {
-        var rows = new List<(int, string, string, int, bool)>();
+        var rows = new List<(int, string, string, long, bool)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT season_id, competition, team_id FROM honours ORDER BY season_id DESC, competition";
         using var r = cmd.ExecuteReader();
@@ -467,9 +477,12 @@ public sealed partial class Session
                 "pots" => "Player of the Season",
                 _ => CupName,
             };
-            // Award rows store a PLAYER id in the team column; everything else a club.
-            var holder = raw == "pots" ? PlayerNameOf(r.GetInt32(2)) : TeamName(r.GetInt32(2));
-            rows.Add((2026 + (r.GetInt32(0) - 9000), comp, holder, r.GetInt32(2), raw == "pots"));
+            // Award rows store a PLAYER id in the team column; everything else a club. Read it
+            // once, as a long, and only narrow it for TeamName — club ids are all under 10,000.
+            var isPlayer = raw == "pots";
+            var holderId = r.GetInt64(2);
+            var holder = isPlayer ? PlayerNameOf(holderId) : TeamName((int)holderId);
+            rows.Add((2026 + (r.GetInt32(0) - 9000), comp, holder, holderId, isPlayer));
         }
         return rows;
     }
@@ -524,10 +537,14 @@ public sealed partial class Session
             q.Parameters.AddWithValue("$lo", floor);
             q.Parameters.AddWithValue("$hi", floor + 6);
             q.Parameters.AddWithValue("$off", rng.Next(60));
-            var pool = new List<(int Id, string Name, int Ovr)>();
+            // Id is a long: this pool is drawn from the whole free-player table, where ids reach
+            // ~50bn. GetInt32 truncated them without complaint, so the club then "signed" an id
+            // that matches no player — a squad row pointing at nobody, and a transfer-ticker line
+            // for a footballer who does not exist.
+            var pool = new List<(long Id, string Name, int Ovr)>();
             using (var r = q.ExecuteReader())
             {
-                while (r.Read()) pool.Add((r.GetInt32(0), r.GetString(1), r.IsDBNull(2) ? 60 : r.GetInt32(2)));
+                while (r.Read()) pool.Add((r.GetInt64(0), r.GetString(1), r.IsDBNull(2) ? 60 : r.GetInt32(2)));
             }
 
             // Inter-club buying (P2): ~1 in 4 raids another CPU club for an upgrade instead —
@@ -691,6 +708,15 @@ public sealed partial class Session
     private const int AcademyIdBase = 30_000_000;
 
     /// <summary>
+    /// Top of the academy's own id band. The band [30m, 40m) is what makes an academy id an
+    /// academy id: ten million slots, empty in every world we ship, well clear of the imported
+    /// namespaces (real players run to ~700m, curated to ~45bn, generated to ~50bn), and small
+    /// enough that a prospect's id still fits the int <c>game_pid</c> column. Allocation MUST be
+    /// bounded by it — see AcademyIntake for what happened when it wasn't.
+    /// </summary>
+    private const int AcademyIdCeiling = 40_000_000;
+
+    /// <summary>
     /// Preseason intake: every club's academy produces two prospects (16-18, raw ratings, built
     /// from the career world's own name pool). CPU clubs auto-promote their best prospect when
     /// their squad runs short; yours wait on the Academy screen for your decision.
@@ -714,13 +740,34 @@ public sealed partial class Session
         }
         if (first.Count == 0) { first.Add("Alex"); last.Add("Walker"); }
 
-        int nextId;
+        // THE BUG THIS SHAPE EXISTS TO KILL. This line used to read
+        //     "SELECT COALESCE(MAX(id), $b) + 1 FROM players WHERE id >= $b"
+        // and then Convert.ToInt32 the answer — two faults compounding:
+        //  1. "id >= base" is not the academy band, it is everything above it. The career world
+        //     holds real player ids up to ~50,000,004,410, every one of them >= 30,000,000, so
+        //     MAX came back in the fifty BILLIONS and Convert.ToInt32 threw OverflowException.
+        //     AcademyIntake runs INSIDE season rollover, after relegation, ageing, loan returns
+        //     and the CPU market are already written — so the throw left the career half-rolled:
+        //     no new season, no fixtures, no offers, and an academy that stayed empty forever.
+        //     Every rollover, on every real world. Player ids are long end to end; ToInt32 on one
+        //     is always a bug.
+        //  2. Even with the overflow fixed, MAX+1 over an unbounded range mints prospects at 50bn
+        //     — outside the band AcademyIdBase exists to define, and one step from colliding with
+        //     the generated namespace that already lives there.
+        // So: bound the MAX to the band, and carry the id as a long the whole way down.
+        long nextId;
         using (var q = Db.Connection.CreateCommand())
         {
-            q.CommandText = "SELECT COALESCE(MAX(id), $b) + 1 FROM players WHERE id >= $b";
+            q.CommandText = "SELECT COALESCE(MAX(id), $b) + 1 FROM players WHERE id >= $b AND id < $c";
             q.Parameters.AddWithValue("$b", AcademyIdBase);
-            nextId = Convert.ToInt32(q.ExecuteScalar());
+            q.Parameters.AddWithValue("$c", AcademyIdCeiling);
+            nextId = Convert.ToInt64(q.ExecuteScalar());
         }
+        // Ten million ids is thousands of seasons of intakes. If a world ever did exhaust the
+        // band we skip the intake for that season rather than mint ids outside it: an id that
+        // collides with an imported player would overwrite a real footballer's record, which is
+        // a far worse day than a quiet year in the youth setup.
+        if (nextId >= AcademyIdCeiling) return;
 
         string[] positions = { "GK", "CB", "RB", "LB", "DMF", "CMF", "AMF", "RWF", "LWF", "CF", "CF" };
         foreach (var club in Repo.Teams().Where(t => t.LeagueId is TopFlight or Division2).ToList())
@@ -733,7 +780,7 @@ public sealed partial class Session
             var bestPotential = 0;
             for (var i = 0; i < classSize; i++)
             {
-                var id = nextId++;
+                var id = nextId++;          // long: a player id is never an int
                 var age = 16 + rng.Next(3);
                 // Your academy level + a good Youth Coach lift the floor of the class.
                 var facilityLift = yours ? (AcademyLevel - 1) * 2 + YouthCoachIntakeBonus() : 0;
@@ -742,7 +789,9 @@ public sealed partial class Session
                 var position = positions[rng.Next(positions.Length)];
                 Repo.UpsertPlayer(new PlayerRow
                 {
-                    Id = id, GamePid = id, IsCustom = true, Name = name, Position = position,
+                    // Id is the handle and is long; game_pid is an int column, and the academy
+                    // band is bounded below 40m precisely so this cast is always exact.
+                    Id = id, GamePid = (int)id, IsCustom = true, Name = name, Position = position,
                     Age = age, Nationality = club.ShortName, OverallRating = rating,
                 });
                 // Real potential: most are journeymen; ~1 in 9 is a genuine prospect.
@@ -810,9 +859,14 @@ public sealed partial class Session
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
+            // GetInt32 on a player id TRUNCATES silently (it is an unchecked cast of the int64
+            // column), so a prospect minted before the band was bounded came back as a different
+            // — or negative — id, and Promote/Release then missed him entirely. Read the id as
+            // the long it is; game_pid is the int column and takes the (in-band) cast.
+            var id = r.GetInt64(0);
             rows.Add(new PlayerRow
             {
-                Id = r.GetInt32(0), GamePid = r.GetInt32(0), IsCustom = true, Name = r.GetString(1),
+                Id = id, GamePid = (int)id, IsCustom = true, Name = r.GetString(1),
                 Position = r.IsDBNull(2) ? "CMF" : r.GetString(2),
                 Age = r.IsDBNull(3) ? null : r.GetInt32(3),
                 OverallRating = r.IsDBNull(4) ? null : r.GetInt32(4),
@@ -1184,10 +1238,13 @@ public sealed partial class Session
                 counts.GetValueOrDefault("red"), avg);
     }
 
-    /// <summary>League leaders for any counted event type ('goal', 'assist') + apps for per-90s.</summary>
-    public IReadOnlyList<(string Player, string Team, int Count, int Apps, int PlayerId, int TeamId)> LeadersBy(string eventType, int count = 12)
+    /// <summary>League leaders for any counted event type ('goal', 'assist') + apps for per-90s.
+    /// PlayerId is a long (TeamId stays an int) — matching LeadersInWithIds in SessionHistory,
+    /// which already got this right. A leaderboard row is a handle on a real player, and a
+    /// truncated handle opens the wrong menu on the wrong man.</summary>
+    public IReadOnlyList<(string Player, string Team, int Count, int Apps, long PlayerId, int TeamId)> LeadersBy(string eventType, int count = 12)
     {
-        var rows = new List<(string, string, int, int, int, int)>();
+        var rows = new List<(string, string, int, int, long, int)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT p.name, COALESCE(s.team_id, 0), COUNT(*) AS g, e.player_id, " +
@@ -1205,9 +1262,9 @@ public sealed partial class Session
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
-            // cols: 0 name · 1 team_id · 2 count · 3 player_id · 4 apps
+            // cols: 0 name · 1 team_id (int) · 2 count · 3 player_id (LONG) · 4 apps
             rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2), r.GetInt32(4),
-                      r.GetInt32(3), r.GetInt32(1)));
+                      r.GetInt64(3), r.GetInt32(1)));
         }
         return rows;
     }
@@ -1231,10 +1288,11 @@ public sealed partial class Session
         return rows;
     }
 
-    /// <summary>Discipline: bookings-heaviest players (a red counts as three points).</summary>
-    public IReadOnlyList<(string Player, string Team, int Yellows, int Reds, int PlayerId, int TeamId)> DisciplineLeaders(int count = 8)
+    /// <summary>Discipline: bookings-heaviest players (a red counts as three points).
+    /// PlayerId is a long for the same reason as LeadersBy — it is a handle, not a number.</summary>
+    public IReadOnlyList<(string Player, string Team, int Yellows, int Reds, long PlayerId, int TeamId)> DisciplineLeaders(int count = 8)
     {
-        var rows = new List<(string, string, int, int, int, int)>();
+        var rows = new List<(string, string, int, int, long, int)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText =
             "SELECT p.name, COALESCE(s.team_id, 0), " +
@@ -1248,8 +1306,9 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$s", SeasonId);
         cmd.Parameters.AddWithValue("$n", count);
         using var r = cmd.ExecuteReader();
+        // cols: 0 name · 1 team_id (int) · 2 yellows · 3 reds · 4 player_id (LONG)
         while (r.Read()) rows.Add((r.GetString(0), TeamName(r.GetInt32(1)), r.GetInt32(2), r.GetInt32(3),
-                                   r.GetInt32(4), r.GetInt32(1)));
+                                   r.GetInt64(4), r.GetInt32(1)));
         return rows;
     }
 
@@ -1698,7 +1757,10 @@ public sealed partial class Session
 
     // ------------------------------------------------------------------ undo + cup conditions
 
-    /// <summary>Undo the most recently recorded result of YOUR fixtures (typos happen).</summary>
+    /// <summary>
+    /// Undo the most recently recorded result of YOUR fixtures (typos happen). It undoes the
+    /// SCORE, not the week: see the comment below and the sentence this returns.
+    /// </summary>
     public string UndoLastResult()
     {
         var last = Repo.Fixtures(SeasonId)
@@ -1706,20 +1768,31 @@ public sealed partial class Session
             .OrderByDescending(f => f.Matchday).ThenByDescending(f => f.Id)
             .FirstOrDefault();
         if (last is null) return "Nothing to undo.";
+        // This used to ALSO delete the meta keys cond_applied_{season}_{md} and cond_cup_{...}.
+        // Those two rows are the only thing standing between the matchweek and being processed a
+        // second time: Session.UpdateConditionsAfterMatchday and UpdateConditionsAfterCup both
+        // return early when the guard is set, and RunWeeklyEconomy sits behind that early return.
+        // Clearing them made Undo-then-re-record pay a full week of wages twice, take gate
+        // receipts twice, hand the bank a second loan instalment, run the training ground twice
+        // (players developed twice off one match) and re-roll every injury. None of that is
+        // reversed by deleting a result row, so deleting the guard did not "reset" the week —
+        // it doubled it. The guards now stay put; recording the corrected score updates the
+        // table and the events, and the week's economy stays exactly as it was run once.
         using (var cmd = Db.Connection.CreateCommand())
         {
             cmd.CommandText = "DELETE FROM results WHERE fixture_id=$f; " +
                               "DELETE FROM match_events WHERE fixture_id=$f; " +
-                              "UPDATE fixtures SET played=0 WHERE id=$f; " +
-                              "DELETE FROM meta WHERE key IN ($g1,$g2)";
+                              "UPDATE fixtures SET played=0 WHERE id=$f";
             cmd.Parameters.AddWithValue("$f", last.Id);
-            cmd.Parameters.AddWithValue("$g1", $"cond_applied_{SeasonId}_{last.Matchday}");
-            cmd.Parameters.AddWithValue("$g2", $"cond_cup_{SeasonId}_{last.Matchday}");
             cmd.ExecuteNonQuery();
         }
         _results = null;
         _elos = null;
-        return $"Undid {TeamName(last.HomeTeamId)} v {TeamName(last.AwayTeamId)} — re-enter the score.";
+        // The caller prints this verbatim, so it has to be the truth about a partial undo.
+        return $"Undid {TeamName(last.HomeTeamId)} v {TeamName(last.AwayTeamId)} — the score and " +
+               "its scorers, cards and ratings are cleared, ready to re-enter. The rest of that " +
+               "week stands: the board's reaction, the fans, the wages and gate money already " +
+               "settled, the training week, and the other clubs' results.";
     }
 
     /// <summary>Cup-day condition pass: only the two clubs' starters load up — no league-wide double dip.</summary>

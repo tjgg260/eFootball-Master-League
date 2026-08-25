@@ -144,6 +144,11 @@ if (kid is not null)
     var down = s.DemoteToYouth(kid.Id, s.CurrentTeamId, "u21");
     var inYouth = s.YouthSquad(s.CurrentTeamId, "u21").Any(y => y.PlayerId == kid.Id);
     Check("demote to U21 lands him in the U21 squad", inYouth, down);
+    // He is in team 9,000,0xx now, not your club — and he is STILL yours. This is the whole
+    // point of IsOwnPlayer walking parent_team_id: the shared menu asks this question before
+    // it decides whether to offer you the chance to bid for him.
+    Check("a lad in my own U21s is still my player", s.IsOwnPlayer(kid.Id),
+        s.ClubOfPlayer(kid.Id).Club);
     var up = s.PromoteToSenior(kid.Id, s.CurrentTeamId);
     var backUp = s.Repo.SquadPlayers(s.CurrentTeamId).Any(p => p.Id == kid.Id);
     Check("promote brings him back to the first team", backUp, up);
@@ -151,6 +156,90 @@ if (kid is not null)
 else
 {
     Console.WriteLine("  [skip] nobody 21-or-under in the squad to demote");
+}
+
+Console.WriteLine("\nboard confidence (one number, re-read every time)");
+{
+    var before = s.BoardConfidenceNow;
+    s.MoveBoardConfidence(-7);
+    var after = s.BoardConfidenceNow;
+    // The bug this replaces: Session.Board is built once in the constructor, so a verdict
+    // written by the season review or a refused budget ask moved a number nothing read back.
+    Check("a swing is visible on the very next read", after == Math.Clamp(before - 7, 0, 100),
+        $"{before} -> {after}");
+    Check("the gauge agrees with the composite", s.BoardNow.Value == s.BoardConfidenceNow);
+    Check("the label agrees with the value", s.BoardNow.Label.Length > 0, s.BoardNow.Label);
+    s.MoveBoardConfidence(+7);
+    Check("and it moves back", s.BoardConfidenceNow == before);
+    s.MoveBoardConfidence(-500);
+    Check("it cannot be driven below the floor", s.BoardConfidenceNow >= 0, $"{s.BoardConfidenceNow}");
+    s.MoveBoardConfidence(+500);
+    Check("or above the ceiling", s.BoardConfidenceNow <= 100, $"{s.BoardConfidenceNow}");
+}
+
+Console.WriteLine("\nundo (must not re-run the week)");
+{
+    // A brand-new career has nothing played, and this regression is too expensive to skip —
+    // so record one on the COPY. It is the same call the Office makes when you type a score.
+    var played = s.Repo.Fixtures(s.SeasonId)
+        .Where(f => (f.HomeTeamId == s.CurrentTeamId || f.AwayTeamId == s.CurrentTeamId) && f.Played)
+        .OrderByDescending(f => f.Matchday).FirstOrDefault();
+    if (played is null)
+    {
+        var open = s.Repo.Fixtures(s.SeasonId)
+            .FirstOrDefault(f => f.HomeTeamId == s.CurrentTeamId || f.AwayTeamId == s.CurrentTeamId);
+        if (open is not null)
+        {
+            s.Repo.RecordResult(new ML.Data.ResultRow
+            { FixtureId = open.Id, HomeGoals = 2, AwayGoals = 1 });
+            played = s.Repo.Fixtures(s.SeasonId).First(f => f.Id == open.Id);
+        }
+    }
+    if (played is null)
+    {
+        Console.WriteLine("  [skip] this career has no fixture of mine at all");
+    }
+    else
+    {
+        // These two keys are the only thing gating RunWeeklyEconomy. Undo used to delete them,
+        // so re-recording a corrected score paid the wages twice and took the gate twice.
+        var guard = $"cond_applied_{s.SeasonId}_{played.Matchday}";
+        var cupGuard = $"cond_cup_{s.SeasonId}_{played.Matchday}";
+        s.SetSetting(guard, "1");
+        s.SetSetting(cupGuard, "1");
+        var said = s.UndoLastResult();
+        Check("the matchweek guard survives an undo", s.GetSetting(guard) == "1");
+        Check("so does the cup guard", s.GetSetting(cupGuard) == "1");
+        Check("the fixture is open again",
+            s.Repo.Fixtures(s.SeasonId).First(f => f.Id == played.Id).Played == false);
+        Check("and it says what it did NOT undo", said.Contains("stands"), said);
+    }
+}
+
+Console.WriteLine("\nids that outgrow Int32");
+{
+    foreach (var prospect in s.AcademyPlayers())
+    {
+        if (prospect.Id is >= 30_000_000 and < 40_000_000) continue;
+        Check("every academy prospect sits in the academy band", false, $"{prospect.Id}");
+        break;
+    }
+    Check("academy reads without truncating", s.AcademyPlayers().All(p => p.Id > 0),
+        $"{s.AcademyPlayers().Count} prospects");
+
+    // Player of the Season stores a PLAYER id in the honours team column. Read as an int it
+    // came back truncated (often negative) and the archive row lost its name and its menu.
+    var big = s.Repo.SquadPlayers(s.CurrentTeamId).OrderByDescending(p => p.Id).First().Id;
+    using (var ins = db.Connection.CreateCommand())
+    {
+        ins.CommandText = "INSERT INTO honours(season_id,competition,team_id) VALUES($s,'pots',$t)";
+        ins.Parameters.AddWithValue("$s", s.SeasonId);
+        ins.Parameters.AddWithValue("$t", big);
+        ins.ExecuteNonQuery();
+    }
+    var pots = s.HonoursInWithHolders(s.SeasonId).FirstOrDefault(h => h.HolderIsPlayer);
+    Check("the archive keeps a player-sized holder id", pots.HolderId == big, $"{pots.HolderId} vs {big}");
+    Check("and finds his name", pots.Holder.Length > 0, pots.Holder);
 }
 
 db.Connection.Dispose();

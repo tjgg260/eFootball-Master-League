@@ -22,6 +22,8 @@
               Classes.ml-primary="{Binding IsU18Tab}" Classes.ml-ghost="{Binding !IsU18Tab}"/>
     </StackPanel>
 
+    <!-- The note is now written on EVERY state, including the empty ones — HasNote used to
+         hide it exactly when a manager had never seen the screen work. -->
     <TextBlock DockPanel.Dock="Top" Classes="ml-muted" Text="{Binding Note}" Margin="0,0,0,10"
                TextWrapping="Wrap" IsVisible="{Binding HasNote}"/>
 
@@ -33,7 +35,15 @@
       <Button DockPanel.Dock="Left" Content="⬆ Promote to first team" Command="{Binding PromoteYouthCommand}"
               Classes="ml-primary ml-go" Padding="18,10" Margin="0,0,14,0"
               IsVisible="{Binding IsYouthTab}"/>
-      <TextBlock Text="{Binding Status}" Foreground="{StaticResource MlSuccessText}" FontSize="13"
+      <!-- The other direction, and the affordance the empty state used to only describe.
+           It is a signpost to the Squad screen, and the tooltip says so. -->
+      <Button DockPanel.Dock="Left" Content="{Binding SendDownLabel}" Command="{Binding OpenSquadCommand}"
+              Classes="ml-secondary" Padding="14,10" Margin="0,0,14,0"
+              ToolTip.Tip="{Binding SendDownHint}"
+              IsVisible="{Binding IsYouthTab}"/>
+      <!-- The status line carries engine prose, so it carries the engine's TONE too: a refusal
+           ("Too old for the U18s.") used to be painted in the assistant's success green. -->
+      <TextBlock Text="{Binding Status}" Foreground="{Binding StatusBrush}" FontSize="13"
                  VerticalAlignment="Center" TextWrapping="Wrap"/>
     </DockPanel>
 
@@ -80,10 +90,30 @@
         </DataGrid.Columns>
       </DataGrid>
 
+      <!-- Same row anatomy as the academy grid, column for column: the avatar used to appear
+           and disappear as you changed tabs, so every name jumped 46px sideways. The last
+           column was "Level", which only ever repeated the tab you were already on — it now
+           carries the one read that varies per lad. -->
       <DataGrid x:Name="YouthGrid" ItemsSource="{Binding YouthRows}"
                 SelectedItem="{Binding SelectedYouth, Mode=TwoWay}" IsVisible="{Binding IsYouthTab}"
                 IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
         <DataGrid.Columns>
+          <DataGridTemplateColumn Header="" Width="46">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:YouthEntry">
+                <Border Width="32" Height="32" CornerRadius="16" Background="{Binding FaceBrush}"
+                        Margin="4,2" ClipToBounds="True">
+                  <Panel>
+                    <TextBlock Text="{Binding Mark}" Foreground="#20262E" FontSize="10"
+                               FontWeight="Bold" HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                    <Image Source="{Binding Portrait}" Stretch="UniformToFill"
+                           IsVisible="{Binding HasPortrait}"/>
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
           <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="70"/>
           <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="62"/>
@@ -103,7 +133,7 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Level" Binding="{Binding Level}" Width="70"/>
+          <DataGridTextColumn Header="Where he's at" Binding="{Binding Readiness}" Width="130"/>
         </DataGrid.Columns>
       </DataGrid>
 
@@ -116,8 +146,31 @@
                 HorizontalAlignment="Center" Foreground="{StaticResource MlLink}"
                 Command="{Binding OpenCalendarCommand}"/>
       </StackPanel>
-      <TextBlock Classes="ml-empty" IsVisible="{Binding ShowYouthEmpty}"
-                 Text="Nobody at this level yet — send a young first-teamer down, or promote a prospect into him."/>
+
+      <!-- empty state, youth: it used to be one line telling the manager to "send a young
+           first-teamer down" — advice about a verb with no control anywhere on the screen.
+           The verb now has a button, and the words say what the button does. -->
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8"
+                  MaxWidth="440" IsVisible="{Binding ShowYouthEmpty}">
+        <TextBlock Classes="ml-muted" HorizontalAlignment="Center"
+                   Text="Nobody at this level yet."/>
+        <Button Classes="ml-secondary" Content="{Binding SendDownLabel}" FontSize="12"
+                HorizontalAlignment="Center" Command="{Binding OpenSquadCommand}"/>
+        <TextBlock Classes="ml-muted" HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" Text="{Binding SendDownHint}"/>
+      </StackPanel>
+
+      <!-- FAILURE, which is not emptiness: the read used to be swallowed whole, so a broken
+           side and a genuinely empty one showed the same sentence. -->
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6"
+                  MaxWidth="440" IsVisible="{Binding ShowYouthError}">
+        <TextBlock Classes="ml-muted" HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" Foreground="{StaticResource MlDanger}"
+                   Text="This side could not be read — that is a fault at our end, not an empty side."/>
+        <TextBlock Classes="ml-muted" HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap"
+                   Text="Nobody has been lost. The reason is on the status line below, and the full detail is in ml-crash.log."/>
+      </StackPanel>
     </Panel>
   </DockPanel>
 </UserControl>

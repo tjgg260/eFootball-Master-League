@@ -118,10 +118,15 @@ public sealed partial class Session
     /// the team column, so a caller wiring a right-click menu has to know which it is before
     /// it offers to view a squad that does not exist.
     /// </summary>
-    public IReadOnlyList<(string Competition, string Holder, int HolderId, bool HolderIsPlayer)>
+    public IReadOnlyList<(string Competition, string Holder, long HolderId, bool HolderIsPlayer)>
         HonoursInWithHolders(int seasonId)
     {
-        var rows = new List<(string, string, int, bool)>();
+        // The holder id is a LONG. A 'pots' row stores a player id, and player ids in this world
+        // run past Int32 (the academy band alone reaches 50,000,005,004). GetInt32 on an int64
+        // column is an unchecked cast in Microsoft.Data.Sqlite, so it came back truncated and
+        // often negative: the archive showed Player of the Season with a blank name and its
+        // right-click menu refused to open. Club ids narrow at the call, where they're safe.
+        var rows = new List<(string, string, long, bool)>();
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "SELECT competition, team_id FROM honours WHERE season_id=$s ORDER BY competition";
         cmd.Parameters.AddWithValue("$s", seasonId);
@@ -139,8 +144,8 @@ public sealed partial class Session
                 _ => CupName,
             };
             var isPlayer = raw == "pots";
-            var id = r.GetInt32(1);
-            rows.Add((comp, isPlayer ? PlayerNameOf(id) : TeamName(id), id, isPlayer));
+            var id = r.GetInt64(1);
+            rows.Add((comp, isPlayer ? PlayerNameOf(id) : TeamName((int)id), id, isPlayer));
         }
         return rows;
     }
