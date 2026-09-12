@@ -170,14 +170,22 @@ class Audit:
 
     # 9 --------------------------------------------------------------- ages
     def ages(self):
-        # 50, not 45: FM lists the odd playing veteran in a minor league (a 55-year-old at B68
-        # Toftir), and those are the source's own numbers, not corruption.
+        # Two different things, which this check used to excuse together. A MISSING age is never
+        # the source's word — FM always carries a date of birth — so a squadded player without one
+        # is our bug: Wataru Endo's career copy at Liverpool sat at 'Ag 0' with no flag while his
+        # original, 33, was one rotation of his name away. An out-of-range VALUE is the source
+        # speaking: FM lists a playing 55-year-old at B68 Toftir. 50, not 45, for the same reason.
+        missing = list(self.con.execute(
+            "SELECT p.id, p.name FROM players p JOIN squad_members s ON s.player_id=p.id "
+            "WHERE p.superseded_by IS NULL AND p.age IS NULL"))
+        self.report(9, "squadded players with no age at all", len(missing), "players",
+                    [f"{n!r} (id {pid})" for pid, n in missing])
         odd = list(self.con.execute(
             "SELECT p.id, p.name, p.age FROM players p JOIN squad_members s ON s.player_id=p.id "
-            "WHERE p.superseded_by IS NULL AND (p.age<15 OR p.age>50 OR p.age IS NULL)"))
-        self.report(9, "squadded players with an impossible or missing age", len(odd), "players",
+            "WHERE p.superseded_by IS NULL AND (p.age<15 OR p.age>50)"))
+        self.report("9a", "squadded players with an out-of-range age", len(odd), "players",
                     [f"{n!r} age {a}" for _p, n, a in odd],
-                    limit="the remaining ages are what the source says, not corruption")
+                    limit="FM's own dates of birth, not corruption")
 
     # 10 ------------------------------------------------------- attributes
     def attributes(self):

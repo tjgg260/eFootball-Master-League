@@ -123,10 +123,15 @@ def main() -> int:
         k = key(name)
         pool = list(world.get(k, []))
         if not pool:
-            # the name may be written the other way round, or spelled out in full
-            for wk, ws in world.items():
-                if rotation(k, wk) or shorter(k, wk):
-                    pool += ws
+            # Written the other way round is still the FULL name, so it is tried first and on its
+            # own. Only if nothing rotates does a shortening count — and never toward a world record
+            # that is a bare surname. 'Wataru Endo' rotates onto 'Endo Wataru' (33, Japan, the
+            # Liverpool midfielder), but an RFS record called just 'Endo' (29) used to join the
+            # shortlist and make it a tie, which is why his copy kept 'Ag 0' and no flag.
+            pool = [w for wk, ws in world.items() if rotation(k, wk) for w in ws]
+        if not pool:
+            pool = [w for wk, ws in world.items()
+                    if len(wk) > 1 and shorter(k, wk) for w in ws]
         cands = [w for w in pool
                  if (not natn or not w[3] or nat(natn) == w[3])
                  and (age is None or w[2] is None or abs(w[2] - age) <= 2)]
