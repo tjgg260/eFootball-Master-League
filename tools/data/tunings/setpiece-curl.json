@@ -1,0 +1,83 @@
+{
+ "_comment": "THEME C (APPLY) set-piece delivery. ALL curl on sideSpin (safe Z/horizontal axis); backSpin CUTS on long FK/goal-kick are anti-balloon (Y-axis lift down). Lower base + raise paraRate = specialists curl, others deliver flat (attribute spread). topSpin edits deliberately SKIPPED (Y-axis caution). Loader PROVEN-live 0x1442fa830.",
+ "edits": [
+  {
+   "object": "setplayGuideCornerKick",
+   "path": "spin.sideSpin.base",
+   "value": 3.5,
+   "_note": "5.0->3.5 (Z curl; low-skill flatter)"
+  },
+  {
+   "object": "setplayGuideCornerKick",
+   "path": "spin.sideSpin.paraRate",
+   "value": 4.5,
+   "_note": "2.5->4.5 (specialist whips more)"
+  },
+  {
+   "object": "setplayGuideCornerKick",
+   "path": "speed.addGage.addParaRate",
+   "value": 14.0,
+   "_note": "10->14 delivery pace variety"
+  },
+  {
+   "object": "setplayGuideFreeKickNear",
+   "path": "spin.sideSpin.base",
+   "value": 3.0,
+   "_note": "4.5->3.0"
+  },
+  {
+   "object": "setplayGuideFreeKickNear",
+   "path": "spin.sideSpin.base_shoot",
+   "value": 3.5,
+   "_note": "5.0->3.5"
+  },
+  {
+   "object": "setplayGuideFreeKickNear",
+   "path": "spin.sideSpin.paraRate",
+   "value": 4.5,
+   "_note": "2.5->4.5"
+  },
+  {
+   "object": "setplayGuideFreeKickMiddle",
+   "path": "spin.sideSpin.base",
+   "value": 3.0,
+   "_note": "4.5->3.0"
+  },
+  {
+   "object": "setplayGuideFreeKickMiddle",
+   "path": "spin.sideSpin.base_shoot",
+   "value": 3.5,
+   "_note": "5.0->3.5"
+  },
+  {
+   "object": "setplayGuideFreeKickMiddle",
+   "path": "spin.sideSpin.paraRate",
+   "value": 4.5,
+   "_note": "2.5->4.5"
+  },
+  {
+   "object": "setplayGuideFreeKickFar",
+   "path": "spin.backSpin.base",
+   "value": 3.5,
+   "_note": "5.0->3.5 ANTI-BALLOON (cut Y-axis backspin lift on long FKs)"
+  },
+  {
+   "object": "setplayGuideFreeKickFar",
+   "path": "spin.sideSpin.paraRate",
+   "value": 2.0,
+   "_note": "1.0->2.0"
+  },
+  {
+   "object": "setplayGuideCommon",
+   "path": "goalKickBackSpin",
+   "value": 3.0,
+   "_note": "4.0->3.0 ANTI-BALLOON"
+  },
+  {
+   "object": "basePosition",
+   "path": "cornerkickDefenceMFWidth",
+   "value": 8.0,
+   "_note": "10->8 box defensive shape (proven-live 0x143d063ff)"
+  }
+ ]
+}

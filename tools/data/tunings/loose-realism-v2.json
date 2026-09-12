@@ -1,0 +1,1504 @@
+{
+ "name": "loose-realism-v2",
+ "description": "Realism preset (believable, not arcade). Pairs with the loose-realism-v2 EXE pack. Dials back v1 extremes and adds mishit feel (spin/scuff/bobble), a freer ball, and smarter shape.",
+ "edits": [
+  {
+   "object": "trap",
+   "path": "ballControlRate",
+   "value": 0.65,
+   "why": "TOUCH ERROR: worse first touches for everyone (scales Ball Control into the trap error angle)"
+  },
+  {
+   "object": "trap",
+   "path": "trapLossDashOnly",
+   "value": false,
+   "was": true,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "trapLoss=true is the master enable for heavy-touch ('loss') outcomes; trapLossDashOnly restricts them to sprint traps. Clearing the restriction lets walking/running traps also get away from the player \u2014 the most direct '"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.groundBall.paraMin.reactionBallSpeed",
+   "value": 58,
+   "was": 70,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Ball-speed (kph) threshold at which a team-mate's ground pass is handled as a reflex 'reaction trap' rather than a clean trap, for a low-attribute player (paraMin). Normal grounders arrive at 32-36 kph (grounderpass.rece"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.groundBall.paraMax.reactionBallSpeed",
+   "value": 68,
+   "was": 80,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "High-attribute end of the same threshold (-15%). Top players still handle harder passes than weak ones, but the whole curve shifts down so more driven passes get the awkward handling."
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.groundBall.paraMin.reactionTime",
+   "value": 0.2,
+   "was": 0.15,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Reaction time (s) for a low-attribute player on a fast team-mate ground pass. +33% = slower settle, ball bobbles/sits off the foot for an extra 3 frames. Longer time = worse under any reading."
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.groundBall.paraMax.reactionTime",
+   "value": 0.13,
+   "was": 0.1,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "High-attribute end of the reaction time (+30%), preserving the min/max ordering (0.20 > 0.13)."
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionBoundBall.groundBall.paraMin.reactionBallSpeed",
+   "value": 42,
+   "was": 50,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same threshold for a BOUNCING ball (deflections, clearances, blocked shots) reaching a low-attribute player; -16% means more second balls are met with a reflex touch instead of a clean gather \u2014 directly 'loose balls happ"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionBoundBall.groundBall.paraMax.reactionBallSpeed",
+   "value": 51,
+   "was": 60,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "High-attribute end of the bouncing-ball threshold (-15%), keeps the min/max gap."
+  },
+  {
+   "object": "trap",
+   "path": "reachOut.reach",
+   "value": 0.6,
+   "why": "TOUCH ERROR: less magnetic stretch to corral a ball"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.kickBasis.offsetPos_Run",
+   "value": 1.75,
+   "was": 1.5,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "ballForceDirect (use=true) places the ball at a fixed offset ahead of the player after a trap: Idle 0.5 / Run 1.5 / Dash 2.0 (blendStartSpeed.speed_0/15/28 = 0.5/1.75/2.0 confirms these are distances growing with speed)."
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.kickBasis.offsetPos_Dash",
+   "value": 2.25,
+   "was": 2,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same as above for sprint traps (+20%). Sprint first touches are where real players lose the ball most; this makes that the case here too."
+  },
+  {
+   "object": "trap",
+   "path": "afterCollision.hitAfterFrame",
+   "value": 14,
+   "was": 10,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "After an unintended body collision, foot/leg/thigh cannot re-hit the ball for N frames (noHit.foot/reg/thigh all true). 10 -> 14 frames (+40%, ~67 ms more at 60 fps) keeps ricochets and blocked passes loose for longer be"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.0",
+   "value": 0.72,
+   "why": "v2: dial back arcade bounce (idx3 stays dead)"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.1",
+   "value": 0.72,
+   "why": "v2: dial back arcade bounce (idx3 stays dead)"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.2",
+   "value": 0.72,
+   "why": "v2: dial back arcade bounce (idx3 stays dead)"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.3",
+   "value": 0.514,
+   "why": "v2: dial back arcade bounce (idx3 stays dead)"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.4",
+   "value": 0.72,
+   "why": "v2: dial back arcade bounce (idx3 stays dead)"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.5",
+   "value": 0.72,
+   "why": "v2: dial back arcade bounce (idx3 stays dead)"
+  },
+  {
+   "object": "grounderpass",
+   "path": "manualBlendManualRateGageStrong.3",
+   "value": 0.2,
+   "was": 0,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "At max assist (index 3 = PA3) a long-held ground pass currently takes 0% of the stick direction. 0.2 blends a fifth of the aim into the target, so imprecise aiming produces under/over-hit or misdirected passes. Same dire"
+  },
+  {
+   "object": "grounderpass",
+   "path": "manualBlendManualRateGageWeak.3",
+   "value": 0.1,
+   "was": 0,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Short-press (weak gauge) ground passes at PA3 gain a small stick component; kept half the Strong value because short passes should stay mostly assisted (PA2 uses 0.3 vs 0.8)."
+  },
+  {
+   "object": "grounderpass",
+   "path": "manualBlendthreshold",
+   "value": 15,
+   "was": 20,
+   "area": "passing-error",
+   "confidence": "low",
+   "why": "Hypothesis: pass length (m) above which manual blending is applied (grounder 20, fly 30 fit metre ranges like manual.distForGageMin/Max 4..40). Lowering it subjects more medium-range passes to the stick blend."
+  },
+  {
+   "object": "flypass",
+   "path": "manualBlendManualRateGageStrong.3",
+   "value": 0.2,
+   "was": 0,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Lofted equivalent of the grounder edit: PA3 strong-gauge lofted passes get 20% stick influence (PA1/PA2 already use 0.5)."
+  },
+  {
+   "object": "flypass",
+   "path": "manualBlendManualRateGageMax.3",
+   "value": 0.2,
+   "was": 0,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Full-gauge lofted passes at PA3 also receive the stick blend (PA1/PA2 = 0.6). Leaves Weak.3 at 0 so short chips stay assisted."
+  },
+  {
+   "object": "flypass",
+   "path": "manualBlendthreshold",
+   "value": 22,
+   "was": 30,
+   "area": "passing-error",
+   "confidence": "low",
+   "why": "Same hypothesis as the grounder threshold: lofted passes above ~22 m (instead of 30) become subject to the manual blend."
+  },
+  {
+   "object": "throughpass",
+   "path": "allowAngleWidth.3",
+   "value": 120,
+   "was": 180,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "At PA3 a through ball is redirected to a runner from any angle (180). Narrowing to 120 means badly aimed through balls are no longer fully corrected and run through to nobody / the keeper \u2014 the classic 'wayward through b"
+  },
+  {
+   "object": "throughpass",
+   "path": "allowAngleWidth.2",
+   "value": 22,
+   "was": 30,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "PA2 equivalent: retarget cone shrinks ~27% so the stick must point closer to the runner. Keeps ordering PA1 (15) < PA2 (22) < PA3 (120)."
+  },
+  {
+   "object": "centering",
+   "path": "allowAngleWidth.3",
+   "value": 120,
+   "was": 180,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Crosses at PA3 are currently aimed at a box target regardless of stick direction. 120 leaves a wide cone but lets a cross aimed well away from any teammate go where it was aimed. adjustSearchAngleRate/adjustStartPointRat"
+  },
+  {
+   "object": "grounderpass",
+   "path": "paraMinSpeedRate",
+   "value": 0.8,
+   "was": 0.9,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Only lever that scales pass quality by the passer's attribute for BOTH teams: a low-attribute passer's ground pass is hit at 78% speed instead of 90% (99-rated stays 1.0). Slower balls from weak passers fall short and ar"
+  },
+  {
+   "object": "flypass",
+   "path": "height.heightForDistMaxParaMin",
+   "value": 7.5,
+   "was": 6.3,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Weak lofted passers already loft max-distance balls higher than strong ones (6.3 vs 4.8). +19% adds hang time so their long balls are easier to contest/intercept and harder to bring down. Stays below heightForDistMax_hig"
+  },
+  {
+   "object": "passget",
+   "path": "defence.secMax",
+   "value": 0.3,
+   "was": 0.4,
+   "area": "passing-error",
+   "confidence": "low",
+   "why": "passget.defence maps a defensive attribute (paraMin 60 .. paraMax 90) to a timing 'sec' that is currently flat (0.4/0.4). Pattern-matching trap.reactionTrapBall.*.reactionTime suggests it is the defender's reaction delay",
+   "inert": "no reader of passget +0x38..+0x44 found"
+  },
+  {
+   "object": "shoot",
+   "path": "normal_dy.gageMax",
+   "value": 28.0,
+   "why": "BALLOON FIX: launch elevation back to stock"
+  },
+  {
+   "object": "shoot",
+   "path": "control_dy.gageMax",
+   "value": 26.5,
+   "why": "BALLOON FIX: launch elevation back to stock"
+  },
+  {
+   "object": "ball",
+   "path": "airRegistNormal",
+   "value": 1.12,
+   "was": 1,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "Air-resistance multiplier (1.0 = Konami default). +12% bleeds more speed in flight, so shots from outside the box arrive weaker and dip more; close-range shots are barely affected because flight time is short \u2014 a natural"
+  },
+  {
+   "object": "ball",
+   "path": "magnusRate",
+   "value": 0.035,
+   "why": "BALLOON FIX: back to stock \u2014 0.06 amplified backspin lift enough to fight gravity"
+  },
+  {
+   "object": "ball",
+   "path": "nonSpinRate",
+   "value": 1.5,
+   "why": "stronger knuckle wobble (knuckle branch only \u2014 cannot affect normal-spin Magnus)"
+  },
+  {
+   "object": "shoot",
+   "path": "loop.angleY",
+   "value": 28.0,
+   "why": "BALLOON FIX: loop/chip elevation back to stock"
+  },
+  {
+   "object": "basePosition",
+   "path": "forceDashDistDefence",
+   "value": 12,
+   "was": 9,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Distance-to-target-position beyond which an off-ball player in the defensive phase is forced to sprint (forceWalkDist 1.2 < forceJogDist 2.4 < forceDashDist 9 is a clear walk/jog/run/dash ladder). Raising it 33% means de",
+   "inert": "dead load in 0x143da92c0 \u2014 the defence branch uses 19-0.1*attr instead; only forceDashDistOffence is live"
+  },
+  {
+   "object": "basePosition",
+   "path": "moveStartDist",
+   "value": 1,
+   "was": 0.8,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Dead-zone: a player does not start moving to a new base position until it is this far from his current one. Raising 0.8 -> 1.2 m removes the constant micro-adjusting that makes AI shape look perfect and twitchy; players "
+  },
+  {
+   "object": "basePosition",
+   "path": "spaceCoverRate",
+   "value": 0.45,
+   "why": "v2: restore zonal cover (v1 over-loosened to 0.35)"
+  },
+  {
+   "object": "basePosition",
+   "path": "pressRate",
+   "value": 0.4,
+   "was": 0.5,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Rate (0..1) by which the collective base shape shifts toward the ball carrier, i.e. how much the whole unit 'presses' as a block. -20% yields a less swarming, less instant collective press while individual press decision",
+   "inert": "no reader found in the exe (docs/exe-gameplay-map.md)"
+  },
+  {
+   "object": "basePosition",
+   "path": "marginPredictionFrameAdjust",
+   "value": 100,
+   "was": 120,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Prediction horizon (frames, 60 fps => 2.0 s) the positioning AI uses to anticipate where the play will be when choosing base positions (marginPredictionFrameBase is 0, so this is the whole horizon). Cutting to 1.5 s make"
+  },
+  {
+   "object": "basePosition",
+   "path": "transitionSec",
+   "value": 6,
+   "was": 5,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Duration (s) of the transition state after a possession change, during which shapes blend from attacking to defending (transitionSmooth 0, transitionOpenZ 1, transitionPriorityX 1 are its switches). Lengthening to 7 s ke"
+  },
+  {
+   "object": "basePosition",
+   "path": "matchUpContinueRate",
+   "value": 40,
+   "was": 30,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Percent chance/weight that a defender keeps his current match-up (man-marking assignment) instead of handing off to a teammate and snapping back to zonal shape. Raising by 10 points makes defenders follow runners further"
+  },
+  {
+   "object": "basePosition",
+   "path": "matchUpContinueRate_FW_MF",
+   "value": 50,
+   "was": 40,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Same as matchUpContinueRate but for FW/MF match-ups; keep the +10 offset Konami uses between the two so the relative behaviour of front and back units is preserved."
+  },
+  {
+   "object": "basePosition",
+   "path": "jogMfLineScore",
+   "value": 45,
+   "why": "v2: livelier midfield band"
+  },
+  {
+   "object": "basePosition",
+   "path": "lengthDf_Retreat",
+   "value": 32,
+   "was": 35,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Front-to-back length of the defensive block in the Retreat state. Konami ships it identical to the normal lengthDf (35) with only SuperRetreat (30) distinct, so a retreating CPU looks the same as a normal one. Setting 32"
+  },
+  {
+   "object": "passget",
+   "path": "defence.secMin",
+   "value": 0.5,
+   "was": 0.4,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "passget.defence maps a defending attribute (paraMin 60 .. paraMax 90, almost certainly Defensive Awareness) to an interception-reaction time (secMin .. secMax). Konami ships both ends at 0.4 s, so a 60-rated and a 90-rat",
+   "inert": "no reader of passget +0x38..+0x44 found"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.0",
+   "value": 68.88,
+   "was": 72.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.1",
+   "value": 71.25,
+   "was": 75.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.2",
+   "value": 73.62,
+   "was": 77.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.3",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.4",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.5",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.0",
+   "value": 72.04,
+   "was": 75.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.1",
+   "value": 75.21,
+   "was": 79.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.2",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.3",
+   "value": 81.54,
+   "was": 85.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.4",
+   "value": 84.71,
+   "was": 89.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.5",
+   "value": 87.88,
+   "was": 92.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.0",
+   "value": 67.49,
+   "was": 71.04000091552734,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.1",
+   "value": 69.66,
+   "was": 73.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.2",
+   "value": 71.85,
+   "was": 75.62999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.3",
+   "value": 74.02,
+   "was": 77.91999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.4",
+   "value": 76.2,
+   "was": 80.20999908447266,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.5",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.0",
+   "value": 70.46,
+   "was": 74.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.1",
+   "value": 73.23,
+   "was": 77.08000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.2",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.3",
+   "value": 78.77,
+   "was": 82.91999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.4",
+   "value": 81.54,
+   "was": 85.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.5",
+   "value": 84.31,
+   "was": 88.75,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.0",
+   "value": 63.34,
+   "was": 66.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.1",
+   "value": 64.91,
+   "was": 68.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.2",
+   "value": 66.5,
+   "was": 70.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.3",
+   "value": 68.09,
+   "was": 71.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.4",
+   "value": 69.66,
+   "was": 73.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.5",
+   "value": 71.25,
+   "was": 75.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.0",
+   "value": 65.71,
+   "was": 69.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.1",
+   "value": 67.29,
+   "was": 70.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.2",
+   "value": 68.88,
+   "was": 72.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.3",
+   "value": 70.46,
+   "was": 74.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.4",
+   "value": 72.04,
+   "was": 75.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.5",
+   "value": 73.62,
+   "was": 77.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.0",
+   "value": 74.41,
+   "was": 78.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.1",
+   "value": 77.59,
+   "was": 81.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.2",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.3",
+   "value": 84.55,
+   "was": 89.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.4",
+   "value": 88.35,
+   "was": 93.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.5",
+   "value": 90.25,
+   "was": 95.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.0",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.1",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.2",
+   "value": 85.5,
+   "was": 90.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.3",
+   "value": 94.05,
+   "was": 99.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.4",
+   "value": 102.6,
+   "was": 108.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.5",
+   "value": 106.88,
+   "was": 112.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.0",
+   "value": 72.84,
+   "was": 76.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.1",
+   "value": 75.6,
+   "was": 79.58000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.2",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.3",
+   "value": 81.7,
+   "was": 86.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.4",
+   "value": 85.02,
+   "was": 89.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.5",
+   "value": 86.69,
+   "was": 91.25,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.0",
+   "value": 75.21,
+   "was": 79.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.1",
+   "value": 79.16,
+   "was": 83.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.2",
+   "value": 83.12,
+   "was": 87.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.3",
+   "value": 90.01,
+   "was": 94.75,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.4",
+   "value": 96.9,
+   "was": 102.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.5",
+   "value": 100.35,
+   "was": 105.62999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.0",
+   "value": 68.09,
+   "was": 71.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.1",
+   "value": 69.66,
+   "was": 73.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.2",
+   "value": 71.25,
+   "was": 75.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.3",
+   "value": 73.15,
+   "was": 77.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.4",
+   "value": 75.05,
+   "was": 79.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.5",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.0",
+   "value": 72.84,
+   "was": 76.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.1",
+   "value": 74.41,
+   "was": 78.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.2",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.3",
+   "value": 77.9,
+   "was": 82.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.4",
+   "value": 79.8,
+   "was": 84.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.5",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.0",
+   "value": 83.91,
+   "was": 88.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.1",
+   "value": 87.09,
+   "was": 91.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.2",
+   "value": 90.25,
+   "was": 95.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.3",
+   "value": 96.19,
+   "was": 101.25,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.4",
+   "value": 102.12,
+   "was": 107.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.5",
+   "value": 102.12,
+   "was": 107.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.0",
+   "value": 85.5,
+   "was": 90.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.1",
+   "value": 90.25,
+   "was": 95.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.2",
+   "value": 95.0,
+   "was": 100.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.3",
+   "value": 104.5,
+   "was": 110.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.4",
+   "value": 114.0,
+   "was": 120.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.5",
+   "value": 114.0,
+   "was": 120.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.0",
+   "value": 81.15,
+   "was": 85.41999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.1",
+   "value": 83.91,
+   "was": 88.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.2",
+   "value": 86.69,
+   "was": 91.25,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.3",
+   "value": 91.73,
+   "was": 96.55999755859375,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.4",
+   "value": 96.79,
+   "was": 101.87999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.5",
+   "value": 96.79,
+   "was": 101.87999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.0",
+   "value": 83.52,
+   "was": 87.91999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.1",
+   "value": 87.48,
+   "was": 92.08000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.2",
+   "value": 91.44,
+   "was": 96.25,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.3",
+   "value": 99.16,
+   "was": 104.37999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.4",
+   "value": 106.88,
+   "was": 112.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.5",
+   "value": 106.88,
+   "was": 112.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.0",
+   "value": 72.84,
+   "was": 76.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.1",
+   "value": 74.41,
+   "was": 78.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.2",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.3",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.4",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.5",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.0",
+   "value": 77.59,
+   "was": 81.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.1",
+   "value": 79.16,
+   "was": 83.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.2",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.3",
+   "value": 83.12,
+   "was": 87.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.4",
+   "value": 85.5,
+   "was": 90.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.5",
+   "value": 85.5,
+   "was": 90.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)"
+  },
+  {
+   "object": "ball",
+   "path": "nonSpinMin",
+   "value": 25.0,
+   "why": "enables the knuckle/wobble path on slow mishit balls (below this the knuckle scale is ZERO)"
+  },
+  {
+   "object": "ball",
+   "path": "grounderFrictionRate",
+   "value": 0.989,
+   "why": "v2 free-ball: loose balls carry into space"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateStop.0",
+   "value": 0.988,
+   "why": "v2 free-ball: trickling ball keeps rolling, not glued"
+  },
+  {
+   "object": "trap",
+   "path": "reachOut.ballSpeed",
+   "value": 42,
+   "why": "v2: reach-out only on genuinely trappable balls"
+  },
+  {
+   "object": "ballplayer",
+   "path": "touch0.0.length_ave",
+   "value": 0.15,
+   "why": "v2 de-magnetise: looser close-control carry distance"
+  },
+  {
+   "object": "ballplayer",
+   "path": "touch0.0.length_max",
+   "value": 0.26,
+   "why": "v2 de-magnetise: bigger max close-control push"
+  },
+  {
+   "object": "passget",
+   "path": "neutralTrapAutoFront",
+   "value": 45,
+   "why": "v2 (guess): cut auto-front vacuum on loose balls"
+  },
+  {
+   "object": "passget",
+   "path": "ballFollowNeutral.ballSpeedMax",
+   "value": 24,
+   "why": "v2 (guess): cut second-ball magnetism window"
+  },
+  {
+   "object": "basePosition",
+   "path": "marginPredictionFrameBase",
+   "value": 6,
+   "why": "v2 smart AI: defenders anticipate the play"
+  },
+  {
+   "object": "basePosition",
+   "path": "slowDownFw",
+   "value": false,
+   "why": "v2: forwards press/track back"
+  },
+  {
+   "object": "rating",
+   "path": "ratingMin",
+   "value": 0.5,
+   "why": "open the rating floor: 4.0 -> 0.5 so shocking performances actually show"
+  },
+  {
+   "object": "rating",
+   "path": "ratingMax",
+   "value": 10.0,
+   "why": "open the rating ceiling: 9.0 -> 10.0 so a masterclass can hit 10"
+  },
+  {
+   "object": "rating",
+   "path": "baseRatingMin",
+   "value": 3.0,
+   "why": "spread ratings: base band floor 5.0->3.0 (13 half-steps instead of 5)"
+  },
+  {
+   "object": "rating",
+   "path": "baseRatingMax",
+   "value": 9.0,
+   "why": "spread ratings: base band ceiling 7.0->9.0"
+  },
+  {
+   "object": "rating",
+   "path": "subValue10percent",
+   "value": 0.0,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue20percent",
+   "value": 0.3,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue30percent",
+   "value": 0.7,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue40percent",
+   "value": 1.1,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue50percent",
+   "value": 1.5,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue60percent",
+   "value": 1.9,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue70percent",
+   "value": 2.3,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue80percent",
+   "value": 2.7,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue90percent",
+   "value": 3.1,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  },
+  {
+   "object": "rating",
+   "path": "subValue100percent",
+   "value": 3.5,
+   "why": "respread percentile penalty ladder (subtractive; was flat 2.0 above the 50th)"
+  }
+ ]
+}

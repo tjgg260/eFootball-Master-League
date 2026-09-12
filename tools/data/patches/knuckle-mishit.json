@@ -1,0 +1,12 @@
+{
+ "description": "KNUCKLE-ON-MISHIT (bobbles + lateral jink) \u2014 the game already has a full knuckleball system: a 6-keyframe table of fake spin vectors (builder 0x144098d70) that the air routine snaps between every ~0.4s, pushed through Magnus, which makes a knuckling ball JINK sideways and dip. The kick executor was DESTROYING it on exactly the kicks we want: at 0x144017656 it forced normal spin (kind 7) on every non-type-4 kick, i.e. every shank/miskick/under-hit. This 7-for-7-byte in-place edit instead sets nonSpin flag=1, kind=0, and by dropping the following jmp it falls through to the game's own knuckle route (cmp kind,7 / jne 0x1440186be). Kind 0 = wide random lateral + DIP-biased vertical (mean -9.4 rad/s), so it cannot reintroduce the ballooning. NOTE kind 2 (imm 0x0201) is pure LIFT \u2014 never use it. No code cave needed.",
+ "patches": [
+  {
+   "name": "knuckle on every mishit (flag=1, kind=0)",
+   "va": "0x144017656",
+   "expect": "41c6454507eb0b",
+   "patch": "6641c745440100",
+   "kind": "code"
+  }
+ ]
+}

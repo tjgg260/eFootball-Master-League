@@ -1,0 +1,26 @@
+{
+ "description": "SIDEWAYS FIX. The error was all vertical because horizontal and vertical errMax were equal (30deg each) and vertical is far more visible (ball into turf / skied) while a few degrees sideways just looks like a slightly wide pass. Also corrects a mislabelled patch: 0x14401a12c is the HORIZONTAL sign probability (params+0x14 sits in the +0x10 = angleXZ block), not the vertical one \u2014 it had been biasing all sideways misses to ONE side; reverted to 50/50 so slices go both ways. Now horizontal 60deg vs vertical 20deg.",
+ "patches": [
+  {
+   "name": "HORIZONTAL error 30 -> 60 deg (make sideways dominant)",
+   "va": "0x14401b3df",
+   "expect": "f30f59059929a701",
+   "patch": "f30f59059d29a701",
+   "kind": "code"
+  },
+  {
+   "name": "VERTICAL error 30 -> 20 deg (stop the up/down dominating)",
+   "va": "0x14401b423",
+   "expect": "f30f59055529a701",
+   "patch": "f30f590519f6a601",
+   "kind": "code"
+  },
+  {
+   "name": "revert accidental one-sided horizontal bias (50 -> 100 = slices both ways)",
+   "va": "0x14401a12c",
+   "expect": "f30f59054cd4ac01",
+   "patch": "f30f59051809a701",
+   "kind": "code"
+  }
+ ]
+}

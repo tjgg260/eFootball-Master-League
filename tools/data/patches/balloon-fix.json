@@ -1,0 +1,40 @@
+{
+ "description": "BALLOON FIX + stronger slices. Reverts the two spin-MAGNITUDE amplifiers (P2/P2b) that were multiplying backspin into gravity-cancelling lift, raises the slice cave's sideways-only coefficient 0.01->0.05, and doubles the situational mis-type roll so mishits stop being only the power-hold over-hit. Apply on top of loose-realism-v2 + slice-cave.",
+ "patches": [
+  {
+   "name": "revert P2b: assisted spin 80 -> 50 (kills lift on assisted lofted balls)",
+   "va": "0x14401914c",
+   "expect": "f30f5935f418a701",
+   "patch": "f30f59352ce4ac01",
+   "kind": "code"
+  },
+  {
+   "name": "revert P2: spin cap 1.0 -> 0.9",
+   "va": "0x144019177",
+   "expect": "f30f590539718303",
+   "patch": "f30f590589dcb301",
+   "kind": "code"
+  },
+  {
+   "name": "cave K_SIDE 0.01 -> 0.05 (sideways curl only; cannot cause lift)",
+   "va": "0x14105ed33",
+   "expect": "b80ad7233c",
+   "patch": "b8cdcc4c3d",
+   "kind": "code"
+  },
+  {
+   "name": "mis-type roll x1.3 -> x2.0 (awkward/behind-body)",
+   "va": "0x14401b7d8",
+   "expect": "f30f590598d7af02",
+   "patch": "f30f59050c11e901",
+   "kind": "code"
+  },
+  {
+   "name": "mis-type roll x1.3 -> x2.0 (over-hit/closed-down)",
+   "va": "0x144019a50",
+   "expect": "f3440f10151ff5af02",
+   "patch": "f3440f1015932ee901",
+   "kind": "code"
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+{
+ "description": "SPIN-ISOLATION TEST \u2014 every kick gets a huge CONSTANT sideways SPIN, while the aim stays normal. Forces the cave's delta to a fixed +15deg (ignoring the real body angle) and raises K_SIDE 0.5 -> 2.0, so omega.y gains a constant +30 on every kick: a_side ~7.6 m/s^2 (0.77g) => roughly 5m of curve over a 1.2s flight, always the same direction. Passes should fly out roughly where aimed and then BANANA sideways. This isolates SPIN from directional error (aim is untouched). Remove with: exe_patch.py remove tools/data/patches/test-spin.json",
+ "patches": [
+  {
+   "name": "TEST: force cave delta to a constant +15deg",
+   "va": "0x1438b4848",
+   "expect": "f30f5fcc",
+   "patch": "0f28ca90",
+   "kind": "code"
+  },
+  {
+   "name": "TEST: K_SIDE 0.5 -> 2.0 (huge curl)",
+   "va": "0x1438b484c",
+   "expect": "b80000003f",
+   "patch": "b800000040",
+   "kind": "code"
+  }
+ ]
+}

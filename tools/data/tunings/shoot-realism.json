@@ -1,0 +1,353 @@
+{
+ "_comment": "THEME A (APPLY) shooting pace+loft. Cut ONLY the *40 (weak-player) gage anchors, distance-ramped; *99 elite anchors untouched. Loft dy.gageMax cut shipped TOGETHER (mandatory): asin(dy/speed) raises launch angle when speed drops, so a pace cut alone balloons. Consumer PROVEN-live 0x143eeed40 (pace)/0x143fdf0c0 (loft).",
+ "edits": [
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40[0]",
+   "value": 69.2,
+   "_note": "72.84*0.95=69.2 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40[1]",
+   "value": 69.2,
+   "_note": "74.41*0.93=69.2 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40[2]",
+   "value": 69.16,
+   "_note": "76.00*0.91=69.16 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40[3]",
+   "value": 68.97,
+   "_note": "78.38*0.88=68.97 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40[4]",
+   "value": 68.64,
+   "_note": "80.75*0.85=68.64 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40[5]",
+   "value": 67.83,
+   "_note": "80.75*0.84=67.83 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40[0]",
+   "value": 77.09,
+   "_note": "81.15*0.95=77.09 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40[1]",
+   "value": 78.04,
+   "_note": "83.91*0.93=78.04 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40[2]",
+   "value": 78.89,
+   "_note": "86.69*0.91=78.89 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40[3]",
+   "value": 80.72,
+   "_note": "91.73*0.88=80.72 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40[4]",
+   "value": 82.27,
+   "_note": "96.79*0.85=82.27 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40[5]",
+   "value": 81.3,
+   "_note": "96.79*0.84=81.3 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40[0]",
+   "value": 79.71,
+   "_note": "83.91*0.95=79.71 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40[1]",
+   "value": 80.99,
+   "_note": "87.09*0.93=80.99 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40[2]",
+   "value": 82.13,
+   "_note": "90.25*0.91=82.13 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40[3]",
+   "value": 84.65,
+   "_note": "96.19*0.88=84.65 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40[4]",
+   "value": 86.8,
+   "_note": "102.12*0.85=86.8 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40[5]",
+   "value": 85.78,
+   "_note": "102.12*0.84=85.78 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40[0]",
+   "value": 65.37,
+   "_note": "68.09*0.96=65.37 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40[1]",
+   "value": 66.18,
+   "_note": "69.66*0.95=66.18 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40[2]",
+   "value": 66.26,
+   "_note": "71.25*0.93=66.26 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40[3]",
+   "value": 66.57,
+   "_note": "73.15*0.91=66.57 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40[4]",
+   "value": 66.79,
+   "_note": "75.05*0.89=66.79 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40[5]",
+   "value": 66.88,
+   "_note": "76.00*0.88=66.88 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40[0]",
+   "value": 69.93,
+   "_note": "72.84*0.96=69.93 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40[1]",
+   "value": 71.82,
+   "_note": "75.60*0.95=71.82 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40[2]",
+   "value": 72.89,
+   "_note": "78.38*0.93=72.89 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40[3]",
+   "value": 74.35,
+   "_note": "81.70*0.91=74.35 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40[4]",
+   "value": 75.67,
+   "_note": "85.02*0.89=75.67 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40[5]",
+   "value": 76.29,
+   "_note": "86.69*0.88=76.29 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40[0]",
+   "value": 71.43,
+   "_note": "74.41*0.96=71.43 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40[1]",
+   "value": 73.71,
+   "_note": "77.59*0.95=73.71 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40[2]",
+   "value": 75.1,
+   "_note": "80.75*0.93=75.1 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40[3]",
+   "value": 76.94,
+   "_note": "84.55*0.91=76.94 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40[4]",
+   "value": 78.63,
+   "_note": "88.35*0.89=78.63 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40[5]",
+   "value": 79.42,
+   "_note": "90.25*0.88=79.42 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40[0]",
+   "value": 61.44,
+   "_note": "63.34*0.97=61.44 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40[1]",
+   "value": 62.31,
+   "_note": "64.91*0.96=62.31 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40[2]",
+   "value": 63.17,
+   "_note": "66.50*0.95=63.17 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40[3]",
+   "value": 64.0,
+   "_note": "68.09*0.94=64.0 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40[4]",
+   "value": 64.78,
+   "_note": "69.66*0.93=64.78 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40[5]",
+   "value": 65.55,
+   "_note": "71.25*0.92=65.55 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40[0]",
+   "value": 65.47,
+   "_note": "67.49*0.97=65.47 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40[1]",
+   "value": 66.87,
+   "_note": "69.66*0.96=66.87 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40[2]",
+   "value": 68.26,
+   "_note": "71.85*0.95=68.26 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40[3]",
+   "value": 69.58,
+   "_note": "74.02*0.94=69.58 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40[4]",
+   "value": 70.87,
+   "_note": "76.20*0.93=70.87 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40[5]",
+   "value": 72.11,
+   "_note": "78.38*0.92=72.11 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40[0]",
+   "value": 66.81,
+   "_note": "68.88*0.97=66.81 (weak-player shot pace, band 0; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40[1]",
+   "value": 68.4,
+   "_note": "71.25*0.96=68.4 (weak-player shot pace, band 1; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40[2]",
+   "value": 69.94,
+   "_note": "73.62*0.95=69.94 (weak-player shot pace, band 2; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40[3]",
+   "value": 71.44,
+   "_note": "76.00*0.94=71.44 (weak-player shot pace, band 3; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40[4]",
+   "value": 72.89,
+   "_note": "78.38*0.93=72.89 (weak-player shot pace, band 4; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40[5]",
+   "value": 74.29,
+   "_note": "80.75*0.92=74.29 (weak-player shot pace, band 5; *99 elite left intact)"
+  },
+  {
+   "object": "shoot",
+   "path": "normal_dy.gageMax",
+   "value": 25.0,
+   "_note": "28->25 loft cut (mandatory anti-balloon partner to pace cut)"
+  },
+  {
+   "object": "shoot",
+   "path": "control_dy.gageMax",
+   "value": 24.0,
+   "_note": "26.5->24 loft cut"
+  },
+  {
+   "object": "shoot",
+   "path": "normal_dy.interpolateRate",
+   "value": 0.8,
+   "_note": "0.5->0.8"
+  },
+  {
+   "object": "shoot",
+   "path": "control_dy.interpolateRate",
+   "value": 0.8,
+   "_note": "0.5->0.8"
+  }
+ ]
+}

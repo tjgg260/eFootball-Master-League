@@ -1,0 +1,419 @@
+{
+ "_comment": "GAME-FEEL pack \u2014 coherent_feel_pack (momentum/weight + loose-ball + control-latency) from audit w15jy8s51. All dt270, absolute targets, apply with --stack. THE ice-skater fix (sprint rows 7-13 momentum penalties) + speed-dependent turn radius + heavier first step + loose balls running into space + weightier control latency. HELD OUT: trap.ballControlRate 0.65->0.58 (compounds the already-applied technique/knuckle error axis; apply only after testing current error level). GUARD: magnusRate + launch-elevation/spin untouched (ballooning path); ballForceDirect.use stays true.",
+ "edits": [
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].accRateDif180",
+   "value": 0.4,
+   "_note": "1.0->0.4 restore momentum on 180 reversal at sprint (proven +0x8)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].accRateDif120",
+   "value": 0.65,
+   "_note": "1.0->0.65 wide-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].accRateDif60",
+   "value": 0.85,
+   "_note": "1.0->0.85 shallow-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].rotSpeed",
+   "value": 4.5,
+   "_note": "7.0->4.5 speed-dependent turn radius (likely; sprint rows only)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].acc",
+   "value": 0.7,
+   "_note": "0.8->0.7 earned top pace (likely)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].decMaxSpeedR",
+   "value": 5.5,
+   "_note": "7.0->5.5 no dead-stop braking (proven +0x1c); modest to keep AI reach predictor calibrated"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].decMaxSpeedA",
+   "value": 11.0,
+   "_note": "16.0->11.0 (proven +0x18)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].accRateDif180",
+   "value": 0.4,
+   "_note": "1.0->0.4 restore momentum on 180 reversal at sprint (proven +0x8)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].accRateDif120",
+   "value": 0.65,
+   "_note": "1.0->0.65 wide-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].accRateDif60",
+   "value": 0.85,
+   "_note": "1.0->0.85 shallow-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].rotSpeed",
+   "value": 4.5,
+   "_note": "7.0->4.5 speed-dependent turn radius (likely; sprint rows only)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].acc",
+   "value": 0.7,
+   "_note": "0.8->0.7 earned top pace (likely)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].decMaxSpeedR",
+   "value": 5.5,
+   "_note": "7.0->5.5 no dead-stop braking (proven +0x1c); modest to keep AI reach predictor calibrated"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].decMaxSpeedA",
+   "value": 11.0,
+   "_note": "16.0->11.0 (proven +0x18)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].accRateDif180",
+   "value": 0.4,
+   "_note": "1.0->0.4 restore momentum on 180 reversal at sprint (proven +0x8)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].accRateDif120",
+   "value": 0.65,
+   "_note": "1.0->0.65 wide-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].accRateDif60",
+   "value": 0.85,
+   "_note": "1.0->0.85 shallow-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].rotSpeed",
+   "value": 4.5,
+   "_note": "7.0->4.5 speed-dependent turn radius (likely; sprint rows only)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].acc",
+   "value": 0.7,
+   "_note": "0.8->0.7 earned top pace (likely)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].decMaxSpeedR",
+   "value": 5.5,
+   "_note": "7.0->5.5 no dead-stop braking (proven +0x1c); modest to keep AI reach predictor calibrated"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].decMaxSpeedA",
+   "value": 11.0,
+   "_note": "16.0->11.0 (proven +0x18)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].accRateDif180",
+   "value": 0.4,
+   "_note": "1.0->0.4 restore momentum on 180 reversal at sprint (proven +0x8)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].accRateDif120",
+   "value": 0.65,
+   "_note": "1.0->0.65 wide-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].accRateDif60",
+   "value": 0.85,
+   "_note": "1.0->0.85 shallow-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].rotSpeed",
+   "value": 4.5,
+   "_note": "7.0->4.5 speed-dependent turn radius (likely; sprint rows only)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].acc",
+   "value": 0.7,
+   "_note": "0.8->0.7 earned top pace (likely)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].decMaxSpeedR",
+   "value": 5.5,
+   "_note": "7.0->5.5 no dead-stop braking (proven +0x1c); modest to keep AI reach predictor calibrated"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].decMaxSpeedA",
+   "value": 11.0,
+   "_note": "16.0->11.0 (proven +0x18)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].accRateDif180",
+   "value": 0.4,
+   "_note": "1.0->0.4 restore momentum on 180 reversal at sprint (proven +0x8)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].accRateDif120",
+   "value": 0.65,
+   "_note": "1.0->0.65 wide-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].accRateDif60",
+   "value": 0.85,
+   "_note": "1.0->0.85 shallow-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].rotSpeed",
+   "value": 4.5,
+   "_note": "7.0->4.5 speed-dependent turn radius (likely; sprint rows only)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].acc",
+   "value": 0.7,
+   "_note": "0.8->0.7 earned top pace (likely)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].decMaxSpeedR",
+   "value": 5.5,
+   "_note": "7.0->5.5 no dead-stop braking (proven +0x1c); modest to keep AI reach predictor calibrated"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].decMaxSpeedA",
+   "value": 11.0,
+   "_note": "16.0->11.0 (proven +0x18)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].accRateDif180",
+   "value": 0.4,
+   "_note": "1.0->0.4 restore momentum on 180 reversal at sprint (proven +0x8)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].accRateDif120",
+   "value": 0.65,
+   "_note": "1.0->0.65 wide-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].accRateDif60",
+   "value": 0.85,
+   "_note": "1.0->0.85 shallow-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].rotSpeed",
+   "value": 4.5,
+   "_note": "7.0->4.5 speed-dependent turn radius (likely; sprint rows only)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].acc",
+   "value": 0.7,
+   "_note": "0.8->0.7 earned top pace (likely)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].decMaxSpeedR",
+   "value": 5.5,
+   "_note": "7.0->5.5 no dead-stop braking (proven +0x1c); modest to keep AI reach predictor calibrated"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].decMaxSpeedA",
+   "value": 11.0,
+   "_note": "16.0->11.0 (proven +0x18)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].accRateDif180",
+   "value": 0.4,
+   "_note": "1.0->0.4 restore momentum on 180 reversal at sprint (proven +0x8)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].accRateDif120",
+   "value": 0.65,
+   "_note": "1.0->0.65 wide-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].accRateDif60",
+   "value": 0.85,
+   "_note": "1.0->0.85 shallow-cut momentum (proven)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].rotSpeed",
+   "value": 4.5,
+   "_note": "7.0->4.5 speed-dependent turn radius (likely; sprint rows only)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].acc",
+   "value": 0.7,
+   "_note": "0.8->0.7 earned top pace (likely)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].decMaxSpeedR",
+   "value": 5.5,
+   "_note": "7.0->5.5 no dead-stop braking (proven +0x1c); modest to keep AI reach predictor calibrated"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].decMaxSpeedA",
+   "value": 11.0,
+   "_note": "16.0->11.0 (proven +0x18)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[0].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[1].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[2].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[3].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[4].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[5].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[6].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)"
+  },
+  {
+   "object": "ball",
+   "path": "stopSpeed",
+   "value": 0.1,
+   "_note": "0.175->0.10 ball drifts to a natural stop instead of snapping to rest"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateStop[0]",
+   "value": 0.991,
+   "_note": "0.988->0.991 slow loose balls run ~24% further into space (normal turf)"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMin[0]",
+   "value": 0.991,
+   "_note": "0.987->0.991 mid-speed loose-ball roll-on (normal turf)"
+  },
+  {
+   "object": "trap",
+   "path": "touchAfterSec.offence",
+   "value": 0.18,
+   "_note": "0.10->0.18 cannot instantly fire next action off a touch (weightier)"
+  },
+  {
+   "object": "trap",
+   "path": "touchAfterSec.shoot",
+   "value": 0.55,
+   "_note": "0.40->0.55 heavier shot commit"
+  },
+  {
+   "object": "trap",
+   "path": "busyTrapControl.busyTime",
+   "value": 0.7,
+   "_note": "0.5->0.7 player commits to the trap; punishes over-input"
+  }
+ ]
+}

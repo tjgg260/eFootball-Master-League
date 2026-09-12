@@ -1,33 +1,40 @@
 #!/usr/bin/env python3
 """
-gameplay_tune.py — change eFootball's gameplay via dt270's match constants.
+gameplay_tune.py — change eFootball's gameplay via dt270's match constants, BY NAME.
 
     python tools/gameplay_tune.py status                 # what's installed, version family
-    python tools/gameplay_tune.py install --mod evo      # install a known-good gameplay pack
-    python tools/gameplay_tune.py install --mod gabelogan
-    python tools/gameplay_tune.py blend --mod evo --amount 0.5   # half-strength version of a mod
-    python tools/gameplay_tune.py restore                # back to your original dt270
+    python tools/gameplay_tune.py get ball magnusRate     # read a parameter (dotted paths)
+    python tools/gameplay_tune.py set ball magnusRate=0.05 basePosition.dfLine=12
+    python tools/gameplay_tune.py apply tuning.json       # batch of edits (see below)
+    python tools/gameplay_tune.py diff                    # installed vs pristine, by name
+    python tools/gameplay_tune.py scale --object ball --factor 0.9 [--match bound]
+    python tools/gameplay_tune.py restore                 # back to the pristine original
+    python tools/gameplay_tune.py install --mod evo       # legacy mod packs (family-guarded)
+    python tools/gameplay_tune.py blend --mod evo --amount 0.5
 
-What we know about the format (mapped in this repo):
-  * dt270 `common/match/constant/*.bin` are WESYS containers holding PLAIN zlib (no encryption);
-    tools/dt270_constants.py decodes and re-packs them.
-  * The tables are Q2.14 fixed-point multipliers (16384 = x1.0): constant_team.bin = 817 team
-    scalars (tempo, pressing, physicality — EVO's "HEAVY" block sits at offsets 820-832),
-    constant_match.bin = global match rules, constant_player.bin = per-behaviour scalars,
-    constant_ballPerson.bin = ball physics.
-  * Two version families exist (constant_match 10622 vs 11904 bytes). Installing a mismatched
-    family misbehaves silently, so this tool refuses a family mismatch.
+Format (fully decoded 2026-08-23 — see docs/dt270-gameplay.md, docs/dt270-fields.md):
+  * dt270 `common/match/constant/*.bin` are WESYS containers of PLAIN zlib (level 9 reproduces
+    Konami's bytes exactly). Each holds a PACK of named objects (`ball.o`, `ballplayer.o`, …).
+  * An object is a compiled JSON document: float/int/bool scalars inline, nested objects /
+    arrays / strings as u32 offsets to blocks. Field names, types and layouts come from the
+    game's own loaders (tools/dt270_schema_gen.py -> tools/data/dt270_schema.json).
+  * `set`/`apply`/`scale` edit values IN PLACE in the pristine pack and patch the CPK slot in
+    place; the object never changes size and every other byte of the CPK is untouched.
 
-`blend` interpolates every word between your ORIGINAL constants and the mod's, so you can run a
-mod at 30% or 70% strength — a tuning axis no mod pack offers on its own.
+tuning.json for `apply` — a list of edits, or {"edits": [...]}:
+    [{"object": "ball", "path": "magnusRate", "value": 0.05},
+     {"object": "basePosition", "path": "dfLine", "value": 12},
+     {"object": "shoot", "path": "normalShootGageMax99.5", "value": 110.0}]
+
+Version families still matter for the LEGACY packs (EVO/GabeLogan/Bromi target older
+layouts and are refused on mismatch); named edits are patch-proof as long as the schema was
+regenerated for the installed exe.
 """
 from __future__ import annotations
 
 import argparse
 import shutil
-import struct
 import sys
-import zlib
 from datetime import datetime
 from pathlib import Path
 
@@ -124,42 +131,47 @@ def cmd_install(a) -> int:
 
 
 def cmd_blend(a) -> int:
+    """Run a (same-family) mod pack at partial strength: every float parameter is interpolated
+    by NAME between the pristine value and the mod's; ints/bools take the mod's value from 50%.
+    The installed schema applies to both packs because the family check guarantees the same
+    exe struct layout."""
     src = MODS.get(a.mod)
     if not src or not src.exists():
         sys.exit(f"mod not found: {a.mod}")
     pristine = ensure_pristine_backup()
-    base = load_cpk_constants(pristine)
-    mod = load_cpk_constants(src)
-    if family_of(mod) != family_of(base):
-        sys.exit(f"version family mismatch: game={family_of(base)}, mod={family_of(mod)}")
+    if family_of(load_cpk_constants(src)) != family_of(load_cpk_constants(pristine)):
+        sys.exit("version family mismatch: this mod targets a different game patch")
     t = max(0.0, min(1.0, a.amount))
-
-    # Interpolate each shared constant word-by-word, then in-place patch the pristine CPK bytes.
-    raw = bytearray(pristine.read_bytes())
-    patched = 0
-    for name, (blob, payload) in base.items():
-        if name not in mod or not name.endswith(".bin"):
+    _schema, base = _schema_packs(pristine)
+    _schema, mod = _schema_packs(src)
+    touched, changed = set(), 0
+    for fname, (_blob, pb) in base.items():
+        if fname not in mod:
             continue
-        mpay = mod[name][1]
-        if len(mpay) != len(payload):
-            continue                      # differently-sized table: skip rather than guess
-        out = bytearray(payload)
-        for off in range(0, len(payload) - 3, 4):
-            b0 = struct.unpack_from("<i", payload, off)[0]
-            m0 = struct.unpack_from("<i", mpay, off)[0]
-            if b0 != m0:
-                struct.pack_into("<i", out, off, int(round(b0 + (m0 - b0) * t)))
-        packed = encode_constant(bytes(out), blob, level=9)
-        # must fit the original slot for an in-place patch
-        idx = raw.find(blob[:16])
-        if idx >= 0 and len(packed) <= len(blob):
-            packed = packed + b"\x00" * (len(blob) - len(packed))
-            raw[idx:idx + len(blob)] = packed
-            patched += 1
-    if not patched:
-        sys.exit("no constants could be patched in place (all size-mismatched)")
-    print(f"  blended {patched} constant files at {t:.0%} strength")
-    install_bytes(bytes(raw))
+        pm = mod[fname][1]
+        for name in pb.names():
+            if name not in pm.names() or name not in pb.schema.by_object:
+                continue
+            vb, vm = pb.object(name), pm.object(name)
+            lm = {lf.path: lf for lf in vm.leaves() if lf.writable}
+            for lb in vb.leaves():
+                lf = lm.get(lb.path)
+                if lf is None or not lb.writable or lb.kind == "string":
+                    continue
+                x, y = vb.read_leaf(lb), vm.read_leaf(lf)
+                if x == y:
+                    continue
+                if lb.kind in ("float", "double"):
+                    vb.write_leaf(lb, x + (y - x) * t)
+                elif t >= 0.5:
+                    vb.write_leaf(lb, y)
+                else:
+                    continue
+                changed += 1
+                touched.add(fname)
+    if not touched:
+        sys.exit("the mod changes nothing the schema can address")
+    _patch_and_install(pristine, base, touched, f"{a.mod} blended at {t:.0%} ({changed} parameters)")
     return 0
 
 
@@ -234,49 +246,184 @@ def cmd_selftest(_a) -> int:
     return 0
 
 
-def cmd_scale(a) -> int:
-    """Calibration probe: scale Q2.14 words of ONE constant file by --factor, in-place
-    patch, install. Play ~10 minutes, note what changed, `restore`, repeat.
+def _schema_packs(path: Path):
+    from dt270_objects import Schema, Pack
+    schema = Schema.load()
+    base = load_cpk_constants(path)
+    return schema, {name: (blob, Pack(payload, schema)) for name, (blob, payload) in base.items()
+                    if name.endswith(".bin") and payload}
 
-    --start/--end (word indices) probe a SLICE of the file — the bisection path to
-    isolating specific behaviours: whole file first, then halves, quarters… e.g. hunting
-    the AI build-up tempo words in constant_team (912 B = 228 words on family 9968):
-        scale --file constant_team --factor 0.85                 # everything slower?
-        scale --file constant_team --factor 0.85 --end 114       # first half
-        scale --file constant_team --factor 0.85 --start 114     # second half
-    """
-    fname = a.file if a.file.endswith(".bin") else a.file + ".bin"
-    if fname not in CONSTS:
-        sys.exit(f"unknown constant file: {fname} (choose from {', '.join(CONSTS)})")
-    cmd_capture(a)
-    _guard()
-    pristine = BACKUPS / "dt270_console_all.PRISTINE.cpk"
-    base = load_cpk_constants(pristine)
-    if fname not in base:
-        sys.exit(f"{fname} not present in the installed pack")
-    blob, payload = base[fname]
-    out = bytearray(payload)
-    changed = 0
-    lo_word = getattr(a, "start", None) or 0
-    hi_word = getattr(a, "end", None) or (len(payload) // 4)
-    for off in range(lo_word * 4, min(hi_word * 4, len(payload) - 3), 4):
-        w = struct.unpack_from("<i", payload, off)[0]
-        # Only touch plausible Q2.14 magnitudes; leave ids/counts/zeroes alone.
-        if 1024 <= abs(w) <= 262144:
-            struct.pack_into("<i", out, off, int(round(w * a.factor)))
-            changed += 1
-    packed = encode_constant(bytes(out), blob, level=9)
+
+def _find(packs, obj: str):
+    for fname, (blob, pack) in packs.items():
+        if obj in pack.names():
+            return fname, blob, pack
+    sys.exit(f"object {obj!r} not found (see docs/dt270-fields.md)")
+
+
+def build_patched_cpk(pristine: Path, packs, touched: set[str]) -> bytes:
+    """Re-encode the edited packs and drop them into their original CPK slots (in place).
+    Every other byte of the CPK is untouched; a round-trip gate re-decodes each slot."""
     raw = bytearray(pristine.read_bytes())
-    idx = raw.find(blob[:16])
-    if idx < 0 or len(packed) > len(blob):
-        sys.exit("in-place patch impossible (slot not found or compressed larger) — aborting")
-    raw[idx:idx + len(blob)] = packed + b"\x00" * (len(blob) - len(packed))
-    data = bytes(raw)
+    for fname in sorted(touched):
+        blob, pack = packs[fname]
+        try:
+            packed = encode_constant(pack.payload(), blob, level=9, max_len=len(blob))
+        except ValueError as ex:
+            sys.exit(f"{fname}: {ex} — fewer edits, or values that compress better")
+        idx = raw.find(blob[:16])
+        if idx < 0 or raw.find(blob[:16], idx + 1) >= 0:
+            sys.exit(f"{fname}: container slot not uniquely located — aborting")
+        raw[idx:idx + len(blob)] = packed + b"\x00" * (len(blob) - len(packed))
+        if decode_constant(bytes(raw[idx:idx + len(blob)])) != pack.payload():
+            sys.exit(f"{fname}: round-trip check failed — not installing")
+    return bytes(raw)
+
+
+def _patch_and_install(base_path: Path, packs, touched: set[str], what: str) -> None:
+    data = build_patched_cpk(base_path, packs, touched)
     install_bytes(data)
     _record_install(data)
-    print(f"PROBE INSTALLED: {fname} x{a.factor} ({changed} words scaled).")
+    print(f"INSTALLED: {what} ({', '.join(sorted(touched))})")
+
+
+def _parse_value(text: str):
+    t = text.strip()
+    if t.lower() in ("true", "false"):
+        return t.lower() == "true"
+    try:
+        return int(t)
+    except ValueError:
+        pass
+    try:
+        return float(t)
+    except ValueError:
+        return t
+
+
+def _edits_from_args(items: list[str], default_obj: str | None):
+    """['magnusRate=0.05', 'basePosition.dfLine=12'] (+ default object) -> [(obj, path, value)]"""
+    out = []
+    for it in items:
+        if "=" not in it:
+            sys.exit(f"expected object.path=value, got {it!r}")
+        lhs, rhs = it.split("=", 1)
+        if default_obj and "." not in lhs.split("[")[0]:
+            obj, path = default_obj, lhs
+        else:
+            obj, path = lhs.split(".", 1)
+        out.append((obj, path, _parse_value(rhs)))
+    return out
+
+
+def cmd_get(a) -> int:
+    import json
+    _schema, packs = _schema_packs(game_dt270())
+    _fname, _blob, pack = _find(packs, a.object)
+    v = pack.object(a.object).get(a.path) if a.path else pack.object(a.object).to_dict()
+    print(json.dumps(v, indent=1) if isinstance(v, (dict, list)) else (f"{v:g}" if isinstance(v, float) else v))
+    return 0
+
+
+def _apply_edits(edits, a) -> int:
+    from dt270_objects import _parse_path
+    cmd_capture(a)                      # pristine backup + sha baseline (idempotent)
+    _guard()
+    pristine = BACKUPS / "dt270_console_all.PRISTINE.cpk"
+    src = pristine if not getattr(a, "stack", False) else game_dt270()
+    _schema, packs = _schema_packs(src)
+    touched = set()
+    for obj, path, value in edits:
+        fname, _blob, pack = _find(packs, obj)
+        view = pack.object(obj)
+        lf = view.leaf(_parse_path(path))
+        before = view.read_leaf(lf)
+        if lf.kind == "string" and view.string_slot_shared(lf):
+            print(f"  note: {obj}.{path} shares its string slot with another field (both change)")
+        view.write_leaf(lf, value)
+        print(f"  {obj}.{lf.dotted}: {before!r} -> {view.read_leaf(lf)!r}")
+        touched.add(fname)
+    if not touched:
+        sys.exit("nothing to do")
+    _patch_and_install(src, packs, touched,
+                       f"{len(edits)} named edit(s) " + ("stacked on current" if src != pristine else "on pristine"))
+    return 0
+
+
+def cmd_set(a) -> int:
+    """set ball magnusRate=0.05  |  set ball.magnusRate=0.05 basePosition.dfLine=12"""
+    items = list(a.items)
+    default_obj = items.pop(0) if items and "=" not in items[0] else None
+    return _apply_edits(_edits_from_args(items, default_obj), a)
+
+
+def cmd_apply(a) -> int:
+    import json
+    data = json.loads(Path(a.file).read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        data = data.get("edits", data)
+    edits = [(e["object"], e["path"], e["value"]) for e in data]
+    return _apply_edits(edits, a)
+
+
+def cmd_diff(a) -> int:
+    """Installed dt270 vs pristine, reported by field name."""
+    pristine = BACKUPS / "dt270_console_all.PRISTINE.cpk"
+    if not pristine.exists():
+        sys.exit("no pristine backup yet (nothing installed through this tool)")
+    _s, base = _schema_packs(pristine)
+    _s, cur = _schema_packs(game_dt270())
+    n = 0
+    for fname, (_b, pb) in base.items():
+        if fname not in cur:
+            print(f"  {fname}: missing in installed pack")
+            continue
+        pc = cur[fname][1]
+        for name in pb.names():
+            if name not in pc.names() or name not in pb.schema.by_object:
+                continue
+            vb, vc = pb.object(name), pc.object(name)
+            for lb, lc in zip(vb.leaves(), vc.leaves()):
+                x, y = vb.read_leaf(lb), vc.read_leaf(lc)
+                if x != y:
+                    n += 1
+                    print(f"  {name}.{lb.dotted}: {x!r} -> {y!r}")
+    print(f"{n} parameter(s) differ from pristine" if n else "installed dt270 == pristine (by value)")
+    return 0
+
+
+def cmd_scale(a) -> int:
+    """Calibration probe, schema-aware: multiply every FLOAT leaf of one object (optionally
+    only paths containing --match) by --factor. Unlike the old blind word-scaler this never
+    touches ints, bools, strings or pointers, so the pack stays structurally valid.
+        scale --object ball --factor 0.9                 # heavier ball
+        scale --object basePosition --factor 1.1 --match dfLine
+        scale --object moveMatching --factor 0.95 --match acc
+    Play ~10 minutes, `log --note ...`, then `restore` (or stack another probe with --stack)."""
+    cmd_capture(a)                      # pristine backup + sha baseline (idempotent)
+    _guard()
+    pristine = BACKUPS / "dt270_console_all.PRISTINE.cpk"
+    src = pristine if not a.stack else game_dt270()
+    _schema, packs = _schema_packs(src)
+    fname, _blob, pack = _find(packs, a.object)
+    view = pack.object(a.object)
+    changed = 0
+    for lf in view.leaves():
+        if lf.kind != "float" or not lf.writable:
+            continue
+        if a.match and a.match.lower() not in lf.dotted.lower():
+            continue
+        v = view.read_leaf(lf)
+        if v == 0.0:
+            continue
+        view.write_leaf(lf, v * a.factor)
+        changed += 1
+    if not changed:
+        sys.exit("no float parameters matched")
+    _patch_and_install(src, packs, {fname},
+                       f"{a.object} x{a.factor} ({changed} floats" + (f" matching {a.match!r}" if a.match else "") + ")")
     print("Play ~10 min, note what feels different, then:")
-    print(f'  python tools/gameplay_tune.py log --note "{fname} x{a.factor}: <your verdict>"')
+    print(f'  python tools/gameplay_tune.py log --note "{a.object} x{a.factor}{(" " + a.match) if a.match else ""}: <your verdict>"')
     print("  python tools/gameplay_tune.py restore")
     return 0
 
@@ -302,16 +449,27 @@ def main() -> int:
     sub.add_parser("restore")
     sub.add_parser("capture")
     sub.add_parser("selftest")
-    p = sub.add_parser("scale")
-    p.add_argument("--file", required=True, help="constant file to probe, e.g. constant_ballPerson")
+    p = sub.add_parser("get", help="read a parameter by name")
+    p.add_argument("object")
+    p.add_argument("path", nargs="?")
+    p = sub.add_parser("set", help="set parameters by name and install")
+    p.add_argument("items", nargs="+", help="[object] path=value ...  or object.path=value ...")
+    p.add_argument("--stack", action="store_true", help="edit on top of the installed pack instead of pristine")
+    p = sub.add_parser("apply", help="apply a JSON batch of edits and install")
+    p.add_argument("file")
+    p.add_argument("--stack", action="store_true")
+    sub.add_parser("diff", help="installed vs pristine, by field name")
+    p = sub.add_parser("scale", help="probe: scale every float of one object")
+    p.add_argument("--object", required=True, help="e.g. ball, basePosition, shoot, moveMatching")
     p.add_argument("--factor", type=float, required=True, help="e.g. 0.9 or 1.15")
-    p.add_argument("--start", type=int, default=None, help="first word index of the slice (bisection)")
-    p.add_argument("--end", type=int, default=None, help="one past the last word index (bisection)")
+    p.add_argument("--match", default=None, help="only paths containing this text")
+    p.add_argument("--stack", action="store_true")
     p = sub.add_parser("log")
     p.add_argument("--note", required=True)
     a = ap.parse_args()
     return {"status": cmd_status, "install": cmd_install, "blend": cmd_blend, "restore": cmd_restore,
-            "capture": cmd_capture, "selftest": cmd_selftest, "scale": cmd_scale, "log": cmd_log}[a.cmd](a)
+            "capture": cmd_capture, "selftest": cmd_selftest, "get": cmd_get, "set": cmd_set,
+            "apply": cmd_apply, "diff": cmd_diff, "scale": cmd_scale, "log": cmd_log}[a.cmd](a)
 
 
 if __name__ == "__main__":

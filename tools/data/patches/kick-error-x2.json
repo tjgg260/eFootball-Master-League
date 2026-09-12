@@ -1,0 +1,19 @@
+{
+ "description": "Doubles the maximum angular kick error (passes+shots, human and CPU). Built from docs/exe-gameplay-map.md (kick-miss builder 0x14401a900). Code-page patch: Denuvo may object. Run live_patch.py probe first; restore with live_patch.py restore.",
+ "patches": [
+  {
+   "name": "kick miss angleXZ max: 22.5deg -> 45deg (repoint disp32 to the 45.0f cell)",
+   "module_offset": "0x401b3df",
+   "expect": "f3 0f 59 05 99 35 75 02",
+   "patch": "f3 0f 59 05 29 25 b0 01",
+   "kind": "code"
+  },
+  {
+   "name": "kick miss angleY max: 22.5deg -> 45deg",
+   "module_offset": "0x401b423",
+   "expect": "f3 0f 59 05 55 35 75 02",
+   "patch": "f3 0f 59 05 e5 24 b0 01",
+   "kind": "code"
+  }
+ ]
+}

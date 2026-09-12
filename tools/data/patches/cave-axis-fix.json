@@ -1,0 +1,12 @@
+{
+ "description": "AXIS FIX \u2014 the cave was adding spin to the WRONG component. The static analysis assumed a Y-up basis, but eFootball is Unreal-based and uses Z-UP (X fwd, Y right, Z up). Under Z-up the Magnus cross product gives: spin about Y -> PURELY VERTICAL force (the ball flying upwards, exactly as observed), spin about Z -> purely HORIZONTAL curl (the slice we want). The cave was writing [r14+4] (=Y, the lift axis); this moves it to [r14+8] (=Z, the vertical spin axis that produces sideways curl). Two displacement bytes.",
+ "patches": [
+  {
+   "name": "cave: add spin to the Z (vertical) axis, not Y \u2014 sideways curl instead of lift",
+   "va": "0x1438b4859",
+   "expect": "f3410f584e04f3410f114e04",
+   "patch": "f3410f584e08f3410f114e08",
+   "kind": "code"
+  }
+ ]
+}

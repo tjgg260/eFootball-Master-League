@@ -1,0 +1,229 @@
+{
+ "description": "loose-realism-v2 EXE pack. Believable-not-arcade: kick error 30deg, mis-type freq x1.3, mild ability flatten (elites cleaner, everyone errs), spin restored (P1/P2b/P2 + K), scuff skids low, more fouls/bookings, harder contact, mistimed slides, CPU reaction/commit per level, varied counter-runs, + injuries maxed within the anime-tag ceiling. Apply on a PRISTINE exe (expect bytes are pristine): exe_patch.py restore first. Pairs with loose-realism-v2 dt270 tuning.",
+ "patches": [
+  {
+   "name": "kick-horiz-30 (mulss xmm0,[22.5f] -> [30f@0x145a8dd80])",
+   "va": "0x14401b3df",
+   "expect": "F30F590599357502",
+   "patch": "F30F59059929A701",
+   "kind": "code"
+  },
+  {
+   "name": "kick-elev-30 (elevation error -> 30f)",
+   "va": "0x14401b423",
+   "expect": "F30F590555357502",
+   "patch": "F30F59055529A701",
+   "kind": "code"
+  },
+  {
+   "name": "mistype-freq-1.3 (site A)",
+   "va": "0x14401b7d8",
+   "expect": "F30F59056CF2A601",
+   "patch": "F30F590598D7AF02",
+   "kind": "code"
+  },
+  {
+   "name": "mistype-freq-1.3 (site A2)",
+   "va": "0x144019a50",
+   "expect": "F3440F1015F30FA701",
+   "patch": "F3440F10151FF5AF02",
+   "kind": "code"
+  },
+  {
+   "name": "scuff-power-0.4",
+   "va": "0x14401b3d6",
+   "expect": "F3440F102DA9D6B001",
+   "patch": "F3440F102DB1F2B001",
+   "kind": "code"
+  },
+  {
+   "name": "gauss-sigma-6",
+   "va": "0x14401b3a7",
+   "expect": "F30F101D011CB202",
+   "patch": "F30F101D9D70A901",
+   "kind": "code"
+  },
+  {
+   "name": "slice-floor-15",
+   "va": "0x144019ec3",
+   "expect": "F3440F5F0DF090B301",
+   "patch": "F3440F5F0D3411BF01",
+   "kind": "code"
+  },
+  {
+   "name": "scuff-sign-downbias (repoint 100f->50f)",
+   "va": "0x14401a12c",
+   "expect": "F30F59051809A701",
+   "patch": "F30F59054CD4AC01",
+   "kind": "code"
+  },
+  {
+   "name": "G1-slope-0.6 (mild ability flatten)",
+   "va": "0x143ed72ba",
+   "expect": "F30F5905D233C501",
+   "patch": "F30F5905968F9703",
+   "kind": "code"
+  },
+  {
+   "name": "G2-base-0.7 (mild ability flatten)",
+   "va": "0x143ed72f2",
+   "expect": "F30F58050EFBC701",
+   "patch": "F30F5805066FCE01",
+   "kind": "code"
+  },
+  {
+   "name": "K-keep (assisted passes not error-exempt)",
+   "va": "0x14401a175",
+   "expect": "0F84E2000000",
+   "patch": "E9E300000090",
+   "kind": "code"
+  },
+  {
+   "name": "P1-sidespin-lean-90 (re-apply)",
+   "va": "0x144018df0",
+   "expect": "F30F1035184BB001",
+   "patch": "F30F1035989DB301",
+   "kind": "code"
+  },
+  {
+   "name": "P2b-assisted-spin-80 (re-apply)",
+   "va": "0x14401914c",
+   "expect": "F30F59352CE4AC01",
+   "patch": "F30F5935F418A701",
+   "kind": "code"
+  },
+  {
+   "name": "P2-spin-cap-1.0 (re-apply)",
+   "va": "0x144019177",
+   "expect": "F30F590589DCB301",
+   "patch": "F30F590539718303",
+   "kind": "code"
+  },
+  {
+   "name": "adv-min-0.3s (ref whistles fouls sooner)",
+   "va": "0x143c90bc9",
+   "expect": "7BF6BB03",
+   "patch": "BB7EE901",
+   "kind": "code"
+  },
+  {
+   "name": "adv-max-2s (quicker whistle-back)",
+   "va": "0x143c90c8f",
+   "expect": "B50EE201",
+   "patch": "FDF7BB03",
+   "kind": "code"
+  },
+  {
+   "name": "card-roll-40 (foul->booking 30%->40%)",
+   "va": "0x143c84d2e",
+   "expect": "83F81E",
+   "patch": "83F828",
+   "kind": "code"
+  },
+  {
+   "name": "contact-clamp-42 (harder contact, less magnetised)",
+   "va": "0x146b946b4",
+   "expect": "398E1B41",
+   "patch": "ABAA3A41",
+   "kind": "code"
+  },
+  {
+   "name": "contact-gate-42 (paired gate)",
+   "va": "0x146b7c2d4",
+   "expect": "100BBD42",
+   "patch": "721C0843",
+   "kind": "code"
+  },
+  {
+   "name": "slide-no-skillreach (committed slides mistime into fouls)",
+   "va": "0x143f6ed70",
+   "expect": "83C705",
+   "patch": "909090",
+   "kind": "code"
+  },
+  {
+   "name": "reaction-c6 SUPERSTAR 4->7 frames",
+   "va": "0x146c06f5c",
+   "expect": "00008040",
+   "patch": "0000E040",
+   "kind": "code"
+  },
+  {
+   "name": "reaction-c7 LEGEND- 4->6 frames",
+   "va": "0x146c06f60",
+   "expect": "00008040",
+   "patch": "0000C040",
+   "kind": "code"
+  },
+  {
+   "name": "reaction-c8 LEGEND 0->5 frames",
+   "va": "0x146c06f64",
+   "expect": "00000000",
+   "patch": "0000A040",
+   "kind": "code"
+  },
+  {
+   "name": "reaction-c9 LEGEND+ 0->5 frames",
+   "va": "0x146c06f68",
+   "expect": "00000000",
+   "patch": "0000A040",
+   "kind": "code"
+  },
+  {
+   "name": "commit-c5 100->95%",
+   "va": "0x146c07270",
+   "expect": "0000C842",
+   "patch": "0000BE42",
+   "kind": "code"
+  },
+  {
+   "name": "commit-c6 100->93%",
+   "va": "0x146c07274",
+   "expect": "0000C842",
+   "patch": "0000BA42",
+   "kind": "code"
+  },
+  {
+   "name": "commit-c7 100->92%",
+   "va": "0x146c07278",
+   "expect": "0000C842",
+   "patch": "0000B842",
+   "kind": "code"
+  },
+  {
+   "name": "commit-c8 100->90%",
+   "va": "0x146c0727c",
+   "expect": "0000C842",
+   "patch": "0000B442",
+   "kind": "code"
+  },
+  {
+   "name": "commit-c9 100->90%",
+   "va": "0x146c07280",
+   "expect": "0000C842",
+   "patch": "0000B442",
+   "kind": "code"
+  },
+  {
+   "name": "counterrun-space-28 (repoint 40f->28f, varied transition runs)",
+   "va": "0x143dfaefc",
+   "expect": "F30F1005C4DFF501",
+   "patch": "F30F100568A9D202",
+   "kind": "code"
+  },
+  {
+   "name": "injury-A: any injury-tagged contact injures (NOP severity filter)",
+   "va": "0x143fbfa51",
+   "expect": "750d",
+   "patch": "9090",
+   "kind": "code"
+  },
+  {
+   "name": "injury-B: widen injury frame window 3f->30f",
+   "va": "0x143fbf973",
+   "expect": "f3440f10056c0b8903",
+   "patch": "f3440f100504e4ac01",
+   "kind": "code"
+  }
+ ]
+}

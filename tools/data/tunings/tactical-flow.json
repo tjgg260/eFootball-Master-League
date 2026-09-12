@@ -1,0 +1,33 @@
+{
+  "_comment": "TACTICAL-FLOW pack — coherent_tactical_pack from the game-feel/tactical audit (workflow w15jy8s51). All dt270 basePosition + pass fields, verified-live (proven readers) or high-confidence. Absolute targets; apply with --stack so it layers on loose-realism-v2 + rating formula. Reversible via gameplay_tune restore. Net feel: a settled team that holds zones and presses in triggers instead of swarming; deliberate, interceptable build-up instead of constant fast-forward; runs timed to the ball with patience and angle variety.",
+  "edits": [
+    {"object": "basePosition", "path": "spaceCoverRate", "value": 0.55, "_note": "0.45->0.55 zonal cover vs ball-chasing (proven, ctx+0xf0 cache read ~0x143e8608b)"},
+    {"object": "basePosition", "path": "adjustSpaceCoverRate", "value": 0.30, "_note": "0.23->0.30 situational compactness boost (proven +0x60)"},
+    {"object": "basePosition", "path": "minWidth", "value": 7.0, "_note": "9.0->7.0 lateral block compactness (proven +0x284)"},
+    {"object": "basePosition", "path": "minWidth_stratagy_defensive", "value": 6.0, "_note": "7.0->6.0 compactness floor when defending (proven +0x28c)"},
+    {"object": "basePosition", "path": "dfLineCloseRate", "value": 0.42, "_note": "0.55->0.42 calmer last-line step (proven +0x154)"},
+    {"object": "basePosition", "path": "lastLineCloseMaxRate", "value": 0.62, "_note": "0.8->0.62 cap on last-line closing speed (proven +0x218)"},
+    {"object": "basePosition", "path": "slowDownFw", "value": true, "_note": "false->true forwards hold shape; fewer bodies press (proven, gates 0x1441802b0)"},
+    {"object": "basePosition", "path": "slowDownPassFrame", "value": 4, "_note": "1->4 settle around passing lanes, less lunging (proven, read 0x144184579)"},
+    {"object": "basePosition", "path": "marginPredictionFrameBase", "value": 12, "_note": "6->12 longer anticipation horizon; intercept in position not chase (proven, read 0x143da6533)"},
+
+    {"object": "grounderpass", "path": "receiveSpeed[0]", "value": 30.0, "_note": "36->30 (x0.82) deliberate, interceptable ground passing; SHARED CPU+human"},
+    {"object": "grounderpass", "path": "receiveSpeed[1]", "value": 28.0, "_note": "34->28"},
+    {"object": "grounderpass", "path": "receiveSpeed[2]", "value": 26.0, "_note": "32->26"},
+    {"object": "grounderpass", "path": "receiveSpeed[3]", "value": 26.0, "_note": "32->26"},
+    {"object": "grounderpass", "path": "receiveSpeed[4]", "value": 28.0, "_note": "34->28"},
+    {"object": "grounderpass", "path": "receiveSpeed[5]", "value": 28.0, "_note": "34->28"},
+    {"object": "grounderpass", "path": "search.searchMaxDist", "value": 22.0, "_note": "30->22 shorter link play; long forward outlets drop out of candidate set"},
+    {"object": "grounderpass", "path": "search.angleRate", "value": 0.6, "_note": "0.4->0.6 weaken straight-ahead bias -> lateral circulation (A/B confirm direction)"},
+    {"object": "grounderpass", "path": "paraMinSpeedRate", "value": 0.65, "_note": "0.8->0.65 widen team-quality tempo gap; weak sides build up visibly slower"},
+
+    {"object": "throughpass", "path": "adjustFrameSpaceRun", "value": 8, "_note": "15->8 run reacts to the ball instead of pre-empting"},
+    {"object": "throughpass", "path": "marginFrame_min", "value": 18, "_note": "0->18 patience floor; staggered support not everyone-at-once"},
+    {"object": "throughpass", "path": "allowAngleWidth[1]", "value": 22.0, "_note": "15->22 run/pass angle variety (mid assist band)"},
+    {"object": "throughpass", "path": "allowAngleWidth[2]", "value": 34.0, "_note": "22->34"},
+    {"object": "throughpass", "path": "searchMaxDist", "value": 38.0, "_note": "50->38 fewer speculative line-splitters"},
+    {"object": "throughpass", "path": "searchAngleWidth[2]", "value": 60.0, "_note": "80->60 narrow the standard-assist search cone"},
+
+    {"object": "passget", "path": "autoFrontMove.pressure.circleDist", "value": 13.0, "_note": "9->13 receivers register pressure earlier and check to the ball -> short link play"}
+  ]
+}

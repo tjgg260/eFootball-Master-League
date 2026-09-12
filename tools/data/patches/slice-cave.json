@@ -1,0 +1,19 @@
+{
+ "description": "SLICE/SHANK code cave (v1, sidespin only). Hooks the spin builder after omega write; adds sidespin to omega.y proportional to the horizontal miss (azimuth-facing), which already scales with (1-ability) via the miss magnitude. K_SIDE=0.01 tunable. Cave in .xcode int3 padding (executable, no section change). Deploy on loose-realism-v2. Restore reverts.",
+ "patches": [
+  {
+   "name": "slice-cave body (sidespin from horizontal miss)",
+   "va": "0x14105ed20",
+   "expect": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "patch": "f3410f114608f30f104d57f30f5c8b980c0000b80ad7233c660f6ed0f30f59caf3410f584e04f3410f114e04e9b0a5fb02",
+   "kind": "code"
+  },
+  {
+   "name": "slice-cave hook (jmp from spin builder)",
+   "va": "0x1440192fb",
+   "expect": "f3410f114608",
+   "patch": "e9205a04fdcc",
+   "kind": "code"
+  }
+ ]
+}

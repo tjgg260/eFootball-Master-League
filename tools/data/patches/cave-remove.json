@@ -1,0 +1,26 @@
+{
+ "description": "REMOVE THE SLICE CAVE COMPLETELY. Restores the spin-builder hook to its original instruction and blanks both cave regions back to int3 padding. Reason: with the cave live, passes flew off in the wrong direction at the wrong speed \u2014 a signature of ball-state corruption, not spin. The cave's target register was mis-identified twice (the disassembly-derived axis basis did not match in-game behaviour), so it is being removed pending an empirical axis identification rather than another inferred guess. Leaves all value-based patches (error model, fouls, AI, ratings) intact.",
+ "patches": [
+  {
+   "name": "restore spin-builder hook",
+   "va": "0x1440192fb",
+   "expect": "e9205a04fdcc",
+   "patch": "f3410f114608",
+   "kind": "code"
+  },
+  {
+   "name": "blank cave A back to padding",
+   "va": "0x14105ed20",
+   "expect": "f3410f114608f30f104d57f30f5c8b980c0000f30f1015593eaf04f30f101dddebab040f2fca7604f30f5ccb0f57e4f30f5ce20f2fe17604f30f58cbe9d45a8502",
+   "patch": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "kind": "code"
+  },
+  {
+   "name": "blank cave B back to padding",
+   "va": "0x1438b4835",
+   "expect": "f30f1015c3673502f30f5dca0f57e4f30f5ce2f30f5fccb80000003f660f6ed0f30f59caf3410f584e04f3410f114e04e9974a7600",
+   "patch": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "kind": "code"
+  }
+ ]
+}

@@ -45,9 +45,28 @@ def decode_constant(blob: bytes) -> bytes:
     return wesys.unpack_wesys_payload(blob)   # fall back for any genuinely encrypted file
 
 
-def encode_constant(payload: bytes, template: bytes, level: int = 9) -> bytes:
-    """Re-pack edited constant bytes into a container matching the original's header shape."""
+def encode_constant(payload: bytes, template: bytes, level: int = 9, max_len: int | None = None) -> bytes:
+    """Re-pack edited constant bytes into a container matching the original's header shape.
+
+    zlib level 9 reproduces Konami's streams byte-for-byte. When `max_len` is given and the
+    level-9 stream would not fit that slot, fall back to zopfli (a ~4% smaller, still
+    standard deflate stream the game inflates unchanged) — the headroom that makes in-place
+    edits of the small constant files possible. Raises ValueError if nothing fits.
+    """
     comp = zlib.compress(payload, level=level)
+    if max_len is not None and 16 + len(comp) > max_len:
+        try:
+            import zopfli.zlib as _zz
+        except ImportError:
+            raise ValueError(f"level-9 stream too large for the slot ({16 + len(comp)} > {max_len}); "
+                             "pip install zopfli for ~4% more headroom")
+        for iters in (15, 100, 500):
+            comp = _zz.compress(payload, numiterations=iters)
+            if 16 + len(comp) <= max_len:
+                break
+        else:
+            raise ValueError(f"edited pack does not fit its slot even with zopfli ({16 + len(comp)} > {max_len})")
+        assert zlib.decompress(comp) == payload
     header = bytearray(template[:16])
     struct.pack_into("<II", header, 8, len(comp), len(payload))
     return bytes(header) + comp
