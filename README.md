@@ -42,7 +42,9 @@ Testers should start with [PLAYTESTING.md](PLAYTESTING.md).
 | `tests/ML.Core.Tests` | Engine tests |
 | `tools/` | Python pipeline: world build, imports, format decoders, and the proven writeback (`ml_swap.py`, `ml_deploy.py`) |
 | `tools/vendor/sider/` | Vendored Sider file-format code (see below) |
-| `docs/` | Format notes, decisions, specs |
+| `tools/data/` | Decoded `dt270` gameplay schema and the named realism tunings and patches it drives |
+| `data/` | Hand-made identity rulings and adjudicated merges, re-applied on every world rebuild |
+| `docs/` | Format notes, decisions, specs, the exe gameplay map and the per-player stats runbook |
 | `samples/` | Schema notes derived from real exports. Real exports are not committed |
 | `assets/` | Competition and club artwork used by the app |
 
