@@ -1,0 +1,650 @@
+[
+ {
+  "id": 700204838,
+  "target": 57330,
+  "name": "Jiménez",
+  "target_name": "Raúl Jiménez",
+  "club": "Wolverhampton Wanderers",
+  "conf": "high"
+ },
+ {
+  "id": 700205569,
+  "target": 46536,
+  "name": "Ward-Prowse",
+  "target_name": "James Ward Prowse",
+  "club": "West Ham United",
+  "conf": "high"
+ },
+ {
+  "id": 700206511,
+  "target": 10091100466,
+  "name": "Arnold",
+  "target_name": "Maximilian Arnold",
+  "club": "VfL Wolfsburg",
+  "conf": "high"
+ },
+ {
+  "id": 700207948,
+  "target": 60922,
+  "name": "Traoré",
+  "target_name": "Bertrand Traoré",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700208920,
+  "target": 59766,
+  "name": "Aké",
+  "target_name": "Nathan Aké",
+  "club": "Fenerbahce",
+  "conf": "high"
+ },
+ {
+  "id": 700210697,
+  "target": 120439,
+  "name": "Nørgaard",
+  "target_name": "Christian Nørgaard",
+  "club": "Everton FC",
+  "conf": "high"
+ },
+ {
+  "id": 700210853,
+  "target": 10036062297,
+  "name": "Konstantinidis",
+  "target_name": "Dimitris Konstantinidis",
+  "club": "Ethnikos Katerinis",
+  "conf": "high"
+ },
+ {
+  "id": 700212190,
+  "target": 116136,
+  "name": "Süle",
+  "target_name": "Niklas Süle",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700212616,
+  "target": 60241,
+  "name": "De Paul",
+  "target_name": "Rodrigo De Paul",
+  "club": "Inter Miami CF",
+  "conf": "high"
+ },
+ {
+  "id": 700214097,
+  "target": 10085117078,
+  "name": "Bourigeaud",
+  "target_name": "Benjamin Bourigeaud",
+  "club": "Al-Ahli SC",
+  "conf": "high"
+ },
+ {
+  "id": 700216388,
+  "target": 60550,
+  "name": "Saint-Maximin",
+  "target_name": "Allan Saint-Maximin",
+  "club": "Charlotte FC",
+  "conf": "high"
+ },
+ {
+  "id": 700216393,
+  "target": 59801,
+  "name": "Tielemans",
+  "target_name": "Youri Tielemans",
+  "club": "Manchester United",
+  "conf": "high"
+ },
+ {
+  "id": 700220697,
+  "target": 114036,
+  "name": "Maddison",
+  "target_name": "James Maddison",
+  "club": "Tottenham Hotspur",
+  "conf": "high"
+ },
+ {
+  "id": 700220710,
+  "target": 109128,
+  "name": "Wilson",
+  "target_name": "Harry Wilson",
+  "club": "Leeds Utd",
+  "conf": "high"
+ },
+ {
+  "id": 700220746,
+  "target": 10062082823,
+  "name": "Zivkovic",
+  "target_name": "Andrija Živkovic",
+  "club": "PAOK Thessaloniki",
+  "conf": "high"
+ },
+ {
+  "id": 700237712,
+  "target": 115176,
+  "name": "Castellanos",
+  "target_name": "Taty Castellanos",
+  "club": "West Ham United",
+  "conf": "high"
+ },
+ {
+  "id": 700239380,
+  "target": 122728,
+  "name": "Lang",
+  "target_name": "Noa Lang",
+  "club": "Napoli",
+  "conf": "high"
+ },
+ {
+  "id": 700239837,
+  "target": 10014157184,
+  "name": "Mac Allister",
+  "target_name": "Alexis Mac Allister",
+  "club": "Liverpool FC",
+  "conf": "high"
+ },
+ {
+  "id": 700239970,
+  "target": 10019302476,
+  "name": "Paulinho",
+  "target_name": "Paulinho",
+  "club": "Sociedade Esportiva Palmeiras",
+  "conf": "high"
+ },
+ {
+  "id": 700240638,
+  "target": 118274,
+  "name": "Reijnders",
+  "target_name": "Tijjani Reijnders",
+  "club": "Al-Qadsiah FC",
+  "conf": "high"
+ },
+ {
+  "id": 700241187,
+  "target": 118648,
+  "name": "Geertruida",
+  "target_name": "Lutsharel Geertruida",
+  "club": "PSV",
+  "conf": "high"
+ },
+ {
+  "id": 700243157,
+  "target": 10051054019,
+  "name": "Moreno",
+  "target_name": "Iván Moreno",
+  "club": "Club León FC",
+  "conf": "medium"
+ },
+ {
+  "id": 700243559,
+  "target": 116844,
+  "name": "de Frutos",
+  "target_name": "Jorge De Frutos",
+  "club": "Rayo Vallecano",
+  "conf": "high"
+ },
+ {
+  "id": 700243586,
+  "target": 123176,
+  "name": "El Kaabi",
+  "target_name": "Ayoub El Kaabi",
+  "club": "Olympiacos Piraeus",
+  "conf": "high"
+ },
+ {
+  "id": 700243647,
+  "target": 10070099201,
+  "name": "Bayındır",
+  "target_name": "Altay Bayindir",
+  "club": "Celta de Vigo",
+  "conf": "high"
+ },
+ {
+  "id": 700245741,
+  "target": 126905,
+  "name": "Lindstrøm",
+  "target_name": "Jesper Lindstrøm",
+  "club": "Napoli",
+  "conf": "high"
+ },
+ {
+  "id": 700246321,
+  "target": 10045101691,
+  "name": "Maeda",
+  "target_name": "Maeda Daizen",
+  "club": "Ipswich Town",
+  "conf": "high"
+ },
+ {
+  "id": 700248695,
+  "target": 121373,
+  "name": "Fofana",
+  "target_name": "Wesley Fofana",
+  "club": "Chelsea FC",
+  "conf": "high"
+ },
+ {
+  "id": 700251470,
+  "target": 133470,
+  "name": "De Ketelaere",
+  "target_name": "Charles De Ketelaere",
+  "club": "Atalanta BC",
+  "conf": "high"
+ },
+ {
+  "id": 700252259,
+  "target": 10049048469,
+  "name": "Millot",
+  "target_name": "Enzo Millot",
+  "club": "Al-Ahli SFC",
+  "conf": "high"
+ },
+ {
+  "id": 700253163,
+  "target": 10078085068,
+  "name": "Araujo",
+  "target_name": "Ronald Araújo",
+  "club": "Liverpool FC",
+  "conf": "high"
+ },
+ {
+  "id": 700255272,
+  "target": 142980,
+  "name": "Paredes",
+  "target_name": "Kevin Paredes",
+  "club": "FC Utrecht",
+  "conf": "medium"
+ },
+ {
+  "id": 700223210,
+  "target": 104480,
+  "name": "Moura",
+  "target_name": "Neto Moura",
+  "club": "Mirassol Futebol Clube (SP)",
+  "conf": "medium"
+ },
+ {
+  "id": 700226300,
+  "target": 10070097314,
+  "name": "Çakır",
+  "target_name": "Ugurcan Çakir",
+  "club": "Galatasaray",
+  "conf": "high"
+ },
+ {
+  "id": 700228702,
+  "target": 108662,
+  "name": "de Jong",
+  "target_name": "Frenkie de Jong",
+  "club": "FC Barcelona",
+  "conf": "high"
+ },
+ {
+  "id": 700229905,
+  "target": 10070062993,
+  "name": "Bardakcı",
+  "target_name": "Abdülkerim Bardakci",
+  "club": "Galatasaray",
+  "conf": "high"
+ },
+ {
+  "id": 700231355,
+  "target": 110475,
+  "name": "Ayrton",
+  "target_name": "Ayrton Lucas",
+  "club": "Flamengo",
+  "conf": "high"
+ },
+ {
+  "id": 700231521,
+  "target": 110608,
+  "name": "Palacios",
+  "target_name": "Exequiel Palacios",
+  "club": "Bayer 04 Leverkusen",
+  "conf": "high"
+ },
+ {
+  "id": 700231866,
+  "target": 10067217524,
+  "name": "Rodri",
+  "target_name": "Rodri",
+  "club": "FC Barcelona",
+  "conf": "high"
+ },
+ {
+  "id": 700233049,
+  "target": 118007,
+  "name": "Sancho",
+  "target_name": "Jadon Sancho",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700233486,
+  "target": 112009,
+  "name": "Le Normand",
+  "target_name": "Robin Le Normand",
+  "club": "Atlético de Madrid",
+  "conf": "high"
+ },
+ {
+  "id": 700235410,
+  "target": 114238,
+  "name": "En-Nesyri",
+  "target_name": "Youssef En Nesyri",
+  "club": "Al-Ittihad Club",
+  "conf": "high"
+ },
+ {
+  "id": 700235719,
+  "target": 121206,
+  "name": "Soñora",
+  "target_name": "Joel Soñora",
+  "club": "Miami FC",
+  "conf": "medium"
+ },
+ {
+  "id": 700235844,
+  "target": 118750,
+  "name": "Álvarez",
+  "target_name": "Edson Álvarez",
+  "club": "West Ham United",
+  "conf": "high"
+ },
+ {
+  "id": 700236403,
+  "target": 114390,
+  "name": "Ndicka",
+  "target_name": "Evan Ndicka",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700236477,
+  "target": 10048036267,
+  "name": "Claude-Maurice",
+  "target_name": "Alexis Claude-Maurice",
+  "club": "FC Augsburg",
+  "conf": "high"
+ },
+ {
+  "id": 700237034,
+  "target": 117934,
+  "name": "C. Hernández",
+  "target_name": "Cucho Hernández",
+  "club": "Real Betis Balompié",
+  "conf": "medium"
+ },
+ {
+  "id": 700237207,
+  "target": 10063029733,
+  "name": "Kalu",
+  "target_name": "Samuel Kalu",
+  "club": "Botev Plovdiv",
+  "conf": "high"
+ },
+ {
+  "id": 700237386,
+  "target": 135172,
+  "name": "Dewsbury-Hall",
+  "target_name": "Kiernan Dewsbury-Hall",
+  "club": "Everton FC",
+  "conf": "high"
+ },
+ {
+  "id": 700189805,
+  "target": 38491,
+  "name": "de Jong",
+  "target_name": "Luuk de Jong",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700190286,
+  "target": 38655,
+  "name": "Canales",
+  "target_name": "Sergio Canales",
+  "club": "Real Racing Club",
+  "conf": "medium"
+ },
+ {
+  "id": 700190695,
+  "target": 41189,
+  "name": "Fernandes",
+  "target_name": "Danilo Fernandes",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700190765,
+  "target": 117779,
+  "name": "Groß",
+  "target_name": "Pascal Groß",
+  "club": "Brighton & Hove Albion",
+  "conf": "high"
+ },
+ {
+  "id": 700190813,
+  "target": 38858,
+  "name": "El Shaarawy",
+  "target_name": "Stephan El Shaarawy",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700192448,
+  "target": 61672,
+  "name": "Stegen",
+  "target_name": "Marc ter Stegen",
+  "club": "Ajax",
+  "conf": "high"
+ },
+ {
+  "id": 700193080,
+  "target": 40571,
+  "name": "de Gea",
+  "target_name": "David de Gea",
+  "club": "Fiorentina",
+  "conf": "high"
+ },
+ {
+  "id": 700195864,
+  "target": 45023,
+  "name": "Pogba",
+  "target_name": "Paul Pogba",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700197781,
+  "target": 10067103537,
+  "name": "Isco",
+  "target_name": "Isco",
+  "club": "Real Betis Balompié",
+  "conf": "high"
+ },
+ {
+  "id": 700198176,
+  "target": 40875,
+  "name": "de Vrij",
+  "target_name": "Stefan de Vrij",
+  "club": "Panathinaikos FC",
+  "conf": "high"
+ },
+ {
+  "id": 700198710,
+  "target": 41581,
+  "name": "Rodríguez",
+  "target_name": "James Rodríguez",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700201269,
+  "target": 10027014576,
+  "name": "Rönnow",
+  "target_name": "Frederik Rønnow",
+  "club": "1.FC Union Berlin",
+  "conf": "high"
+ },
+ {
+  "id": 700203299,
+  "target": 42033,
+  "name": "Carrillo",
+  "target_name": "André Carrillo Díaz",
+  "club": "Sport Club Corinthians Paulista",
+  "conf": "high"
+ },
+ {
+  "id": 700203376,
+  "target": 10037024025,
+  "name": "van Dijk",
+  "target_name": "Virgil van Dijk",
+  "club": "Liverpool FC",
+  "conf": "high"
+ },
+ {
+  "id": 700204525,
+  "target": 10067104772,
+  "name": "Martínez",
+  "target_name": "Íñigo Martínez",
+  "club": "Al-Nassr FC",
+  "conf": "high"
+ },
+ {
+  "id": 700256669,
+  "target": 148110,
+  "name": "Moumbagna",
+  "target_name": "Faris Moumbagna",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700256933,
+  "target": 135959,
+  "name": "Şimşir",
+  "target_name": "Aral Şimşir",
+  "club": "Trabzonspor",
+  "conf": "high"
+ },
+ {
+  "id": 700257075,
+  "target": 10091188358,
+  "name": "Nebel",
+  "target_name": "Paul Nebel",
+  "club": "1.FSV Mainz 05",
+  "conf": "high"
+ },
+ {
+  "id": 700258485,
+  "target": 141421,
+  "name": "Jørgensen",
+  "target_name": "Filip Jörgensen",
+  "club": "Strasbourg 2",
+  "conf": "high"
+ },
+ {
+  "id": 700258601,
+  "target": 12000032708,
+  "name": "Sangaré",
+  "target_name": "Mamadou Sangaré",
+  "club": "Brentford FC",
+  "conf": "high"
+ },
+ {
+  "id": 700259139,
+  "target": 136093,
+  "name": "Da Costa",
+  "target_name": "David da Costa",
+  "club": "AC Alfenense",
+  "conf": "high"
+ },
+ {
+  "id": 700259516,
+  "target": 132824,
+  "name": "Cardoso",
+  "target_name": "Johnny Cardoso",
+  "club": null,
+  "conf": "high"
+ },
+ {
+  "id": 700260247,
+  "target": 126925,
+  "name": "Rogers",
+  "target_name": "Morgan Rogers",
+  "club": "Chelsea FC",
+  "conf": "high"
+ },
+ {
+  "id": 700261188,
+  "target": 10089063107,
+  "name": "Ndiaye",
+  "target_name": "Iliman N'Diaye",
+  "club": "Everton FC",
+  "conf": "high"
+ },
+ {
+  "id": 700262958,
+  "target": 10091209226,
+  "name": "Yamada",
+  "target_name": "Shinji Yamada",
+  "club": "Zehlendorf",
+  "conf": "high"
+ },
+ {
+  "id": 700263205,
+  "target": 10070112874,
+  "name": "Yılmaz",
+  "target_name": "Baris Alper Yilmaz",
+  "club": "Galatasaray",
+  "conf": "high"
+ },
+ {
+  "id": 700266866,
+  "target": 10019326796,
+  "name": "Éderson",
+  "target_name": "Éderson",
+  "club": "Atalanta BC",
+  "conf": "high"
+ },
+ {
+  "id": 700270409,
+  "target": 12000011972,
+  "name": "Savinho",
+  "target_name": "Sávio",
+  "club": "Manchester City",
+  "conf": "high"
+ },
+ {
+  "id": 700271039,
+  "target": 12000239732,
+  "name": "Sato",
+  "target_name": "Sato Kyo",
+  "club": "Kyoto Sanga",
+  "conf": "medium"
+ },
+ {
+  "id": 700277581,
+  "target": 12000211219,
+  "name": "Aghehowa",
+  "target_name": "Samu Omorodion",
+  "club": "FC Porto",
+  "conf": "high"
+ },
+ {
+  "id": 700277954,
+  "target": 12000138835,
+  "name": "Yıldız",
+  "target_name": "Kenan Yildiz",
+  "club": "Juventus FC",
+  "conf": "high"
+ },
+ {
+  "id": 700491344,
+  "target": 10023155704,
+  "name": "N'Diaye",
+  "target_name": "Khalifa N'Diaye",
+  "club": "Al-Gharafa SC",
+  "conf": "high"
+ }
+]

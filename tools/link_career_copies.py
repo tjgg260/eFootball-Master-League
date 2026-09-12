@@ -10,7 +10,8 @@ Endo at Liverpool had both.
 The originals are still in the world and still hold all of it. Match the copy back to its original
 and inherit what the copy is missing: the face, the age, the nationality, and — if the copy
 arrived with no abilities at all — his numbers, which are the same man's. Nothing that the copy
-already has is overwritten — a career save owns its own squad, and this only fills blanks.
+already has is overwritten — a career save owns its own squad — with one exception: an age more
+than two years from the player's own club entry in FM, which is a stale seed, not a save's doing.
 
 Clubs are copies too, and they inherit the same way. The career Liverpool was still wearing the
 crest of AFC Liverpool because that is what the world's Liverpool wore on the day it was copied;
@@ -38,7 +39,7 @@ import shutil
 import sqlite3
 import sys
 import unicodedata
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -123,10 +124,15 @@ def main() -> int:
         k = key(name)
         pool = list(world.get(k, []))
         if not pool:
-            # the name may be written the other way round, or spelled out in full
-            for wk, ws in world.items():
-                if rotation(k, wk) or shorter(k, wk):
-                    pool += ws
+            # Written the other way round is still the FULL name, so it is tried first and on its
+            # own. Only if nothing rotates does a shortening count — and never toward a world record
+            # that is a bare surname. 'Wataru Endo' rotates onto 'Endo Wataru' (33, Japan, the
+            # Liverpool midfielder), but an RFS record called just 'Endo' (29) used to join the
+            # shortlist and make it a tie, which is why his copy kept 'Ag 0' and no flag.
+            pool = [w for wk, ws in world.items() if rotation(k, wk) for w in ws]
+        if not pool:
+            pool = [w for wk, ws in world.items()
+                    if len(wk) > 1 and shorter(k, wk) for w in ws]
         cands = [w for w in pool
                  if (not natn or not w[3] or nat(natn) == w[3])
                  and (age is None or w[2] is None or abs(w[2] - age) <= 2)]
@@ -148,44 +154,10 @@ def main() -> int:
         if pid in no_attrs:
             attrs.append((pid, w[0]))
 
-    # ---- last resort: the club he plays for ----
-    # Only for copies still without a picture, and only when the career club resolves to exactly one
-    # FM club and the name resolves to exactly one player inside it.
-    still = [(pid, nm, tid) for pid, nm, tid in con.execute(
-        "SELECT p.id, p.name, s.team_id FROM squad_members s JOIN players p ON p.id=s.player_id "
-        "WHERE s.team_id>=? AND s.team_id<? AND COALESCE(p.real_face_path,p.portrait_path) IS NULL",
-        (CAREER_TEAM_LO, CAREER_TEAM_HI))]
-    if still:
-        faces_dir = REPO / "facepack" / "webp"
-        on_disk = {f.stem[5:] for f in faces_dir.glob("face_*.webp")}
-        fmclub = dict(con.execute(
-            "SELECT team_id, fm_club_id FROM team_identity WHERE fm_club_id IS NOT NULL"))
-        tname = dict(con.execute("SELECT id, name FROM teams"))
-        world_club = defaultdict(set)
-        for tid, nm in tname.items():
-            if not (CAREER_TEAM_LO <= tid < CAREER_TEAM_HI) and nm and tid in fmclub:
-                world_club[key(nm)].add(fmclub[tid])
-        career_fm = {tid: next(iter(ids)) for tid, nm in tname.items()
-                     if CAREER_TEAM_LO <= tid < CAREER_TEAM_HI and nm
-                     for ids in [world_club.get(key(nm), set())] if len(ids) == 1}
-        byclub = defaultdict(list)
-        with open(MEMBER, encoding="cp1252", errors="replace", newline="") as fh:
-            for r in csv.DictReader(fh, delimiter=";"):
-                u, c = (r.get("Unique ID") or "").strip(), (r.get("Club ID") or "").strip()
-                if u.isdigit() and c.isdigit():
-                    byclub[(int(c), key(r.get("Name")))].append(int(u))
-        for pid, nm, tid in still:
-            fc = career_fm.get(tid)
-            if not fc:
-                continue
-            uids = [u for u in byclub.get((fc, key(nm)), []) if str(u) in on_disk]
-            if len(uids) == 1:
-                faces.append((f"facepack/webp/face_{uids[0]}.webp", None, pid))
-
     # ---- the back-pointer the live save never got ----
     # career_seed now records base_team_id when it copies a club, but the save in the database
-    # predates that, so 44 career clubs and 2,508 copied players have no way back to the original.
-    # Without it every id-keyed repair stops at the world and the save keeps yesterday's crest.
+    # predates that, so its career clubs had no way back to their originals. Without it every
+    # id-keyed repair stops at the world and the save keeps yesterday's crest.
     sizes = dict(con.execute("SELECT team_id, COUNT(*) FROM squad_members GROUP BY team_id"))
     world_team = defaultdict(list)
     world_team_ids = defaultdict(list)
@@ -197,6 +169,21 @@ def main() -> int:
         if logo and (REPO / logo).exists():
             world_team[key(name)].append((tid, name, logo))
 
+    # When the club's name is not enough — the world has several Arsenals with squads — its own
+    # squad decides: 23 of career Arsenal's 27 players are, by name, world Arsenal's. The vote has
+    # to be decisive: at least 8 players, half the squad, and double the runner-up.
+    names_of = dict(con.execute("SELECT id, name FROM players WHERE superseded_by IS NULL"))
+    age_of = dict(con.execute("SELECT id, age FROM players"))
+    plays_for = defaultdict(set)
+    career_squad = defaultdict(list)
+    for p, t in con.execute("SELECT player_id, team_id FROM squad_members"):
+        if p not in names_of:
+            continue
+        if CAREER_TEAM_LO <= t < CAREER_TEAM_HI:
+            career_squad[t].append(p)
+        elif not (CAREER_LO <= p < CAREER_HI or CUR_LO <= p < CUR_HI):
+            plays_for[key(names_of[p])].add(t)
+
     adopt_teams = []
     for tid, nm, base in con.execute(
             "SELECT id, name, base_team_id FROM teams WHERE id>=? AND id<?",
@@ -206,13 +193,70 @@ def main() -> int:
         cands = world_team_ids.get(key(nm), [])
         if len(cands) == 1:
             adopt_teams.append((cands[0], tid))
-
-    # ---- the clubs themselves ----
-    logo_of = dict(con.execute("SELECT id, logo_path FROM teams"))
+            continue
+        squad = career_squad.get(tid, [])
+        votes = Counter(w for p in squad for w in plays_for.get(key(names_of[p]), ()))
+        top = votes.most_common(2)
+        if (top and top[0][1] >= 8 and top[0][1] * 2 >= len(squad)
+                and (len(top) < 2 or top[0][1] >= 2 * top[1][1])):
+            adopt_teams.append((top[0][0], tid))
     base_now = dict(con.execute(
         "SELECT id, base_team_id FROM teams WHERE id>=? AND id<? AND base_team_id IS NOT NULL",
         (CAREER_TEAM_LO, CAREER_TEAM_HI)))
     base_now.update({t: b for b, t in adopt_teams})
+
+    # ---- the club he plays for ----
+    # FM's own roster of the ORIGINAL club is the strongest evidence a copy can have: the same name
+    # at the same club, once. It picks 'Alisson' at Liverpool out of thirty-nine Alissons, and it is
+    # how a stale copy gets caught. The save was seeded from the world before the world's ages were
+    # corrected, so its academy players read 20 where their own club entry says 16, Lee Nicholls 22
+    # where Preston's entry says 34, and Arsenal's Gabriel 34 where FM's one Gabriel at Arsenal is
+    # 29. A disagreement of more than two years is not a save's doing — a save that had played two
+    # seasons could account for two, not three — so the club entry's age replaces it.
+    # FM writes names surname-first ('Thomas, Luke'); unflipped, this rule only ever worked for
+    # one-word names.
+    SEASON, SHIFT = 2026, 3             # the world's convention: FM dates of birth run 3 years early
+    fmclub = dict(con.execute(
+        "SELECT team_id, fm_club_id FROM team_identity WHERE fm_club_id IS NOT NULL"))
+    career_fm = {t: fmclub[b] for t, b in base_now.items() if b in fmclub}
+    faces_dir = REPO / "facepack" / "webp"
+    on_disk = {f.stem[5:] for f in faces_dir.glob("face_*.webp")}
+    byclub = defaultdict(list)
+    with open(MEMBER, encoding="cp1252", errors="replace", newline="") as fh:
+        for r in csv.DictReader(fh, delimiter=";"):
+            u, c = (r.get("Unique ID") or "").strip(), (r.get("Club ID") or "").strip()
+            if not (u.isdigit() and c.isdigit()):
+                continue
+            fm_name = (r.get("Name") or "").strip()
+            if "," in fm_name:
+                last, first = fm_name.split(",", 1)
+                fm_name = f"{first.strip()} {last.strip()}"
+            d = (r.get("Date Of Birth") or "").strip()
+            fm_age = SEASON - int(d[-4:]) - SHIFT if len(d) >= 4 and d[-4:].isdigit() else None
+            byclub[(int(c), key(fm_name))].append((int(u), fm_age))
+    have_face = {p for (p,) in con.execute(
+        "SELECT id FROM players WHERE COALESCE(real_face_path, portrait_path) IS NOT NULL")}
+    face_pids = {pid for _rf, _pf, pid in faces}
+    age_pids = {pid for _a, pid in ages}
+    restated = []
+    for tid, pids in career_squad.items():
+        fc = career_fm.get(tid)
+        if not fc:
+            continue
+        for pid in pids:
+            rows = byclub.get((fc, key(names_of[pid])), [])
+            if len(rows) != 1:
+                continue
+            uid, fm_age = rows[0]
+            if pid not in have_face and pid not in face_pids and str(uid) in on_disk:
+                faces.append((f"facepack/webp/face_{uid}.webp", None, pid))
+                face_pids.add(pid)
+            cur = age_of.get(pid)
+            if fm_age is not None and pid not in age_pids and (cur is None or abs(cur - fm_age) > 2):
+                restated.append((fm_age, pid, names_of[pid], cur))
+
+    # ---- the clubs themselves ----
+    logo_of = dict(con.execute("SELECT id, logo_path FROM teams"))
     crests = []
     for tid, name, logo in con.execute(
             "SELECT id, name, logo_path FROM teams WHERE id>=? AND id<?",
@@ -237,7 +281,10 @@ def main() -> int:
     print(f"career copies missing something their original has: faces {len(faces)}, "
           f"ages {len(ages)}, nationalities {len(nats)} (ambiguous, left alone: {amb})")
     print(f"career copies with no abilities at all, inheriting their original's: {len(attrs)}")
-    print(f"career clubs with no recorded original, resolving to exactly one: {len(adopt_teams)}")
+    print(f"career clubs with no recorded original, resolved by name or by squad: {len(adopt_teams)}")
+    print(f"career copies whose age is more than 2 from their own club entry in FM: {len(restated)}")
+    for a, _p, nm, cur in restated[:8]:
+        print(f"   {nm[:26]:26} {cur} -> {a}")
     print(f"career clubs wearing a different crest from their original: {len(crests)}")
     for w, tid, name, old_logo in crests[:6]:
         print(f"   {name[:26]:26} {(old_logo or 'none')[-28:]:28} -> {w[-28:]}")
@@ -247,7 +294,7 @@ def main() -> int:
     if dry:
         print("--dry: nothing written.")
         return 0
-    if not (faces or ages or nats or crests or attrs or adopt_teams):
+    if not (faces or ages or nats or crests or attrs or adopt_teams or restated):
         return 0
 
     con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
@@ -259,6 +306,7 @@ def main() -> int:
     con.executemany("UPDATE teams SET logo_path=? WHERE id=?", [(w, t) for w, t, _n, _o in crests])
     con.executemany("UPDATE teams SET base_team_id=? WHERE id=? AND base_team_id IS NULL",
                     adopt_teams)
+    con.executemany("UPDATE players SET age=? WHERE id=?", [(a, p) for a, p, _n, _c in restated])
     for pid, src in attrs:
         con.execute("INSERT OR REPLACE INTO player_attributes(player_id, attribute, value) "
                     "SELECT ?, attribute, value FROM player_attributes WHERE player_id=?",
@@ -270,7 +318,7 @@ def main() -> int:
     con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     print(f"applied. {len(faces)} faces, {len(ages)} ages, {len(nats)} nationalities, "
           f"{len(crests)} crests, {len(attrs)} ability sets inherited | "
-          f"{len(adopt_teams)} clubs now record their original.")
+          f"{len(adopt_teams)} clubs now record their original | {len(restated)} stale ages restated.")
     return 0
 
 

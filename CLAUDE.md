@@ -116,11 +116,20 @@ catalog has to run again behind it, in this order:
 
 ```
 build_catalog -> fix_catalog_dupes -> fix_catalog_geo -> merge_split_club -> fix_slot_wrong_club
-  -> fix_club_display_names -> sync_team_leagues -> link_logos_by_fm_id -> gen_club_badges
-  -> fill_squads (+ spine rows for generated ids) -> fix_fullback_shortage
-  -> refresh_roles_for_position -> assign_roles -> rerank_slots -> fix_shirt_numbers
-  -> validate_db -> audit_world
+  -> repoint_stale_slots -> verify_identity_fm
+  -> fix_club_display_names -> sync_team_leagues -> link_logos_by_fm_id -> crest_from_rfs
+  -> gen_club_badges -> fill_squads (+ spine rows for generated ids) -> link_faces_by_fm_id
+  -> link_career_copies -> fix_fullback_shortage -> refresh_roles_for_position -> assign_roles
+  -> rerank_slots -> fix_shirt_numbers -> validate_db -> audit_world
 ```
+
+**Never skip the two identity steps after a rebuild.** A rebuild can resolve a league slot onto a
+different record of the same club than the one FM's roster was synced into. Skipping them left 94
+slots on stale records — Leicester City fielding Vestergaard, Daka and nine generated fillers while
+its real roster sat in a record in no league — and the verifier, run without the repoint first,
+would have unlinked 25 more league clubs. Read its planned unlinks
+(`build/identity_fm_corrections.csv`, `action=unlink`, `catalog=1`) before applying: a league club
+losing its link is almost always a stale slot, not a wrong link.
 
 Membership and attributes hang off the same chain: `verify_identity_fm` -> `link_ef_to_fm` ->
 `adopt_ef_records` -> `sync_membership_fm` -> `fm_derive_attributes --career` ->
