@@ -70,6 +70,24 @@ public sealed class MasterDb : IDisposable
         AddColumn("inbox", "player_id", "INTEGER");
         AddColumn("inbox", "team_id", "INTEGER");
         AddColumn("player_appearance", "hair_color", "INTEGER");
+        // Two more that were added by EDITING the CREATE TABLE text after the table had shipped,
+        // with no ALTER behind them: fixtures.kind arrived the same day as its table (778e813),
+        // the six staff style strengths a day after staff_people (799acae). CREATE TABLE IF NOT
+        // EXISTS never touches a table that already exists, so a file made from the earlier text
+        // opened without them — and every "WHERE f.kind='league'" (the table, the cup, the
+        // objectives, the head-to-head) and the staff pool's INSERT/SELECT of the style columns
+        // threw "no such column" on it. The sweep that found these (schema.sql at every commit
+        // vs this list vs the live file's pragma_table_info) is the standing check: a column
+        // added to a CREATE below the first commit needs a line here, or it reaches new files only.
+        AddColumn("fixtures", "kind", "TEXT NOT NULL DEFAULT 'league'");
+        foreach (var style in new[]
+                 {
+                     "style_possession", "style_quick_counter", "style_long_ball_counter",
+                     "style_long_ball", "style_out_wide", "style_overload",
+                 })
+        {
+            AddColumn("staff_people", style, "INTEGER NOT NULL DEFAULT 10");
+        }
         DropHonoursTeamFk();
     }
 

@@ -242,6 +242,86 @@ Console.WriteLine("\nids that outgrow Int32");
     Check("and finds his name", pots.Holder.Length > 0, pots.Holder);
 }
 
+Console.WriteLine("\nstartup must not rearrange a live world");
+{
+    // THE 1,234-PLAYER BUG. The world rebuild dropped every youth side while leaving the
+    // completion flag at '1'; the self-heal then re-created the sides AND moved every eligible
+    // reserve out of 44 first teams. Reproduce the dropped-layer state on the COPY and prove the
+    // repair creates the sides empty.
+    var youthIds = new List<int>();
+    using (var q = db.Connection.CreateCommand())
+    {
+        q.CommandText = "SELECT id FROM teams WHERE parent_team_id=$t";
+        q.Parameters.AddWithValue("$t", s.CurrentTeamId);
+        using var r = q.ExecuteReader();
+        while (r.Read()) youthIds.Add(r.GetInt32(0));
+    }
+    // move the youth players back up first (a rebuild leaves them squadless; the senior count
+    // below is what must not change once the repair runs)
+    foreach (var yid in youthIds)
+    {
+        using var del = db.Connection.CreateCommand();
+        del.CommandText = "DELETE FROM squad_members WHERE team_id=$y; DELETE FROM teams WHERE id=$y";
+        del.Parameters.AddWithValue("$y", yid);
+        del.ExecuteNonQuery();
+    }
+    s.SetSetting("youth_teams_v1", "1");
+    var seniorBefore = s.Repo.SquadPlayers(s.CurrentTeamId).Count;
+    var eligible = s.Repo.Squad(s.CurrentTeamId).Count(m => m.Slot > 22 &&
+        s.PlayerAgeOf(m.PlayerId) is { } a && a <= 21);
+    Check("the dropped-layer state is reproduced", !s.YouthSidesExist(s.CurrentTeamId),
+        $"{youthIds.Count} sides removed, {eligible} reserves the old code would have moved");
+
+    s.EnsureYouthTeamsOnLoad();
+    var seniorAfter = s.Repo.SquadPlayers(s.CurrentTeamId).Count;
+    Check("the sides are back", s.YouthSidesExist(s.CurrentTeamId));
+    Check("and nobody was moved out of the first team", seniorAfter == seniorBefore,
+        $"{seniorBefore} -> {seniorAfter}");
+    Check("the U21s came back empty", s.YouthSquad(s.CurrentTeamId, "u21").Count == 0);
+    Check("and the repair left a trace a screen can show", s.YouthRepairNote() is { Length: > 0 },
+        s.YouthRepairNote() ?? "(none)");
+}
+
+Console.WriteLine("\nfour keepers in the eleven");
+{
+    // THE LIVERPOOL CASE. Slots 0-3 were Alisson, Mamardashvili, Woodman and Pecsi; the old
+    // guard looked at slot 0, saw a goalkeeper, and passed a side with three keepers outfield.
+    var keepers = s.Repo.SquadPlayers(s.CurrentTeamId).Where(p => p.Position == "GK").Select(p => p.Id).ToList();
+    if (keepers.Count < 2)
+    {
+        Console.WriteLine("  [skip] only one goalkeeper in this squad — cannot stack the eleven");
+    }
+    else
+    {
+        var order = s.Repo.Squad(s.CurrentTeamId).OrderBy(m => m.Slot).Select(m => m.PlayerId).ToList();
+        var stacked = keepers.Concat(order.Where(id => !keepers.Contains(id))).ToList();
+        s.SaveSquadOrder(stacked, manual: false);
+        using (var wipe = db.Connection.CreateCommand())
+        {
+            wipe.CommandText = "DELETE FROM meta WHERE key LIKE 'xi_seeded_%'";
+            wipe.ExecuteNonQuery();
+        }
+        int KeepersInXi() => s.Repo.Squad(s.CurrentTeamId)
+            .Where(m => m.Slot is >= 0 and <= 10)
+            .Count(m => keepers.Contains(m.PlayerId));
+        Check("the side is stacked with keepers", KeepersInXi() == keepers.Count, $"{KeepersInXi()} in the eleven");
+        s.SeedOpeningXi();
+        Check("the opening-XI seed catches it", KeepersInXi() == 1, $"{KeepersInXi()} keeper(s) after the seed");
+    }
+}
+
+Console.WriteLine("\na wage on the page adds up to the bill");
+{
+    // The Player screen read player_market.wage and printed a dash for most of a squad while
+    // the Finances screen reported a six-figure weekly bill. One formula now.
+    var squad = s.Repo.SquadPlayers(s.CurrentTeamId).ToList();
+    var noWage = squad.Where(p => s.WeeklyWageOf(p.Id, s.CurrentTeamId) <= 0).Select(p => p.Name).ToList();
+    Check("every squad player has a wage", noWage.Count == 0, noWage.Count == 0 ? $"{squad.Count} players" : string.Join(", ", noWage));
+    var sum = squad.Sum(p => s.WeeklyWageOf(p.Id, s.CurrentTeamId));
+    var (_, _, bill) = s.FinancialOverview();
+    Check("and they never exceed the club's bill", sum <= bill, $"£{sum:N0} of £{bill:N0}");
+}
+
 db.Connection.Dispose();
 try { File.Delete(work); } catch { /* the temp copy can wait for the OS */ }
 

@@ -1853,27 +1853,250 @@ public sealed partial class Session
 
     // ------------------------------------------------------------------ career backups
 
-    /// <summary>Copy the career DB to build/backups (kept: last five). Called at open + rollover.</summary>
+    /// <summary>Copies of the career the vault keeps: the one just written plus four older ones.</summary>
+    public const int BackupsKept = 5;
+
+    /// <summary>
+    /// Why the last <see cref="BackupCareer"/> took no copy, in words a manager can read — or null
+    /// when it did (or when there is no career file on disk to copy). A failed backup never blocks
+    /// play, so this is where a screen learns that the safety net is missing; the exception behind
+    /// it is in the crash log.
+    /// </summary>
+    public string? LastBackupProblem { get; private set; }
+
+    /// <summary>Full path of the newest copy this session wrote and verified on disk, or null.</summary>
+    public string? LastBackupPath { get; private set; }
+
+    // The one name shape this method writes: master-yyyyMMdd-HHmmss.db. The stamp is fifteen
+    // characters — eight digits, a hyphen, six digits — and the prune may touch nothing that does
+    // not parse as exactly that. Written and parsed with the invariant culture, so a Thai or Hijri
+    // calendar on the user's machine cannot mint a stamp the parser then refuses to own.
+    private const string BackupPrefix = "master-";
+    private const string BackupSuffix = ".db";
+    private const string BackupStampFormat = "yyyyMMdd-HHmmss";
+    private const int BackupStampLength = 15;
+
+    // Air left on the drive after a copy. The backup API writes the 2 GB page by page and would
+    // otherwise run the disk to zero before it failed — and a drive at zero takes Steam and the
+    // game down with it.
+    private const long BackupHeadroomBytes = 512L << 20;
+
+    /// <summary>
+    /// Copy the career to build/backups, then keep the newest <see cref="BackupsKept"/> of OUR
+    /// copies. Called at open, at rollover and from Settings → Backup now.
+    ///
+    /// WHAT THE BUG WAS. The prune used to be
+    ///     Directory.GetFiles(dir, "master-*.db").OrderByDescending(f => f).Skip(5)
+    /// — an ordinal sort of the PATH STRING. The python pipeline drops its own restore points in
+    /// the same folder (master-pre-overall-fix-1787677803.db, master-20260824-prededup.db …) and
+    /// 'p' outranks '2', so five stale pipeline files sat permanently at the top of that sort and
+    /// every timestamped copy fell below them — including the 2.2 GB copy this method had finished
+    /// writing milliseconds before. The vault could never advance past those five files, the app
+    /// was deleting snapshots that were never its to touch, and each launch wrote and destroyed
+    /// about 12.6 GB. The 23 orphaned master-*.db-journal files of 2026-08-23 are the residue:
+    /// their .db partners were pruned out from under them. The pooled destination connection then
+    /// kept the fresh copy's handle open, so deleting it threw and the blanket catch abandoned the
+    /// rest of the prune — silently, and that accident is the only reason any timestamped copy
+    /// survived at all.
+    ///
+    /// Now: only names that parse as the exact stamp this method writes are candidates; they are
+    /// ordered by the stamp in the name (LastWriteTimeUtc only splits a tie), never by the name
+    /// string and never by mtime alone; nothing is pruned unless the new copy is on disk with bytes
+    /// in it; and a failed copy is discarded, logged and left on LastBackupProblem for a screen to
+    /// surface — while still never blocking the career from opening.
+    /// </summary>
     public void BackupCareer()
     {
+        LastBackupProblem = null;
+        string dir, dest;
         try
         {
             var source = Db.Connection.DataSource;
-            if (string.IsNullOrEmpty(source) || !File.Exists(source)) return;
-            var dir = Path.Combine(Path.GetDirectoryName(source)!, "backups");
+            if (string.IsNullOrEmpty(source) || !File.Exists(source)) return;   // no career file: nothing to copy
+            dir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(source))!, "backups");
             Directory.CreateDirectory(dir);
-            var dest = Path.Combine(dir, $"master-{DateTime.Now:yyyyMMdd-HHmmss}.db");
-            using (var destCon = new SqliteConnection($"Data Source={dest}"))
+            dest = Path.Combine(dir, BackupPrefix
+                + DateTime.Now.ToString(BackupStampFormat, System.Globalization.CultureInfo.InvariantCulture)
+                + BackupSuffix);
+
+            // Don't start a copy the drive cannot hold. The free-space figure is advisory — an odd
+            // root (UNC, subst) simply skips the check — and the copy itself is still gated below.
+            var need = new FileInfo(source).Length;
+            if (File.Exists(source + "-wal")) need += new FileInfo(source + "-wal").Length;
+            long free = -1;
+            try { free = new DriveInfo(Path.GetPathRoot(dir)!).AvailableFreeSpace; }
+            catch { /* no DriveInfo for this root; the copy is still gated on its own success */ }
+            if (free >= 0 && free < need + BackupHeadroomBytes)
+            {
+                LastBackupProblem =
+                    "The career was not backed up — the drive is out of room. Free some space, then " +
+                    "use Settings → Backup now. Your save and the older copies in build/backups are untouched.";
+                Program.Log("Session.BackupCareer (skipped: drive full)", new IOException(
+                    $"{free:N0} bytes free on {Path.GetPathRoot(dir)}; {need + BackupHeadroomBytes:N0} needed to copy {source}"));
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            LastBackupProblem = ExplainBackupFailure(ex);
+            Program.Log("Session.BackupCareer (preparing)", ex);
+            return;
+        }
+
+        try
+        {
+            // Pooling=False: with the default pool, disposing the connection RETURNS its handle to
+            // the pool instead of closing it, and Windows then refuses to delete that file for the
+            // life of the process. The old code's delete of the just-written copy failed exactly
+            // this way, and a later prune in the same session (rollover, Backup now) would too.
+            var destCs = new SqliteConnectionStringBuilder { DataSource = dest, Pooling = false }.ToString();
+            using (var destCon = new SqliteConnection(destCs))
             {
                 destCon.Open();
                 Db.Connection.BackupDatabase(destCon);
             }
-            foreach (var old in Directory.GetFiles(dir, "master-*.db")
-                         .OrderByDescending(f => f).Skip(5))
+            // The copy counts only once it is on disk with bytes in it. A failed copy followed by a
+            // successful prune is how a vault empties itself.
+            var written = new FileInfo(dest);
+            if (!written.Exists || written.Length == 0)
             {
-                File.Delete(old);
+                throw new IOException($"the copy at {dest} is missing or empty although the backup reported success");
             }
+            LastBackupPath = dest;
         }
-        catch { /* a failed backup must never block play */ }
+        catch (Exception ex)
+        {
+            LastBackupProblem = ExplainBackupFailure(ex);
+            Program.Log($"Session.BackupCareer ({dest})", ex);
+            DiscardBackup(dest);   // a half-written copy must not sit in the list Restore picks from
+            return;                // and nothing is pruned on the strength of a copy that isn't there
+        }
+
+        PruneBackups(dir, justWritten: dest);
+    }
+
+    /// <summary>A backup failure in a manager's words; the exception itself is in the crash log.</summary>
+    private static string ExplainBackupFailure(Exception ex)
+    {
+        const string untouched = " Your save and the older copies in build/backups are untouched.";
+        // SQLITE_FULL (13) is the backup API's word for a full disk; Windows says it as
+        // ERROR_DISK_FULL (112) or ERROR_HANDLE_DISK_FULL (39) in an IOException's HResult.
+        if (ex is SqliteException { SqliteErrorCode: 13 }
+            || (ex is IOException && (ex.HResult & 0xFFFF) is 112 or 39))
+        {
+            return "The career could not be backed up — the drive ran out of room part-way through " +
+                   "the copy. Free some space, then use Settings → Backup now." + untouched;
+        }
+        if (ex is SqliteException { SqliteErrorCode: 5 or 6 })   // SQLITE_BUSY / SQLITE_LOCKED
+        {
+            return "The career could not be backed up — another program has the database open. " +
+                   "Close it, then use Settings → Backup now." + untouched;
+        }
+        return "The career could not be backed up this time. Use Settings → Backup now to try " +
+               "again; the detail is in the crash log." + untouched;
+    }
+
+    /// <summary>
+    /// The one parse of a copy's name: true, with the moment it was taken, only for a name exactly
+    /// as <see cref="BackupCareer"/> writes it. Every rule about which files are ours reads through
+    /// this, so the prune, the name test and the Settings screen's Restore list cannot disagree.
+    /// </summary>
+    private static bool TryParseBackupStamp(string fileName, out DateTime stamp)
+    {
+        stamp = default;
+        if (fileName.Length != BackupPrefix.Length + BackupStampLength + BackupSuffix.Length) return false;
+        if (!fileName.StartsWith(BackupPrefix, StringComparison.OrdinalIgnoreCase)
+            || !fileName.EndsWith(BackupSuffix, StringComparison.OrdinalIgnoreCase)) return false;
+        var raw = fileName.Substring(BackupPrefix.Length, BackupStampLength);
+        return DateTime.TryParseExact(raw, BackupStampFormat,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out stamp);
+    }
+
+    /// <summary>True only for a name exactly as <see cref="BackupCareer"/> writes it — the prune's whole world.</summary>
+    private static bool IsOwnBackupName(string fileName) => TryParseBackupStamp(fileName, out _);
+
+    /// <summary>
+    /// Is this file name a career copy the app itself made — one of its own stamped backups
+    /// (master-yyyyMMdd-HHmmss.db), or the pre-restore copy CareerLoader takes before a restore
+    /// overwrites the world (master-yyyyMMdd-HHmmss-prerestore.db)? For the Settings screen's
+    /// Restore list. The pipeline's restore points share the folder and the glob, and a list
+    /// that offered them would offer a world from before the career began as if it were last
+    /// night's save.
+    ///
+    /// Wider than the prune's rule ON PURPOSE. The prune must never touch a -prerestore copy —
+    /// it is the one file that undoes a mistaken restore — but the Restore list has to offer
+    /// it, or the undo can only be done by hand-copying a file into build/.
+    /// </summary>
+    public static bool IsCareerBackupName(string fileName)
+    {
+        if (IsOwnBackupName(fileName)) return true;
+        const string tail = "-prerestore" + BackupSuffix;
+        if (!fileName.EndsWith(tail, StringComparison.OrdinalIgnoreCase)) return false;
+        var asOwn = fileName.Substring(0, fileName.Length - tail.Length) + BackupSuffix;
+        return IsOwnBackupName(asOwn);
+    }
+
+    /// <summary>
+    /// Keep the newest <see cref="BackupsKept"/> of our copies by the stamp in the name — never by
+    /// the name string, and never by mtime alone — and delete the rest with their sidecars. Never
+    /// the copy just written, and never a file whose name is not exactly the stamp this method
+    /// writes: the pipeline's restore points share the folder and the glob, and they are not ours.
+    ///
+    /// WHAT THE BUG WAS. The order used to be LastWriteTimeUtc, on the theory that the file
+    /// system knows when a copy was taken. It knows when the file was last WRITTEN, which is not
+    /// the same thing: a python tool that opens a copy writable bumps its mtime on close (the
+    /// checkpoint rewrites the header — the vault's master-20260824-pre*.db files show it, their
+    /// -wal/-shm dated hours after the .db). A stamped copy touched that way would sort as the
+    /// newest in the vault and push a genuinely newer copy this app wrote into the deleted set.
+    /// The stamp is when the copy was taken; it is in the name, and nothing can bump it.
+    /// </summary>
+    private static void PruneBackups(string dir, string justWritten)
+    {
+        List<FileInfo> ours;
+        try
+        {
+            ours = new DirectoryInfo(dir).EnumerateFiles(BackupPrefix + "*" + BackupSuffix)
+                .Select(f => (File: f, Stamp: TryParseBackupStamp(f.Name, out var taken) ? taken : (DateTime?)null))
+                .Where(x => x.Stamp is not null)
+                .OrderByDescending(x => x.Stamp)               // when the copy was taken: the name
+                .ThenByDescending(x => x.File.LastWriteTimeUtc) // tiebreak only
+                .Select(x => x.File)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Program.Log($"Session.BackupCareer prune ({dir})", ex);   // the copy is safe; the tidy-up can wait
+            return;
+        }
+        var keepName = Path.GetFileName(justWritten);
+        foreach (var old in ours.Skip(BackupsKept))
+        {
+            if (string.Equals(old.Name, keepName, StringComparison.OrdinalIgnoreCase)) continue;
+            DiscardBackup(old.FullName);
+        }
+    }
+
+    /// <summary>
+    /// Delete one copy this method wrote, then the sidecars SQLite made for it. The .db goes first:
+    /// if it cannot be deleted its journal stays with it, because a database parted from its hot
+    /// journal looks complete to Restore and is not.
+    /// </summary>
+    private static void DiscardBackup(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            Program.Log($"Session.BackupCareer delete ({path})", ex);
+            return;
+        }
+        foreach (var sidecar in new[] { path + "-journal", path + "-wal", path + "-shm" })
+        {
+            try { if (File.Exists(sidecar)) File.Delete(sidecar); }
+            catch (Exception ex) { Program.Log($"Session.BackupCareer delete ({sidecar})", ex); }
+        }
     }
 }

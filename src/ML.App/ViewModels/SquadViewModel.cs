@@ -525,23 +525,61 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
     public ContextMenu? MenuFor(SquadEntry row)
     {
         if (row is null) return null;
-        List<MenuItem>? extras = null;
-        if (IsOwnClub)
+        // Guarded like Market.MenuFor and Player.BuildMenu, the two sibling builders: this runs
+        // inside a click's input dispatch, where a throw is a gesture that does nothing (or a
+        // window that goes down) rather than a menu that failed. No menu is the honest outcome
+        // — the caller says so on the status line — a dead gesture is not.
+        try
         {
-            var pin = new MenuItem { Header = "📌 Pin for compare" };
-            pin.Click += (_, _) => PinCompare();
-            extras = new List<MenuItem> { pin };
+            List<MenuItem>? extras = null;
+            if (IsOwnClub)
+            {
+                var pin = new MenuItem { Header = "📌 Pin for compare" };
+                pin.Click += (_, _) => PinCompare();
+                extras = new List<MenuItem> { pin };
+            }
+            return EntityActions.BuildMenu(_s, EntityRef.Player(row.PlayerId, row.Name),
+                status: t => SquadStatus = t, refresh: Reload, extras: extras);
         }
-        return EntityActions.BuildMenu(_s, EntityRef.Player(row.PlayerId, row.Name),
-            status: t => SquadStatus = t, refresh: Reload, extras: extras);
+        catch (Exception ex)
+        {
+            Program.Log("Squad.MenuFor", ex);
+            return null;
+        }
     }
 
     /// <summary>Menu for a loans-strip row — the loanee is a player like any other.</summary>
-    public ContextMenu? MenuForLoan(LoanRowVm row) =>
-        row is null
-            ? null
-            : EntityActions.BuildMenu(_s, EntityRef.Player(row.PlayerId, row.Name),
+    public ContextMenu? MenuForLoan(LoanRowVm row)
+    {
+        if (row is null) return null;
+        try
+        {
+            return EntityActions.BuildMenu(_s, EntityRef.Player(row.PlayerId, row.Name),
                 status: t => SquadStatus = t, refresh: Reload);
+        }
+        catch (Exception ex)
+        {
+            Program.Log("Squad.MenuForLoan", ex);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// What the docked status line says when a row's menu could not be produced — the ⋯ (and
+    /// the right-click behind it) must never simply do nothing. THE BUG: both ⋯ handlers
+    /// returned in silence on a null or empty menu, and EntityActions.BuildMenu's backstop hands
+    /// back an EMPTY menu when the Session throws before a single verb is built, so one bad read
+    /// turned the newly visible trigger back into a button that did nothing at all. The line
+    /// names the other way in: the card's button for a roster row, the double-click for a loanee
+    /// (who is not on the roster, so has no card).
+    /// </summary>
+    public void SayMenuUnavailable(string name, bool onLoan = false)
+    {
+        var whose = name.Length > 0 ? $"{name}'s" : "his";
+        SquadStatus = onLoan
+            ? $"Couldn't bring up {whose} options just now — double-click his line to open his profile, or try again."
+            : $"Couldn't bring up {whose} options just now — open his full profile from the card, or try again.";
+    }
 
     /// <summary>
     /// Leave the rail for the real screen — the same destination as double-clicking his row and
@@ -678,24 +716,43 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
             ContractLine = "";
             return;
         }
-        var abilities = _s.Repo.Attributes(value.PlayerId);
+        // THE BUG: this was the one database read in here with no guard — a live query against
+        // the 2.2 GB career file, while every neighbour below it (reveal order, analysis, coach
+        // report, season stats) already had one. A throw here left this method through the
+        // Selected setter, and on the ⋯ path that meant the UI thread mid-input-dispatch. An
+        // unreadable set of abilities is shown as NOTHING, never as a row of 40s: an empty
+        // dictionary would have drawn a collapsed radar and analysed a man who has no attributes.
+        IReadOnlyDictionary<string, int> abilities;
+        var abilitiesUnread = false;
+        try { abilities = _s.Repo.Attributes(value.PlayerId); }
+        catch (Exception ex)
+        {
+            Program.Log("Squad.OnSelectedChanged: Repo.Attributes", ex);
+            abilities = new Dictionary<string, int>();
+            abilitiesUnread = true;
+            SquadStatus = $"Couldn't read {value.Name}'s abilities just now — the rest of his card still stands.";
+        }
         var isGk = value.Position == "GK";
         RadarLabels = isGk ? GkRadarLabels : OutfieldRadarLabels;
         // Knowledge gate (P6): same 45 threshold as the Market profile — below it the radar
         // would be a guess dressed up as data, so it hides behind a scout-him note.
         RadarMasked = value.Knowledge < 45;
-        RadarPoints = RadarMasked ? new Points() : BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
+        RadarPoints = RadarMasked || abilitiesUnread
+            ? new Points()
+            : BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
         // Knowledge-gated: your club is fully known, a browsed club only as deep as scouted —
         // and a famous man gives up what he is famous for whether you have watched him or not.
         ML.Core.Development.RevealOrder order;
         try { order = _s.RevealOrderOf(value.PlayerId, value.Position); }
         catch { order = ML.Core.Development.RevealOrder.Anonymous(value.PlayerId); }
-        Abilities = BuildAbilityList(abilities, isGk, FmMode, value.Knowledge, value.PlayerId, order);
+        Abilities = abilitiesUnread
+            ? Array.Empty<AbilityEntry>()
+            : BuildAbilityList(abilities, isGk, FmMode, value.Knowledge, value.PlayerId, order);
 
         // The MFL analysis panels (UX P3): six graded-statement categories — the north star.
         try
         {
-            AnalysisPanels = ML.Core.Development.PlayerAnalysis
+            AnalysisPanels = abilitiesUnread ? new List<AnalysisPanelVm>() : ML.Core.Development.PlayerAnalysis
                 .Build(value.PlayerId, abilities, isGk, value.Knowledge, order)
                 .Select(p => new AnalysisPanelVm(p.Name, p.Lines.Select(l => new AnalysisLineVm(
                     l.Text, l.Grade,

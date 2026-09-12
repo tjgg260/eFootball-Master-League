@@ -53,9 +53,13 @@
       <!-- THE ROUTE, IN WORDS. Both ways into a player were invisible folklore: a right-click
            and a double-click that nothing on screen mentions. Single-click was the only gesture
            this roster ever taught, so the card in the column beside it read as the whole of what
-           a player is. A manager should not have to guess a gesture to open a man. -->
+           a player is. A manager should not have to guess a gesture to open a man.
+           THE BUG in the first draft of this line: it taught the double-click and the ⋯ but
+           never the card's own "Open full profile" button — the one route a single-clicker
+           actually lands on, and the only one visible at rest (row one auto-selects) — and it
+           never said the ⋯ menu has "View profile" in it. The button leads now. -->
       <TextBlock DockPanel.Dock="Top" Classes="ml-muted" TextWrapping="Wrap" Margin="2,0,0,10"
-                 Text="Double-click a man to open his full profile. The ⋯ beside him — or a right-click on his row — brings up everything you can do with him."/>
+                 Text="Open full profile on his card shows you everything about him (so does a double-click on his row), and the ⋯ at the start of his row — or a right-click — lists everything you can do with him, View profile included."/>
 
       <!-- players out or in on loan, with January recall (P6 fix 5: neutral header) -->
       <Border DockPanel.Dock="Bottom" IsVisible="{Binding HasLoans}"
@@ -87,11 +91,36 @@
       </Border>
 
     <Panel>
-      <!-- x:Name: right-click on a row opens the shared entity menu (see the code-behind) -->
+      <!-- x:Name: right-click on a row opens the shared entity menu (see the code-behind).
+           FrozenColumnCount="1" pins the ⋯ column below: see the note on it. -->
       <DataGrid x:Name="RosterGrid" ItemsSource="{Binding Rows}"
                 SelectedItem="{Binding Selected, Mode=TwoWay}" IsReadOnly="True"
-                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                FrozenColumnCount="1">
         <DataGrid.Columns>
+          <!-- The visible half of the standing ruling: every entity row carries BOTH a
+               right-click menu and a trigger you can see, over ONE action list. This ⋯ opens
+               the very menu SquadViewModel.MenuFor builds for the right-click — never a
+               second, divergent list.
+               THE BUG that put it FIRST, not last: it started as the tenth column, and the
+               other nine are fixed widths totalling 795 DIP with the Name column taking the
+               remainder. The roster gets (window − 622) DIP, so below a 1,440-DIP window the
+               Name column hit the grid's 20-DIP floor and the grid grew a horizontal scrollbar —
+               and a DataGrid clips from the RIGHT, so the last column is the first to vanish.
+               The trigger this merge made visible went invisible again on any window narrower
+               than the 1,640 default minus 200. A MinWidth on Name would only have moved that
+               breakpoint, never which column is lost. The left edge is the one edge always on
+               screen at rest, and FrozenColumnCount="1" keeps it there through a scroll too. -->
+          <DataGridTemplateColumn Header="" Width="44">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:SquadEntry">
+                <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
+                        Click="OnRowMenu"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        ToolTip.Tip="Everything you can do with him, View profile included — right-clicking his row does the same"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTemplateColumn Header="" Width="52">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:SquadEntry">
@@ -108,7 +137,11 @@
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
           <DataGridTextColumn Header="#" Binding="{Binding Number}" Width="57"/>
-          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+          <!-- MinWidth: the star column is what gives way when the window narrows, and with
+               no floor it shrank to the grid's 20-DIP default — a column of names showing no
+               name. This floor is NOT what keeps the ⋯ on screen (see the first column); it
+               only keeps a surname readable before the grid starts to scroll. -->
+          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" MinWidth="120"/>
           <!-- slim nationality-flag column (empty header, 34px) -->
           <DataGridTemplateColumn Header="" Width="34">
             <DataGridTemplateColumn.CellTemplate>
@@ -161,21 +194,6 @@
                   <TextBlock Text="+" FontSize="13" FontWeight="Bold" Foreground="White"
                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
                 </Border>
-              </DataTemplate>
-            </DataGridTemplateColumn.CellTemplate>
-          </DataGridTemplateColumn>
-          <!-- The visible half of the standing ruling: every entity row carries BOTH a
-               right-click menu and a trigger you can see, over ONE action list. This ⋯ opens
-               the very menu SquadViewModel.MenuFor builds for the right-click — never a
-               second, divergent list. The column that used to sit last here was the injury
-               badge, so the roster had no actions affordance at all. -->
-          <DataGridTemplateColumn Header="" Width="44">
-            <DataGridTemplateColumn.CellTemplate>
-              <DataTemplate x:DataType="vm:SquadEntry">
-                <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
-                        Click="OnRowMenu"
-                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                        ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>

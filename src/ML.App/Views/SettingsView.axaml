@@ -158,7 +158,9 @@
                 HorizontalAlignment="Stretch"/>
       <TextBlock Classes="ml-muted" Text="No backups yet — take one and it lands here."
                  IsVisible="{Binding !Backups.Count}"/>
-      <Button Content="↩ Restore selected" Command="{Binding RestoreBackupCommand}"
+      <!-- The label IS the confirmation (the Staff and Finances idiom): the first press turns
+           it into a question naming the copy's date, the second press stages the restore. -->
+      <Button Content="{Binding RestoreLabel}" Command="{Binding RestoreBackupCommand}"
               Background="#3A2A10" Foreground="{StaticResource MlWarn}" Padding="14,8"
               CornerRadius="{StaticResource MlRadiusControl}"/>
     </StackPanel></Border>

@@ -8,6 +8,10 @@
 --    regenerating it. is_custom = 1 rows are authored from scratch.
 --  * Every id we control is an INTEGER we assign; the game-facing ids (pid, team_id,
 --    formation_id) are stored explicitly so the compiler is deterministic.
+--  * CREATE TABLE IF NOT EXISTS never alters a table that already exists. A column added to a
+--    CREATE below reaches a NEW file only; an existing file gets it from the AddColumn list in
+--    MasterDb.Migrate(), or never. Add a column in both places, or in neither — a column that
+--    nothing queries does not belong here pretending to exist on old files.
 
 PRAGMA foreign_keys = ON;
 
@@ -380,8 +384,12 @@ CREATE TABLE IF NOT EXISTS player_appearance (
     player_id INTEGER PRIMARY KEY REFERENCES players(id),   -- rowid alias: already indexed
     skin_tone INTEGER NOT NULL,
     source    TEXT    NOT NULL DEFAULT 'seeded',
-    hair_color INTEGER,     -- 5-class hair colour (0 dark - 4 blond); the portrait read selects it
-    rfs_skin   INTEGER      -- exact RFS 1-10 skin code behind skin_tone; imported, no query reads it
+    hair_color INTEGER      -- 5-class hair colour (0 dark - 4 blond); the portrait read selects it
+    -- build/master.db also carries rfs_skin (the exact RFS 1-10 code behind skin_tone), put there
+    -- by a one-off import. No query reads or writes it, so it is deliberately NOT declared: it
+    -- was here without a MasterDb.Migrate() line, which gave it to every fresh file and to no
+    -- older one — the exact drift the note at the top forbids. Declare it AND migrate it the day
+    -- something reads it.
 );
 
 -- Live transfer negotiations with selling clubs (P5): one open negotiation per target.
@@ -400,9 +408,9 @@ CREATE TABLE IF NOT EXISTS player_status (
     status    TEXT    NOT NULL
 );
 
--- News imagery (P6): letters about a player carry his id so the feed can show his face.
--- (Existing DBs migrate via ALTER in tools; CREATE TABLE IF NOT EXISTS covers fresh ones
--- through the column list below being additive-only.)
+-- News imagery (P6): letters about a player carry his id so the feed can show his face —
+-- inbox.player_id / inbox.team_id, declared on the table above; an existing file gains them
+-- from MasterDb.Migrate(), not from any tool.
 
 -- Loans (P-next): players parked at another club for the season; recalls from the January
 -- window; everyone comes home at rollover. direction: 'out' = yours at a host, 'in' = theirs

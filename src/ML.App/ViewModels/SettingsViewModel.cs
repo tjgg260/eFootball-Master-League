@@ -193,9 +193,17 @@ public sealed partial class SettingsViewModel : PageViewModel
     private void LoadBackups()
     {
         Backups.Clear();
+        DisarmRestore();
         var dir = BackupsDir();
         if (dir is null || !Directory.Exists(dir)) return;
+        // THE BUG: this offered EVERY *.db in build/backups. The python pipeline drops its own
+        // restore points in the same folder — master-pre-overall-fix-1787214657.db is an 88 MB
+        // copy of a DIFFERENT WORLD from 2026-08-20, and three master-20260824-pre*.db snapshots
+        // sat beside it — and any of them was one click from replacing the live 2.2 GB career.
+        // Only copies of THIS career are offered now; the rule lives on Session so that the
+        // vault's prune and this list can never disagree about which files are ours.
         foreach (var f in new DirectoryInfo(dir).GetFiles("*.db")
+                     .Where(f => Session.IsCareerBackupName(f.Name))
                      .OrderByDescending(f => f.LastWriteTime).Take(10))
         {
             Backups.Add(f.Name);
@@ -245,9 +253,38 @@ public sealed partial class SettingsViewModel : PageViewModel
         {
             _s.BackupCareer();
             LoadBackups();
-            Status = "Backup taken — the newest five are kept in build/backups.";
+            // THE BUG: this said "Backup taken" whatever happened. BackupCareer never throws for
+            // a copy that failed — it discards the half-written file, logs, and leaves the reason
+            // on LastBackupProblem — so a full drive or a locked database was announced here as a
+            // success, and the manager walked on believing the safety net was under them.
+            Status = _s.LastBackupProblem
+                     ?? (_s.LastBackupPath is null
+                         ? "Nothing to back up — this career is not a save on disk."
+                         : $"Backup taken ({Path.GetFileName(_s.LastBackupPath)}) — the newest " +
+                           $"{Session.BackupsKept} are kept in build/backups.");
         }
         catch (Exception ex) { Status = $"Backup failed: {ex.Message}"; }
+    }
+
+    // --- restore: two-step, because it replaces a 2.2 GB world at next launch ----------------
+    //
+    // THE BUG: one click on "Restore selected" staged any file in the list as the next launch's
+    // career — no question asked, no word about what it cost. Same idiom as releasing a member
+    // of staff or borrowing from the bank: the first press turns the button into the question,
+    // and the question names the copy's date and what pressing again does to the current world.
+
+    public const string RestoreIdle = "↩ Restore selected";
+    [ObservableProperty] private string _restoreLabel = RestoreIdle;
+    private string? _restoreArmedFor;
+
+    // Arming is per file: pick a different copy and the question is withdrawn, so a press meant
+    // for one date can never restore another.
+    partial void OnSelectedBackupChanged(string? value) => DisarmRestore();
+
+    private void DisarmRestore()
+    {
+        _restoreArmedFor = null;
+        RestoreLabel = RestoreIdle;
     }
 
     [RelayCommand]
@@ -258,12 +295,26 @@ public sealed partial class SettingsViewModel : PageViewModel
         {
             var dir = BackupsDir()!;
             var src = Path.Combine(dir, SelectedBackup);
+            var when = new FileInfo(src).LastWriteTime
+                .ToString("d MMM yyyy 'at' HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            if (_restoreArmedFor != SelectedBackup)
+            {
+                _restoreArmedFor = SelectedBackup;
+                RestoreLabel = $"↩ Sure? Replace the current world at next launch with the copy from {when}";
+                Status = $"Go back to {when}? The career as it stands now is replaced the next time the " +
+                         "app opens — every result, signing and contract since then goes with it. A copy " +
+                         "of today's world is taken first and kept in build/backups. Press again to " +
+                         "confirm, or pick a different copy.";
+                return;
+            }
             var pending = Path.Combine(Path.GetDirectoryName(dir)!, "master.restore.db");
             File.Copy(src, pending, overwrite: true);
-            Status = $"Restore staged from {SelectedBackup} — CLOSE and reopen the app to apply. " +
-                     "(The current career is replaced at next launch.)";
+            DisarmRestore();
+            Status = $"Restore staged — the copy from {when} replaces the current world when you next " +
+                     "open the app. Close and reopen to apply. Today's world is copied into build/backups " +
+                     "as a -prerestore file before anything is overwritten.";
         }
-        catch (Exception ex) { Status = $"Restore failed: {ex.Message}"; }
+        catch (Exception ex) { DisarmRestore(); Status = $"Restore failed: {ex.Message}"; }
     }
 
     // ---------------------------------------------------------------- shared

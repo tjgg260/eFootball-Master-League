@@ -22,6 +22,17 @@ public sealed partial class Session
     /// <summary>Meta key holding what the last youth-setup repair did (date|sides).</summary>
     private const string YouthRepairKey = "youth_repair_v1";
 
+    /// <summary>Meta key holding what the first-build seed did (date|sides|u21|u18|own): how
+    /// many sides were set up, how many players moved into each level, how many were the
+    /// manager's. The repair key above records a pass that moves nobody; this one records the
+    /// pass that does.</summary>
+    private const string YouthSeedKey = "youth_seed_v1";
+
+    // Tally of the first-build seed, kept per level and for the manager's own club, so the
+    // letter can say how many lads went where and how many of them were his. Reset at the top
+    // of every EnsureYouthTeamsOnLoad pass; only SeedYouthSideFromDeepSquad adds to it.
+    private int _youthSeedU21, _youthSeedU18, _youthSeedOwn;
+
     private static int YouthTeamId(int parentId, string kind) =>
         YouthTeamBase + (parentId - CareerTeamBase) * 2 + (kind == "u18" ? 1 : 0);
 
@@ -60,6 +71,7 @@ public sealed partial class Session
         // moving players is vandalism. So the two jobs are split, and only a career that has
         // never been played gets the seed.
         var firstBuild = CareerHasNotBegun();
+        _youthSeedU21 = _youthSeedU18 = _youthSeedOwn = 0;
         var created = EnsureYouthTeams(firstBuild);
         // …and the managed club explicitly. EnsureYouthTeams only walks the two career
         // divisions; if yours somehow isn't in one (a hand-edited DB, a half-finished seed)
@@ -69,9 +81,16 @@ public sealed partial class Session
         if (EnsureYouthSide(CurrentTeamId, CurrentTeamName, "u18", firstBuild)) created++;
         SetMeta("youth_teams_v1", "1");
 
-        // A repair that changed the shape of the club's setup gets said out loud. A brand-new
-        // career doesn't need telling — the sides arriving full IS the career being built.
-        if (!firstBuild && created > 0) RecordYouthRepair(created);
+        // Anything that changed the shape of the club's setup gets said out loud — a brand-new
+        // career included. THE BUG THIS FIXES: the guard read `if (!firstBuild && created > 0)`,
+        // so the repair path, which moves nobody, wrote a letter, while the first-build path —
+        // the one that relocates up to 1,234 players out of first-team squads (594 to the U18s,
+        // 640 to the U21s on the live save, one of them the manager's own) — said nothing at
+        // all. That the career is being built is a fair reason not to call it a repair; it is
+        // not a reason to say nothing. So the two paths each get their own letter.
+        if (created == 0) return;
+        if (firstBuild) RecordYouthSeed(created, _youthSeedU21, _youthSeedU18, _youthSeedOwn);
+        else RecordYouthRepair(created);
     }
 
     /// <summary>Do BOTH youth sides of this club exist? One primary-key lookup.</summary>
@@ -226,6 +245,9 @@ public sealed partial class Session
             move.Parameters.AddWithValue("$pid", pid);
             move.ExecuteNonQuery();
         }
+        // Counted AFTER the moves, so the tally never claims a lad an exception left in place.
+        if (kind == "u18") _youthSeedU18 += n; else _youthSeedU21 += n;
+        if (parentId == CurrentTeamId) _youthSeedOwn += n;
     }
 
     /// <summary>
@@ -266,6 +288,83 @@ public sealed partial class Session
         return $"Your youth setup was rebuilt on {when}: {sides} age-group " +
                $"{(sides == 1 ? "side was" : "sides were")} re-created empty, and no player was " +
                "moved out of a first-team squad.";
+    }
+
+    /// <summary>
+    /// Leave a trace of the first-build seed — the one pass that DOES move people — the same way
+    /// RecordYouthRepair does: a meta record first, so the Academy can explain a full or an empty
+    /// side even if the inbox write fails, then a letter saying where the lads came from, how
+    /// many went to each level across the two divisions, and how many of them were the manager's.
+    /// </summary>
+    private void RecordYouthSeed(int sidesCreated, int toU21, int toU18, int own)
+    {
+        SetMeta(YouthSeedKey, $"{DateTime.Now:yyyy-MM-dd}|{sidesCreated}|{toU21}|{toU18}|{own}");
+        var moved = toU21 + toU18;
+        string body;
+        if (moved == 0)
+        {
+            body =
+                "With the career just under way, every club in both divisions now has an " +
+                $"under-21 and an under-18 side — {sidesCreated:N0} in all. They start empty: no " +
+                "club had a lad inside the age band beyond the first twenty-three names on its " +
+                "squad list, so not one player has been moved.\n\n" +
+                "To put a lad on one of them: right-click him on the Squad screen and send him " +
+                "down, or use \"Send an under-21 down\" on the Academy screen. He comes back up " +
+                "whenever you want him.";
+        }
+        else
+        {
+            var ownLine = own switch
+            {
+                0 => "None of them is yours: your squad list held nobody young enough beyond " +
+                     "its first twenty-three names, so your first team is exactly as you found it.",
+                1 => "One of them is yours — off the end of your squad list and into your academy.",
+                _ => $"{own:N0} of them are yours — off the end of your squad list and into your " +
+                     "academy.",
+            };
+            body =
+                "With the career just under way, every club in both divisions now has an " +
+                $"under-21 and an under-18 side — {sidesCreated:N0} in all — and each has been " +
+                "filled from the back of its club's squad list: lads inside the age band who sat " +
+                $"beyond the first twenty-three names. {moved:N0} moved across the two divisions, " +
+                $"{toU21:N0} to the under-21s and {toU18:N0} to the under-18s.\n\n" +
+                ownLine + "\n\n" +
+                "Nobody inside a first twenty-three has been touched, and a lad in the academy " +
+                "is still on your books. To bring one back up, open the Academy screen, find him " +
+                "on the U21 or U18 tab and use \"Promote to first team\"; to send one down, " +
+                "right-click him on the Squad screen. He moves whenever you want him to.";
+        }
+        PostInboxAfterWelcome("Club", "The academy has been stocked from the reserves", body);
+    }
+
+    /// <summary>
+    /// What the first-build seed did, in a sentence, or null if this career was never seeded
+    /// (or the trace is unreadable). The counterpart of YouthRepairNote: that one explains an
+    /// empty side, this one explains a full one.
+    /// </summary>
+    public string? YouthSeedNote()
+    {
+        var raw = GetMeta(YouthSeedKey);
+        if (string.IsNullOrEmpty(raw)) return null;
+        var parts = raw.Split('|');
+        if (parts.Length < 5 || !int.TryParse(parts[1], out var sides) || sides <= 0 ||
+            !int.TryParse(parts[2], out var u21) || !int.TryParse(parts[3], out var u18) ||
+            !int.TryParse(parts[4], out var own))
+            return null;
+        // Stored exact (yyyy-MM-dd), read back exact, shown in the reader's own language.
+        var when = DateOnly.TryParseExact(parts[0], "yyyy-MM-dd", out var d)
+            ? d.ToString("d MMM yyyy")
+            : parts[0];
+        var moved = u21 + u18;
+        if (moved == 0)
+            return $"Your academy was set up on {when}: {sides:N0} age-group sides across the two " +
+                   "divisions, all of them empty — no player was moved out of a first-team squad.";
+        return $"Your academy was stocked on {when}: {sides:N0} age-group sides were set up " +
+               $"across the two divisions and {moved:N0} {(moved == 1 ? "player" : "players")} " +
+               $"moved into them from the back of first-team squads — {u21:N0} to the under-21s, " +
+               $"{u18:N0} to the under-18s, " +
+               (own == 0 ? "none of them yours." :
+                own == 1 ? "one of them yours." : $"{own:N0} of them yours.");
     }
 
     private int? AgeOf(long playerId)
