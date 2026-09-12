@@ -126,3 +126,6 @@ __pycache__/
 *.pyc
 # rejected asset batches
 assets/dvx_comps_bad*/
+# the owner's own player photos (SquadView "Set photo…" copies them here) and stray face downloads
+custom_faces/
+/face_*.webp
