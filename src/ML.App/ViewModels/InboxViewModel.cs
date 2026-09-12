@@ -10,8 +10,14 @@ namespace ML.App.ViewModels;
 
 public sealed record NewsEntry(
     long Id, string Icon, string Category, string Subject, string Body, string When, bool Unread,
-    Bitmap? Portrait, bool IsBreaking, Bitmap? Crest = null)
+    Bitmap? Portrait, bool IsBreaking, Bitmap? Crest = null,
+    long? PlayerId = null, int? TeamId = null, bool RequiresAction = false)
 {
+    // A story that is waiting on a decision shows the decision, in place (P10). An offer for
+    // one of your players is answerable here; a job offer is the Board's to take.
+    public bool ShowOfferActions => RequiresAction && PlayerId is not null;
+    public bool ShowBoardAction => RequiresAction && PlayerId is null && TeamId is not null;
+    public bool ShowActions => ShowOfferActions || ShowBoardAction;
     public IBrush SubjectBrush => Visuals.Brush(Unread ? "#FFFFFF" : "#8A93A2");
     public IBrush BodyBrush => Visuals.Brush(Unread ? "#C7CEDA" : "#5E6774");
     public FontWeight SubjectWeight => Unread ? FontWeight.Bold : FontWeight.Normal;
@@ -30,7 +36,7 @@ public sealed record NewsEntry(
     });
 }
 
-public sealed record TickerEntry(string Player, string Line, Bitmap? Portrait)
+public sealed record TickerEntry(string Player, string Line, Bitmap? Portrait, long PlayerId = 0)
 {
     public bool HasPortrait => Portrait is not null;
     public string Mark => Visuals.PlayerMark(Player);
@@ -70,7 +76,8 @@ public sealed partial class InboxViewModel : PageViewModel
             }
             Rows.Add(new NewsEntry(m.Id, IconFor(m.Category), m.Category, m.Subject, m.Body,
                 m.Matchday is { } md and > 0 ? $"MD{md}" : "", !m.IsRead, face,
-                m.Subject.Contains("DEADLINE DAY"), crest));
+                m.Subject.Contains("DEADLINE DAY"), crest,
+                m.PlayerId, m.TeamId, m.RequiresAction));
         }
         Header = $"News — {Rows.Count(r => r.Unread)} unread";
         Empty = Rows.Count == 0;
@@ -86,6 +93,7 @@ public sealed partial class InboxViewModel : PageViewModel
                 HeroName = hero.Player;
                 HeroLine = $"→ {hero.ToTeam}";
                 HeroFee = $"£{hero.Fee:N0}";
+                _heroPlayerId = hero.PlayerId;
                 var (path, _) = _s.NewsFaceOf(hero.PlayerId);
                 HeroPortrait = Visuals.LoadBitmap(path);
             }
@@ -95,7 +103,7 @@ public sealed partial class InboxViewModel : PageViewModel
                 var (path, _) = _s.NewsFaceOf(t.PlayerId);
                 Ticker.Add(new TickerEntry(t.Player,
                     t.Fee > 0 ? $"→ {t.ToTeam} · £{t.Fee:N0}" : $"→ {t.ToTeam}",
-                    Visuals.LoadBitmap(path)));
+                    Visuals.LoadBitmap(path), t.PlayerId));
             }
         }
         catch { HeroVisible = false; }
@@ -140,6 +148,61 @@ public sealed partial class InboxViewModel : PageViewModel
         if (i >= 0) Rows[i] = entry with { Unread = false };
         Header = $"News — {Rows.Count(r => r.Unread)} unread";
     }
+
+    // --- acting on the news (P10) -------------------------------------------------
+    // A story names a player or a club; the same right-click vocabulary the rest of the
+    // app uses works here too, and the three letters that wait on a decision carry it.
+
+    private long _heroPlayerId;
+
+    [ObservableProperty] private string _status = "";
+
+    /// <summary>Right-click a story: the player it is about, else the club it is about.</summary>
+    public Avalonia.Controls.ContextMenu? MenuFor(NewsEntry? e)
+    {
+        if (e is null) return null;
+        if (e.PlayerId is { } pid && pid > 0)
+            return EntityActions.BuildMenu(_s, EntityRef.Player(pid, _s.PlayerNameOf(pid)),
+                status: t => Status = t, refresh: Reload);
+        if (e.TeamId is { } tid && tid > 0)
+            return EntityActions.BuildMenu(_s, EntityRef.Club(tid, _s.TeamName(tid)),
+                status: t => Status = t, refresh: Reload);
+        return null;
+    }
+
+    public Avalonia.Controls.ContextMenu? MenuForTicker(TickerEntry? t)
+        => t is null || t.PlayerId <= 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Player(t.PlayerId, t.Player),
+                status: x => Status = x, refresh: Reload);
+
+    public Avalonia.Controls.ContextMenu? MenuForHero()
+        => _heroPlayerId <= 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Player(_heroPlayerId, HeroName),
+                status: x => Status = x, refresh: Reload);
+
+    /// <summary>Answer an offer from the story itself — no trip to the Market.</summary>
+    [RelayCommand]
+    private void AcceptOffer(NewsEntry? e)
+    {
+        if (e?.PlayerId is not { } pid) return;
+        Status = _s.AcceptOffer(pid);
+        MarkRead(e);
+        Reload();
+    }
+
+    [RelayCommand]
+    private void RejectOffer(NewsEntry? e)
+    {
+        if (e?.PlayerId is not { } pid) return;
+        _s.RejectOffer(pid);
+        Status = "Offer turned down.";
+        MarkRead(e);
+        Reload();
+    }
+
+    /// <summary>Job offers are the Board's to take — go there, don't retype it.</summary>
+    [RelayCommand]
+    private void OpenBoard() => Nav.Go("Board");
 
     private static string IconFor(string c) => c switch
     {

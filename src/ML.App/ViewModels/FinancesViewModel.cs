@@ -83,11 +83,46 @@ public sealed partial class FinancesViewModel : PageViewModel
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private bool _hasStatus;
 
+    // Two-step, and priced on the button itself. Taking on debt at 5% for 34 weeks was one
+    // click with no confirmation and no statement of what it costs a week — the same class of
+    // action as releasing a member of staff, which has asked twice for a long time.
+    [ObservableProperty] private string _borrow250Label = "Borrow £250k";
+    [ObservableProperty] private string _borrow500Label = "Borrow £500k";
+    [ObservableProperty] private string _borrow1000Label = "Borrow £1m";
+    private long _armed;
+
+    private static string WeeklyFor(long amount) => $"£{(long)(amount * 1.05) / 34:N0}";
+
+    private void ResetBorrowLabels()
+    {
+        _armed = 0;
+        Borrow250Label = "Borrow £250k";
+        Borrow500Label = "Borrow £500k";
+        Borrow1000Label = "Borrow £1m";
+    }
+
     [RelayCommand]
     private void Borrow(string amount)
     {
-        Status = _s.TakeLoan(long.Parse(amount));
+        var value = long.Parse(amount);
+        if (_armed != value)
+        {
+            // First press arms this one and disarms the others: the label becomes the question,
+            // and the question carries the weekly cost you are agreeing to.
+            ResetBorrowLabels();
+            _armed = value;
+            var ask = $"Confirm — {WeeklyFor(value)}/wk for 34 weeks";
+            if (value == 250_000) Borrow250Label = ask;
+            else if (value == 500_000) Borrow500Label = ask;
+            else Borrow1000Label = ask;
+            Status = $"£{value:N0} at 5% costs you {WeeklyFor(value)} every matchweek until it is " +
+                     "repaid. Press again to agree, or pick a different amount.";
+            HasStatus = true;
+            return;
+        }
+        Status = _s.TakeLoan(value);
         HasStatus = Status.Length > 0;
+        ResetBorrowLabels();
         Refresh();
     }
 }

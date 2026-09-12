@@ -178,6 +178,273 @@ public sealed partial class Session
         ManualXi = manual;
     }
 
+    /// <summary>
+    /// Give a career its first real team sheet, once.
+    ///
+    /// THE BUG THIS FIXES: squad_members.slot arrives from the seed as import order, and the
+    /// Tactics pitch mans formation slot i with squad slot i. On a brand-new career that put
+    /// Marcus Tavernier — a left midfielder, and the first name on the list — in goal, with a
+    /// centre-half at centre-forward and a defensive midfielder at left-back. The screen was
+    /// honest about it (his token read GK F, because his goalkeeping abilities really are an F),
+    /// which meant the very first look a manager got at his own side was eleven men out of
+    /// position and a row of failing grades. The order was never WRONG, exactly — nobody had
+    /// ever arranged it, and nothing arranged it until the first competitive matchday was
+    /// prepared, long after the manager had been shown the mess.
+    ///
+    /// AND THE BUG IN THAT FIX: the first guard asked one question — is the man in the GK slot a
+    /// goalkeeper? On a real Liverpool career slot 0 IS Alisson, so the guard answered "arranged"
+    /// and stood down, while slots 1, 2 and 3 held Mamardashvili, Woodman and Pecsi — three more
+    /// keepers, deployed at centre-back, centre-back and right-back, in an eleven with no
+    /// midfielder and no forward. Same defect, one question too narrow to see it. And the meta
+    /// flag was written BEFORE the guard ran, so a single wrong "looks fine" locked that club out
+    /// of ever being seeded again. The test now reads the whole eleven, and the flag is spent
+    /// only once something has actually been written — a side left alone for looking arranged is
+    /// looked at again next load, because a squad that is sold from under a manager can stop
+    /// looking arranged long after the career began.
+    ///
+    /// AND THE SILENCE. The seed spoke only when it had redrawn a sheet the manager saved by
+    /// hand — and on a brand-new career he never has. So the ordinary first launch rewrote all
+    /// twenty-five slots of his squad in one transaction and said nothing: no letter, and the
+    /// bare xi_seeded flag, which no screen reads. The disclosed XI-repair pass runs after this
+    /// and could not cover for it either: once one keeper is in goal, the club drops out of that
+    /// pass's pre-filter. Both branches now leave a dated trace (XiSeedNote) BEFORE the sheet is
+    /// written and a letter after it, routed past the welcome so the opening mail stays whole.
+    ///
+    /// ManualXi is deliberately NOT consulted. It is set by pressing Save on the Tactics screen,
+    /// so it can read "hand-picked" over an order nobody ever arranged; the shape of the eleven
+    /// is the evidence, not a flag about it.
+    /// </summary>
+    public void SeedOpeningXi()
+    {
+        var key = $"xi_seeded_{CurrentTeamId}";
+        if (GetMeta(key) is not null) return;
+        IReadOnlyList<long> picked;
+        try
+        {
+            // Not spending the flag on this path is the point: an arranged side is simply left
+            // alone and re-examined next load. The test is three small reads on one club.
+            if (!XiLooksUnarranged()) return;
+            picked = SuggestXi();
+        }
+        catch
+        {
+            SetMeta(key, "1");        // unreadable squad or shape: give up for good, never loop
+            return;
+        }
+        if (picked.Count == 0)
+        {
+            SetMeta(key, "1");
+            return;
+        }
+        // THE BUG THIS FIXES: SaveSquadOrder ends with `ManualXi = manual`, and this call
+        // passed manual:false — so a manager whose hand-saved sheet tripped the shape test
+        // lost the sheet AND the flag recording that he had picked one. With the flag gone,
+        // PrepareMatchday's "your hand-picked XI is respected" rule and the assistant's "I
+        // leave your sheet alone" rule both switched off for his club, silently: the AI was
+        // re-enabled as a side effect of tidying an eleven. The seed is the assistant's
+        // arrangement, not the manager's, but it must change the ORDER without changing who
+        // owns it — read the flag first and have SaveSquadOrder write the same value back.
+        // (A key never set reads as not-manual and is written back as "0"; every reader
+        // asks ManualXi, which treats the two alike.)
+        var pickedByHand = ManualXi;
+        // The trace goes down BEFORE the sheet is written, the way the youth and XI-repair
+        // passes record themselves: if anything after this line fails, a screen can still
+        // explain a sheet the manager does not remember picking. A trace left by a write that
+        // then failed is overwritten by the next successful run — the flag below is not spent
+        // until the sheet is, so that run happens.
+        SetMeta(XiSeedKey, $"{DateTime.Now:yyyy-MM-dd}|{(pickedByHand ? "hand" : "auto")}");
+        SaveSquadOrder(picked, manual: pickedByHand);
+        // Spent the moment the sheet is written and BEFORE either letter, so a letter that
+        // fails can never leave the club open to a second seed. This is the invariant: one
+        // seed per club, ever.
+        SetMeta(key, "1");
+        // Both branches are disclosed. A sheet the manager chose is never redrawn behind his
+        // back: he is told, and told that it is still his. A sheet nobody ever arranged is the
+        // ordinary case — and the one that used to pass in silence.
+        if (pickedByHand) TellSheetRedrawn();
+        else TellSheetPicked(picked);
+    }
+
+    /// <summary>
+    /// Meta key holding what the opening seed did to THIS club's sheet: date|hand when it
+    /// redrew a sheet the manager had saved, date|auto when it picked a first eleven nobody had
+    /// arranged. Per club, like the xi_seeded flag it sits beside — a manager who moves to a
+    /// second club must not read the first club's trace under the new club's sheet.
+    /// </summary>
+    private string XiSeedKey => $"xi_seed_v1_{CurrentTeamId}";
+
+    /// <summary>
+    /// The seed has just redrawn a sheet the manager saved by hand. Say so — and say that it is
+    /// still his: the flag survived, so matchday leaves it alone exactly as before.
+    /// </summary>
+    private void TellSheetRedrawn()
+    {
+        PostInboxAfterWelcome("Club", "Your team sheet has been redrawn",
+            "The eleven you saved on the Tactics screen no longer fitted the shape it was " +
+            "standing in — a keeper out of goal, or too few of the eleven in the unit their " +
+            "slot asks for. That is what a squad looks like after it has been sold from under a " +
+            "manager, not a team anyone picked, so the assistant has drawn a fresh eleven from " +
+            "the players you have.\n\n" +
+            "It is still your team sheet. Nobody will re-pick it on matchday — the assistant " +
+            "only steps in for the injured, as before — and it stands until you change it. If " +
+            "you would rather your own arrangement, open Tactics and set it again.");
+    }
+
+    /// <summary>
+    /// The seed has just given a sheet nobody ever arranged its first real eleven. Say so, in
+    /// the assistant's words: why (the list came in the order the records arrived), what he did
+    /// (arranged it against the club's shape — named, with the eleven and the man in goal),
+    /// what he did NOT do (nobody moved clubs, nothing else changed), and where to change it.
+    ///
+    /// THE BUG THIS FIXES: this branch said nothing at all. On the live Liverpool save the
+    /// first launch put Mamardashvili in goal — his goalkeeping grades higher — and dropped
+    /// Alisson, shirt 1, to the bench, with no word anywhere the manager could read that the
+    /// choice was not his. The shape, the keeper and the eleven are decoration on a letter that
+    /// must go regardless, so they are read under a guard: a failed read leaves the plain letter,
+    /// never no letter.
+    /// </summary>
+    private void TellSheetPicked(IReadOnlyList<long> picked)
+    {
+        var shape = "the shape the club plays";
+        var eleven = "";
+        var keeper = "";
+        long? face = null;
+        try
+        {
+            var (fid0, _) = OwnFormationIds();
+            var slots = Repo.FormationSlots(fid0).OrderBy(s => s.SlotIndex).ToList();
+            var labels = slots.Select(s => Visuals.RoleCodeLabel(s.Position)).ToList();
+            var named = Formations.ShapeOf(slots.Select(s => s.Y));
+            if (Formations.IsStandard(named)) shape = $"the {named} the club plays";
+            var names = picked.Take(labels.Count).Select(pid => PlayerBasics(pid).Name).ToList();
+            // The eleven the way a paper prints it: keeper; back line; midfield; front line.
+            var units = new List<string>();
+            var unit = new List<string>();
+            string? current = null;
+            for (var i = 0; i < names.Count; i++)
+            {
+                var cat = Visuals.PositionCategory(labels[i]);
+                if (current is not null && cat != current)
+                {
+                    units.Add(string.Join(", ", unit));
+                    unit.Clear();
+                }
+                current = cat;
+                unit.Add(names[i]);
+            }
+            if (unit.Count > 0) units.Add(string.Join(", ", unit));
+            eleven = string.Join("; ", units);
+            var g = labels.IndexOf("GK");
+            if (g >= 0 && g < names.Count)
+            {
+                keeper = $"{names[g]} keeps goal. ";
+                face = picked[g];
+            }
+        }
+        catch { /* the plain letter still goes */ }
+
+        PostInboxAfterWelcome("Club", "Your first eleven has been picked",
+            "Nobody had picked a team here yet. Your squad list came to us in the order the " +
+            "records arrived, and read as a line-up it was not one: the first names on the list " +
+            "were standing in goal and along the back line, whatever they play. So the assistant " +
+            $"has drawn up a first eleven from the players you have, against {shape}." +
+            (eleven.Length > 0 ? $"\n\n{eleven}" : "") + "\n\n" +
+            $"{keeper}Nobody has moved clubs and nothing else has changed — the same squad, the " +
+            "same shirt numbers, only the order on the team sheet.\n\n" +
+            "It is a starting point, not a decision made for you. Open Tactics to pick and save " +
+            "an eleven of your own; once you have, it is yours, and the assistant only steps in " +
+            "for the injured.",
+            playerId: face);
+    }
+
+    /// <summary>
+    /// What the opening seed did to this club's sheet, in a sentence, or null if it never fired
+    /// here (or the trace is unreadable). The shape of YouthRepairNote: a Tactics screen showing
+    /// a team sheet the manager does not remember picking can put this beside it so the sheet
+    /// explains itself. Nothing calls it yet.
+    /// </summary>
+    public string? XiSeedNote()
+    {
+        var raw = GetMeta(XiSeedKey);
+        if (string.IsNullOrEmpty(raw)) return null;
+        var parts = raw.Split('|');
+        if (parts.Length < 2 || parts[1] is not ("hand" or "auto")) return null;
+        // Stored exact (yyyy-MM-dd), read back exact, shown in the reader's own language.
+        var when = DateOnly.TryParseExact(parts[0], "yyyy-MM-dd", out var d)
+            ? d.ToString("d MMM yyyy")
+            : parts[0];
+        return parts[1] == "hand"
+            ? $"Your team sheet was redrawn on {when}: the eleven you had saved no longer fitted " +
+              "the shape it was standing in, so the assistant drew a fresh one from your squad. " +
+              "It is still yours — nobody re-picks it on matchday."
+            : $"Your first eleven was picked for you on {when}: the squad list had arrived in the " +
+              "order the records came in, so the assistant arranged one against the club's " +
+              "shape. Nobody moved clubs. Open Tactics to pick your own.";
+    }
+
+    /// <summary>
+    /// Mail written during the Session constructor goes out AFTER the welcome. EnsureInboxWelcome
+    /// runs near the end of the constructor (before the objectives letter) and its guard is "is
+    /// the inbox empty?" — so a letter posted
+    /// from an earlier line on a career's very first load (the academy being stocked, a sheet
+    /// being redrawn) would silence the welcome and the cup draw for good. Posting the welcome
+    /// first keeps the opening mail whole; it is idempotent, so the constructor's own call
+    /// becomes a no-op and a career already under way pays one COUNT(*). A player id lets the
+    /// news feed front the letter with his face, as PostInbox does.
+    /// </summary>
+    private void PostInboxAfterWelcome(string category, string subject, string body, long? playerId = null)
+    {
+        EnsureInboxWelcome();
+        PostInbox(category, subject, body, playerId: playerId, teamId: CurrentTeamId);
+    }
+
+    /// <summary>
+    /// Does the eleven standing in slots 0-10 plainly not match the shape it is standing in?
+    ///
+    /// Three signals, any one of which means nobody ever arranged this side:
+    ///   * the man in the goalkeeping slot cannot keep goal;
+    ///   * the eleven does not hold exactly one goalkeeper (the broken Liverpool held four);
+    ///   * fewer than half of them are even in the right unit (GK / DEF / MID / FWD).
+    ///
+    /// Half — six of eleven — is the bar because of what real careers measure at. Across the 44
+    /// career clubs in the live save, every side that had been arranged scored 9, 10 or 11 out of
+    /// 11 on unit agreement; the two nobody had arranged scored 2. An order shuffled at random
+    /// scores about 3 (measured: mean 3.1 over those same 44 squads and shapes). Six sits in the
+    /// middle of an empty gap, and to trip it a hand-picked sheet would need SIX men outside
+    /// their unit — that is not a tactical idea, that is a list in import order.
+    ///
+    /// UNIT agreement is counted, never the exact role: a fullback pushed into midfield or a
+    /// forward dropped to the ten is a decision a manager makes, and must not read as damage.
+    /// Learned positions count too, so a retrained player never makes his own side look broken —
+    /// and a keeper who has learned an outfield role stops counting as a keeper out of place.
+    /// </summary>
+    private bool XiLooksUnarranged()
+    {
+        var (fid0, _) = OwnFormationIds();
+        var slots = Repo.FormationSlots(fid0).OrderBy(sl => sl.SlotIndex).ToList();
+        if (slots.Count == 0) return false;                 // no shape to judge against
+        var roles = slots.Select(sl => Visuals.RoleCodeLabel(sl.Position)).ToList();
+        if (!roles.Contains("GK")) return false;            // a shape with no keeper: not ours to judge
+        var order = Repo.Squad(CurrentTeamId).OrderBy(m => m.Slot).ToList();
+        if (order.Count < roles.Count) return false;        // fewer men than slots: nothing to arrange
+
+        var registered = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id, p => p.Position);
+        var keepers = 0;
+        var agree = 0;
+        var keeperSlotManned = true;
+        for (var i = 0; i < roles.Count; i++)
+        {
+            var pid = order[i].PlayerId;
+            var plays = new List<string> { registered.GetValueOrDefault(pid, "") };
+            plays.AddRange(LearnedPositions(pid));
+            var canKeepGoal = plays.Any(p => Visuals.PositionCategory(p) == "GK");
+            if (plays.Any(p => Visuals.PositionCategory(p) == Visuals.PositionCategory(roles[i]))) agree++;
+            if (canKeepGoal && plays.All(p => Visuals.PositionCategory(p) == "GK")) keepers++;
+            if (roles[i] == "GK" && !canKeepGoal) keeperSlotManned = false;
+        }
+        return !keeperSlotManned || keepers != 1 || agree * 2 < roles.Count;
+    }
+
     /// <summary>The AI's suggested order for YOUR club (doesn't persist — preview for the UI).</summary>
     public IReadOnlyList<long> SuggestXi()
     {
@@ -232,10 +499,48 @@ public sealed partial class Session
 
     // Individual Instructions (Game Plan replica). Planning state only: the game reads these
     // from the user save, not team data, so they are NOT compiled — see docs/tactics-menu-map.md.
-    public string InstructionOf(string slot) => GetMeta($"instr_{slot}_{CurrentTeamId}") ?? "Off";
+    //
+    // One meta key per slot, holding "name|pid" — an instruction is nothing without the man
+    // carrying it, so the id of the anchoring/man-marking player rides along with the name.
+    // That encoding is SHARED WITH ML.Web (Pages/Tactics.razor.cs), which writes and reads the
+    // same string, so a slot set in either front-end renders the same in the other. A bare name
+    // with no "|pid" tail is the legal "nobody named" form and is what older saves hold, so
+    // reads accept bare, encoded and outright malformed values without ever throwing.
 
-    public void SetInstruction(string slot, string name) =>
-        SetMeta($"instr_{slot}_{CurrentTeamId}", name);
+    /// <summary>
+    /// The instruction on a slot, name only ("Off" when the slot is empty) — any "|pid" tail is
+    /// parsed off, so callers that only care what the instruction IS need know nothing about the
+    /// encoding.
+    /// </summary>
+    public string InstructionOf(string slot)
+    {
+        var raw = GetMeta($"instr_{slot}_{CurrentTeamId}");
+        if (string.IsNullOrEmpty(raw)) return "Off";
+        var bar = raw.IndexOf('|');
+        var name = bar < 0 ? raw : raw[..bar];
+        return name.Length > 0 ? name : "Off";
+    }
+
+    /// <summary>
+    /// The player carrying a slot's instruction, or 0 when the slot names nobody — which covers
+    /// an empty slot, a save written before ids were stored, and a tail that is simply junk.
+    /// </summary>
+    public long InstructionPlayerOf(string slot)
+    {
+        var raw = GetMeta($"instr_{slot}_{CurrentTeamId}");
+        if (string.IsNullOrEmpty(raw)) return 0;
+        var bar = raw.IndexOf('|');
+        if (bar < 0 || bar + 1 >= raw.Length) return 0;
+        return long.TryParse(raw[(bar + 1)..], out var pid) && pid > 0 ? pid : 0;
+    }
+
+    /// <summary>
+    /// Pin an instruction to a slot and to the man who carries it. Stores "name|pid" when a
+    /// player is named, and the bare name otherwise — so clearing a slot back to "Off" leaves no
+    /// orphan id behind, and a save that never named anyone keeps the exact shape it had.
+    /// </summary>
+    public void SetInstruction(string slot, string name, long playerId = 0) =>
+        SetMeta($"instr_{slot}_{CurrentTeamId}", playerId > 0 ? $"{name}|{playerId}" : name);
 
     // ------------------------------------------------------------------ captain / release / list
 
@@ -368,7 +673,8 @@ public sealed partial class Session
                 try { FulfilContractPromise(playerId, md); } catch { /* bonus */ }
                 PostInbox("Player", $"Contract agreed: {name}",
                     $"{name} signs until {2026 + (SeasonId + years - 9000)} at £{weeklyOffer:N0}/week" +
-                    (st is not null ? $" with {st} status — he'll hold you to the starts." : "."));
+                    (st is not null ? $" with {st} status — he'll hold you to the starts." : "."),
+                    playerId: playerId);
                 return (true, true, $"{name} signs — £{weeklyOffer:N0}/week until " +
                                     $"{2026 + (SeasonId + years - 9000)}{(st is not null ? $", {st} status promised" : "")}.");
 

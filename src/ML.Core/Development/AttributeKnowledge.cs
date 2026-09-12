@@ -46,6 +46,19 @@ public static class AttributeKnowledge
         knowledge >= 75 ? Grade(value) : knowledge >= 45 ? Grade(value) + "?" : "?";
 
     /// <summary>
+    /// How much knowledge one attribute costs to see, 0-99. The unbiased order: a stable
+    /// pseudo-random difficulty per (player, attribute), so the same partial dossier always
+    /// shows the same subset. <see cref="RevealOrder"/> blends this with a famous player's
+    /// standout ranking; on its own it knows nothing about who a man is.
+    /// </summary>
+    public static int RevealDifficulty(long playerId, string attribute)
+    {
+        var h = unchecked((uint)playerId * 2654435761);
+        foreach (var ch in attribute) h = unchecked((h ^ ch) * 16777619);
+        return (int)(h % 100);
+    }
+
+    /// <summary>
     /// Whether one attribute is revealed at a knowledge level (0-100). Deterministic per
     /// (player, attribute): the same partial dossier always shows the same subset, and more
     /// knowledge only ever reveals MORE (monotonic).
@@ -54,10 +67,18 @@ public static class AttributeKnowledge
     {
         if (knowledge >= 100) return true;
         if (knowledge <= 0) return false;
-        var h = unchecked((uint)playerId * 2654435761);
-        foreach (var ch in attribute) h = unchecked((h ^ ch) * 16777619);
-        return h % 100 < (uint)knowledge;
+        return RevealDifficulty(playerId, attribute) < knowledge;
     }
+
+    /// <summary>
+    /// The same question, asked of a player the world may already have an opinion about. Pass
+    /// the player's <see cref="RevealOrder"/> and a famous man gives up his headline abilities
+    /// first; pass null and this is the plain unbiased reveal.
+    /// </summary>
+    public static bool IsRevealed(long playerId, string attribute, int knowledge, RevealOrder? order) =>
+        order is not null
+            ? order.IsRevealed(attribute, knowledge)
+            : IsRevealed(playerId, attribute, knowledge);
 
     public static string KnowledgeLabel(int knowledge) => knowledge switch
     {
@@ -100,6 +121,15 @@ public static class AttributeKnowledge
         ["gk_reach"] = "reach",
     };
 
+    /// <summary>The 26 keys this app treats as ABILITIES — 21 outfield plus 5 keeper. The
+    /// player_attributes table also carries foot, form, injury resistance and weak-foot usage,
+    /// which are not abilities and belong to none of this.</summary>
+    public static IReadOnlyCollection<string> AbilityKeys => Nouns.Keys;
+
+    /// <summary>An attribute key as a coach would name it: "speed" -> "pace".</summary>
+    public static string Noun(string attribute) =>
+        Nouns.GetValueOrDefault(attribute, attribute.Replace('_', ' '));
+
     private static string Adjective(int value) => value switch
     {
         >= 88 => "Exceptional",
@@ -112,18 +142,26 @@ public static class AttributeKnowledge
 
     /// <summary>"Exceptional close control", "Poor heading" — one coach line per attribute.</summary>
     public static string CoachPhrase(string attribute, int value) =>
-        $"{Adjective(value)} {Nouns.GetValueOrDefault(attribute, attribute.Replace('_', ' '))}";
+        $"{Adjective(value)} {Noun(attribute)}";
 
     /// <summary>
     /// The coach's report: his standout qualities (top revealed attributes worth praising)
     /// and the flaws an opponent would target. Only revealed attributes are quotable.
+    ///
+    /// <para>
+    /// Pass a famous player's <paramref name="order"/> and the halves separate the way they
+    /// should: reputation hands you the praise for free, because the qualities a man is famous
+    /// for are the first thing anyone tells you about him, while the flaws stay unquotable
+    /// until somebody has actually watched him.
+    /// </para>
     /// </summary>
     public static IReadOnlyList<string> CoachReport(
-        long playerId, IReadOnlyDictionary<string, int> abilities, bool isGk, int knowledge)
+        long playerId, IReadOnlyDictionary<string, int> abilities, bool isGk, int knowledge,
+        RevealOrder? order = null)
     {
         var relevant = abilities
             .Where(a => a.Key.StartsWith("gk_") == isGk || (!isGk && !a.Key.StartsWith("gk_")))
-            .Where(a => IsRevealed(playerId, a.Key, knowledge))
+            .Where(a => IsRevealed(playerId, a.Key, knowledge, order))
             .Where(a => Nouns.ContainsKey(a.Key))
             .ToList();
         var lines = relevant.OrderByDescending(a => a.Value).Take(3)

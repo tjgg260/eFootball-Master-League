@@ -185,7 +185,8 @@ public static class PlayerAnalysis
     /// <summary>Build the graded panels. Statements whose attributes aren't revealed at this
     /// knowledge level are omitted — an unscouted player shows a thin, honest dossier.</summary>
     public static IReadOnlyList<Panel> Build(
-        long playerId, IReadOnlyDictionary<string, int> abilities, bool isGk, int knowledge)
+        long playerId, IReadOnlyDictionary<string, int> abilities, bool isGk, int knowledge,
+        RevealOrder? order = null)
     {
         var catalog = isGk ? Keeper : Outfield;
         var panels = new List<Panel>();
@@ -195,7 +196,7 @@ public static class PlayerAnalysis
             foreach (var s in stmts)
             {
                 var vals = s.Attrs.Where(abilities.ContainsKey)
-                    .Where(a => AttributeKnowledge.IsRevealed(playerId, a, knowledge))
+                    .Where(a => AttributeKnowledge.IsRevealed(playerId, a, knowledge, order))
                     .Select(a => abilities[a]).ToList();
                 if (vals.Count < s.Attrs.Length)
                     continue;                        // not fully revealed -> not stated

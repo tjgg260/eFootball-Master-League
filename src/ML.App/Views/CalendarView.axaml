@@ -12,7 +12,9 @@
       <Button Grid.Column="2" Content="▶" Command="{Binding NextMonthCommand}" Classes="ml-secondary"/>
     </Grid>
     <TextBlock DockPanel.Dock="Top" Classes="ml-muted" Margin="0,0,0,8" TextWrapping="Wrap"
-               Text="Green — your fixtures · grey — played · amber — season events (windows, intake, breaks) · blue ring — next matchday"/>
+               Text="⚽ league · 🏆 cup · 🤝 friendly.  Green — your fixtures · grey — played · amber — season events (windows, intake, breaks) · blue ring — next matchday.  Click the ringed day for the Office or an event day for its screen; right-click a fixture for the opponent."/>
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" Classes="ml-body"
+               Foreground="{StaticResource MlSuccessText}" TextWrapping="Wrap" Margin="0,8,0,0"/>
     <UniformGrid DockPanel.Dock="Top" Columns="7" Margin="0,0,0,4">
       <TextBlock Text="Mon" Classes="ml-muted" HorizontalAlignment="Center"/>
       <TextBlock Text="Tue" Classes="ml-muted" HorizontalAlignment="Center"/>
@@ -22,7 +24,7 @@
       <TextBlock Text="Sat" Classes="ml-muted" HorizontalAlignment="Center"/>
       <TextBlock Text="Sun" Classes="ml-muted" HorizontalAlignment="Center"/>
     </UniformGrid>
-    <ItemsControl ItemsSource="{Binding Cells}">
+    <ItemsControl x:Name="DayGrid" ItemsSource="{Binding Cells}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate><UniformGrid Columns="7"/></ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>

@@ -76,17 +76,21 @@ public sealed partial class Session
         Board.ApplyResult(us, them, CurrentPosition(), target);
         StoredBoardConfidence = Board.Value;
 
-        ThreatStreak = Board.ManagerUnderThreat ? ThreatStreak + 1 : 0;
+        // The SACK reads the composite, not the result-driven half. Board.Value knows only
+        // what the last league game did to you; the swing meta carries the season verdict, the
+        // mid-season review and every budget ask. A manager whose board had been talked down to
+        // 12 was being judged on the 40-odd the results alone said, and kept his job.
+        ThreatStreak = BoardNow.ManagerUnderThreat ? ThreatStreak + 1 : 0;
         // Settings: sacking leniency shifts how long the board waits.
         var patienceShift = (GetMeta("sack_leniency") ?? "Normal") switch
         {
             "Patient" => 3, "Ruthless" => -2, _ => 0,
         };
-        if (ManagerCareer.ShouldSack(Board.Value, ThreatStreak - patienceShift))
+        if (ManagerCareer.ShouldSack(BoardConfidenceNow, ThreatStreak - patienceShift))
         {
             SackManager();
         }
-        else if (Board.ManagerUnderThreat && ThreatStreak == ManagerCareer.BoardPatience - 1)
+        else if (BoardNow.ManagerUnderThreat && ThreatStreak == ManagerCareer.BoardPatience - 1)
         {
             PostInbox("Board", "Final warning",
                 $"Chairman {Chairman()} has seen enough. Without an immediate upturn in results, " +
@@ -167,7 +171,8 @@ public sealed partial class Session
         {
             PostInbox("Board", $"Job offer: {TeamName(tid)}",
                 $"{TeamName(tid)} have approached you about their vacant manager's position. " +
-                "Accept from the Board screen — your current post ends the moment you do.", stampMd);
+                "Accept from the Board screen — your current post ends the moment you do.", stampMd,
+                teamId: tid, requiresAction: true);
         }
     }
 
@@ -200,7 +205,18 @@ public sealed partial class Session
         SetMeta("board_threat_streak", "0");
         PostInbox("Board", $"Welcome to {TeamName(teamId)}",
             $"The {TeamName(teamId)} board welcomes you as their new manager. " +
-            "The squad, the academy and the training ground are yours.", NextFixture()?.Matchday);
+            "The squad, the academy and the training ground are yours.", NextFixture()?.Matchday,
+            teamId: teamId);
+    }
+
+    /// <summary>Turn down a standing job offer: the club comes off the list and life goes on.</summary>
+    public string DeclineJobOffer(int teamId)
+    {
+        var ids = (GetMeta("job_offers") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (!ids.Remove(teamId.ToString())) return "That offer is no longer on the table.";
+        SetMeta("job_offers", string.Join(",", ids));
+        var club = Repo.Teams().FirstOrDefault(t => t.Id == teamId)?.Name ?? "the club";
+        return $"You turn down {club}. The story continues here.";
     }
 
     /// <summary>Season rollover: the big rep swing, a fresh board slate, and new suitors.</summary>
@@ -214,7 +230,10 @@ public sealed partial class Session
         if (finalPosition == 1) trophies++;   // the league title counts as silverware too
         Reputation = ManagerCareer.RepAfterSeason(
             Reputation, finalPosition, teamCount, LeagueId == TopFlight, promoted, trophies);
-        StoredBoardConfidence = Math.Max(StoredBoardConfidence, 45);   // a new season resets tempers
+        // A new season resets tempers — on the number the manager can actually SEE. Lifting
+        // only the result-driven half left a badly-swung board still reading 20 in August while
+        // the copy promised a clean slate.
+        if (BoardConfidenceNow < 45) MoveBoardConfidence(45 - BoardConfidenceNow);
         ThreatStreak = 0;
         if (!IsSacked && new SeededRandom((SeasonId * 4241 + Reputation) ^ WorldSeed).Next(100) < 35)
         {

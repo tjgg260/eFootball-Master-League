@@ -8,6 +8,10 @@
 --    regenerating it. is_custom = 1 rows are authored from scratch.
 --  * Every id we control is an INTEGER we assign; the game-facing ids (pid, team_id,
 --    formation_id) are stored explicitly so the compiler is deterministic.
+--  * CREATE TABLE IF NOT EXISTS never alters a table that already exists. A column added to a
+--    CREATE below reaches a NEW file only; an existing file gets it from the AddColumn list in
+--    MasterDb.Migrate(), or never. Add a column in both places, or in neither — a column that
+--    nothing queries does not belong here pretending to exist on old files.
 
 PRAGMA foreign_keys = ON;
 
@@ -72,7 +76,16 @@ CREATE TABLE IF NOT EXISTS players (
     height_cm     INTEGER,
     weight_kg     INTEGER,
     overall_rating INTEGER,
-    portrait_path TEXT                          -- face/portrait asset
+    portrait_path TEXT,                         -- face/portrait asset (RFS)
+    -- The three columns below existed ONLY on build/master.db, ALTERed in by the python
+    -- pipeline, and were never written down here. Queries name them all the same — Repository
+    -- reads "WHERE superseded_by IS NULL" and COALESCE(real_face_path, portrait_path) — so every
+    -- database this file creates (MasterDb.OpenInMemory: the tests, ML.Sync, the sample career)
+    -- failed with "no such column" the first time a player was read.
+    real_face_path TEXT,                        -- facepack photo; preferred over portrait_path
+    personality   TEXT,                         -- character label derived from player_traits
+    superseded_by INTEGER                       -- non-null: a merged duplicate of that player id,
+                                                -- kept on file but hidden from every pool
 );
 
 -- abilities keyed by name so we can carry the full FM-style attribute set without a
@@ -215,7 +228,12 @@ CREATE TABLE IF NOT EXISTS inbox (
     subject       TEXT NOT NULL,
     body          TEXT NOT NULL,
     is_read       INTEGER NOT NULL DEFAULT 0,
-    requires_action INTEGER NOT NULL DEFAULT 0
+    requires_action INTEGER NOT NULL DEFAULT 0,
+    -- Imagery for the news feed: the letter's player (his face) and club (its crest). Both were
+    -- live-database-only columns while Session.PostInbox has always inserted into them, so every
+    -- letter written to a database built from this file threw on the insert.
+    player_id     INTEGER,
+    team_id       INTEGER
 );
 
 -- NOTE: no index on squad_members(team_id) — it's a prefix of the (team_id, player_id) primary
@@ -231,10 +249,16 @@ CREATE INDEX IF NOT EXISTS ix_players_ovr ON players(overall_rating);
 
 -- Knockout cup ties live in fixtures (kind='cup', league_id=9002); this records each season's
 -- silverware for the Roll of Honour.
+-- team_id is POLYMORPHIC and carries NO foreign key on purpose. Trophy rows hold a club;
+-- award rows ('pots' = Player of the Season) hold a PLAYER. It used to declare
+-- REFERENCES teams(id), and since MasterDb opens with PRAGMA foreign_keys = ON, the awards
+-- insert threw every single season — swallowed by the "the gala never blocks rollover" catch,
+-- so the Roll of Honour simply never gained an award row and the end-of-season letter was
+-- never posted. Readers tell the two apart by competition, never by the column.
 CREATE TABLE IF NOT EXISTS honours (
     season_id   INTEGER NOT NULL,
-    competition TEXT    NOT NULL,              -- 'league' | 'division2' | 'cup'
-    team_id     INTEGER NOT NULL REFERENCES teams(id),
+    competition TEXT    NOT NULL,              -- 'league' | 'division2' | 'cup' | 'lcup' | 'ccup' | 'pots'
+    team_id     INTEGER NOT NULL,              -- a club id, or a PLAYER id when competition='pots'
     PRIMARY KEY (season_id, competition)
 );
 
@@ -359,7 +383,13 @@ CREATE TABLE IF NOT EXISTS player_knowledge (
 CREATE TABLE IF NOT EXISTS player_appearance (
     player_id INTEGER PRIMARY KEY REFERENCES players(id),   -- rowid alias: already indexed
     skin_tone INTEGER NOT NULL,
-    source    TEXT    NOT NULL DEFAULT 'seeded'
+    source    TEXT    NOT NULL DEFAULT 'seeded',
+    hair_color INTEGER      -- 5-class hair colour (0 dark - 4 blond); the portrait read selects it
+    -- build/master.db also carries rfs_skin (the exact RFS 1-10 code behind skin_tone), put there
+    -- by a one-off import. No query reads or writes it, so it is deliberately NOT declared: it
+    -- was here without a MasterDb.Migrate() line, which gave it to every fresh file and to no
+    -- older one — the exact drift the note at the top forbids. Declare it AND migrate it the day
+    -- something reads it.
 );
 
 -- Live transfer negotiations with selling clubs (P5): one open negotiation per target.
@@ -378,9 +408,9 @@ CREATE TABLE IF NOT EXISTS player_status (
     status    TEXT    NOT NULL
 );
 
--- News imagery (P6): letters about a player carry his id so the feed can show his face.
--- (Existing DBs migrate via ALTER in tools; CREATE TABLE IF NOT EXISTS covers fresh ones
--- through the column list below being additive-only.)
+-- News imagery (P6): letters about a player carry his id so the feed can show his face —
+-- inbox.player_id / inbox.team_id, declared on the table above; an existing file gains them
+-- from MasterDb.Migrate(), not from any tool.
 
 -- Loans (P-next): players parked at another club for the season; recalls from the January
 -- window; everyone comes home at rollover. direction: 'out' = yours at a host, 'in' = theirs

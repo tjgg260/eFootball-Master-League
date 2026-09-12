@@ -193,10 +193,11 @@ public partial class Tactics : ComponentBase, IDisposable
         foreach (var k in new[] { "fk", "pk", "ckl", "ckr" }) _duties[k] = s.TakerOf(k);
         foreach (var slot in InstrSlots)
         {
-            var raw = s.InstructionOf(slot);
-            var parts = raw.Split('|');
-            _instr[slot] = (parts[0] is { Length: > 0 } n ? n : "Off",
-                parts.Length > 1 && int.TryParse(parts[1], out var pid) ? pid : 0);
+            // The "name|pid" encoding is now parsed by the engine itself, so take each half
+            // from its own accessor. Splitting here would read no id (InstructionOf strips the
+            // tail) and the next save would write "name|0", losing the stored player for good.
+            var name = s.InstructionOf(slot);
+            _instr[slot] = (name is { Length: > 0 } n ? n : "Off", (int)s.InstructionPlayerOf(slot));
         }
 
         var md = s.NextFixture()?.Matchday ?? 0;

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -8,9 +9,25 @@ namespace ML.App.ViewModels;
 
 // --- Board (board confidence, job security, manager career + job offers) ----------
 
-public sealed record JobOfferRow(int TeamId, string Line, Avalonia.Media.Imaging.Bitmap? Crest);
+public sealed record JobOfferRow(int TeamId, string Club, string Line, Avalonia.Media.Imaging.Bitmap? Crest)
+{
+    /// <summary>Accepting ends your current post, so it is a two-step: the label is the arm state.</summary>
+    public const string AcceptIdle = "Accept job";
 
-public sealed record ObjectiveLine(string Icon, string Description, string Progress, string Importance);
+    public string AcceptLabel { get; init; } = AcceptIdle;
+}
+
+/// <summary>
+/// One board objective. NavPage is the screen that actually answers it — a league finish is a
+/// question about the table, a cup run about the cup. Objectives whose kind has no obvious
+/// home (youth starts, home goals, the derby) carry no link rather than a guessed one.
+/// </summary>
+public sealed record ObjectiveLine(
+    string Icon, string Description, string Progress, string Importance, string NavPage = "")
+{
+    public bool HasNav => NavPage.Length > 0;
+    public string LinkText => $"{Description}  →";
+}
 
 public sealed partial class BoardViewModel : PageViewModel
 {
@@ -20,16 +37,14 @@ public sealed partial class BoardViewModel : PageViewModel
     {
         _s = s;
         Expectation = Visuals.ExpectationLabel(s.Board.Expectation);
-        Confidence = s.Board.Value;
-        ConfidenceLabel = s.Board.Label;
-        UnderThreat = s.Board.ManagerUnderThreat;
         Position = s.CurrentPosition();
         var teams = s.LeagueTeams().Count;
         Sacked = s.IsSacked;
-        JobSecurity = Sacked ? "DISMISSED — the board has made a change"
-            : s.Board.ManagerUnderThreat ? "At risk — the board expects improvement"
-            : Confidence >= 70 ? "Secure — the board backs you"
-            : "Stable — meet expectations and you're fine";
+        // Confidence is read through BoardNow, not off s.Board: s.Board is the copy the Session
+        // constructor took and never refreshed, so it showed the number from app launch however
+        // many objectives had been settled since. RefreshBoard() re-reads it, and the levers
+        // below call it again, because asking the board for money can move the board.
+        RefreshBoard();
         Summary = Sacked
             ? s.SackedLine
             : s.LeagueResultsThisSeason() == 0
@@ -43,9 +58,16 @@ public sealed partial class BoardViewModel : PageViewModel
         {
             foreach (var o in s.Objectives())
             {
+                // Kind is stored on the row, so the click-through is read, never inferred.
+                var page = o.Kind switch
+                {
+                    "league_finish" => "Table",
+                    "cup_run" => "Cup",
+                    _ => "",
+                };
                 Objectives.Add(new ObjectiveLine(
                     o.Status == 1 ? "✅" : o.Status == 2 ? "❌" : "◻",
-                    o.Description, o.Progress, o.Importance.ToUpperInvariant()));
+                    o.Description, o.Progress, o.Importance.ToUpperInvariant(), page));
             }
         }
         catch { /* objectives are additive */ }
@@ -97,32 +119,52 @@ public sealed partial class BoardViewModel : PageViewModel
         try { ChairmanName = s.Chairman(); } catch { ChairmanName = ""; }
 
         Offers = new ObservableCollection<JobOfferRow>(
-            s.JobOffers().Select(o => new JobOfferRow(o.TeamId,
+            s.JobOffers().Select(o => new JobOfferRow(o.TeamId, o.Club,
                 $"{o.Club}  ·  {o.League}  ·  {ML.Core.Development.AttributeKnowledge.Grade(o.SquadRating)} squad",
                 Visuals.LoadBitmap(s.TeamLogoPath(o.TeamId)))));
         RefreshFacilities();
+        RefreshOffersNote();
+    }
+
+    private void RefreshOffersNote() =>
         OffersNote = Offers.Count > 0
-            ? "Accepting ends your current post immediately and reopens the app at your new club."
+            ? "Accepting ends your current post immediately and reopens the app at your new club. " +
+              "Right-click a club to look at the squad first."
             : Sacked
                 ? "No offers on the table yet — they arrive in the inbox as your name recovers."
                 : "No clubs are courting you right now. Results and silverware change that.";
+
+    /// <summary>
+    /// Pull the board gauge back off the Session. Every field here is derived from one number,
+    /// so they move together or not at all — a label that disagreed with its own bar was half
+    /// of what made the dead confidence value so hard to spot.
+    /// </summary>
+    private void RefreshBoard()
+    {
+        var board = _s.BoardNow;
+        Confidence = board.Value;
+        ConfidenceLabel = board.Label;
+        UnderThreat = board.ManagerUnderThreat;
+        JobSecurity = Sacked ? "DISMISSED — the board has made a change"
+            : UnderThreat ? "At risk — the board expects improvement"
+            : Confidence >= 70 ? "Secure — the board backs you"
+            : "Stable — meet expectations and you're fine";
     }
 
     public override string Title => "Board";
     public override string Icon => "🏛️";
     public string Expectation { get; }
-    public int Confidence { get; }
-    public string ConfidenceLabel { get; }
-    public bool UnderThreat { get; }
+    [ObservableProperty] private int _confidence;
+    [ObservableProperty] private string _confidenceLabel = "";
+    [ObservableProperty] private bool _underThreat;
     public int Position { get; }
-    public string JobSecurity { get; }
+    [ObservableProperty] private string _jobSecurity = "";
     public string Summary { get; }
     public bool Sacked { get; }
     public int Reputation { get; }
     public string ReputationLabel { get; }
     public string CareerLine { get; }
     public ObservableCollection<JobOfferRow> Offers { get; }
-    public string OffersNote { get; }
     public string ChairmanName { get; } = "";
     public string ChairmanLine => $"Chairman · {ChairmanName}";
     public string ChairmanMark => Visuals.Initials(ChairmanName);
@@ -141,12 +183,16 @@ public sealed partial class BoardViewModel : PageViewModel
 
     [ObservableProperty] private string _leverStatus = "";
     [ObservableProperty] private string _facilitiesLine = "";
+    [ObservableProperty] private string _offersNote = "";
+    /// <summary>The offers panel's own status line — engine verbs land here verbatim.</summary>
+    [ObservableProperty] private string _offerStatus = "";
 
     [RelayCommand]
     private void RequestBudget()
     {
         LeverStatus = _s.RequestBudget();
         RefreshFacilities();
+        RefreshBoard();   // a refused ask costs you confidence — the gauge says so at once
     }
 
     [RelayCommand]
@@ -163,14 +209,58 @@ public sealed partial class BoardViewModel : PageViewModel
         RefreshFacilities();
     }
 
-    private void RefreshFacilities() =>
+    // The price of a lever belongs ON the lever. These three buttons said "Upgrade training
+    // ground" and nothing else; you found out an upgrade costs £2m by pressing it, and if the
+    // money was not there the only feedback was a refusal. A costly action states its price
+    // before it is taken.
+    [ObservableProperty] private string _upgradeTrainingLabel = "";
+    [ObservableProperty] private string _upgradeAcademyLabel = "";
+    [ObservableProperty] private string _requestBudgetTip = "";
+
+    private void RefreshFacilities()
+    {
         FacilitiesLine = $"Training ground: level {_s.TrainingLevel}/5 · Academy: level {_s.AcademyLevel}/5" +
                          $" · Manager: {_s.ManagerName}";
+        UpgradeTrainingLabel = FacilityLabel("🏋 Upgrade training ground", _s.TrainingLevel,
+            "The training ground is already state of the art");
+        UpgradeAcademyLabel = FacilityLabel("🎓 Upgrade academy", _s.AcademyLevel,
+            "The academy is already elite");
+        RequestBudgetTip = "Ask the board to move money into the transfer budget. Asking costs " +
+                           "you a little of their confidence whether they say yes or no.";
+    }
 
-    /// <summary>Take the job, then reload the whole app on the new club's Session.</summary>
+    private string FacilityLabel(string verb, int level, string maxed) => level >= 5
+        ? maxed
+        : $"{verb} — £{_s.FacilityUpgradeCost(level):N0}";
+
+    /// <summary>Open the screen that actually answers this objective (table, cup).</summary>
+    [RelayCommand]
+    private void OpenObjective(ObjectiveLine line)
+    {
+        if (line.HasNav) Nav.Go(line.NavPage);
+    }
+
+    // --- job offers: two-step accept, a real decline, and a look before you leap --------
+
+    private int _armedOfferId;
+
+    /// <summary>
+    /// Take the job, then reload the whole app on the new club's Session. Two-step, because
+    /// this is the single most irreversible button in the app: the first click arms the row.
+    /// </summary>
     [RelayCommand]
     private void AcceptOffer(JobOfferRow offer)
     {
+        if (_armedOfferId != offer.TeamId)
+        {
+            ArmOffer(offer.TeamId);
+            OfferStatus = Sacked
+                ? $"Take the {offer.Club} job? Click again to confirm."
+                : $"Leaving {_s.CurrentTeamName} for {offer.Club} ends your post immediately. " +
+                  "Click again to confirm.";
+            return;
+        }
+        ArmOffer(0);
         _s.AcceptJobOffer(offer.TeamId);
         if (Avalonia.Application.Current?.ApplicationLifetime
                 is IClassicDesktopStyleApplicationLifetime desktop
@@ -183,4 +273,39 @@ public sealed partial class BoardViewModel : PageViewModel
             old?.Close();
         }
     }
+
+    /// <summary>Turn an approach down: the club comes off the list and the season goes on.</summary>
+    [RelayCommand]
+    private void DeclineOffer(JobOfferRow offer)
+    {
+        ArmOffer(0);
+        OfferStatus = _s.DeclineJobOffer(offer.TeamId);
+        if (Offers.FirstOrDefault(o => o.TeamId == offer.TeamId) is { } row) Offers.Remove(row);
+        RefreshOffersNote();
+    }
+
+    /// <summary>Arm exactly one offer row (0 = none) by re-stamping the accept labels.</summary>
+    private void ArmOffer(int teamId)
+    {
+        _armedOfferId = teamId;
+        for (var i = 0; i < Offers.Count; i++)
+        {
+            var want = teamId != 0 && Offers[i].TeamId == teamId
+                ? (Sacked ? "Confirm — take the job?" : $"Confirm — leave {_s.CurrentTeamName}?")
+                : JobOfferRow.AcceptIdle;
+            if (Offers[i].AcceptLabel != want)
+                Offers[i] = Offers[i] with { AcceptLabel = want };
+        }
+    }
+
+    /// <summary>Turning your attention to another offer disarms the primed one.</summary>
+    public void FocusOffer(JobOfferRow offer)
+    {
+        if (_armedOfferId != 0 && _armedOfferId != offer.TeamId) ArmOffer(0);
+    }
+
+    /// <summary>The shared club menu on an offer row: look at the squad before you decide.</summary>
+    public ContextMenu? MenuFor(JobOfferRow offer) =>
+        EntityActions.BuildMenu(_s, EntityRef.Club(offer.TeamId, offer.Club),
+            status: t => OfferStatus = t);
 }

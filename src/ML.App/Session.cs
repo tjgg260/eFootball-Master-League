@@ -41,13 +41,33 @@ public sealed partial class Session
         catch { expectation = Expectation.MidTable; }
         Board = new BoardConfidence(expectation, starting: StoredBoardConfidence);
 
+        // THE SAFETY NET GOES DOWN FIRST. It used to be taken at the END of this constructor —
+        // after the youth pass, the opening XI, the formation heal and the XI repair had all
+        // written — so the first backup a career ever took already held every repair pass, and
+        // no copy anywhere was the world as the manager left it. Everything above this line only
+        // reads; nothing below it may run before the copy is on disk.
+        BackupCareer();            // your save survives anything — last five kept in build/backups
+
         RestoreSeasonFinances();   // season income/spend survive app restarts (P0)
-        // Youth sides (U21/U18) exist for every career club — created + seeded once per career.
-        try
-        {
-            if (GetMeta("youth_teams_v1") is null) { EnsureYouthTeams(); SetMeta("youth_teams_v1", "1"); }
-        }
-        catch { /* youth teams are additive */ }
+        // Youth sides (U21/U18) for every career club. SELF-HEALING, not one-shot: the old
+        // `if (GetMeta("youth_teams_v1") is null)` gate let a completion flag stand in for the
+        // work itself, and a career reseed deletes the sides without clearing the flag — so the
+        // U21/U18 tabs read teams that had never been re-created. EnsureYouthTeamsOnLoad checks
+        // the teams table (one lookup) and repairs; the full comment is on it.
+        // Additive, so a failure never blocks load — but a bare catch hid partial runs, so it is
+        // logged like everything else the app swallows.
+        try { EnsureYouthTeamsOnLoad(); }
+        catch (Exception ex) { Program.Log("Session.EnsureYouthTeamsOnLoad", ex); }
+        // A club's formation ids are settled BEFORE anyone is arranged against them: Heal can
+        // repoint a club's fid pair and replace unreadable geometry with the 4-4-2, and
+        // SeedOpeningXi lays the eleven out against fid0. It used to run after the seed —
+        // arranging a side against a shape that was about to change. Harmless on the live save
+        // (0 clubs need healing); an ordering bug all the same.
+        HealLegacyFormationOwnership();
+        // A first team sheet, before the manager ever sees the pitch. Import order is not a
+        // line-up: without this the first visit to Tactics showed a left midfielder in goal.
+        try { SeedOpeningXi(); }
+        catch (Exception ex) { Program.Log("Session.SeedOpeningXi", ex); }   // import order is still playable
         // OCR paths from settings (meta), falling back to the recorded defaults.
         if (GetMeta("steam_root") is { Length: > 0 } root) ScoreImport.SteamRoot = root;
         if (GetMeta("steam_user_id") is { Length: > 0 } uid) ScoreImport.SteamUserId = uid;
@@ -59,12 +79,27 @@ public sealed partial class Session
         if (GetMeta("ffmpeg_path") is { Length: > 0 } ff) VideoCapture.FfmpegPath = ff;
         if (GetMeta("video_dir") is { Length: > 0 } vd) VideoCapture.VideoDir = vd;
         Theme.Apply(GetMeta("ui_skin") ?? "Midnight", PrimaryColor);
-        HealLegacyFormationOwnership();
-        try { RepairInvalidXis(); } catch { /* XI repair never blocks load */ }
         EnsureCup();
-        try { EnsureObjectives(); } catch { /* objectives are additive */ }
-        BackupCareer();       // your save survives anything — last five kept in build/backups
+        // THE WELCOME GOES BEFORE THE OBJECTIVES. EnsureInboxWelcome's guard is "is the inbox
+        // empty?", and EnsureObjectives ends by posting the board's objectives letter. With the
+        // objectives first, every career ever started opened with exactly one letter — the
+        // objectives — and the welcome and the cup-draw mail were silenced for good. The live
+        // save is the proof: one inbox row, 'The board sets this season's objectives', nothing
+        // else. On a brand-new career the youth seed and the opening-XI seed above may already
+        // have posted the welcome through PostInboxAfterWelcome — before EnsureCup ran — and that
+        // is fine: the cup-draw letter's text does not read the fixtures, and EnsureCup completes
+        // in this same constructor before any window opens. (A career whose inbox already holds
+        // the objectives letter keeps it: the guard is the inbox, not a flag, and this does not
+        // re-mail.)
         EnsureInboxWelcome(); // a fresh career opens with mail, not an empty inbox
+        try { EnsureObjectives(); } catch { /* objectives are additive */ }
+        // LAST, and after the welcome on purpose: EnsureInboxWelcome only writes into an EMPTY
+        // inbox, so a letter this pass posted ahead of it would silence the welcome for good. It
+        // also stays after SeedOpeningXi, so the managed club gets the assistant's full,
+        // position-aware pick rather than this pass's slot-by-slot swaps. Never blocks load; a
+        // partial run used to vanish into a bare catch, now it is logged.
+        try { RepairInvalidXis(); }
+        catch (Exception ex) { Program.Log("Session.RepairInvalidXis", ex); }
     }
 
     // Cache the team table once — TeamName/TeamColor are called per row across several screens.
@@ -332,7 +367,8 @@ public sealed partial class Session
         foreach (var o in PendingOffers())
         {
             PostInbox("Transfer", $"Offer: {o.FromTeam} want {o.PlayerName}",
-                $"£{o.Fee:N0} on the table. Accept or reject it on the Market screen.");
+                $"£{o.Fee:N0} on the table. Accept or reject it on the Market screen.",
+                playerId: o.PlayerId, requiresAction: true);
         }
         BackupCareer();            // season boundary = backup point
 
@@ -1149,7 +1185,8 @@ public sealed partial class Session
         cmd.Parameters.AddWithValue("$t", CurrentTeamId);
         cmd.Parameters.AddWithValue("$bal", Finances.Balance);
         cmd.Parameters.AddWithValue("$fans", FanHappiness());
-        cmd.Parameters.AddWithValue("$board", Board.Value);
+        // The trend chart plots what the manager was shown, so it stores the composite.
+        cmd.Parameters.AddWithValue("$board", BoardConfidenceNow);
         cmd.Parameters.AddWithValue("$elo", EloOf(CurrentTeamId));
         cmd.ExecuteNonQuery();
     }

@@ -50,15 +50,32 @@
         </ItemsControl>
       </StackPanel>
 
+      <!-- THE ROUTE, IN WORDS. Both ways into a player were invisible folklore: a right-click
+           and a double-click that nothing on screen mentions. Single-click was the only gesture
+           this roster ever taught, so the card in the column beside it read as the whole of what
+           a player is. A manager should not have to guess a gesture to open a man.
+           THE BUG in the first draft of this line: it taught the double-click and the ⋯ but
+           never the card's own "Open full profile" button — the one route a single-clicker
+           actually lands on, and the only one visible at rest (row one auto-selects) — and it
+           never said the ⋯ menu has "View profile" in it. The button leads now. -->
+      <TextBlock DockPanel.Dock="Top" Classes="ml-muted" TextWrapping="Wrap" Margin="2,0,0,10"
+                 Text="Open full profile on his card shows you everything about him (so does a double-click on his row), and the ⋯ at the start of his row — or a right-click — lists everything you can do with him, View profile included."/>
+
       <!-- players out or in on loan, with January recall (P6 fix 5: neutral header) -->
       <Border DockPanel.Dock="Bottom" IsVisible="{Binding HasLoans}"
               Classes="ml-card" Padding="12,8" Margin="0,10,0,0">
         <StackPanel Spacing="4">
           <TextBlock Text="LOANS" Classes="ml-label"/>
-          <ItemsControl ItemsSource="{Binding Loans}">
+          <!-- x:Name: the code-behind attaches the shared player menu to these rows -->
+          <ItemsControl x:Name="LoansList" ItemsSource="{Binding Loans}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:LoanRowVm">
                 <DockPanel Margin="0,2,0,0">
+                  <!-- a loanee is a player like any other, so he gets the visible trigger too -->
+                  <Button DockPanel.Dock="Right" Content="⋯" Classes="ml-ghost"
+                          FontSize="14" Padding="8,0" Margin="6,0,0,0" Click="OnLoanMenu"
+                          VerticalAlignment="Center"
+                          ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
                   <Button DockPanel.Dock="Right" Content="Recall" Classes="ml-secondary"
                           FontSize="10" Padding="8,4"
                           IsVisible="{Binding IsOut}"
@@ -74,10 +91,36 @@
       </Border>
 
     <Panel>
-      <DataGrid ItemsSource="{Binding Rows}"
+      <!-- x:Name: right-click on a row opens the shared entity menu (see the code-behind).
+           FrozenColumnCount="1" pins the ⋯ column below: see the note on it. -->
+      <DataGrid x:Name="RosterGrid" ItemsSource="{Binding Rows}"
                 SelectedItem="{Binding Selected, Mode=TwoWay}" IsReadOnly="True"
-                GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                FrozenColumnCount="1">
         <DataGrid.Columns>
+          <!-- The visible half of the standing ruling: every entity row carries BOTH a
+               right-click menu and a trigger you can see, over ONE action list. This ⋯ opens
+               the very menu SquadViewModel.MenuFor builds for the right-click — never a
+               second, divergent list.
+               THE BUG that put it FIRST, not last: it started as the tenth column, and the
+               other nine are fixed widths totalling 795 DIP with the Name column taking the
+               remainder. The roster gets (window − 622) DIP, so below a 1,440-DIP window the
+               Name column hit the grid's 20-DIP floor and the grid grew a horizontal scrollbar —
+               and a DataGrid clips from the RIGHT, so the last column is the first to vanish.
+               The trigger this merge made visible went invisible again on any window narrower
+               than the 1,640 default minus 200. A MinWidth on Name would only have moved that
+               breakpoint, never which column is lost. The left edge is the one edge always on
+               screen at rest, and FrozenColumnCount="1" keeps it there through a scroll too. -->
+          <DataGridTemplateColumn Header="" Width="44">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:SquadEntry">
+                <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
+                        Click="OnRowMenu"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        ToolTip.Tip="Everything you can do with him, View profile included — right-clicking his row does the same"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTemplateColumn Header="" Width="52">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:SquadEntry">
@@ -93,8 +136,12 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="#" Binding="{Binding Number}" Width="48"/>
-          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+          <DataGridTextColumn Header="#" Binding="{Binding Number}" Width="57"/>
+          <!-- MinWidth: the star column is what gives way when the window narrows, and with
+               no floor it shrank to the grid's 20-DIP default — a column of names showing no
+               name. This floor is NOT what keeps the ⋯ on screen (see the first column); it
+               only keeps a surname readable before the grid starts to scroll. -->
+          <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" MinWidth="120"/>
           <!-- slim nationality-flag column (empty header, 34px) -->
           <DataGridTemplateColumn Header="" Width="34">
             <DataGridTemplateColumn.CellTemplate>
@@ -105,8 +152,8 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="66"/>
-          <DataGridTextColumn Header="Playstyle" Binding="{Binding Playstyle}" Width="120"/>
+          <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="71"/>
+          <DataGridTextColumn Header="Playstyle" Binding="{Binding Playstyle}" Width="176"/>
           <DataGridTemplateColumn Header="Morale" Width="86">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:SquadEntry">
@@ -115,7 +162,7 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="60"/>
+          <DataGridTextColumn Header="Age" Binding="{Binding Age}" Width="71"/>
           <DataGridTemplateColumn Header="Rating" Width="78">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:SquadEntry">
@@ -125,10 +172,13 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
-          <DataGridTemplateColumn Header="CON" Width="62">
+          <!-- "Fitness", not "CON". Three shouted letters are a database field name; the
+               column says what it is, and the dot says what it means on hover. -->
+          <DataGridTemplateColumn Header="Fitness" Width="90">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:SquadEntry">
                 <Ellipse Width="10" Height="10" Fill="{Binding ConditionBrush}"
+                         ToolTip.Tip="{Binding ConditionLabel}"
                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
@@ -136,8 +186,10 @@
           <DataGridTemplateColumn Header="" Width="36">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:SquadEntry">
+                <!-- IsInjured is "still injured as of the matchday we are picking for", not
+                     "has an injury date on file" — see SquadEntry.IsInjured -->
                 <Border Width="18" Height="18" CornerRadius="9" Background="{DynamicResource MlDanger}"
-                        IsVisible="{Binding IsInjured}"
+                        IsVisible="{Binding IsInjured}" ToolTip.Tip="{Binding InjuryTip}"
                         HorizontalAlignment="Center" VerticalAlignment="Center">
                   <TextBlock Text="+" FontSize="13" FontWeight="Bold" Foreground="White"
                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
@@ -156,14 +208,34 @@
 
     <!-- player card -->
     <Border Grid.Column="1" Margin="16,0,0,0" Classes="ml-panel" Padding="18">
+      <DockPanel>
+      <!-- THE ANSWER LIVES HERE, docked and outside the scroller.
+           It used to be three copies INSIDE the scroll, and on the default tab the visible one
+           sat at roughly y=2,520 of a 2,550px column — 3.4 screens below the fold. Every verb on
+           this screen reports through SquadStatus, including all twelve items of the shared
+           right-click menu, so choosing "Praise" looked like the app had done nothing at all.
+           A verb's answer must appear where the verb was. -->
+      <TextBlock DockPanel.Dock="Bottom" Text="{Binding SquadStatus}" FontSize="12"
+                 Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"
+                 Margin="0,10,0,0"/>
       <Panel>
-        <TextBlock Text="Select a player" Classes="ml-muted" FontSize="14"
+        <TextBlock Text="Pick a player from the roster and his card appears here." Classes="ml-muted"
+                   FontSize="13" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="240"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}"/>
 
         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                       IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
           <StackPanel Spacing="14">
+
+            <!-- The way OUT of the rail, at the top where the decision is made — the same
+                 pattern (and the same destination) as the Market rail's own button. This
+                 column is a preview beside the roster, not the player screen; without a door
+                 it read as the only profile the app had. -->
+            <Button Content="⤢ Open full profile" Command="{Binding OpenProfileCommand}"
+                    Classes="ml-secondary" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    ToolTip.Tip="His whole career, the full width of the window — double-clicking his row does the same"/>
 
             <!-- name / big rating / position tag -->
             <Grid ColumnDefinitions="*,Auto">
@@ -226,16 +298,16 @@
                   <Panel Width="200" Height="200" HorizontalAlignment="Center">
                     <Canvas Width="200" Height="200">
                       <Polygon Points="100,22 167.6,61 167.6,139 100,178 32.4,139 32.4,61"
-                               Stroke="#3A4759" StrokeThickness="1"/>
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
                       <Polygon Points="100,48 145,74 145,126 100,152 55,126 55,74"
-                               Stroke="#3A4759" StrokeThickness="1"/>
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
                       <Polygon Points="100,74 122.5,87 122.5,113 100,126 77.5,113 77.5,87"
-                               Stroke="#3A4759" StrokeThickness="1"/>
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
                       <!-- pinned comparison radar (dashed blue) under the live one -->
                       <Polygon Points="{Binding PinnedPoints}" Stroke="{DynamicResource MlPrimary}" StrokeThickness="2"
                                StrokeDashArray="4,3" Fill="#202D7DD2" IsVisible="{Binding HasPinned}"/>
-                      <Polygon Points="{Binding RadarPoints}" Stroke="#FF2D78" StrokeThickness="2"
-                               Fill="#40FF2D78" IsVisible="{Binding !RadarMasked}"/>
+                      <Polygon Points="{Binding RadarPoints}" Stroke="{StaticResource MlRadarLine}" StrokeThickness="2"
+                               Fill="{StaticResource MlRadarFill}" IsVisible="{Binding !RadarMasked}"/>
                       <TextBlock Canvas.Left="89" Canvas.Top="6" Text="{Binding RadarLabels[0]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
                       <TextBlock Canvas.Left="174" Canvas.Top="48" Text="{Binding RadarLabels[1]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
                       <TextBlock Canvas.Left="174" Canvas.Top="142" Text="{Binding RadarLabels[2]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
@@ -243,10 +315,18 @@
                       <TextBlock Canvas.Left="6" Canvas.Top="142" Text="{Binding RadarLabels[4]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
                       <TextBlock Canvas.Left="6" Canvas.Top="48" Text="{Binding RadarLabels[5]}" FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
                     </Canvas>
-                    <!-- knowledge gate (P6 fix 3): a barely-scouted player shows no polygon -->
-                    <TextBlock Classes="ml-muted" Text="Barely scouted — send a scout to reveal his game."
-                               IsVisible="{Binding RadarMasked}" TextWrapping="Wrap" TextAlignment="Center"
-                               MaxWidth="130" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <!-- knowledge gate (P6 fix 3): a barely-scouted player shows no polygon,
+                         and the prose is now an action — dispatch the scout from the card -->
+                    <StackPanel IsVisible="{Binding RadarMasked}" Spacing="8"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                      <TextBlock Classes="ml-muted" Text="Barely scouted — send a scout to reveal his game."
+                                 TextWrapping="Wrap" TextAlignment="Center" MaxWidth="130"
+                                 HorizontalAlignment="Center"/>
+                      <Button Content="{Binding ScoutButtonLabel}" Command="{Binding ScoutSelectedCommand}"
+                              Classes="ml-secondary" FontSize="11" MaxWidth="184"
+                              HorizontalAlignment="Center"
+                              IsVisible="{Binding ViewingOtherClub}" IsEnabled="{Binding CanScout}"/>
+                    </StackPanel>
                   </Panel>
                   <!-- info strip -->
                   <Border Classes="ml-card" Padding="12,10">
@@ -302,9 +382,13 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                             Text="His game is still a mystery — scout him to unlock the analysis."
-                             IsVisible="{Binding !AnalysisPanels.Count}"/>
+                  <StackPanel Spacing="8" IsVisible="{Binding !AnalysisPanels.Count}">
+                    <TextBlock Classes="ml-muted" TextWrapping="Wrap"
+                               Text="His game is still a mystery — scout him to unlock the analysis."/>
+                    <Button Content="{Binding ScoutButtonLabel}" Command="{Binding ScoutSelectedCommand}"
+                            Classes="ml-secondary" FontSize="11" HorizontalAlignment="Left"
+                            IsVisible="{Binding ViewingOtherClub}" IsEnabled="{Binding CanScout}"/>
+                  </StackPanel>
 
                   <!-- ability list -->
                   <StackPanel Spacing="6">
@@ -365,7 +449,6 @@
                   </WrapPanel>
                   <TextBlock Text="{Binding PinnedName, StringFormat='Comparing against {0} (dashed blue)'}"
                              FontSize="11" Foreground="{DynamicResource MlPrimary}" IsVisible="{Binding HasPinned}"/>
-                  <TextBlock Text="{Binding SquadStatus}" FontSize="11" Foreground="#9FE6B4" TextWrapping="Wrap"/>
                 </StackPanel>
               </TabItem>
 
@@ -386,7 +469,11 @@
                   <StackPanel IsVisible="{Binding IsOwnClub}" Spacing="8">
                     <WrapPanel>
                       <Button Content="© Captain" Command="{Binding MakeCaptainCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
-                      <Button Content="Renew +2yrs" Command="{Binding RenewCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <!-- two-step and priced: the renewal pays a signing bonus out of the
+                           transfer budget the instant it goes through, and cannot be undone -->
+                      <Button Content="{Binding RenewLabel}" Command="{Binding RenewCommand}" Classes="ml-secondary"
+                              FontSize="11" Margin="0,2,6,0" Foreground="{DynamicResource MlWarn}"
+                              ToolTip.Tip="Extends two seasons. The signing bonus shown is paid from the transfer budget on confirmation."/>
                       <Button Content="🗣 Praise" Command="{Binding PraiseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
                       <Button Content="Criticise" Command="{Binding CriticiseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
                       <Button Content="Promise starts" Command="{Binding PromiseStartsCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
@@ -428,10 +515,16 @@
                   <StackPanel IsVisible="{Binding IsOwnClub}" Spacing="8">
                     <WrapPanel>
                       <Button Content="{Binding ListLabel}" Command="{Binding ToggleListCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
+                      <!-- the shop window: a label clubs read, next to the sale one -->
+                      <Button Content="{Binding LoanListLabel}" Command="{Binding ToggleLoanListCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"
+                              ToolTip.Tip="Advertise him for loan — 'Loan out' still does the moving"/>
+                      <Button Content="📢 Offer to clubs" Command="{Binding OfferToClubsCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"
+                              ToolTip.Tip="Ring round now — lists him and invites bids this window"/>
                       <Button Content="Loan out" Command="{Binding LoanOutCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,6,0"/>
-                      <Button Content="Release" Command="{Binding ReleaseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource MlDanger}"/>
+                      <!-- two-step: a free transfer can't be undone, so the button asks once -->
+                      <Button Content="{Binding ReleaseLabel}" Command="{Binding ReleaseCommand}" Classes="ml-secondary" FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource MlDanger}"/>
                     </WrapPanel>
-                  </StackPanel>
+                    </StackPanel>
                 </StackPanel>
               </TabItem>
 
@@ -445,6 +538,7 @@
           </StackPanel>
         </ScrollViewer>
       </Panel>
+      </DockPanel>
     </Border>
   </Grid>
 </UserControl>

@@ -59,11 +59,28 @@ public sealed partial class Session
         }
         catch { /* rivalries are additive */ }
 
+        // The letter used to end each line with the STORED TOKEN in brackets — "[critical]",
+        // "[important]", "[bonus]" — which is a database value wearing a chairman's suit. The
+        // Board screen has always shown these as chips; in a letter they have to be sentences.
+        var byWeight = Objectives()
+            .GroupBy(o => o.Importance)
+            .ToDictionary(g => g.Key, g => g.Select(o => $"• {o.Description}").ToList());
+        var body = new List<string> { $"Chairman {Chairman()} lays it out:" };
+        void Group(string key, string lead)
+        {
+            if (!byWeight.TryGetValue(key, out var lines) || lines.Count == 0) return;
+            body.Add("");
+            body.Add(lead);
+            body.AddRange(lines);
+        }
+        Group("critical", "He will judge the season on this:");
+        Group("important", "He wants these as well:");
+        Group("bonus", "And these would please him:");
+        body.Add("");
+        body.Add("A mid-season review comes at matchday 19; the final verdict at the season's end.");
+
         PostInbox("Board", "The board sets this season's objectives",
-            $"Chairman {Chairman()} lays it out:\n" +
-            string.Join("\n", Objectives().Select(o => $"• {o.Description}  [{o.Importance}]")) +
-            "\nA mid-season review comes at matchday 19; the final verdict at the season's end.",
-            NextFixture()?.Matchday);
+            string.Join("\n", body), NextFixture()?.Matchday);
     }
 
     // ------------------------------------------------------------------ reading + progress
@@ -187,7 +204,9 @@ public sealed partial class Session
         var pos = CurrentPosition();
         var teams = Math.Max(LeagueTeams().Count, 2);
         var onTrack = pos > 0 && pos <= ManagerCareer.TargetPosition(Board.Expectation, teams);
-        StoredBoardConfidence += onTrack ? 3 : -4;
+        // Through MoveBoardConfidence, not straight into the stored key: a raw write here was
+        // invisible to the live gauge and then overwritten by it at the next league result.
+        MoveBoardConfidence(onTrack ? 3 : -4);
         PostInbox("Board", "Mid-season review",
             (onTrack
                 ? $"Chairman {Chairman()} is satisfied at the halfway mark."
@@ -227,7 +246,9 @@ public sealed partial class Session
                 ("important", true) => +5, ("important", false) => -5,
                 (_, true) => +3, _ => 0,
             };
-            StoredBoardConfidence += swing;
+            // The verdict is the whole point of the objectives screen: hitting every one of them
+            // has to leave the board somewhere it wasn't. Same funnel as the review above.
+            MoveBoardConfidence(swing);
             if (achieved) met++;
             if (!achieved && o.Importance == "critical") failedCritical = true;
         }
@@ -248,7 +269,10 @@ public sealed partial class Session
                 ? $"\n\nThe board is delighted — £{backing:N0} of extra backing lands in the budget."
                 : failedCritical
                     ? "\n\nThe critical objective was missed. Patience is not infinite."
-                    : "\n\nA mixed year. The bar does not move."), NextFixture()?.Matchday);
+                    : "\n\nA mixed year. The bar does not move.") +
+            // Say where the verdict left them. The swing above used to move a number nobody read.
+            $"\n\nThe board's confidence in you now reads {BoardNow.Label.ToLowerInvariant()} " +
+            $"({BoardConfidenceNow} of 100).", NextFixture()?.Matchday);
     }
 
     // ------------------------------------------------------------------ the fans (P2)

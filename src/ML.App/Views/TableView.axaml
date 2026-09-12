@@ -23,10 +23,14 @@
     <TextBlock DockPanel.Dock="Top" Classes="ml-muted" Margin="0,0,0,8"
                Text="No standings yet — the table fills in once the season kicks off."
                IsVisible="{Binding !Rows.Count}"/>
+    <!-- verb results from the right-click menu, verbatim -->
+    <TextBlock DockPanel.Dock="Top" Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12"
+               TextWrapping="Wrap" Margin="0,0,0,8" IsVisible="{Binding !!Status.Length}"/>
     <!-- zone legend, in words (counts come from league data, so lines only name real zones) -->
     <TextBlock DockPanel.Dock="Bottom" Classes="ml-muted" Margin="4,8,0,0"
                Text="{Binding LegendText}" IsVisible="{Binding LegendVisible}"/>
-    <DataGrid ItemsSource="{Binding Rows}" IsReadOnly="True"
+    <DataGrid x:Name="StandingsGrid" ItemsSource="{Binding Rows}" IsReadOnly="True"
+            SelectedItem="{Binding Selected, Mode=TwoWay}"
             GridLinesVisibility="Horizontal" HeadersVisibility="Column">
     <DataGrid.Columns>
       <!-- zone band + position + movement vs last matchday -->
@@ -66,14 +70,14 @@
           </DataTemplate>
         </DataGridTemplateColumn.CellTemplate>
       </DataGridTemplateColumn>
-      <DataGridTextColumn Header="P" Binding="{Binding P}" Width="46"/>
-      <DataGridTextColumn Header="W" Binding="{Binding W}" Width="46"/>
-      <DataGridTextColumn Header="D" Binding="{Binding D}" Width="46"/>
-      <DataGridTextColumn Header="L" Binding="{Binding L}" Width="46"/>
-      <DataGridTextColumn Header="GF" Binding="{Binding GF}" Width="46"/>
-      <DataGridTextColumn Header="GA" Binding="{Binding GA}" Width="46"/>
-      <DataGridTextColumn Header="GD" Binding="{Binding GD}" Width="46"/>
-      <DataGridTextColumn Header="Pts" Binding="{Binding Pts}" Width="56"/>
+      <DataGridTextColumn Header="P" Binding="{Binding P}" Width="57"/>
+      <DataGridTextColumn Header="W" Binding="{Binding W}" Width="57"/>
+      <DataGridTextColumn Header="D" Binding="{Binding D}" Width="57"/>
+      <DataGridTextColumn Header="L" Binding="{Binding L}" Width="57"/>
+      <DataGridTextColumn Header="GF" Binding="{Binding GF}" Width="64"/>
+      <DataGridTextColumn Header="GA" Binding="{Binding GA}" Width="64"/>
+      <DataGridTextColumn Header="GD" Binding="{Binding GD}" Width="64"/>
+      <DataGridTextColumn Header="Pts" Binding="{Binding Pts}" Width="71"/>
     </DataGrid.Columns>
     </DataGrid>
   </DockPanel>

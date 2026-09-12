@@ -94,11 +94,12 @@
             <TextBlock Classes="ml-label" Text="FINANCING"/>
             <TextBlock Classes="ml-body" TextWrapping="Wrap" Text="{Binding LoanLine}"/>
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Classes="ml-secondary" Content="Borrow £250k" IsEnabled="{Binding CanBorrow}"
+              <!-- the label is the confirmation, same idiom as releasing a staff member -->
+              <Button Classes="ml-secondary" Content="{Binding Borrow250Label}" IsEnabled="{Binding CanBorrow}"
                       Command="{Binding BorrowCommand}" CommandParameter="250000"/>
-              <Button Classes="ml-secondary" Content="Borrow £500k" IsEnabled="{Binding CanBorrow}"
+              <Button Classes="ml-secondary" Content="{Binding Borrow500Label}" IsEnabled="{Binding CanBorrow}"
                       Command="{Binding BorrowCommand}" CommandParameter="500000"/>
-              <Button Classes="ml-secondary" Content="Borrow £1m" IsEnabled="{Binding CanBorrow}"
+              <Button Classes="ml-secondary" Content="{Binding Borrow1000Label}" IsEnabled="{Binding CanBorrow}"
                       Command="{Binding BorrowCommand}" CommandParameter="1000000"/>
             </StackPanel>
             <TextBlock Classes="ml-muted" TextWrapping="Wrap" Text="{Binding Status}"

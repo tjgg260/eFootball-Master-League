@@ -15,14 +15,15 @@ namespace ML.App.ViewModels;
 /// <summary>One W/D/L letter square in a form strip.</summary>
 public sealed record FormChipVm(string Letter, IBrush Bg);
 
-/// <summary>One schedule line: matchday label, opponent (with crest), and a result chip ("2-1" or "—").</summary>
+/// <summary>One schedule line: matchday label, opponent (with crest), and a result chip ("2-1" or "—").
+/// Carries the ids too — a row you can right-click is a row that must know WHO it is.</summary>
 public sealed record ScheduleRowVm(string Md, string Opponent, string Chip, IBrush ChipBg, IBrush ChipFg,
-    Avalonia.Media.Imaging.Bitmap? Crest = null);
+    Avalonia.Media.Imaging.Bitmap? Crest = null, int TeamId = 0, int FixtureId = 0);
 
 /// <summary>One mini-table line (or the dim "· · ·" separator when you sit outside the top six).</summary>
 public sealed record MiniRowVm(
     string Pos, string Team, string P, string Gd, string Pts, IBrush Bg, IBrush Fg, FontWeight Weight,
-    Avalonia.Media.Imaging.Bitmap? Crest = null);
+    Avalonia.Media.Imaging.Bitmap? Crest = null, int TeamId = 0);
 
 // --- Dashboard (the MFL "Office", FM-portal style) --------------------------------
 
@@ -51,68 +52,133 @@ public sealed partial class DashboardViewModel : PageViewModel
         _s = s;
         ClubName = s.CurrentTeamName;
         LeagueName = s.LeagueName;
-        BoardConfidence = s.Board.Value;
-        BoardLabel = s.Board.Label;
+        BadgeText = Visuals.Initials(ClubName);
+        BadgeBrush = Visuals.Brush(s.PrimaryColor);
+        BadgeStroke = Visuals.Brush(s.SecondaryColor);
+        Logo = Visuals.LoadBitmap(s.LogoPath);
+
+        // Every LIVE number on this screen used to be read exactly here, once. See RefreshGauges:
+        // LoadNextMatch always ends in RefreshPortal, which fills them in — first for the opening
+        // frame, and again after every result. Reading them here too would only double the queries.
+        LoadNextMatch();
+    }
+
+    // ── the office gauges ─────────────────────────────────────────────────────────────
+    // THE BUG: these were get-only auto-properties assigned ONCE in the constructor, while
+    // RefreshPortal rebuilt only the position, the opposition card, the schedule and the mini
+    // table. So the post-match report — which reads the world LIVE — printed "Board settled
+    // (dented)" over tiles still showing what they were when you walked into the Office. Three
+    // results without leaving the screen and the tiles were three matchdays stale. They are
+    // observable now, and RefreshGauges() re-reads the lot wherever the world has moved.
+
+    [ObservableProperty] private int _elo;
+    [ObservableProperty] private string _tier = "";
+    [ObservableProperty] private string _chairmanLine = "";
+    [ObservableProperty] private int _fans;
+    [ObservableProperty] private string _fansLabel = "";
+    [ObservableProperty] private string _financeLine = "";
+    [ObservableProperty] private int _boardConfidence;
+    [ObservableProperty] private string _boardLabel = "";
+    [ObservableProperty] private int _morale;
+    [ObservableProperty] private string _moraleLabel = "";
+    [ObservableProperty] private string _balance = "";
+    [ObservableProperty] private string _expectation = "";
+
+    public ObservableCollection<string> ObjectiveChips { get; } = new();
+    public bool HasObjectiveChips => ObjectiveChips.Count > 0;
+    public ObservableCollection<string> Ticker { get; } = new();
+    public bool HasTicker => Ticker.Count > 0;
+
+    /// <summary>
+    /// Re-read every gauge from the world. Called at the end of RefreshPortal (which already runs
+    /// on load and after every recorded result) and when the post-match report closes, so the
+    /// tiles can never disagree with the report sitting directly above them. Each block is guarded
+    /// on its own: one failing query dims one gauge, it never bricks the Office.
+    /// </summary>
+    private void RefreshGauges()
+    {
+        try
+        {
+            // BoardNow, not Board. `Board` is built once in Session's constructor and never
+            // re-read, so a verdict landed by the season review, a refused budget ask or the
+            // objectives pass moved a number this tile could not see. The Office gauge and the
+            // Board screen were then quietly showing different confidence for the same club.
+            BoardConfidence = _s.BoardConfidenceNow;
+            BoardLabel = _s.BoardNow.Label;
+            Expectation = Visuals.ExpectationLabel(_s.Board.Expectation);
+        }
+        catch { /* one gauge, not the screen */ }
+
         // The gauge reads the REAL per-player morale average (the old Session.Morale object
         // was a constant 60 that nothing ever updated).
-        try { Morale = s.SquadMoraleAverage(); }
+        try { Morale = _s.SquadMoraleAverage(); }
         catch { Morale = 60; }
         MoraleLabel = Morale switch
         {
             >= 85 => "Superb", >= 70 => "Very Good", >= 55 => "Good",
             >= 40 => "Okay", >= 25 => "Poor", _ => "Abject",
         };
-        Balance = $"£{s.Finances.Balance:N0}";
-        Expectation = Visuals.ExpectationLabel(s.Board.Expectation);
-        BadgeText = Visuals.Initials(ClubName);
-        BadgeBrush = Visuals.Brush(s.PrimaryColor);
-        BadgeStroke = Visuals.Brush(s.SecondaryColor);
-        Logo = Visuals.LoadBitmap(s.LogoPath);
+
+        try { Balance = $"£{_s.Finances.Balance:N0}"; } catch { /* one gauge, not the screen */ }
 
         // MFL office extras: ELO + status tier, chairman, fans gauge, financial split, ticker.
         try
         {
-            Elo = s.EloOf(s.CurrentTeamId);
-            Tier = s.ClubTier(s.CurrentTeamId);
-            ChairmanLine = $"Chairman: {s.Chairman()}";
-            // The fan gauge now carries a memory (P2): half persistent ledger, half form.
-            Fans = s.FanHappiness();
-            FansLabel = s.FanLabel;
-            foreach (var o in s.Objectives().Where(o => o.Importance != "bonus").Take(2))
-            {
-                ObjectiveChips.Add($"{(o.Status == 1 ? "✅" : o.Status == 2 ? "❌" : "◻")} {o.Description} — {o.Progress}");
-            }
-            var (transfer, wages, weekly) = s.FinancialOverview();
-            FinanceLine = $"Transfers £{transfer:N0}  ·  Wages £{wages:N0}  ·  £{weekly:N0}/wk bill";
-            foreach (var t in s.RecentTransfers(5)) Ticker.Add(t);
+            Elo = _s.EloOf(_s.CurrentTeamId);
+            Tier = _s.ClubTier(_s.CurrentTeamId);
+            ChairmanLine = $"Chairman: {_s.Chairman()}";
         }
         catch { /* office extras never brick the dashboard */ }
 
-        LoadNextMatch();
+        // The fan gauge carries a memory (P2): half persistent ledger, half form.
+        try { Fans = _s.FanHappiness(); FansLabel = _s.FanLabel; } catch { }
+
+        try
+        {
+            var (transfer, wages, weekly) = _s.FinancialOverview();
+            FinanceLine = $"Transfers £{transfer:N0}  ·  Wages £{wages:N0}  ·  £{weekly:N0}/wk bill";
+        }
+        catch { }
+
+        try
+        {
+            ObjectiveChips.Clear();
+            foreach (var o in _s.Objectives().Where(o => o.Importance != "bonus").Take(2))
+            {
+                ObjectiveChips.Add($"{(o.Status == 1 ? "✅" : o.Status == 2 ? "❌" : "◻")} {o.Description} — {o.Progress}");
+            }
+        }
+        catch { }
+        OnPropertyChanged(nameof(HasObjectiveChips));   // a plain getter over a collection
+
+        try
+        {
+            Ticker.Clear();
+            foreach (var t in _s.RecentTransfers(5)) Ticker.Add(t);
+        }
+        catch { }
+        OnPropertyChanged(nameof(HasTicker));
     }
 
-    public int Elo { get; }
-    public string Tier { get; } = "";
-    public string ChairmanLine { get; } = "";
-    public int Fans { get; }
-    public string FansLabel { get; } = "";
-    public ObservableCollection<string> ObjectiveChips { get; } = new();
-    public bool HasObjectiveChips => ObjectiveChips.Count > 0;
-    public string FinanceLine { get; } = "";
-    public ObservableCollection<string> Ticker { get; } = new();
-    public bool HasTicker => Ticker.Count > 0;
+    /// <summary>
+    /// Raise the career-state properties. THE BUG: IsSacked, SackedHeadline and SeasonOver are
+    /// plain expression-bodied properties over the Session, and the board can sack you inside
+    /// RecordResult — with nothing notifying, the SACKED card never appeared and the screen just
+    /// went card-less (SeasonOver, which reads IsSacked, went false too). Raised from the one
+    /// place that runs after every world change.
+    /// </summary>
+    private void NotifyCareerState()
+    {
+        OnPropertyChanged(nameof(IsSacked));
+        OnPropertyChanged(nameof(SackedHeadline));
+        OnPropertyChanged(nameof(SeasonOver));
+    }
 
     public override string Title => "Office";
     public override string Icon => "🏠";
 
     public string ClubName { get; }
     public string LeagueName { get; }
-    public int BoardConfidence { get; }
-    public string BoardLabel { get; }
-    public int Morale { get; }
-    public string MoraleLabel { get; }
-    public string Balance { get; }
-    public string Expectation { get; }
     public string BadgeText { get; } = "";
     public IBrush BadgeBrush { get; } = Visuals.Brush(null);
     public IBrush BadgeStroke { get; } = Visuals.Brush(null);
@@ -154,8 +220,23 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _celebrationTitle = "";
     [ObservableProperty] private string _celebrationSub = "";
 
+    /// <summary>
+    /// What the last screenshot read attempt has to say, shown ON the entry desk beside the score
+    /// boxes. A refusal ("that wasn't the full-time screen") has to appear where the user is
+    /// already looking — the muted status line at the foot of the card is not that place.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasImportNotice))]
+    private string _importNotice = "";
+
+    public bool HasImportNotice => ImportNotice.Length > 0;
+
     [RelayCommand]
-    private void OpenResultEntry() => ResultEntryOpen = true;
+    private void OpenResultEntry()
+    {
+        ImportNotice = "";
+        ResultEntryOpen = true;
+    }
 
     [RelayCommand]
     private void BackToPreMatch() => ResultEntryOpen = false;
@@ -248,7 +329,7 @@ public sealed partial class DashboardViewModel : PageViewModel
             }
 
             var moraleNow = _s.SquadMoraleAverage();
-            var boardNow = _s.Board.Value;
+            var boardNow = _s.BoardConfidenceNow;
             var fansNow = _s.FanHappiness();
             // Words, not numbers (P5): the report reads like an assistant, not a debugger.
             static string Mood(int v) => v switch
@@ -277,6 +358,9 @@ public sealed partial class DashboardViewModel : PageViewModel
     {
         ReportVisible = false;
         FtVisible = false;    // the moment ends together: banner + report leave as one
+        // The report quotes the gauges LIVE ("Board settled (dented)"). The tiles it was covering
+        // must agree with it the instant it lifts, not at the next matchday.
+        RefreshGauges();
     }
 
     // Team talks (C2): one pre-match and one post-match say per fixture.
@@ -331,10 +415,23 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     // Sacked ≠ season over: a sacked manager has no next match either, but must see the
     // SACKED card, not "SEASON COMPLETE" with a live Advance Season button.
+    // These three read the Session live, so they are always CORRECT when asked — they were just
+    // never asked again after the board acted. NotifyCareerState() is what asks; see RefreshPortal.
     public bool SeasonOver => !HasNextMatch && !IsSacked;
 
     public bool IsSacked => _s.IsSacked;
     public string SackedHeadline => IsSacked ? "SACKED — " + _s.SackedLine : "";
+
+    /// <summary>
+    /// The record you leave behind, shown ON the SACKED card. THE BUG: this line was written into
+    /// MatchStatus, which is only rendered INSIDE the next-match card — the one card that is
+    /// hidden precisely when you have been sacked. The copy could never reach a pixel.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCareerSummary))]
+    private string _careerSummaryLine = "";
+
+    public bool HasCareerSummary => CareerSummaryLine.Length > 0;
 
     // --- Next Opposition card ---
     [ObservableProperty]
@@ -521,16 +618,26 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     private void LoadNextMatch()
     {
+        ImportNotice = "";   // a new fixture starts with a clean entry desk
+
         // Sacked managers do not pick teams: the dashboard goes dark until you take a new job.
         if (_s.IsSacked)
         {
             NextMatchLabel = "SACKED — " + _s.SackedLine;
-            MatchStatus = $"Your career: {_s.CareerSummary()}\n" +
-                          "Job offers are on the Board screen — accept one to manage again.";
+            // The career line goes to the SACKED card's own property — MatchStatus only renders
+            // inside the next-match card, which is hidden in exactly this state (see above).
+            try { CareerSummaryLine = $"Your career: {_s.CareerSummary()}"; }
+            catch { CareerSummaryLine = ""; }
+            MatchStatus = "";
             HasNextMatch = false;
+            // ...and this branch used to return BEFORE RefreshPortal, so a sacked manager got no
+            // gauge refresh and — fatally — no NotifyCareerState, which is what makes the SACKED
+            // card appear at all.
+            RefreshPortal();
             return;
         }
 
+        CareerSummaryLine = "";
         var next = _s.NextFixture();
         if (next is not null)
         {
@@ -587,7 +694,10 @@ public sealed partial class DashboardViewModel : PageViewModel
     }
 
     /// <summary>
-    /// Rebuild the portal cards (opposition report, schedule, mini table, position tile). A card
+    /// Rebuild the portal cards (opposition report, schedule, mini table, position tile) AND the
+    /// gauges and career state — everything on this screen that moves when the world does. It runs
+    /// on load, after every recorded result, and as the refresh callback behind the right-click
+    /// menus, which is precisely the set of moments the tiles used to sleep through. A card
     /// failure must never brick the Office, so this swallows and moves on.
     /// </summary>
     private void RefreshPortal()
@@ -608,6 +718,11 @@ public sealed partial class DashboardViewModel : PageViewModel
                 : "";
         }
         catch { /* card-only */ }
+
+        // The tiles below the fold and the card the whole screen hangs on. Last, so a card that
+        // throws on its way here cannot cost us the gauges (each is guarded inside anyway).
+        RefreshGauges();
+        NotifyCareerState();
     }
 
     /// <summary>Knowledge gate for opponent players shown on the Office (letters, never numbers).</summary>
@@ -624,6 +739,10 @@ public sealed partial class DashboardViewModel : PageViewModel
         if (!HasNextMatch)
         {
             HasOpposition = false;
+            OppId = 0;
+            KeyPlayerId = 0;
+            KeyPlayerName = "";
+            CanScoutOpp = false;
             return;
         }
 
@@ -631,6 +750,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         // UX audit, glaring): the core identity is established first and HasOpposition set EARLY,
         // so a failure in any enrichment below degrades one line, not the whole panel.
         var oppId = _homeId == _s.CurrentTeamId ? _awayId : _homeId;
+        OppId = oppId;
         OppName = _s.TeamName(oppId);
         OppBadgeText = Visuals.Initials(OppName);
         try
@@ -704,28 +824,107 @@ public sealed partial class DashboardViewModel : PageViewModel
         try
         {
             var key = _s.KeyPlayer(oppId);
+            // The id survives the sentence: a line you can right-click must know WHO it names.
+            KeyPlayerId = key?.Id ?? 0;
+            KeyPlayerName = key?.Name ?? "";
+            // GradeMasked answers "?" for a man nobody has watched, and "(AMF ?)" on a card
+            // reads as a rendering fault rather than as ignorance. When there is no grade to
+            // give, the bracket carries his position alone — the card says "No dossier on them
+            // yet" two lines below, which is where that fact belongs.
+            var grade = ML.Core.Development.AttributeKnowledge
+                .GradeMasked(key?.OverallRating ?? 0, key is null ? 0 : OppKnowledgeOf(key.Id));
             KeyPlayerLine = key is null ? ""
-                : $"Key player: {key.Name}  ({key.Position} " +
-                  $"{ML.Core.Development.AttributeKnowledge.GradeMasked(key.OverallRating ?? 0, OppKnowledgeOf(key.Id))})";
+                : grade == "?" ? $"Key player: {key.Name}  ({key.Position})"
+                : $"Key player: {key.Name}  ({key.Position} {grade})";
         }
-        catch { KeyPlayerLine = ""; }
+        catch { KeyPlayerLine = ""; KeyPlayerId = 0; KeyPlayerName = ""; }
 
         try { AssistantLine = _s.AssistantNote(_matchday); } catch { AssistantLine = ""; }
 
-        // The scout's briefing — only when this opponent has actually been scouted.
+        // The scout's briefing — only when this opponent has actually been scouted. When there's
+        // no dossier the card OFFERS the mission (the button below) instead of naming a screen.
+        var haveDossier = false;
         try
         {
             var (scouted, summary, suggestion) = _s.OppositionBriefingFor(oppId);
-            BriefingSummary = scouted ? summary : "No dossier on them — send your scout (Scouting screen).";
+            haveDossier = scouted;
+            BriefingSummary = scouted ? summary : "No dossier on them yet.";
             BriefingSuggestion = scouted ? suggestion : "";
         }
         catch { BriefingSummary = ""; BriefingSuggestion = ""; }
+
+        RefreshScoutGuard(haveDossier);
 
         HasOpposition = true;
     }
 
     [ObservableProperty] private string _briefingSummary = "";
     [ObservableProperty] private string _briefingSuggestion = "";
+
+    // --- "Scout them" on the opposition card: the mission is an ACT here, not a signpost ------
+
+    [ObservableProperty] private int _oppId;
+    [ObservableProperty] private long _keyPlayerId;
+    [ObservableProperty] private string _keyPlayerName = "";
+    [ObservableProperty] private string _scoutOppLabel = "🔍 Scout them";
+    [ObservableProperty] private string _scoutOppHint = "";
+    [ObservableProperty] private bool _canScoutOpp;
+
+    /// <summary>Label + enablement for the scout button — the refusal is on the button, honestly.</summary>
+    private void RefreshScoutGuard(bool haveDossier)
+    {
+        try
+        {
+            var noScout = _s.StaffFor("Scout") is null;
+            var busy = _s.ActiveScoutJob() is not null;
+            CanScoutOpp = OppId != 0 && !noScout && !busy;
+            (ScoutOppLabel, ScoutOppHint) =
+                noScout ? ("🔍 Scout them — no scout hired", "Hire a scout on the Staff screen first.")
+                : busy ? ("🔍 Scout them — scout busy", "Your scout is already on a mission — one at a time.")
+                : haveDossier ? ("🔍 Scout them again", $"Send your scout back to watch {OppName}.")
+                : ("🔍 Scout them", $"Send your scout to watch {OppName} — report in {Session.ScoutMatchdays} matchdays.");
+        }
+        catch { CanScoutOpp = false; }
+    }
+
+    [RelayCommand]
+    private void ScoutOpposition()
+    {
+        if (OppId == 0) return;
+        var line = _s.StartScoutJob("club", OppId, OppName);
+        try { BuildOpposition(); } catch { /* the card survives a failed refresh */ }
+        MatchStatus = line;
+    }
+
+    // --- cross-screen hand-offs (P9): the Office is a hub, not a cul-de-sac -------------------
+
+    [RelayCommand] private void GoToBoard() => Nav.Go("Board");
+    [RelayCommand] private void GoToMarket() => Nav.Go("Market");
+    [RelayCommand] private void GoToTable() => Nav.Go("Table");
+
+    /// <summary>Shared club menu for whoever you play next (the opposition card's right-click).</summary>
+    public Avalonia.Controls.ContextMenu? OppositionMenu() =>
+        OppId == 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Club(OppId, OppName),
+                status: t => MatchStatus = t, refresh: RefreshPortal);
+
+    /// <summary>Shared player menu for the opponent's key man.</summary>
+    public Avalonia.Controls.ContextMenu? KeyPlayerMenu() =>
+        KeyPlayerId == 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Player(KeyPlayerId, KeyPlayerName),
+                status: t => MatchStatus = t, refresh: RefreshPortal);
+
+    /// <summary>Shared club menu for a schedule row's opponent.</summary>
+    public Avalonia.Controls.ContextMenu? MenuFor(ScheduleRowVm r) =>
+        r.TeamId == 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Club(r.TeamId, _s.TeamName(r.TeamId)),
+                status: t => MatchStatus = t, refresh: RefreshPortal);
+
+    /// <summary>Shared club menu for a mini-table row (the "· · ·" spacer has no id, so no menu).</summary>
+    public Avalonia.Controls.ContextMenu? MenuFor(MiniRowVm r) =>
+        r.TeamId == 0 ? null
+            : EntityActions.BuildMenu(_s, EntityRef.Club(r.TeamId, r.Team),
+                status: t => MatchStatus = t, refresh: RefreshPortal);
 
     private void BuildSchedule()
     {
@@ -744,15 +943,18 @@ public sealed partial class DashboardViewModel : PageViewModel
             var bg = r is null ? NeutralChip : us > them ? WinBrush : us == them ? DrawBrush : LossBrush;
             Schedule.Add(new ScheduleRowVm(
                 MdLabel(f), OppLabel(f, myId), r is null ? "—" : $"{us}-{them}", bg, Brushes.White,
-                OppCrest(f, myId)));
+                OppCrest(f, myId), OppIdOf(f, myId), f.Id));
         }
 
         foreach (var f in mine.Where(f => !f.Played).Take(4))
         {
             Schedule.Add(new ScheduleRowVm(MdLabel(f), OppLabel(f, myId), "—", NeutralChip, DimBrush,
-                OppCrest(f, myId)));
+                OppCrest(f, myId), OppIdOf(f, myId), f.Id));
         }
     }
+
+    private static int OppIdOf(FixtureRow f, int myId) =>
+        f.HomeTeamId == myId ? f.AwayTeamId : f.HomeTeamId;
 
     private string MdLabel(FixtureRow f) =>
         ML.Core.Scheduling.SeasonCalendar.ShortLabel(_s.DateOfFixture(f));
@@ -795,7 +997,8 @@ public sealed partial class DashboardViewModel : PageViewModel
             you ? YouRowBg : Brushes.Transparent,
             you ? YouRowFg : TextBrush,
             you ? FontWeight.Bold : FontWeight.Normal,
-            Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value)));
+            Visuals.LoadBitmap(_s.TeamLogoPath(r.TeamId.Value)),
+            r.TeamId.Value);
     }
 
     [RelayCommand]
@@ -894,10 +1097,21 @@ public sealed partial class DashboardViewModel : PageViewModel
     private void ImportScore()
     {
         var r = ScoreImport.FromLatestScreenshot();
-        if (r is null) { MatchStatus = "No screenshot found — press F12 in eFootball at full time."; return; }
-        HomeScore = r.Value.Home;
-        AwayScore = r.Value.Away;
-        MatchStatus = r.Value.Message;
+        // THE BUG: this guard read `if (r is null)`, but every failure path in ScoreImport returned
+        // a (0, 0, false, message) TUPLE — never null — so the guard never fired once, and the two
+        // lines below happily wrote 0-0 over the score you had just typed. Ok is now the only
+        // success signal, and nothing touches the boxes without it.
+        if (!r.Ok)
+        {
+            ImportNotice = $"⚠ {r.Message}";
+            MatchStatus = r.Message;
+            return;
+        }
+        HomeScore = r.Home;
+        AwayScore = r.Away;
+        // The banner is for trouble only — a clean read speaks for itself in the score boxes.
+        ImportNotice = r.Confident ? "" : "⚠ Low OCR confidence — check the digits before you record.";
+        MatchStatus = r.Message;
     }
 
     /// <summary>Record the score you played in eFootball, then advance to the next fixture.</summary>
@@ -908,7 +1122,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         // Snapshot the gauges so the report can show what this result MOVED (P3).
         int moraleBefore = 60, boardBefore = 58, fansBefore = 55;
         try { moraleBefore = _s.SquadMoraleAverage(); } catch { }
-        try { boardBefore = _s.Board.Value; } catch { }
+        try { boardBefore = _s.BoardConfidenceNow; } catch { }
         try { fansBefore = _s.FanHappiness(); } catch { }
         FoldPicksIntoTexts();   // pickers beat typing (P3)
         _s.Repo.RecordResult(new ResultRow

@@ -1,0 +1,483 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             x:Class="ML.App.Views.PlayerView"
+             x:DataType="vm:PlayerViewModel">
+
+  <!-- ═══ THE PLAYER SCREEN ═══════════════════════════════════════════════════════════
+       One full-width profile for any player — yours, a rival's, a free agent. It replaces
+       the Squad card, the Market profile pane and the Tactics rail, so NOTHING important
+       lives in a narrow column and no control is ever clipped: the body is three columns
+       across the whole window, the actions are docked at the top and the status line is
+       docked at the FOOT, outside every scroller, where every verb's answer lands.
+       ═════════════════════════════════════════════════════════════════════════════════ -->
+
+  <Panel>
+
+    <!-- Opened with nobody: say what to do, never sit blank. Same anatomy as the Bidding
+         screen's — a headline, the explanation, and a way out — because two destinations you
+         reach the same way should not greet you two different ways. This one was a paragraph
+         of muted text floating on its own in the middle of an empty screen. -->
+    <StackPanel IsVisible="{Binding !HasSubject}" Spacing="16" MaxWidth="620"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="No player open" Classes="ml-h1" HorizontalAlignment="Center"/>
+      <TextBlock Text="{Binding EmptyLine}" Classes="ml-empty" FontSize="13"/>
+      <Button Content="👥 Open your squad" Classes="ml-primary"
+              HorizontalAlignment="Center" Command="{Binding GoToSquadCommand}"/>
+    </StackPanel>
+
+    <DockPanel Margin="20" IsVisible="{Binding HasSubject}">
+
+      <!-- ══ identity band ═══════════════════════════════════════════════════════════
+           Right-clicking it opens the same menu the ⋯ button does — the standing ruling
+           is that an entity gets BOTH affordances, over one shared action list. -->
+      <Border x:Name="IdentityBand" DockPanel.Dock="Top" Classes="ml-panel"
+              Padding="20,16" Margin="0,0,0,12">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+
+          <!-- portrait (photo where we have one, the real skin tone behind initials where not) -->
+          <Panel Grid.Column="0" Width="104" Height="104" VerticalAlignment="Top" Margin="0,0,20,0">
+            <Border Width="104" Height="104" CornerRadius="52" Background="{Binding MarkBrush}">
+              <TextBlock Text="{Binding Mark}" FontSize="32" FontWeight="Bold" Foreground="White"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <Border Width="104" Height="104" CornerRadius="52" ClipToBounds="True">
+              <Image Source="{Binding Portrait}" Width="104" Height="104" Stretch="UniformToFill"
+                     IsVisible="{Binding HasPortrait}"/>
+            </Border>
+          </Panel>
+
+          <StackPanel Grid.Column="1" Spacing="10" VerticalAlignment="Top">
+            <TextBlock Text="{Binding PlayerName}" Classes="ml-h1" TextWrapping="Wrap"/>
+
+            <!-- who he is: position, nationality, club, and every status flag as a chip -->
+            <WrapPanel>
+              <Border CornerRadius="4" Padding="10,3" Background="{Binding PositionBrush}"
+                      Margin="0,0,8,6" VerticalAlignment="Center">
+                <TextBlock Text="{Binding PositionLabel}" FontSize="12" FontWeight="Bold"
+                           Foreground="White"/>
+              </Border>
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,12,6"
+                          VerticalAlignment="Center" IsVisible="{Binding HasFlag}">
+                <Image Source="{Binding Flag}" Height="15" Stretch="Uniform"
+                       VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Nationality}" Classes="ml-body" VerticalAlignment="Center"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,0,12,6"
+                          VerticalAlignment="Center">
+                <Image Source="{Binding ClubCrest}" Height="20" Stretch="Uniform"
+                       VerticalAlignment="Center" IsVisible="{Binding HasClubCrest}"/>
+                <TextBlock Text="{Binding ClubLine}" Classes="ml-body" FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+              </StackPanel>
+
+              <Border Classes="ml-chip ml-info" Margin="0,0,6,6" IsVisible="{Binding IsMine}">
+                <TextBlock Text="YOUR PLAYER"/>
+              </Border>
+              <Border Classes="ml-chip ml-gold" Margin="0,0,6,6" IsVisible="{Binding IsCaptain}">
+                <TextBlock Text="CAPTAIN"/>
+              </Border>
+              <Border Classes="ml-chip" Margin="0,0,6,6" IsVisible="{Binding IsFreeAgent}">
+                <TextBlock Text="FREE AGENT"/>
+              </Border>
+              <Border Classes="ml-chip ml-danger" Margin="0,0,6,6" IsVisible="{Binding IsTransferListed}">
+                <TextBlock Text="TRANSFER LISTED"/>
+              </Border>
+              <Border Classes="ml-chip ml-warn" Margin="0,0,6,6" IsVisible="{Binding IsLoanListed}">
+                <TextBlock Text="AVAILABLE ON LOAN"/>
+              </Border>
+              <Border Classes="ml-chip ml-success" Margin="0,0,6,6" IsVisible="{Binding IsShortlisted}">
+                <TextBlock Text="SHORTLISTED"/>
+              </Border>
+            </WrapPanel>
+
+            <!-- the facts row: statistics and money are digits, and that is correct -->
+            <Border Classes="ml-card" Padding="14,10">
+              <Grid ColumnDefinitions="*,*,*,*,*">
+                <StackPanel Grid.Column="0" Spacing="2">
+                  <TextBlock Text="AGE" Classes="ml-label"/>
+                  <TextBlock Text="{Binding AgeDisplay}" Classes="ml-body" FontWeight="SemiBold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="2">
+                  <TextBlock Text="HEIGHT" Classes="ml-label"/>
+                  <TextBlock Text="{Binding HeightDisplay}" Classes="ml-body" FontWeight="SemiBold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="2">
+                  <TextBlock Text="WEIGHT" Classes="ml-label"/>
+                  <TextBlock Text="{Binding WeightDisplay}" Classes="ml-body" FontWeight="SemiBold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="3" Spacing="2">
+                  <TextBlock Text="MARKET VALUE" Classes="ml-label"/>
+                  <TextBlock Text="{Binding ValueLine}" Classes="ml-body" FontWeight="SemiBold"/>
+                </StackPanel>
+                <StackPanel Grid.Column="4" Spacing="2">
+                  <TextBlock Text="WAGE" Classes="ml-label"/>
+                  <TextBlock Text="{Binding WageLine}" Classes="ml-body" FontWeight="SemiBold"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <!-- the calibre letter, the one reading of "how good is he" — never a number -->
+          <StackPanel Grid.Column="2" Spacing="8" Margin="24,0,0,0" MinWidth="230"
+                      VerticalAlignment="Top">
+            <TextBlock Text="{Binding Grade}" FontSize="46" FontWeight="Bold"
+                       Foreground="{Binding GradeBrush}" HorizontalAlignment="Right"
+                       ToolTip.Tip="{Binding GradeTip}"/>
+            <TextBlock Text="{Binding KnowledgeLine}" Classes="ml-label"
+                       HorizontalAlignment="Right"/>
+            <TextBlock Text="{Binding GradeTip}" Classes="ml-muted" TextWrapping="Wrap"
+                       TextAlignment="Right" HorizontalAlignment="Right"/>
+
+            <!-- the way in to a signing, with the money you'd be spending beside it -->
+            <Button Content="💷 Open bidding" Classes="ml-primary" FontSize="14" Padding="20,11"
+                    HorizontalAlignment="Right" Margin="0,6,0,0"
+                    Command="{Binding OpenBiddingCommand}" IsVisible="{Binding CanBid}"
+                    ToolTip.Tip="Open the bidding table for this player"/>
+            <TextBlock Text="{Binding BudgetLine}" Classes="ml-muted" HorizontalAlignment="Right"
+                       IsVisible="{Binding CanBid}"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- ══ the action bar: the shared vocabulary, as VISIBLE buttons ═══════════════
+           These are the right-click menu's own items, rendered as buttons. A verb the
+           engine has blocked arrives disabled WITH ITS REASON in the label. -->
+      <Border DockPanel.Dock="Top" Classes="ml-card" Padding="14,10" Margin="0,0,0,12">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Left" Text="ACTIONS" Classes="ml-label"
+                     VerticalAlignment="Center" Margin="0,0,14,0"/>
+          <Button x:Name="MoreButton" DockPanel.Dock="Right" Content="⋯" Classes="ml-ghost"
+                  FontSize="16" Padding="12,4" Click="OnMore" VerticalAlignment="Center"
+                  ToolTip.Tip="The same actions as a menu — right-clicking him does this too"/>
+          <Panel>
+            <ItemsControl ItemsSource="{Binding Actions}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PlayerActionVm">
+                  <Button Content="{Binding Label}" Command="{Binding Run}"
+                          IsEnabled="{Binding IsEnabled}" Classes="ml-secondary"
+                          FontSize="12" Padding="12,7" Margin="0,3,7,3"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="ml-muted" VerticalAlignment="Center"
+                       IsVisible="{Binding !HasActions}"
+                       Text="No actions available for him right now."/>
+          </Panel>
+        </DockPanel>
+      </Border>
+
+      <!-- ══ THE ONE STATUS LINE ═════════════════════════════════════════════════════
+           Docked at the foot, outside every scroller, severity-coloured. Every verb on
+           this screen answers here, and it is always on screen when it does. -->
+      <Border DockPanel.Dock="Bottom" Classes="ml-card" Padding="16,11" Margin="0,12,0,0">
+        <TextBlock Text="{Binding StatusLine}" Foreground="{Binding StatusBrush}"
+                   FontSize="13" TextWrapping="Wrap"/>
+      </Border>
+
+      <!-- ══ the body: three columns across the width ════════════════════════════════ -->
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="12">
+
+          <Grid ColumnDefinitions="*,*,*">
+
+            <!-- ─── column 1: ABILITY ─────────────────────────────────────────────── -->
+            <StackPanel Grid.Column="0" Spacing="12" Margin="0,0,6,0">
+              <Border Classes="ml-card">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="ABILITY" Classes="ml-label" LetterSpacing="1.1"/>
+
+                  <!-- hexagon radar; all six axis labels come from the ViewModel and follow
+                       the player (a keeper's axes are gk_* abilities, so outfield words
+                       would lie on his card) -->
+                  <Panel Width="200" Height="200" HorizontalAlignment="Center">
+                    <Canvas Width="200" Height="200">
+                      <Polygon Points="100,22 167.6,61 167.6,139 100,178 32.4,139 32.4,61"
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
+                      <Polygon Points="100,48 145,74 145,126 100,152 55,126 55,74"
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
+                      <Polygon Points="100,74 122.5,87 122.5,113 100,126 77.5,113 77.5,87"
+                               Stroke="{StaticResource MlRadarGrid}" StrokeThickness="1"/>
+                      <Polygon Points="{Binding RadarPoints}" Stroke="{StaticResource MlRadarLine}" StrokeThickness="2"
+                               Fill="{StaticResource MlRadarFill}" IsVisible="{Binding !RadarMasked}"/>
+                      <TextBlock Canvas.Left="89" Canvas.Top="6" Text="{Binding RadarLabels[0]}"
+                                 FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
+                      <TextBlock Canvas.Left="174" Canvas.Top="48" Text="{Binding RadarLabels[1]}"
+                                 FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
+                      <TextBlock Canvas.Left="174" Canvas.Top="142" Text="{Binding RadarLabels[2]}"
+                                 FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
+                      <TextBlock Canvas.Left="89" Canvas.Top="183" Text="{Binding RadarLabels[3]}"
+                                 FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
+                      <TextBlock Canvas.Left="6" Canvas.Top="142" Text="{Binding RadarLabels[4]}"
+                                 FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
+                      <TextBlock Canvas.Left="6" Canvas.Top="48" Text="{Binding RadarLabels[5]}"
+                                 FontSize="10" Foreground="{DynamicResource MlTextMuted}"/>
+                    </Canvas>
+                  </Panel>
+
+                  <TextBlock Text="{Binding AbilityNote}" Classes="ml-muted" TextWrapping="Wrap"
+                             IsVisible="{Binding HasAbilityNote}"/>
+
+                  <ItemsControl ItemsSource="{Binding Abilities}" IsVisible="{Binding HasAbilities}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:AbilityEntry">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,3,14,3">
+                          <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="ml-body"
+                                     FontSize="12" TextTrimming="CharacterEllipsis"/>
+                          <Panel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Display}" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{Binding ValueBrush}"/>
+                            <!-- FM mode: the colour band replaces the number -->
+                            <Border Width="28" Height="10" CornerRadius="3"
+                                    Background="{Binding BandBrush}" IsVisible="{Binding ShowBand}"/>
+                          </Panel>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="ml-card">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="COACH'S REPORT" Classes="ml-label" LetterSpacing="1.1"/>
+                  <ItemsControl ItemsSource="{Binding CoachLines}" IsVisible="{Binding HasCoachLines}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" Classes="ml-body" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,2"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding CoachNote}" Classes="ml-muted" TextWrapping="Wrap"
+                             IsVisible="{Binding CoachNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  <TextBlock Text="{Binding AnalystLine}" Classes="ml-body" FontSize="12"
+                             TextWrapping="Wrap" Margin="0,6,0,0"
+                             IsVisible="{Binding AnalystLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  <TextBlock Text="{Binding AnalystNote}" Classes="ml-muted" TextWrapping="Wrap"
+                             IsVisible="{Binding AnalystNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- ─── column 2: THE MAN ─────────────────────────────────────────────── -->
+            <StackPanel Grid.Column="1" Spacing="12" Margin="6,0,6,0">
+
+              <!-- unscouted: ONE deliberate card, not four blank sections -->
+              <Border Classes="ml-card" IsVisible="{Binding IsUnknown}">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{Binding UnknownHeading}" Classes="ml-label" LetterSpacing="1.1"/>
+                  <TextBlock Text="{Binding UnknownLine}" Classes="ml-body" TextWrapping="Wrap"/>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="ml-card" IsVisible="{Binding IsKnown}">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="THE PLAYER" Classes="ml-label" LetterSpacing="1.1"/>
+
+                  <!-- playstyles: he has two — one in possession, one out of it -->
+                  <StackPanel Spacing="6" IsVisible="{Binding HasPlaystyle}">
+                    <TextBlock Text="IN POSSESSION" Classes="ml-label"/>
+                    <Border HorizontalAlignment="Left" CornerRadius="11" Padding="12,4"
+                            Background="#26FF2D78" BorderBrush="#80FF2D78" BorderThickness="1">
+                      <TextBlock Text="{Binding Playstyle}" FontSize="12" FontWeight="SemiBold"
+                                 Foreground="#FF7FAE"/>
+                    </Border>
+                  </StackPanel>
+                  <StackPanel Spacing="6" IsVisible="{Binding HasPlaystyleOut}">
+                    <TextBlock Text="OUT OF POSSESSION" Classes="ml-label"/>
+                    <Border Classes="ml-chip ml-info" HorizontalAlignment="Left" Padding="12,4">
+                      <TextBlock Text="{Binding PlaystyleOut}" FontSize="12"/>
+                    </Border>
+                  </StackPanel>
+
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="POTENTIAL" Classes="ml-label"/>
+                    <TextBlock Text="{Binding Potential}" FontSize="18"
+                               Foreground="{DynamicResource MlGold}"
+                               IsVisible="{Binding Potential, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock Text="{Binding PotentialNote}" Classes="ml-muted" TextWrapping="Wrap"/>
+                  </StackPanel>
+
+                  <StackPanel Spacing="3" IsVisible="{Binding HasPersonality}">
+                    <TextBlock Text="PERSONALITY" Classes="ml-label"/>
+                    <TextBlock Text="{Binding Personality}" FontSize="13" Foreground="#C7A8E8"
+                               TextWrapping="Wrap"/>
+                  </StackPanel>
+
+                  <!-- character as WORDS: the engine's 1-20 score never reaches the screen -->
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="CHARACTER" Classes="ml-label"/>
+                    <ItemsControl ItemsSource="{Binding Traits}" IsVisible="{Binding HasTraits}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PlayerTraitVm">
+                          <Grid ColumnDefinitions="*,Auto" Margin="0,3">
+                            <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="ml-body"
+                                       FontSize="12"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Word}" Classes="ml-body"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       HorizontalAlignment="Right"/>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding TraitsNote}" Classes="ml-muted" TextWrapping="Wrap"
+                               IsVisible="{Binding !HasTraits}"/>
+                  </StackPanel>
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="SIGNATURE SKILLS" Classes="ml-label"/>
+                    <ItemsControl ItemsSource="{Binding Skills}" IsVisible="{Binding HasSkills}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <Border Classes="ml-chip" Margin="0,0,6,6" Padding="10,4">
+                            <TextBlock Text="{Binding}"/>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding SkillsNote}" Classes="ml-muted" TextWrapping="Wrap"
+                               IsVisible="{Binding !HasSkills}"/>
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- ─── column 3: SEASON & CLUB ───────────────────────────────────────── -->
+            <StackPanel Grid.Column="2" Spacing="12" Margin="6,0,0,0">
+              <Border Classes="ml-card">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="THIS SEASON" Classes="ml-label" LetterSpacing="1.1"/>
+                  <ItemsControl ItemsSource="{Binding SeasonTiles}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:PlayerStatTileVm">
+                        <StackPanel Spacing="2" Margin="0,0,22,10" MinWidth="72">
+                          <TextBlock Text="{Binding Label}" Classes="ml-label"/>
+                          <TextBlock Text="{Binding Value}" Classes="ml-h2"/>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding SeasonNote}" Classes="ml-muted" TextWrapping="Wrap"
+                             IsVisible="{Binding HasSeasonNote}"/>
+                  <TextBlock Text="{Binding StartsLine}" Classes="ml-body" TextWrapping="Wrap"
+                             IsVisible="{Binding StartsLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasMorale}">
+                    <TextBlock Text="{Binding MoraleFace}" FontSize="18" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding MoraleLine}" Classes="ml-body"
+                               VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <TextBlock Text="{Binding OutsideNote}" Classes="ml-muted" TextWrapping="Wrap"
+                             IsVisible="{Binding HasOutsideNote}"/>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="ml-card">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="CLUB" Classes="ml-label" LetterSpacing="1.1"/>
+                  <StackPanel Spacing="3"
+                              IsVisible="{Binding SquadRole, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <TextBlock Text="{Binding SquadRoleLabel}" Classes="ml-label"/>
+                    <TextBlock Text="{Binding SquadRole}" Classes="ml-body" FontWeight="SemiBold"/>
+                  </StackPanel>
+                  <TextBlock Text="{Binding ContractLine}" Classes="ml-body" TextWrapping="Wrap"
+                             IsVisible="{Binding HasContract}"/>
+                  <TextBlock Text="{Binding PromiseLine}" Classes="ml-body" TextWrapping="Wrap"
+                             Foreground="{DynamicResource MlWarn}" IsVisible="{Binding HasPromise}"/>
+                  <!-- what does and does not reach the game -->
+                  <TextBlock Classes="ml-muted" TextWrapping="Wrap"
+                             Text="🔒 Contracts, morale, promises and scouting live in this app — eFootball's save has no field for them. Squad membership is the part that reaches the game."/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Grid>
+
+          <!-- ══ the graded analysis, across the full width ═════════════════════════ -->
+          <Border Classes="ml-card" IsVisible="{Binding HasAnalysis}">
+            <StackPanel Spacing="10">
+              <TextBlock Text="ANALYSIS" Classes="ml-label" LetterSpacing="1.1"/>
+              <ItemsControl ItemsSource="{Binding AnalysisPanels}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SquadViewModel+AnalysisPanelVm">
+                    <Border Classes="ml-card" Width="330" Margin="0,0,12,12" Padding="14,12"
+                            VerticalAlignment="Top">
+                      <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding Name}" Classes="ml-h2" FontSize="14"/>
+                        <ItemsControl ItemsSource="{Binding Lines}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SquadViewModel+AnalysisLineVm">
+                              <Grid ColumnDefinitions="22,*,Auto" Margin="0,2">
+                                <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="12"
+                                           FontWeight="Bold" Foreground="{Binding IconBrush}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Text}" Classes="ml-body"
+                                           FontSize="12" TextWrapping="Wrap"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Grade}" FontSize="12"
+                                           FontWeight="Bold" Foreground="{Binding IconBrush}"
+                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
+                              </Grid>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+
+          <!-- ══ career history, across the full width ═════════════════════════════ -->
+          <Border Classes="ml-card">
+            <StackPanel Spacing="6">
+              <TextBlock Text="CAREER" Classes="ml-label" LetterSpacing="1.1"/>
+              <Grid ColumnDefinitions="110,*,90,90,90,90" Margin="0,4,0,2"
+                    IsVisible="{Binding HasCareer}">
+                <TextBlock Grid.Column="0" Text="SEASON" Classes="ml-label"/>
+                <TextBlock Grid.Column="1" Text="CLUB" Classes="ml-label"/>
+                <TextBlock Grid.Column="2" Text="APPS" Classes="ml-label"/>
+                <TextBlock Grid.Column="3" Text="GOALS" Classes="ml-label"/>
+                <TextBlock Grid.Column="4" Text="ASSISTS" Classes="ml-label"/>
+                <TextBlock Grid.Column="5" Text="AVG" Classes="ml-label"/>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Career}" IsVisible="{Binding HasCareer}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PlayerCareerRowVm">
+                    <Grid ColumnDefinitions="110,*,90,90,90,90" Margin="0,3">
+                      <TextBlock Grid.Column="0" Text="{Binding Season}" Classes="ml-body" FontSize="12"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Club}" Classes="ml-body" FontSize="12"
+                                 TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Apps}" Classes="ml-body" FontSize="12"/>
+                      <TextBlock Grid.Column="3" Text="{Binding Goals}" Classes="ml-body" FontSize="12"/>
+                      <TextBlock Grid.Column="4" Text="{Binding Assists}" Classes="ml-body" FontSize="12"/>
+                      <TextBlock Grid.Column="5" Text="{Binding Avg}" Classes="ml-body" FontSize="12"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{Binding CareerNote}" Classes="ml-muted" TextWrapping="Wrap"
+                         IsVisible="{Binding !HasCareer}"/>
+            </StackPanel>
+          </Border>
+
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+  </Panel>
+</UserControl>

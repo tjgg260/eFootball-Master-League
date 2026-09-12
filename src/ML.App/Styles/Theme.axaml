@@ -31,6 +31,14 @@
       <SolidColorBrush x:Key="MlDanger">#D64545</SolidColorBrush>
       <SolidColorBrush x:Key="MlLink">#6EA8FF</SolidColorBrush>
       <SolidColorBrush x:Key="MlGold">#D4AC0D</SolidColorBrush>
+
+      <!-- The player radar. These three were repeated as raw hex in every screen that draws a
+           hexagon (Squad, Market, Player) — the same values, copied, so a change meant finding
+           all of them. The magenta is deliberately outside the status palette: a radar is not a
+           good/bad readout, and reusing MlSuccess/MlDanger there would imply a verdict. -->
+      <SolidColorBrush x:Key="MlRadarGrid">#3A4759</SolidColorBrush>
+      <SolidColorBrush x:Key="MlRadarLine">#FF2D78</SolidColorBrush>
+      <SolidColorBrush x:Key="MlRadarFill">#40FF2D78</SolidColorBrush>
       <CornerRadius x:Key="MlRadiusCard">12</CornerRadius>
       <CornerRadius x:Key="MlRadiusControl">8</CornerRadius>
       <CornerRadius x:Key="MlRadiusChip">4</CornerRadius>
@@ -148,9 +156,18 @@
     <Setter Property="FontSize" Value="11"/>
     <Setter Property="FontWeight" Value="Bold"/>
     <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
-    <Setter Property="Padding" Value="6,4"/>
+    <!-- Asymmetric on purpose. The Fluent header template lays out a sort-arrow slot and a
+         resize gripper to the RIGHT of the content whether or not the column is sorted, so a
+         symmetric padding loses those pixels off the end of the word: "Age" rendered as "Ag",
+         "Rating" with the g sliced down the middle, on every grid in the app. Giving the right
+         side back its 4px is what makes a three-letter header fit a narrow column. -->
+    <Setter Property="Padding" Value="6,4,2,4"/>
     <Setter Property="MinHeight" Value="30"/>
     <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <!-- A header that still cannot fit says so on hover rather than lying by truncation. -->
+  <Style Selector="DataGridColumnHeader /template/ ContentPresenter">
+    <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis"/>
   </Style>
   <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
     <Setter Property="Fill" Value="{StaticResource MlPrimary}"/>
@@ -158,5 +175,52 @@
   </Style>
   <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
     <Setter Property="Fill" Value="#22FFFFFF"/>
+  </Style>
+
+  <!-- ── placeholders read as placeholders ────────────────────────────── -->
+  <!-- The Fluent default paints a TextBox watermark at nearly the same weight as a real
+       value, so on Settings the empty recordings folder showed "C:\Users\you\Videos" looking
+       exactly as typed-in as the Steam path above it. A hint you cannot tell from an entry is
+       worse than no hint. Same treatment for a ComboBox that has nothing selected. -->
+  <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+    <Setter Property="Opacity" Value="0.72"/>
+    <Setter Property="FontStyle" Value="Italic"/>
+  </Style>
+  <Style Selector="ComboBox /template/ TextBlock#PlaceholderTextBlock">
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+    <Setter Property="Opacity" Value="0.72"/>
+    <Setter Property="FontStyle" Value="Italic"/>
+  </Style>
+
+  <!-- ── context menus (P9): the shared right-click vocabulary ─────────────────── -->
+  <!-- Built in code by EntityActions; these styles are the one place their chrome
+       is defined. Card surface, control radius, ghost-row hover — no new species. -->
+  <Style Selector="ContextMenu">
+    <Setter Property="Background" Value="{StaticResource MlSurfaceCard}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource MlBorder}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="4"/>
+  </Style>
+  <Style Selector="ContextMenu MenuItem">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{StaticResource MlTextBody}"/>
+    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+  <Style Selector="ContextMenu MenuItem:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="#22FFFFFF"/>
+  </Style>
+  <Style Selector="ContextMenu MenuItem:pointerover /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="#22FFFFFF"/>
+  </Style>
+  <Style Selector="ContextMenu MenuItem:disabled">
+    <Setter Property="Foreground" Value="{StaticResource MlTextMuted}"/>
+  </Style>
+  <Style Selector="ContextMenu Separator">
+    <Setter Property="Background" Value="{StaticResource MlBorder}"/>
+    <Setter Property="Height" Value="1"/>
+    <Setter Property="Margin" Value="6,4"/>
   </Style>
 </Styles>

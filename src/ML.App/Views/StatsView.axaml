@@ -6,12 +6,16 @@
              x:DataType="vm:StatsViewModel">
   <ScrollViewer Padding="20" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Spacing="16">
+      <!-- the one line this screen talks on: results of right-click verbs, verbatim -->
+      <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"
+                 IsVisible="{Binding !!Status.Length}"/>
       <Grid ColumnDefinitions="*,*,*">
         <Border Grid.Column="0" Classes="ml-panel" Margin="0,0,8,0"><StackPanel>
           <TextBlock Classes="ml-label" Text="⚽ Top scorers" Margin="0,0,0,10"/>
           <TextBlock Text="{Binding ScorersNote}" Classes="ml-muted" TextWrapping="Wrap"
                      IsVisible="{Binding !TopScorers.Count}"/>
-          <DataGrid ItemsSource="{Binding TopScorers}" IsReadOnly="True" HeadersVisibility="None"
+          <DataGrid x:Name="ScorersGrid" ItemsSource="{Binding TopScorers}" IsReadOnly="True"
+                    HeadersVisibility="None"
                     Height="320" IsVisible="{Binding !!TopScorers.Count}">
             <DataGrid.Columns>
               <DataGridTemplateColumn Width="36">
@@ -32,7 +36,8 @@
           <TextBlock Classes="ml-label" Text="🅰 Top assists" Margin="0,0,0,10"/>
           <TextBlock Text="Assists appear here as matches are played." Classes="ml-muted"
                      TextWrapping="Wrap" IsVisible="{Binding !TopAssists.Count}"/>
-          <DataGrid ItemsSource="{Binding TopAssists}" IsReadOnly="True" HeadersVisibility="None"
+          <DataGrid x:Name="AssistsGrid" ItemsSource="{Binding TopAssists}" IsReadOnly="True"
+                    HeadersVisibility="None"
                     Height="320" IsVisible="{Binding !!TopAssists.Count}">
             <DataGrid.Columns>
               <DataGridTemplateColumn Width="36">
@@ -52,7 +57,8 @@
           <TextBlock Classes="ml-label" Text="Best defence (goals against)" Margin="0,0,0,10"/>
           <TextBlock Text="Rankings appear once league matches have been played." Classes="ml-muted"
                      TextWrapping="Wrap" IsVisible="{Binding !BestDefence.Count}"/>
-          <DataGrid ItemsSource="{Binding BestDefence}" IsReadOnly="True" HeadersVisibility="None"
+          <DataGrid x:Name="DefenceGrid" ItemsSource="{Binding BestDefence}" IsReadOnly="True"
+                    HeadersVisibility="None"
                     Height="320" IsVisible="{Binding !!BestDefence.Count}">
             <DataGrid.Columns>
               <DataGridTemplateColumn Width="32">
@@ -69,7 +75,8 @@
       <Grid ColumnDefinitions="*,*,*">
         <Border Grid.Column="0" Classes="ml-panel" Margin="0,0,8,0" IsVisible="{Binding HasCleanSheets}"><StackPanel>
           <TextBlock Classes="ml-label" Text="🧤 Clean sheets" Margin="0,0,0,10"/>
-          <DataGrid ItemsSource="{Binding CleanSheets}" IsReadOnly="True" HeadersVisibility="None" MaxHeight="240">
+          <DataGrid x:Name="CleanSheetGrid" ItemsSource="{Binding CleanSheets}" IsReadOnly="True"
+                    HeadersVisibility="None" MaxHeight="240">
             <DataGrid.Columns>
               <DataGridTemplateColumn Width="32">
                 <DataGridTemplateColumn.CellTemplate>
@@ -83,7 +90,8 @@
             </DataGrid.Columns></DataGrid></StackPanel></Border>
         <Border Grid.Column="1" Classes="ml-panel" Margin="4,0,4,0" IsVisible="{Binding HasDiscipline}"><StackPanel>
           <TextBlock Classes="ml-label" Text="🟨 Discipline" Margin="0,0,0,10"/>
-          <DataGrid ItemsSource="{Binding Discipline}" IsReadOnly="True" HeadersVisibility="None" MaxHeight="240">
+          <DataGrid x:Name="DisciplineGrid" ItemsSource="{Binding Discipline}" IsReadOnly="True"
+                    HeadersVisibility="None" MaxHeight="240">
             <DataGrid.Columns>
               <DataGridTemplateColumn Width="36">
                 <DataGridTemplateColumn.CellTemplate>
@@ -102,13 +110,16 @@
           <TextBlock Classes="ml-label" Text="⚔ Head to head" Margin="0,0,0,10"/>
           <TextBlock Text="{Binding HeadToHeadLine}" Classes="ml-body"
                      TextWrapping="Wrap" Margin="0,6,0,0"/>
+          <!-- the opponent is a club, so it is one click from being one -->
+          <Button Classes="ml-ghost" Content="{Binding OpponentButton}" Margin="0,10,0,0"
+                  HorizontalAlignment="Left" Command="{Binding ViewOpponentCommand}"/>
         </StackPanel></Border>
       </Grid>
       <Border Classes="ml-panel"><StackPanel>
         <TextBlock Classes="ml-label" Text="📊 Match reports" Margin="0,0,0,10"/>
         <TextBlock Text="Match reports are filed here after every game you play." Classes="ml-muted"
                    IsVisible="{Binding !MatchReports.Count}"/>
-        <ItemsControl ItemsSource="{Binding MatchReports}">
+        <ItemsControl x:Name="ReportsList" ItemsSource="{Binding MatchReports}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:ReportRow">
               <Grid ColumnDefinitions="70,*,Auto" Margin="0,3">
@@ -124,7 +135,7 @@
         <TextBlock Classes="ml-label" Text="🏆 Roll of Honour" Margin="0,0,0,10"/>
         <TextBlock Text="{Binding HonoursNote}" Classes="ml-muted"
                    IsVisible="{Binding !Honours.Count}"/>
-        <ItemsControl ItemsSource="{Binding Honours}">
+        <ItemsControl x:Name="HonoursList" ItemsSource="{Binding Honours}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:HonourRow">
               <Grid ColumnDefinitions="70,*,26,*" Margin="0,3">

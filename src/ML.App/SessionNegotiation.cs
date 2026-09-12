@@ -47,27 +47,7 @@ public sealed partial class Session
         if (seller is { } club && Repo.Squad(club.TeamId).Count <= 18)
             return $"{club.Name} won't discuss {name} — their squad is at the minimum.";
 
-        var premium = (int)((uint)((playerId + SeasonId) * 2654435761) % 16) + 5;
-        var difficulty = (GetMeta("transfer_difficulty") ?? "Normal") switch
-        { "Easy" => 90, "Hard" => 115, _ => 100 };
-        // FM-style willingness (P5): the target's squad status at HIS club scales the ask —
-        // a Star Player costs a fortune, Surplus goes cheap and gladly.
-        var status = seller is null ? "Squad Player" : PlayTimeStatusOf(playerId);
-        var ask = seller is null ? value
-            : ClubNegotiation.OpeningAsk(value, premium, difficulty) * StatusAskPct(status) / 100;
-        // NOT FOR SALE (player_market.transfer_status): everyone has a price, but it's silly money
-        // and the club opens hostile.
-        var notForSale = false;
-        using (var st = Db.Connection.CreateCommand())
-        {
-            st.CommandText = "SELECT transfer_status FROM player_market WHERE player_id=$p";
-            st.Parameters.AddWithValue("$p", playerId);
-            notForSale = st.ExecuteScalar() as string == "not-for-sale";
-        }
-        if (notForSale && seller is not null)
-        {
-            ask = ask * 22 / 10;
-        }
+        var (ask, status, notForSale) = AskPricingFor(playerId, value, seller is not null);
         using var cmd = Db.Connection.CreateCommand();
         cmd.CommandText = "INSERT INTO negotiations(player_id,seller_id,round,ask,state) " +
                           "VALUES($p,$s,1,$a,'open') ON CONFLICT(player_id) DO UPDATE SET " +
@@ -84,6 +64,59 @@ public sealed partial class Session
                   (status == "Star Player" ? " They do NOT want to sell — expect a war."
                    : status == "Surplus to Requirements" ? " They want him gone — push hard." : ""))
             : $"{name} is a free agent — agree market value £{value:N0} plus his wages.";
+    }
+
+    /// <summary>The club's opening ask for a target — one pricing model shared by formal talks and the free enquiry.</summary>
+    private (long Ask, string Status, bool NotForSale) AskPricingFor(long playerId, long value, bool hasSeller)
+    {
+        var premium = (int)((uint)((playerId + SeasonId) * 2654435761) % 16) + 5;
+        var difficulty = (GetMeta("transfer_difficulty") ?? "Normal") switch
+        { "Easy" => 90, "Hard" => 115, _ => 100 };
+        // FM-style willingness (P5): the target's squad status at HIS club scales the ask —
+        // a Star Player costs a fortune, Surplus goes cheap and gladly.
+        var status = !hasSeller ? "Squad Player" : PlayTimeStatusOf(playerId);
+        var ask = !hasSeller ? value
+            : ClubNegotiation.OpeningAsk(value, premium, difficulty) * StatusAskPct(status) / 100;
+        // NOT FOR SALE (player_market.transfer_status): everyone has a price, but it's silly money
+        // and the club opens hostile.
+        var notForSale = false;
+        using (var st = Db.Connection.CreateCommand())
+        {
+            st.CommandText = "SELECT transfer_status FROM player_market WHERE player_id=$p";
+            st.Parameters.AddWithValue("$p", playerId);
+            notForSale = st.ExecuteScalar() as string == "not-for-sale";
+        }
+        if (notForSale && hasSeller)
+        {
+            ask = ask * 22 / 10;
+        }
+        return (ask, status, notForSale);
+    }
+
+    /// <summary>FM's "Make enquiry": a free, non-committal sounding-out of the owning club — no negotiation opened, no window required.</summary>
+    public string MakeEnquiry(long playerId)
+    {
+        if (IsOwnPlayer(playerId)) return "He is already your player.";
+        var (rating, age, name) = PlayerBasics(playerId);
+        if (OwningClub(playerId) is not { } club)
+            return $"{name} is a free agent — no club to ask; sign him directly.";
+        var value = MarketValueOf(playerId, rating, age);
+        var (ask, status, notForSale) = AskPricingFor(playerId, value, hasSeller: true);
+        var stance = notForSale
+            ? "he is not for sale, and they'd resent the call"
+            : status switch
+            {
+                "Star Player" => "their star — prising him out would be a war",
+                "Important Player" => "a key man — they'd take real convincing",
+                "Hot Prospect" => "a gem they're guarding",
+                "Regular Starter" => "a regular — sellable at the right price",
+                "Squad Player" => "a squad man — they'd do business",
+                "Fringe Player" => "on the fringes — open to offers",
+                "Surplus to Requirements" => "surplus — they'd bite your hand off",
+                _ => "they'd do business at the right price",
+            };
+        var shut = TransferWindowOpen() ? "" : " (the window is shut — talks could only start in a window)";
+        return $"{club.Name} field the enquiry on {name}: they'd listen around £{ask:N0} — {stance}.{shut}";
     }
 
     // ------------------------------------------------------------------ the rounds
@@ -124,7 +157,7 @@ public sealed partial class Session
                 SetNegotiationState(playerId, "dead");
                 PostInbox("Transfer", $"Talks collapse: {n.PlayerName}",
                     $"{n.SellerName} have ended negotiations. They will not reopen them this window.",
-                    NextFixture()?.Matchday);
+                    NextFixture()?.Matchday, playerId: n.PlayerId);
                 return ($"{n.SellerName} walk away — talks are over this window.", false, true);
             default:
                 using (var upd = Db.Connection.CreateCommand())
@@ -300,7 +333,8 @@ public sealed partial class Session
                 SaveOffers(offers);
                 PostInbox("Transfer", $"🚨 DEADLINE DAY: late bid for {t.Name}",
                     $"{b.Name} table £{fee:N0} — a 25%+ premium — with hours left in the window. " +
-                    "Accept or reject on the Market screen before the deadline.", matchday, t.Id);
+                    "Accept or reject on the Market screen before the deadline.", matchday, t.Id,
+                    requiresAction: true);
             }
         }
 
@@ -325,7 +359,8 @@ public sealed partial class Session
                         : $"DEADLINE DAY: {PlayerNameOf(pid)} talks are OFF",
                     softens
                         ? $"With hours left they drop the ask 5% (now ~£{ask * 95 / 100:N0}). Close it or lose it."
-                        : "The selling club pulled out at the deadline. It happens.", matchday);
+                        : "The selling club pulled out at the deadline. It happens.",
+                    matchday, playerId: pid);
             }
         }
     }

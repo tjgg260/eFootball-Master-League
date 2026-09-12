@@ -305,7 +305,14 @@ public sealed partial class Session
             $"{p.StyleLine} · £{p.Wage:N0}/week." +
             (incumbent is not null ? $" {incumbent.Name} leaves to make room." : ""),
             NextFixture()?.Matchday);
-        return $"{p.Name} hired as {p.Role} — £{p.Wage:N0}/week joins the bill.";
+        // The release was named in the inbox but NOT in what the caller shows on screen, so the
+        // one line the Staff page prints said "hired" and never "…and you just sacked a man".
+        // A desk holds one person: whoever hires must be told who left.
+        return incumbent is null
+            ? $"{p.Name} hired as {p.Role} — £{p.Wage:N0}/week joins the bill."
+            : $"{p.Name} hired as {p.Role} — £{p.Wage:N0}/week joins the bill. " +
+              $"{incumbent.Name} held that desk and was released to make room " +
+              $"(£{incumbent.Wage:N0}/week off the bill).";
     }
 
     /// <summary>Release a person back into the pool (they keep existing as a free agent).</summary>
@@ -332,6 +339,36 @@ public sealed partial class Session
     /// <summary>Legacy role-based fire, used by older call sites.</summary>
     public string FireStaff(string role) =>
         StaffPersonFor(role) is { } p ? ReleaseStaff(p.Id) : "Nobody in that role.";
+
+    /// <summary>Renew one of your own people: two more seasons on the clock and a modest raise.</summary>
+    public string RenewStaffContract(long staffId)
+    {
+        StaffPerson? p = null;
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText = $"SELECT {StaffColumns} FROM staff_people WHERE id=$id";
+            q.Parameters.AddWithValue("$id", staffId);
+            using var r = q.ExecuteReader();
+            if (r.Read()) p = ReadStaffPerson(r);
+        }
+        if (p is null) return "That person is no longer available.";
+        if (p.TeamId != CurrentTeamId) return "Not one of yours.";
+
+        var expiry = Math.Max(SeasonId, p.ContractUntil ?? SeasonId) + 2;
+        var wage = p.Wage + p.Wage / 10;   // the modest raise that keeps a good desk loyal
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "UPDATE staff_people SET contract_until=$cu, wage=$w WHERE id=$id";
+        cmd.Parameters.AddWithValue("$cu", expiry);
+        cmd.Parameters.AddWithValue("$w", wage);
+        cmd.Parameters.AddWithValue("$id", staffId);
+        cmd.ExecuteNonQuery();
+
+        var year = 2026 + (expiry - 9000);
+        PostInbox("Club", $"{p.Name} extends",
+            $"{p.Name} ({p.Role.ToLowerInvariant()}) signs a new deal running to {year} — " +
+            $"£{wage:N0}/week after the raise.", NextFixture()?.Matchday);
+        return $"{p.Name} signs on until {year}.";
+    }
 
     // ------------------------------------------------------------------ delegation
 
@@ -362,6 +399,25 @@ public sealed partial class Session
     /// <summary>The weekly delegation pass — every switched-on duty with a filled desk runs.</summary>
     public void RunStaffDelegation(int matchday)
     {
+        // Assistant Manager picks the matchday XI.
+        //
+        // THE BUG: this was the one delegation with no body. SetDelegation() wrote the flag and
+        // DelegationOn() read it back, so the checkbox ticked, saved and survived a reload — and
+        // no code anywhere ever asked for it. The four duties below each did real work; this one
+        // was a decoration on a screen that promised otherwise.
+        //
+        // It now names the side for the NEXT fixture through the club's own selection machinery.
+        // Deliberately SuggestXi() and not PickBestXi(): PickBestXi is the AI-club picker, it
+        // weighs rating and position alone and would happily start a man with a broken leg.
+        // SuggestXi weighs position fit, fatigue, form, morale and who is actually available —
+        // which is what an assistant hands you. The tactic is left alone: the box says he picks
+        // the XI, so he picks the XI and does not quietly rewrite your team style as well.
+        if (DelegationOn("delegate_xi") && StaffPersonFor("Assistant Manager") is { } xiAsst)
+        {
+            try { RunXiDelegation(xiAsst, matchday); }
+            catch { /* selection never blocks the weekly pass */ }
+        }
+
         // DoF renewals: quietly extends expiring deals for anyone at/above the squad's median.
         if (DelegationOn("delegate_renewals") && StaffPersonFor("Director of Football") is { } dof)
         {
@@ -434,6 +490,58 @@ public sealed partial class Session
             cmd.Parameters.AddWithValue("$t", CurrentTeamId);
             cmd.ExecuteNonQuery();
         }
+    }
+
+    /// <summary>
+    /// The assistant names the side for the next fixture, and says so.
+    ///
+    /// A hand-picked XI outranks him. ManualXi means you set that team yourself and
+    /// PrepareMatchday already promises to leave it alone bar the injured — a delegation that
+    /// quietly overwrote it would throw away work you did on purpose. So he stands aside, and
+    /// says that once a season rather than leaving a ticked box doing nothing behind your back.
+    ///
+    /// The letter only goes out when the personnel actually change: a weekly "same eleven again"
+    /// is how an inbox stops being read.
+    /// </summary>
+    private void RunXiDelegation(StaffPerson asst, int matchday)
+    {
+        if (ManualXi)
+        {
+            var toldKey = $"xi_deleg_held_{SeasonId}_{CurrentTeamId}";
+            if (GetMeta(toldKey) is not null) return;
+            SetMeta(toldKey, "1");
+            PostInbox("Club", $"{asst.Name} leaves your team sheet alone",
+                $"You picked this XI by hand, so {asst.Name} has not touched it — a delegated " +
+                "assistant never overwrites a side its manager chose. Take his suggested team on " +
+                "the Tactics screen and he names the side every week from then on.", matchday);
+            return;
+        }
+
+        var picked = SuggestXi().Take(11).ToList();
+        if (picked.Count < 11) return;
+
+        var before = Repo.Squad(CurrentTeamId)
+            .Where(m => m.Slot is >= 0 and <= 10).OrderBy(m => m.Slot)
+            .Select(m => m.PlayerId).ToList();
+
+        // manual: false — it is HIS pick, so the hand-picked flag stays down and next week he
+        // is free to change it again.
+        SaveSquadOrder(picked, manual: false);
+
+        var names = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id, p => p.Name);
+        string Name(long id) => names.GetValueOrDefault(id, "a squad player");
+        var brought = picked.Except(before).Select(Name).ToList();
+        var dropped = before.Except(picked).Select(Name).ToList();
+        if (brought.Count == 0 && dropped.Count == 0) return;   // same eleven — nothing to report
+
+        var body = $"{asst.Name} has named the side for the next game:\n" +
+                   string.Join(", ", picked.Select(Name)) + ".";
+        if (brought.Count > 0) body += $"\n\nIn: {string.Join(", ", brought)}.";
+        if (dropped.Count > 0) body += $"\nOut: {string.Join(", ", dropped)}.";
+        if (AssistantNote(matchday) is { Length: > 0 } note) body += $"\n\n{note}";
+        body += "\n\nPick a team yourself on the Tactics screen any time — he stands aside the " +
+                "moment you do.";
+        PostInbox("Club", $"{asst.Name} names the side", body, matchday);
     }
 
     /// <summary>True when a stored deal runs out at this season's end (no row = unknown = false).</summary>

@@ -35,7 +35,7 @@ public sealed partial class Session
     /// </summary>
     public void UpdateMoraleAfterMatchday(int matchday, int? outcome)
     {
-        var requests = new List<string>();
+        var requests = new List<(long PlayerId, string Name)>();
         foreach (var member in Repo.Squad(CurrentTeamId))
         {
             var current = MoraleOf(member.PlayerId);
@@ -50,16 +50,16 @@ public sealed partial class Session
                 SetTransferListed(member.PlayerId, true);
                 var name = Repo.SquadPlayers(CurrentTeamId)
                     .FirstOrDefault(p => p.Id == member.PlayerId)?.Name ?? "A player";
-                requests.Add(name);
+                requests.Add((member.PlayerId, name));
             }
         }
         CheckPromises(matchday);
-        foreach (var name in requests)
+        foreach (var (playerId, name) in requests)
         {
             PostInbox("Player", $"Transfer request: {name}",
                 $"{name} has handed in a transfer request — starved of minutes and unhappy. " +
                 "He's been placed on the transfer list; expect offers next window. Playing him " +
-                "and winning is the only way back.", matchday);
+                "and winning is the only way back.", matchday, playerId: playerId);
         }
     }
 
@@ -195,7 +195,8 @@ public sealed partial class Session
             SetMorale(playerId, MoraleModel.AfterPromise(MoraleOf(playerId), kept: true));
             var name = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(p => p.Id == playerId)?.Name ?? "He";
             PostInbox("Player", $"Promise kept: {name}",
-                $"{name} got the contract you promised — the dressing room notices these things.", matchday);
+                $"{name} got the contract you promised — the dressing room notices these things.",
+                matchday, playerId: playerId);
         }
     }
 
@@ -247,7 +248,7 @@ public sealed partial class Session
                 kept
                     ? $"{name} got the starts you promised — trust earned."
                     : $"You broke your word to {name}. He's furious, and the dressing room heard about it.",
-                matchday);
+                matchday, playerId: pid);
         }
     }
 }

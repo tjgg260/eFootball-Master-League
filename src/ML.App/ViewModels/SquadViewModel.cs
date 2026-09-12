@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -86,6 +87,12 @@ public sealed record SquadEntry
     public string Playstyle { get; init; } = "Basic";
     public int Fatigue { get; init; }
     public int? InjuredUntil { get; init; }
+    /// <summary>
+    /// The matchday every availability question about this row is asked "as of" — the fixture the
+    /// squad is being picked for. Stamped by LoadRoster so the row carries its own answer; 0 only
+    /// before a ball has been kicked, when no injury can exist yet either.
+    /// </summary>
+    public int AsOfMatchday { get; init; }
     public int Morale { get; init; } = 50;
 
     public string MoraleFace => Morale >= 75 ? "😀" : Morale >= 60 ? "🙂" : Morale >= 40 ? "😐"
@@ -106,7 +113,27 @@ public sealed record SquadEntry
     public string Grade => ML.Core.Development.AttributeKnowledge.GradeMasked(Rating, Knowledge);
     public IBrush RatingBrush => Knowledge >= 75 ? Visuals.RatingBrush(Rating) : Visuals.Brush("#8A93A2");
     public IBrush ConditionBrush => Fatigue < 20 ? CondGreen : Fatigue < 40 ? CondAmber : CondRed;
-    public bool IsInjured => InjuredUntil is not null;
+
+    /// <summary>What the fitness dot means, in words. A coloured circle with no reading is a
+    /// puzzle: green/amber/red could be form, morale, contract or match sharpness.</summary>
+    public string ConditionLabel => Fatigue < 20 ? "Fresh"
+        : Fatigue < 40 ? "Carrying a few miles" : "Needs a rest";
+
+    /// <summary>
+    /// Still injured FOR THE MATCH IN QUESTION — the single truth behind the red badge, the
+    /// Injured chip and the Absence line.
+    /// THE BUG this shape exists to prevent: it used to read `InjuredUntil is not null`, and
+    /// player_condition.injured_until_md is only ever cleared at season rollover. So an August
+    /// hamstring that healed by September kept the cross lit, kept him on the Injured chip and
+    /// kept the card saying "unavailable" all the way to April — the one question a roster
+    /// exists to answer, wrong for most of the season. Availability is a COMPARISON against the
+    /// matchday, exactly as PrepareMatchday, SuggestXi and the Tactics grid all do it
+    /// (`InjuredUntilMd is int u &amp;&amp; u >= md`). Never reintroduce a null test here.
+    /// </summary>
+    public bool IsInjured => InjuredUntil is int u && u >= AsOfMatchday;
+
+    /// <summary>Why the badge is lit: the matchday he is due back for.</summary>
+    public string InjuryTip => InjuredUntil is int u ? $"Out injured until matchday {u}" : "";
     public string HeightDisplay => HeightCm is > 0 ? $"{HeightCm} cm" : "—";
     public string WeightDisplay => WeightKg is > 0 ? $"{WeightKg} kg" : "—";
     public string AgeDisplay => Age > 0 ? Age.ToString() : "—";
@@ -155,9 +182,15 @@ public static class PlayerCard
     /// colour band instead — and only for attributes your knowledge of the player has
     /// revealed. Unrevealed attributes show a dash in BOTH modes' FM variant.
     /// </summary>
+    /// <summary>
+    /// The ability list, knowledge-masked. Pass <paramref name="order"/> — the player's world
+    /// reputation reveal order — and a famous man's headline abilities come first, so the pace
+    /// and the finishing everyone already knows about are not hidden behind a dice roll.
+    /// </summary>
     public static IReadOnlyList<AbilityEntry> BuildAbilityList(
         IReadOnlyDictionary<string, int> abilities, bool isGk,
-        bool fmMode = false, int knowledge = 100, long playerId = 0)
+        bool fmMode = false, int knowledge = 100, long playerId = 0,
+        ML.Core.Development.RevealOrder? order = null)
     {
         var rows = isGk
             ? abilities.Where(a => a.Key.StartsWith("gk_")).OrderBy(a => a.Key)
@@ -172,7 +205,8 @@ public static class PlayerCard
                 return new AbilityEntry(TitleCase(a.Key), a.Value.ToString(),
                     Visuals.RatingBrush(a.Value), MaskedBrush, false);
             }
-            var revealed = ML.Core.Development.AttributeKnowledge.IsRevealed(playerId, a.Key, knowledge);
+            var revealed = ML.Core.Development.AttributeKnowledge
+                .IsRevealed(playerId, a.Key, knowledge, order);
             return revealed
                 ? new AbilityEntry(TitleCase(a.Key), "", MaskedBrush,
                     BandBrushes[ML.Core.Development.AttributeKnowledge.Band(a.Value)], true)
@@ -186,7 +220,15 @@ public static class PlayerCard
             .Select(w => w == "gk" ? "GK" : char.ToUpperInvariant(w[0]) + w[1..]));
 }
 
-public sealed record LoanRowVm(long PlayerId, string Line, bool IsOut);
+/// <summary>
+/// One line of the loans strip. PlayerId and Direction stay as fields (not baked into the
+/// prose) so the row is still an entity: right-clicking it opens the same player menu the
+/// roster grid uses, and Recall keys off Direction rather than a parsed string.
+/// </summary>
+public sealed record LoanRowVm(long PlayerId, string Name, string Direction, string Line)
+{
+    public bool IsOut => Direction == "out";
+}
 
 /// <summary>
 /// A roster filter chip. IsActive drives the pressed look (Classes.active in the view) so the
@@ -199,7 +241,7 @@ public sealed partial class FilterChipVm : ObservableObject
     [ObservableProperty] private bool _isActive;
 }
 
-public sealed partial class SquadViewModel : PageViewModel
+public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
 {
     private readonly Session _s;
 
@@ -225,21 +267,40 @@ public sealed partial class SquadViewModel : PageViewModel
         _fmMode = s.FmAttributeMode;   // backing field: no rebuild side-effect during ctor
         _viewTeamId = s.CurrentTeamId;
 
-        var md = 0;
-        try { md = s.NextFixture()?.Matchday ?? 0; } catch { }
-        _nextMd = md;
-
         BuildClubList();
-        LoadRoster(_viewTeamId);
+        LoadRoster(_viewTeamId);   // stamps _asOfMd, which ApplyFilter's Injured chip reads
         ApplyFilter();
         Selected = Rows.FirstOrDefault();
+        // an empty roster never fires OnSelectedChanged
+        RefreshScoutButton();
+        RefreshRenewButton(Selected);
         ReloadLoans();
+    }
+
+    /// <summary>
+    /// The matchday this screen judges availability against: the next fixture is the Saturday the
+    /// squad is being picked for. Recomputed inside LoadRoster rather than captured once in the
+    /// ctor, so a matchday simmed elsewhere can never leave the injury badges reading last week.
+    /// </summary>
+    private void RefreshAsOfMatchday()
+    {
+        try
+        {
+            // Season complete (no fixture left): the honest reading is the matchday after the last
+            // one played — the same question, one week on. 0 only when nothing has ever been
+            // played, where there is no injury to judge anyway.
+            _asOfMd = _s.NextFixture()?.Matchday
+                      ?? _s.RecentResults(1).FirstOrDefault()?.Matchday + 1
+                      ?? 0;
+        }
+        catch { _asOfMd = 0; }
     }
 
     /// <summary>Load a team's roster into <see cref="_all"/>. Own club or any browsed club.</summary>
     private void LoadRoster(int teamId)
     {
         _all.Clear();
+        RefreshAsOfMatchday();   // every row is stamped with it, so availability is never stale
         // One query for the whole roster: playstyle + condition joined in. player_condition may
         // hold no rows yet (COALESCE covers it); the primary playstyle via subquery (kind-filtered
         // so the out-of-possession row never leaks in) so a player can't duplicate a roster row.
@@ -286,6 +347,7 @@ public sealed partial class SquadViewModel : PageViewModel
                 Playstyle = string.IsNullOrWhiteSpace(r.Playstyle) ? "Basic" : r.Playstyle,
                 Fatigue = r.Fatigue,
                 InjuredUntil = r.InjuredUntil,
+                AsOfMatchday = _asOfMd,
                 Morale = r.Morale,
                 HeightCm = r.HeightCm,
                 WeightKg = r.WeightKg,
@@ -319,7 +381,9 @@ public sealed partial class SquadViewModel : PageViewModel
             foreach (var t in _s.LeagueTeams()
                          .Where(t => t.Id != _s.CurrentTeamId).OrderBy(t => t.Name))
                 Clubs.Add(new SquadClubOption(t.Id, t.Name));
+#pragma warning disable MVVMTK0034   // deliberate: the setter would reload a roster we are still building
             _selectedClub = Clubs.FirstOrDefault();   // backing field: no reload during ctor
+#pragma warning restore MVVMTK0034
         }
         catch { /* club browsing is additive */ }
     }
@@ -333,6 +397,65 @@ public sealed partial class SquadViewModel : PageViewModel
         LoadRoster(_viewTeamId);
         ApplyFilter();
         Selected = Rows.FirstOrDefault();
+        // an empty roster (or the same null selection) never fires OnSelectedChanged
+        RefreshScoutButton();
+        RefreshRenewButton(Selected);
+    }
+
+    /// <summary>
+    /// Show a club's roster, whoever it is. BuildClubList only covers YOUR leagues, so a focus
+    /// arriving from another division (or from a squad in a competition you don't play in)
+    /// appends its own option rather than silently doing nothing.
+    /// </summary>
+    private void SelectClub(int teamId, string name)
+    {
+        if (teamId == _viewTeamId) return;   // already the roster on screen
+        var option = Clubs.FirstOrDefault(c => c.TeamId == teamId);
+        if (option is null)
+        {
+            var label = name.Length > 0 ? name : _s.TeamName(teamId);
+            option = new SquadClubOption(teamId, label);
+            Clubs.Add(option);
+        }
+        SelectedClub = option;   // OnSelectedClubChanged does the reload
+    }
+
+    /// <summary>
+    /// Open focused on an entity (Nav.Go payload). A player pulls his club up first — the
+    /// Squad screen is the profile view, so "view profile" on someone else's winger has to
+    /// land on that club's roster with him selected, not on your own squad.
+    /// </summary>
+    public void Focus(EntityRef target)
+    {
+        try
+        {
+            if (target.Kind == EntityKind.Club)
+            {
+                SelectClub((int)target.Id, target.Name);
+                return;
+            }
+            if (target.Kind != EntityKind.Player) return;
+
+            var (teamId, club) = _s.ClubOfPlayer(target.Id);
+            var name = target.Name.Length > 0 ? target.Name : _s.PlayerNameOf(target.Id);
+            if (teamId is null)
+            {
+                SquadStatus = $"{name} is a free agent — open him in the Market.";
+                return;
+            }
+            SelectClub(teamId.Value, club);
+            var row = Rows.FirstOrDefault(r => r.PlayerId == target.Id);
+            if (row is null)
+            {
+                // the search box or a filter chip can be hiding him — clear both and look again
+                SquadSearch = "";
+                ActiveChip = "All";
+                row = Rows.FirstOrDefault(r => r.PlayerId == target.Id);
+            }
+            if (row is not null) Selected = row;
+            else SquadStatus = $"{name} is out on loan or in a youth squad — not on this roster.";
+        }
+        catch { /* focused navigation must never take the screen down */ }
     }
 
     /// <summary>Guard for management actions: they only apply to your own club.</summary>
@@ -351,7 +474,7 @@ public sealed partial class SquadViewModel : PageViewModel
     // --- roster search + filter chips (P6 UX): find the player you mean, fast ----------
 
     private readonly List<SquadEntry> _all = new();
-    private readonly int _nextMd;
+    private int _asOfMd;
 
     public IReadOnlyList<FilterChipVm> FilterChips { get; } =
         new[] { "All", "GK", "DEF", "MID", "FWD", "Injured", "Tired", "Unhappy", "Listed" }
@@ -384,11 +507,107 @@ public sealed partial class SquadViewModel : PageViewModel
                 var line = l.Direction == "out"
                     ? $"{l.Player} → {l.OtherClub} (until June)"
                     : $"{l.Player} — on loan from {l.OtherClub}";
-                Loans.Add(new LoanRowVm(l.PlayerId, line, l.Direction == "out"));
+                Loans.Add(new LoanRowVm(l.PlayerId, l.Player, l.Direction, line));
             }
         }
         catch { /* loans are additive */ }
         OnPropertyChanged(nameof(HasLoans));
+    }
+
+    // --- the shared right-click vocabulary (EntityActions) ----------------------------
+
+    /// <summary>
+    /// Menu for a roster row. EntityActions reads the player's real club, so a browsed club's
+    /// rows come back with the foreign set (scout · enquiry · shortlist · open in Market) —
+    /// which is the whole exit from the read-only scouting view. Own rows get one extra verb
+    /// the Squad screen owns: pin his radar for comparison.
+    /// </summary>
+    public ContextMenu? MenuFor(SquadEntry row)
+    {
+        if (row is null) return null;
+        // Guarded like Market.MenuFor and Player.BuildMenu, the two sibling builders: this runs
+        // inside a click's input dispatch, where a throw is a gesture that does nothing (or a
+        // window that goes down) rather than a menu that failed. No menu is the honest outcome
+        // — the caller says so on the status line — a dead gesture is not.
+        try
+        {
+            List<MenuItem>? extras = null;
+            if (IsOwnClub)
+            {
+                var pin = new MenuItem { Header = "📌 Pin for compare" };
+                pin.Click += (_, _) => PinCompare();
+                extras = new List<MenuItem> { pin };
+            }
+            return EntityActions.BuildMenu(_s, EntityRef.Player(row.PlayerId, row.Name),
+                status: t => SquadStatus = t, refresh: Reload, extras: extras);
+        }
+        catch (Exception ex)
+        {
+            Program.Log("Squad.MenuFor", ex);
+            return null;
+        }
+    }
+
+    /// <summary>Menu for a loans-strip row — the loanee is a player like any other.</summary>
+    public ContextMenu? MenuForLoan(LoanRowVm row)
+    {
+        if (row is null) return null;
+        try
+        {
+            return EntityActions.BuildMenu(_s, EntityRef.Player(row.PlayerId, row.Name),
+                status: t => SquadStatus = t, refresh: Reload);
+        }
+        catch (Exception ex)
+        {
+            Program.Log("Squad.MenuForLoan", ex);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// What the docked status line says when a row's menu could not be produced — the ⋯ (and
+    /// the right-click behind it) must never simply do nothing. THE BUG: both ⋯ handlers
+    /// returned in silence on a null or empty menu, and EntityActions.BuildMenu's backstop hands
+    /// back an EMPTY menu when the Session throws before a single verb is built, so one bad read
+    /// turned the newly visible trigger back into a button that did nothing at all. The line
+    /// names the other way in: the card's button for a roster row, the double-click for a loanee
+    /// (who is not on the roster, so has no card).
+    /// </summary>
+    public void SayMenuUnavailable(string name, bool onLoan = false)
+    {
+        var whose = name.Length > 0 ? $"{name}'s" : "his";
+        SquadStatus = onLoan
+            ? $"Couldn't bring up {whose} options just now — double-click his line to open his profile, or try again."
+            : $"Couldn't bring up {whose} options just now — open his full profile from the card, or try again.";
+    }
+
+    /// <summary>
+    /// Leave the rail for the real screen — the same destination as double-clicking his row and
+    /// as "👤 View profile" on the shared menu.
+    /// THE BUG: the card beside the roster was a dead end. Single-click is the only gesture this
+    /// screen ever taught, and single-click only fills that 336px column, so a manager clicked a
+    /// name, got the cramped card, and concluded the app had no player screen at all.
+    /// </summary>
+    [RelayCommand]
+    private void OpenProfile()
+    {
+        if (Selected is not { } p) { SquadStatus = "Pick a player first."; return; }
+        Nav.Go("Player", EntityRef.Player(p.PlayerId, p.Name));
+    }
+
+    /// <summary>
+    /// Re-read everything the menu verbs can have changed (a loan out empties a roster slot,
+    /// a demotion moves him to the U21s), keeping the same player selected where he survives.
+    /// </summary>
+    public void Reload()
+    {
+        var keep = Selected?.PlayerId;
+        LoadRoster(_viewTeamId);
+        ApplyFilter();
+        Selected = Rows.FirstOrDefault(r => r.PlayerId == keep) ?? Rows.FirstOrDefault();
+        RefreshScoutButton();
+        RefreshRenewButton(Selected);
+        ReloadLoans();
     }
 
     [RelayCommand]
@@ -411,7 +630,7 @@ public sealed partial class SquadViewModel : PageViewModel
     private void RecallLoan(LoanRowVm loan)
     {
         SquadStatus = _s.RecallLoan(loan.PlayerId);
-        ReloadLoans();
+        Reload();   // he walks back into the roster, so the grid has to see him
     }
 
     private void ApplyFilter()
@@ -424,7 +643,9 @@ public sealed partial class SquadViewModel : PageViewModel
             "DEF" => set.Where(p => Visuals.PositionCategory(p.Position) == "DEF"),
             "MID" => set.Where(p => Visuals.PositionCategory(p.Position) == "MID"),
             "FWD" => set.Where(p => Visuals.PositionCategory(p.Position) == "FWD"),
-            "Injured" => set.Where(p => p.InjuredUntil is { } u && u >= _nextMd),
+            // one definition of "injured" for the whole screen: the chip, the badge and the
+            // Absence line must never disagree about who can play
+            "Injured" => set.Where(p => p.IsInjured),
             "Tired" => set.Where(p => p.Fatigue >= 40),
             "Unhappy" => set.Where(p => p.Morale < 40),
             "Listed" => set.Where(p => _s.IsTransferListed(p.PlayerId)),
@@ -472,6 +693,19 @@ public sealed partial class SquadViewModel : PageViewModel
     // Card data is computed lazily — only the selected player's abilities are ever queried.
     partial void OnSelectedChanged(SquadEntry? value)
     {
+        // Everything on this card that is MID-ACTION belongs to one player, so moving the
+        // selection has to end it — all of it, in one place.
+        //   • the two-step confirms (Release, Renew) disarm;
+        //   • so do the contract talks. THE BUG: only Release was disarmed here, and Negotiating
+        //     plus the round counter survived the selection change — open talks with A, make an
+        //     offer, click B, and B's card showed A's negotiation armed and mid-round, so the
+        //     next offer was made in the wrong man's name. Talks are cheap to reopen and an
+        //     offer against the wrong player is not, so leaving a player always ends them.
+        ReleaseArmed = false;
+        ReleaseLabel = ReleaseIdle;
+        EndNegotiation();
+        RefreshScoutButton();
+        RefreshRenewButton(value);
         if (value is null || value.PlayerId <= 0)
         {
             Abilities = Array.Empty<AbilityEntry>();
@@ -482,21 +716,44 @@ public sealed partial class SquadViewModel : PageViewModel
             ContractLine = "";
             return;
         }
-        var abilities = _s.Repo.Attributes(value.PlayerId);
+        // THE BUG: this was the one database read in here with no guard — a live query against
+        // the 2.2 GB career file, while every neighbour below it (reveal order, analysis, coach
+        // report, season stats) already had one. A throw here left this method through the
+        // Selected setter, and on the ⋯ path that meant the UI thread mid-input-dispatch. An
+        // unreadable set of abilities is shown as NOTHING, never as a row of 40s: an empty
+        // dictionary would have drawn a collapsed radar and analysed a man who has no attributes.
+        IReadOnlyDictionary<string, int> abilities;
+        var abilitiesUnread = false;
+        try { abilities = _s.Repo.Attributes(value.PlayerId); }
+        catch (Exception ex)
+        {
+            Program.Log("Squad.OnSelectedChanged: Repo.Attributes", ex);
+            abilities = new Dictionary<string, int>();
+            abilitiesUnread = true;
+            SquadStatus = $"Couldn't read {value.Name}'s abilities just now — the rest of his card still stands.";
+        }
         var isGk = value.Position == "GK";
         RadarLabels = isGk ? GkRadarLabels : OutfieldRadarLabels;
         // Knowledge gate (P6): same 45 threshold as the Market profile — below it the radar
         // would be a guess dressed up as data, so it hides behind a scout-him note.
         RadarMasked = value.Knowledge < 45;
-        RadarPoints = RadarMasked ? new Points() : BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
-        // Knowledge-gated: your club is fully known, a browsed club only as deep as scouted.
-        Abilities = BuildAbilityList(abilities, isGk, FmMode, value.Knowledge, value.PlayerId);
+        RadarPoints = RadarMasked || abilitiesUnread
+            ? new Points()
+            : BuildRadarPoints(Visuals.RadarAxes(abilities, isGk));
+        // Knowledge-gated: your club is fully known, a browsed club only as deep as scouted —
+        // and a famous man gives up what he is famous for whether you have watched him or not.
+        ML.Core.Development.RevealOrder order;
+        try { order = _s.RevealOrderOf(value.PlayerId, value.Position); }
+        catch { order = ML.Core.Development.RevealOrder.Anonymous(value.PlayerId); }
+        Abilities = abilitiesUnread
+            ? Array.Empty<AbilityEntry>()
+            : BuildAbilityList(abilities, isGk, FmMode, value.Knowledge, value.PlayerId, order);
 
         // The MFL analysis panels (UX P3): six graded-statement categories — the north star.
         try
         {
-            AnalysisPanels = ML.Core.Development.PlayerAnalysis
-                .Build(value.PlayerId, abilities, isGk, value.Knowledge)
+            AnalysisPanels = abilitiesUnread ? new List<AnalysisPanelVm>() : ML.Core.Development.PlayerAnalysis
+                .Build(value.PlayerId, abilities, isGk, value.Knowledge, order)
                 .Select(p => new AnalysisPanelVm(p.Name, p.Lines.Select(l => new AnalysisLineVm(
                     l.Text, l.Grade,
                     l.Tone switch
@@ -516,31 +773,14 @@ public sealed partial class SquadViewModel : PageViewModel
         catch { AnalysisPanels = Array.Empty<AnalysisPanelVm>(); }
 
         // Transfer / Value / Absence tab lines (real market + condition data).
-        try
-        {
-            using var mc = _s.Db.Connection.CreateCommand();
-            mc.CommandText = "SELECT COALESCE(value,0), COALESCE(wage,0), transfer_status " +
-                             "FROM player_market WHERE player_id=$p";
-            mc.Parameters.AddWithValue("$p", value.PlayerId);
-            using var r = mc.ExecuteReader();
-            if (r.Read())
-            {
-                MarketValueLine = $"Market value  £{r.GetInt64(0):N0}";
-                WageLine = r.GetInt64(1) > 0 ? $"Wage  £{r.GetInt64(1):N0}/wk" : "";
-                TransferStatusLine = r.IsDBNull(2) ? "Open to offers" : r.GetString(2) switch
-                {
-                    "not-for-sale" => "NOT FOR SALE",
-                    "listed" => "TRANSFER LISTED",
-                    "loan-listed" => "AVAILABLE ON LOAN",
-                    _ => "Open to offers",
-                };
-            }
-            else { MarketValueLine = ""; WageLine = ""; TransferStatusLine = ""; }
-        }
-        catch { MarketValueLine = ""; WageLine = ""; TransferStatusLine = ""; }
+        RefreshTransferLines(value.PlayerId);
         AbsenceLine = value.IsInjured
             ? $"🚑 Injured — unavailable until matchday {value.InjuredUntil}"
             : value.Fatigue >= 40 ? "😮‍💨 Exhausted — needs rest before he breaks down"
+            // Healed. The stale injured_until_md is still on the row (it is only cleared at
+            // season rollover), so name the date as history instead of letting it read as an
+            // absence — the same stale flag that used to keep the red badge lit until April.
+            : value.InjuredUntil is int back ? $"Fit again — back since matchday {back}"
             : value.Fatigue >= 20 ? "Match-fit, carrying normal fatigue"
             : "Fully fit and available";
         try
@@ -555,12 +795,8 @@ public sealed partial class SquadViewModel : PageViewModel
             var (apps, goals, assists, yellows, reds, avg) = _s.PlayerSeasonStats(value.PlayerId);
             SeasonLine = $"{Visuals.Plural(apps, "app")} · {Visuals.Plural(goals, "goal")} · {Visuals.Plural(assists, "assist")} · {yellows}🟨 {reds}🟥" +
                          (avg is { } a ? $" · {a:0.0} avg" : "");
-            var learned = _s.LearnedPositions(value.PlayerId);
-            ContractLine = $"Contract until {_s.ContractYear(value.PlayerId)}" +
-                           (learned.Count > 0 ? $" · plays {string.Join("/", learned)} too" : "") +
-                           (_s.IsTransferListed(value.PlayerId) ? " · LISTED" : "");
+            ContractLine = BuildContractLine(value.PlayerId);
             IsCaptain = _s.Captain == value.PlayerId;
-            ListLabel = _s.IsTransferListed(value.PlayerId) ? "Un-list" : "Transfer-list";
             PromiseLine = _s.PromiseLine(value.PlayerId);
             var (det, _, _, _) = _s.TraitsOf(value.PlayerId);
             // qualitative, never "9/20" (UX audit): determination becomes a word
@@ -593,6 +829,50 @@ public sealed partial class SquadViewModel : PageViewModel
     [ObservableProperty] private string _wageLine = "";
     [ObservableProperty] private string _transferStatusLine = "";
     [ObservableProperty] private string _absenceLine = "";
+    [ObservableProperty] private string _loanListLabel = "↔ Loan-list";
+
+    /// <summary>
+    /// The Transfer tab's three lines. The status chip is the imported player_market row
+    /// OVERLAID with your own meta flags — the transfer- and loan-list toggles write meta, so
+    /// a chip that only read the import would sit there contradicting the button beside it.
+    /// </summary>
+    private void RefreshTransferLines(long playerId)
+    {
+        string? imported = null;
+        try
+        {
+            using var mc = _s.Db.Connection.CreateCommand();
+            mc.CommandText = "SELECT COALESCE(value,0), COALESCE(wage,0), transfer_status " +
+                             "FROM player_market WHERE player_id=$p";
+            mc.Parameters.AddWithValue("$p", playerId);
+            using var r = mc.ExecuteReader();
+            if (r.Read())
+            {
+                MarketValueLine = $"Market value  £{r.GetInt64(0):N0}";
+                WageLine = r.GetInt64(1) > 0 ? $"Wage  £{r.GetInt64(1):N0}/wk" : "";
+                imported = r.IsDBNull(2) ? "" : r.GetString(2);
+            }
+            else { MarketValueLine = ""; WageLine = ""; }
+        }
+        catch { MarketValueLine = ""; WageLine = ""; imported = null; }
+
+        var listed = false;
+        var loanListed = false;
+        // Meta flags are keyed on YOUR club, so a browsed club's players simply read false.
+        try { listed = _s.IsTransferListed(playerId); loanListed = _s.IsLoanListed(playerId); }
+        catch { /* labels are additive */ }
+
+        var labels = new List<string>();
+        if (listed || imported == "listed") labels.Add("TRANSFER LISTED");
+        if (loanListed || imported == "loan-listed") labels.Add("AVAILABLE ON LOAN");
+        if (labels.Count == 0 && imported == "not-for-sale") labels.Add("NOT FOR SALE");
+        TransferStatusLine = labels.Count > 0 ? string.Join("  ·  ", labels)
+            : imported is null ? ""
+            : "Open to offers";
+
+        ListLabel = listed ? "Un-list" : "Transfer-list";
+        LoanListLabel = loanListed ? "↔ Un-loan-list" : "↔ Loan-list";
+    }
 
     // Playing time (P5, FM-style): status drives morale AND the AI's willingness to sell.
     public IReadOnlyList<string> PtStatusOptions => Session.PlayTimeStatuses;
@@ -675,24 +955,42 @@ public sealed partial class SquadViewModel : PageViewModel
         if (Selected is null || !Negotiating || NotYourClub()) return;
         var (accepted, over, message) = _s.OfferContract(
             Selected.PlayerId, (long)WageOffer, int.Parse(SelectedYears), SelectedStatus, _round);
-        NegotiationLine = message;
         if (over)
         {
             Negotiating = false;
+            _round = 1;   // the next player's talks start at round one, not this man's third
+            // The panel is only visible while Negotiating, so the agent's last word has to move
+            // to the status line or the outcome vanishes with the border around it.
+            SquadStatus = message;
+            NegotiationLine = "";
             if (accepted)
             {
-                ContractLine = $"Contract until {_s.ContractYear(Selected.PlayerId)}";
+                // the full line, not a bare year — the learned positions and the LISTED flag
+                // are part of what the contract row says and must not be dropped on a signing
+                ContractLine = BuildContractLine(Selected.PlayerId);
                 PromiseLine = _s.PromiseLine(Selected.PlayerId);
             }
         }
         else
         {
             _round++;
+            NegotiationLine = message;
         }
     }
 
     [RelayCommand]
-    private void CancelNegotiation() => Negotiating = false;
+    private void CancelNegotiation() => EndNegotiation();
+
+    /// <summary>
+    /// Close the talks and forget the round. Called by "Walk away" AND by every selection change —
+    /// a negotiation is one player's, and its state must never be inherited by the next man.
+    /// </summary>
+    private void EndNegotiation()
+    {
+        Negotiating = false;
+        _round = 1;
+        NegotiationLine = "";
+    }
 
     [RelayCommand]
     private void Praise()
@@ -739,32 +1037,171 @@ public sealed partial class SquadViewModel : PageViewModel
         if (Selected is null || NotYourClub()) return;
         var now = !_s.IsTransferListed(Selected.PlayerId);
         _s.SetTransferListed(Selected.PlayerId, now);
-        ListLabel = now ? "Un-list" : "Transfer-list";
         SquadStatus = now
             ? $"{Selected.Name} transfer-listed — offers are far more likely next window."
             : $"{Selected.Name} taken off the list.";
+        RefreshTransferLines(Selected.PlayerId);
+        ContractLine = BuildContractLine(Selected.PlayerId);   // its "· LISTED" flag just moved
     }
+
+    /// <summary>The loan shop window: a label only — LoanOut still does the moving.</summary>
+    [RelayCommand]
+    private void ToggleLoanList()
+    {
+        if (Selected is null || NotYourClub()) return;
+        var now = !_s.IsLoanListed(Selected.PlayerId);
+        _s.SetLoanListed(Selected.PlayerId, now);
+        SquadStatus = now
+            ? $"{Selected.Name} is available on loan — clubs short of bodies will ask."
+            : $"{Selected.Name} is off the loan list.";
+        RefreshTransferLines(Selected.PlayerId);
+    }
+
+    /// <summary>Actively shop him around: lists him and rings the agents now, not next preseason.</summary>
+    [RelayCommand]
+    private void OfferToClubs()
+    {
+        if (Selected is null || NotYourClub()) return;
+        SquadStatus = _s.OfferToClubs(Selected.PlayerId);
+        RefreshTransferLines(Selected.PlayerId);
+    }
+
+    // --- release: a two-step confirm, because a free transfer can't be undone -----------
+    private const string ReleaseIdle = "⛔ Release";
+    private const string ReleaseArm = "⛔ Sure? Release";
+    [ObservableProperty] private string _releaseLabel = ReleaseIdle;
+    [ObservableProperty] private bool _releaseArmed;
 
     [RelayCommand]
     private void Release()
     {
         if (Selected is null || NotYourClub()) return;
+        if (!ReleaseArmed)
+        {
+            ReleaseArmed = true;
+            ReleaseLabel = ReleaseArm;
+            SquadStatus = $"Release {Selected.Name} on a free? Click again to confirm.";
+            return;
+        }
+        ReleaseArmed = false;
+        ReleaseLabel = ReleaseIdle;
         var name = Selected.Name;
         var msg = _s.ReleasePlayer(Selected.PlayerId);
         SquadStatus = $"{name}: {msg}";
         if (msg.StartsWith("Released"))
         {
-            Rows.Remove(Selected);
+            var gone = Selected;
+            _all.RemoveAll(e => e.PlayerId == gone.PlayerId);
+            Rows.Remove(gone);
             Selected = Rows.FirstOrDefault();
         }
+    }
+
+    // --- send the scout out from the card (the browsed-club exit from "read-only") ------
+    [ObservableProperty] private string _scoutButtonLabel = "🔍 Send scout";
+    [ObservableProperty] private bool _canScout;
+
+    /// <summary>
+    /// Keeps the card's scout button honest: it says WHY it is disabled rather than sitting
+    /// there greyed out with no reason, exactly as the shared menu does.
+    /// </summary>
+    private void RefreshScoutButton()
+    {
+        try
+        {
+            var noScout = _s.StaffFor("Scout") is null;
+            var busy = _s.ActiveScoutJob() is not null;
+            CanScout = ViewingOtherClub && !noScout && !busy;
+            // The label carries the refusal (a greyed button with no reason is the thing the
+            // UX audit keeps catching); kept short so it fits beside the 200px radar.
+            ScoutButtonLabel = noScout ? "🔍 No scout on the books"
+                : busy ? "🔍 Scout is on a mission"
+                : "🔍 Send scout";
+        }
+        catch { CanScout = false; ScoutButtonLabel = "🔍 Send scout"; }
+    }
+
+    [RelayCommand]
+    private void ScoutSelected()
+    {
+        if (Selected is null) return;
+        SquadStatus = _s.StartScoutJob("player", Selected.PlayerId, Selected.Name);
+        RefreshScoutButton();
+    }
+
+    // --- renew: priced, and a two-step confirm, because it spends real money ------------
+    //
+    // THE BUG: "Renew +2yrs" was one click, and SessionSquad.RenewContract charges a signing
+    // bonus of 10% of the player's valuation — millions, silently. Worse, the old code then
+    // overwrote ContractLine UNCONDITIONALLY, so when the club could not cover the bonus the
+    // line re-rendered as if the deal had gone through and the manager could not tell whether
+    // the money had left. Release is two-step because it cannot be undone; renewing cannot be
+    // undone EITHER and it costs, so it gets the same arm — with the price on the button, so
+    // the number is known before the first click, not after the second.
+    private const string RenewIdle = "📃 Renew +2yrs";
+    [ObservableProperty] private string _renewLabel = RenewIdle;
+    [ObservableProperty] private bool _renewArmed;
+    private long _renewBonus;
+
+    /// <summary>
+    /// Put this player's signing bonus on the button, and disarm — a price belongs to one man.
+    /// </summary>
+    private void RefreshRenewButton(SquadEntry? player)
+    {
+        RenewArmed = false;
+        _renewBonus = 0;
+        if (player is null || !IsOwnClub) { RenewLabel = RenewIdle; return; }
+        try
+        {
+            // Mirror SessionSquad.RenewContract's OWN inputs exactly, or the button would quote a
+            // price the engine never charges: it reads overall_rating defaulted to 65 and a null
+            // age (our roster row COALESCEs both to 0), and it prices off the synthetic
+            // ValuationOf curve — deliberately NOT the imported market value.
+            var rating = player.Rating > 0 ? player.Rating : 65;
+            var age = player.Age > 0 ? (int?)player.Age : null;
+            _renewBonus = Session.ValuationOf(rating, age) / 10;
+            RenewLabel = $"{RenewIdle} · £{_renewBonus:N0}";
+        }
+        catch { RenewLabel = RenewIdle; }
     }
 
     [RelayCommand]
     private void Renew()
     {
         if (Selected is null || NotYourClub()) return;
-        SquadStatus = _s.RenewContract(Selected.PlayerId);
-        ContractLine = $"Contract until {_s.ContractYear(Selected.PlayerId)}";
+        if (!RenewArmed)
+        {
+            RenewArmed = true;
+            RenewLabel = $"📃 Sure? £{_renewBonus:N0}";
+            SquadStatus = $"Renewing {Selected.Name} costs a £{_renewBonus:N0} signing bonus, " +
+                          "paid the moment you confirm. Click again to go ahead.";
+            return;
+        }
+        var msg = _s.RenewContract(Selected.PlayerId);
+        SquadStatus = msg;
+        // Only the engine's success answer rewrites the contract line. Its refusal ("you can't
+        // cover it") leaves the old line standing and says so in the status, so a renewal that
+        // did not happen never looks like one that did.
+        if (msg.Contains("signed until", StringComparison.Ordinal))
+            ContractLine = BuildContractLine(Selected.PlayerId);
+        RefreshRenewButton(Selected);   // disarm, and re-price for his new deal
+    }
+
+    /// <summary>
+    /// The contract row as the card states it everywhere: the expiry year, the positions he has
+    /// learned, and the transfer-list flag. One builder, so a renewal or a signing can never
+    /// re-render a shorter version of the same fact.
+    /// </summary>
+    private string BuildContractLine(long playerId)
+    {
+        try
+        {
+            var learned = _s.LearnedPositions(playerId);
+            return $"Contract until {_s.ContractYear(playerId)}" +
+                   (learned.Count > 0 ? $" · plays {string.Join("/", learned)} too" : "") +
+                   (_s.IsTransferListed(playerId) ? " · LISTED" : "");
+        }
+        catch { return ContractLine; }
     }
 
     [RelayCommand]
@@ -788,8 +1225,9 @@ public sealed partial class SquadViewModel : PageViewModel
 
     private static IReadOnlyList<AbilityEntry> BuildAbilityList(
         IReadOnlyDictionary<string, int> abilities, bool isGk,
-        bool fmMode = false, int knowledge = 100, long playerId = 0) =>
-        PlayerCard.BuildAbilityList(abilities, isGk, fmMode, knowledge, playerId);
+        bool fmMode = false, int knowledge = 100, long playerId = 0,
+        ML.Core.Development.RevealOrder? order = null) =>
+        PlayerCard.BuildAbilityList(abilities, isGk, fmMode, knowledge, playerId, order);
 
     private sealed record SquadRowDto
     {

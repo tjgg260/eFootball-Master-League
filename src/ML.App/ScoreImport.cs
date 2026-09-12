@@ -6,12 +6,35 @@ using ML.Ingest;
 namespace ML.App;
 
 /// <summary>
+/// One attempt at reading a score off a screenshot. <see cref="Ok"/> is the ONLY success signal.
+///
+/// THE BUG this type exists to kill: every failure path used to return a
+/// <c>(0, 0, false, message)</c> tuple from a method typed as nullable, so the callers' natural
+/// `if (r is null)` guard could never fire — a screenshot folder that didn't exist, a missing OCR
+/// model, a menu screenshot, an exception, all of them arrived at the dashboard looking exactly
+/// like a genuine 0-0 and silently overwrote the score you had typed. The return type is
+/// deliberately NOT nullable now: there is no second "null means failure" channel left to forget.
+/// </summary>
+public sealed record ScoreRead(bool Ok, int Home, int Away, bool Confident, string Message)
+{
+    /// <summary>No score was read. The boxes must not be touched; the reason gets shown.</summary>
+    public static ScoreRead Failed(string message) => new(false, 0, 0, false, message);
+}
+
+/// <summary>
 /// Reads the score off your latest eFootball screenshot (F12 saves one to Steam's folder) with the
 /// existing Tesseract OCR + 1080p calibration, so results import instead of being typed. Low OCR
 /// confidence is surfaced so you can eyeball the digits before recording.
 /// </summary>
 public static class ScoreImport
 {
+    /// <summary>Same threshold <see cref="OcrValue{T}.IsConfident"/> uses.</summary>
+    private const double ConfidenceFloor = 0.80;
+
+    /// <summary>Above this in either box the crop caught something that is not a scoreline
+    /// (matches the entry stepper's Maximum, so an "imported" score can always be recorded).</summary>
+    private const int MaxPlausibleGoals = 20;
+
     /// <summary>
     /// Closest of <paramref name="candidates"/> to OCR'd <paramref name="text"/> (video banner
     /// pipeline). 22 known names make even scrappy OCR reliable; null when nothing is close.
@@ -103,25 +126,26 @@ public static class ScoreImport
 
     internal static string? TessdataDir() => FindTessdata();
 
-    public static (int Home, int Away, bool Confident, string Message)? FromLatestScreenshot()
+    public static ScoreRead FromLatestScreenshot()
     {
         try
         {
             var dir = ResolveScreenshotDir();
             if (!Directory.Exists(dir))
             {
-                return (0, 0, false, "No screenshot folder yet — press F12 in eFootball on the result screen.");
+                return ScoreRead.Failed(
+                    "No screenshot folder yet — press F12 in eFootball on the result screen.");
             }
             var latest = LatestScreenshot(dir);
             if (latest is null)
             {
-                return (0, 0, false, "No screenshots found — press F12 on the full-time screen.");
+                return ScoreRead.Failed("No screenshots found — press F12 on the full-time screen.");
             }
             return FromScreenshot(latest.FullName);
         }
         catch (Exception ex)
         {
-            return (0, 0, false, $"OCR failed: {ex.Message}");
+            return ScoreRead.Failed($"OCR failed: {ex.Message}");
         }
     }
 
@@ -129,32 +153,55 @@ public static class ScoreImport
     /// OCR the score off ONE specific screenshot (the watcher hands each new F12 capture here).
     /// Uses the calibrated score regions from Settings, applied to the file's actual dimensions.
     /// </summary>
-    public static (int Home, int Away, bool Confident, string Message)? FromScreenshot(string path)
+    public static ScoreRead FromScreenshot(string path)
     {
         try
         {
             if (!File.Exists(path))
             {
-                return (0, 0, false, $"Screenshot not found: {path}");
+                return ScoreRead.Failed($"Screenshot not found: {Path.GetFileName(path)}");
             }
 
             var tessdata = FindTessdata();
             if (tessdata is null)
             {
-                return (0, 0, false, "OCR model (tools/tessdata) not found.");
+                return ScoreRead.Failed(
+                    "OCR model not found — tools/tessdata/eng.traineddata is missing.");
             }
 
-            using var ocr = new StatOcr(tessdata);
-            var stats = ocr.Read(path, CaptureSettings.Current.ScoreProfile());
-            var confident = stats.HomeScore.IsConfident() && stats.AwayScore.IsConfident();
             var name = Path.GetFileName(path);
-            var msg = $"Read {name}: {stats.HomeScore.Value}–{stats.AwayScore.Value}" +
+            using var ocr = new StatOcr(tessdata);
+
+            // ReadDetailed, not Read: StatOcr.ParseNumber returns 0 both for a genuine "0" and for
+            // a crop with no digits in it at all, so Read()'s ints CANNOT tell a real 0-0 full-time
+            // screen from a screenshot of the main menu. Only the raw OCR text can, and
+            // ReadDetailed is the one public call that hands it back. Without this every F12 —
+            // a squad screen, a replay, a pause menu — came back as a confident-looking 0-0.
+            var (_, _, regions) = ocr.ReadDetailed(path, CaptureSettings.Current.ScoreProfile());
+            var home = regions.FirstOrDefault(r => r.Field == "home_score");
+            var away = regions.FirstOrDefault(r => r.Field == "away_score");
+            if (home is null || away is null
+                || !home.Text.Any(char.IsDigit) || !away.Text.Any(char.IsDigit))
+            {
+                return ScoreRead.Failed(
+                    $"No score in {name} — that doesn't look like the full-time screen. " +
+                    "Press F12 on it, or re-calibrate the score boxes in Settings.");
+            }
+            if (home.Value > MaxPlausibleGoals || away.Value > MaxPlausibleGoals)
+            {
+                return ScoreRead.Failed(
+                    $"Read \"{home.Text}\"–\"{away.Text}\" from {name}, which isn't a scoreline — " +
+                    "nothing was filled in. Re-calibrate the score boxes in Settings.");
+            }
+
+            var confident = home.Confidence >= ConfidenceFloor && away.Confidence >= ConfidenceFloor;
+            var msg = $"Read {name}: {home.Value}–{away.Value}" +
                       (confident ? " — looks clean." : " — LOW confidence, double-check the digits.");
-            return (stats.HomeScore.Value, stats.AwayScore.Value, confident, msg);
+            return new ScoreRead(true, home.Value, away.Value, confident, msg);
         }
         catch (Exception ex)
         {
-            return (0, 0, false, $"OCR failed: {ex.Message}");
+            return ScoreRead.Failed($"OCR failed: {ex.Message}");
         }
     }
 

@@ -34,6 +34,18 @@ public sealed partial class DashboardViewModel
     {
         Dispatcher.UIThread.Post(() =>
         {
+            // THE BUG: every F12 was pushed at the dashboard as a result. A screenshot of the
+            // squad screen, a replay, the pause menu — any of them flipped ResultEntryOpen and
+            // wrote a phantom 0-0 into the boxes, destroying the pre-match card underneath, because
+            // a failed OCR was indistinguishable from a genuine goalless draw (see ScoreRead).
+            // A capture takes the screen over only when a score was really read; otherwise it
+            // says so and leaves everything exactly as it was.
+            if (!r.Ok)
+            {
+                Log($"📸 Screenshot {r.Time:HH:mm} — {r.Message}");
+                return;
+            }
+
             if (!HasNextMatch)
             {
                 Log($"📸 Screenshot captured {r.Time:HH:mm} — no fixture waiting, so nothing was pre-filled.");
@@ -42,7 +54,10 @@ public sealed partial class DashboardViewModel
 
             HomeScore = r.Home;
             AwayScore = r.Away;
-            ResultEntryOpen = true;   // a capture means full time — the card becomes the entry desk
+            ResultEntryOpen = true;   // a read score means full time — the card becomes the entry desk
+            ImportNotice = r.Confident
+                ? ""
+                : "⚠ Low OCR confidence — check the digits before you record.";
             var caveat = r.Confident ? "" : " (LOW OCR confidence — check the digits)";
             Log($"📸 Screenshot captured {r.Time:HH:mm} — looks like {r.Home}-{r.Away}{caveat}, " +
                 "confirm with Record.");

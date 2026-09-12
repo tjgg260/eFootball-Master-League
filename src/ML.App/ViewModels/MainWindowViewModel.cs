@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -43,6 +43,13 @@ public partial class MainWindowViewModel : ObservableObject
             new("News",     "\uE715", s => new InboxViewModel(s)),
             // pinned at the foot of the sidebar, outside the section scroll
             new("Settings", "\uE713", s => new SettingsViewModel(s)),
+            // DESTINATIONS — you reach these by clicking a player, never from the sidebar, so
+            // they are deliberately absent from Sections below. They are registered HERE
+            // because everything the shell does works off this list by Title: Nav.Go("Player",
+            // him) resolves against it, Back replays a visit to it, and ML_PAGE can open
+            // straight onto one for a screenshot run.
+            new("Player",   "\uE77B", s => new PlayerViewModel(s)),
+            new("Bidding",  "\uE8AB", s => new BiddingViewModel(s)),
         };
 
         NavItem P(string title) => Pages.First(p => p.Title == title);
@@ -58,11 +65,27 @@ public partial class MainWindowViewModel : ObservableObject
 
         RefreshShell();
 
+        // Cross-screen navigation with a subject: any page raises Nav.Go("Squad", player)
+        // and lands here. Single-handler assignment so a full-window rebuild (job accepted)
+        // replaces the old shell instead of stacking subscribers.
+        Nav.Handler = OnNavRequest;
+
         // Tooling hook: ML_PAGE=<nav title> opens straight onto that screen (screenshot runs).
         var startPage = Environment.GetEnvironmentVariable("ML_PAGE");
         var start = Pages.FirstOrDefault(p => p.Title == startPage) ?? Pages[0];
         CurrentPage = start.Build(session);
         MarkActive(start);
+        PushHistory(start.Title, null);   // where Back eventually returns to
+    }
+
+    private void OnNavRequest(string pageTitle, EntityRef? focus)
+    {
+        var item = Pages.FirstOrDefault(p => p.Title == pageTitle);
+        if (item is null) return;
+        // The shared context menu offers "View profile" and "Set training" beside "Swap with X",
+        // so this path is the easiest way to walk out on unsaved work — it must be guarded too.
+        if (!ClearToLeave(() => GoTo(item, focus))) return;
+        GoTo(item, focus);
     }
 
     public string ClubName { get; }
@@ -97,17 +120,25 @@ public partial class MainWindowViewModel : ObservableObject
         catch { HasUnread = false; }
         try
         {
-            var actions = new List<string>();
-            if (_session.PendingOffers().Count > 0) actions.Add("offers on the table");
-            if (_session.IsDeadlineDay()) actions.Add("DEADLINE DAY");
-            if (_session.JobOffers().Count > 0) actions.Add("a job offer");
-            HasActions = actions.Count > 0;
-            ActionsLine = actions.Count > 0 ? "⚠ " + string.Join(" · ", actions) : "";
+            // Each pending decision knows the screen that resolves it — the sidebar line
+            // is buttons, not prose (P9: the shell used to warn and make you hunt).
+            Alerts.Clear();
+            if (_session.PendingOffers().Count > 0) Alerts.Add(new ActionAlert("⚠ offers on the table", "Market"));
+            if (_session.IsDeadlineDay()) Alerts.Add(new ActionAlert("⚠ DEADLINE DAY", "Market"));
+            if (_session.JobOffers().Count > 0) Alerts.Add(new ActionAlert("⚠ a job offer", "Board"));
+            HasActions = Alerts.Count > 0;
+            ActionsLine = "";
         }
         catch { HasActions = false; }
     }
 
     public ObservableCollection<NavItem> Pages { get; }
+
+    // Pending decisions rendered as sidebar buttons; each names the page that resolves it.
+    public ObservableCollection<ActionAlert> Alerts { get; } = new();
+
+    [RelayCommand]
+    private void OpenAlert(ActionAlert alert) => OnNavRequest(alert.Page, null);
 
     // The sidebar renders these; every NavItem inside is the same instance as in Pages,
     // so MarkActive/ML_PAGE keep working untouched.
@@ -120,9 +151,18 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void Navigate(NavItem item)
     {
+        if (!ClearToLeave(() => GoTo(item, null))) return;
+        GoTo(item, null);
+    }
+
+    private void GoTo(NavItem item, EntityRef? focus, bool record = true)
+    {
         try
         {
-            CurrentPage = item.Build(_session);
+            var page = item.Build(_session);
+            if (focus is not null && page is IFocusTarget f) f.Focus(focus);
+            if (record) PushHistory(item.Title, focus);
+            CurrentPage = page;
             MarkActive(item);
             RefreshShell();   // badges follow you around the app
         }
@@ -131,6 +171,126 @@ public partial class MainWindowViewModel : ObservableObject
             // A page that fails to build must not take the whole app down — log it and stay put.
             Program.Log($"Navigate -> {item.Title}", ex);
         }
+    }
+
+    // ---- back / forward ---------------------------------------------------------
+    // History holds ENTRIES — (page title, focus) — never ViewModel instances. Pages are
+    // deliberately rebuilt from the DB on every visit so they always show the latest state
+    // after a result or a sim; caching the VM would sail a stale squad or table back into
+    // view. Replaying an entry keeps that property and costs one rebuild.
+
+    private sealed record Visit(string Page, EntityRef? Focus);
+
+    private readonly List<Visit> _history = new();
+    private int _historyAt = -1;      // index of the entry currently on screen
+    private bool _replaying;          // suppresses recording while Back/Forward drives
+
+    public bool CanGoBack => _historyAt > 0;
+    public bool CanGoForward => _historyAt >= 0 && _historyAt < _history.Count - 1;
+
+    /// <summary>Where Back would take you, in words — the button's tooltip.</summary>
+    public string BackTip => CanGoBack ? $"Back to {Describe(_history[_historyAt - 1])}" : "Nothing behind you yet";
+    public string ForwardTip => CanGoForward ? $"Forward to {Describe(_history[_historyAt + 1])}" : "Nothing ahead";
+
+    private static string Describe(Visit v) =>
+        v.Focus is { Name.Length: > 0 } e ? $"{v.Page} · {e.Name}" : v.Page;
+
+    private void PushHistory(string page, EntityRef? focus)
+    {
+        if (_replaying) return;
+        // Re-visiting the same place (a nav row clicked twice) should not stack entries.
+        if (_historyAt >= 0 && _history[_historyAt] is { } cur
+            && cur.Page == page && cur.Focus?.Id == focus?.Id) { RaiseHistory(); return; }
+        // A new trip truncates anything ahead, exactly like a browser.
+        if (_historyAt < _history.Count - 1)
+            _history.RemoveRange(_historyAt + 1, _history.Count - 1 - _historyAt);
+        _history.Add(new Visit(page, focus));
+        _historyAt = _history.Count - 1;
+        RaiseHistory();
+    }
+
+    private void RaiseHistory()
+    {
+        OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(CanGoForward));
+        OnPropertyChanged(nameof(BackTip));
+        OnPropertyChanged(nameof(ForwardTip));
+        GoBackCommand.NotifyCanExecuteChanged();
+        GoForwardCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGoBack))]
+    private void GoBack() => Step(-1);
+
+    [RelayCommand(CanExecute = nameof(CanGoForward))]
+    private void GoForward() => Step(+1);
+
+    private void Step(int delta)
+    {
+        var to = _historyAt + delta;
+        if (to < 0 || to >= _history.Count) return;
+        // Back is a way off the page like any other — it must not skip the unsaved-work guard.
+        if (!ClearToLeave(() => Replay(to))) return;
+        Replay(to);
+    }
+
+    private void Replay(int index)
+    {
+        var visit = _history[index];
+        var item = Pages.FirstOrDefault(p => p.Title == visit.Page);
+        if (item is null) return;
+        _replaying = true;
+        try { GoTo(item, visit.Focus, record: false); }
+        finally { _replaying = false; }
+        _historyAt = index;
+        RaiseHistory();
+    }
+
+    // ---- the unsaved-work guard -------------------------------------------------
+    // Pages are rebuilt from the DB on every nav click, so leaving a page with unsaved
+    // edits destroyed them silently. Any page that can hold unsaved work says so through
+    // PageViewModel.IsDirty and the shell asks before it throws the work away.
+
+    [ObservableProperty] private bool _leaveArmed;
+    [ObservableProperty] private string _leavePrompt = "";
+    private Action? _pendingLeave;
+
+    /// <summary>True when it is safe to leave now. False parks the trip until the user answers.</summary>
+    private bool ClearToLeave(Action resume)
+    {
+        if (CurrentPage is not { IsDirty: true } dirty) { DismissLeave(); return true; }
+        _pendingLeave = resume;
+        LeavePrompt = dirty.DirtySummary is { Length: > 0 } s
+            ? $"⚠ {s} — leaving loses it."
+            : "⚠ Unsaved changes — leaving loses them.";
+        LeaveArmed = true;
+        return false;
+    }
+
+    [RelayCommand]
+    private void SaveAndLeave()
+    {
+        (CurrentPage as ISaveablePage)?.SaveNow();
+        var go = _pendingLeave;
+        DismissLeave();
+        go?.Invoke();
+    }
+
+    [RelayCommand]
+    private void DiscardAndLeave()
+    {
+        // The resume is GoTo, which does not re-check — the user has answered, so it just goes.
+        var go = _pendingLeave;
+        DismissLeave();
+        go?.Invoke();
+    }
+
+    [RelayCommand]
+    private void DismissLeave()
+    {
+        LeaveArmed = false;
+        LeavePrompt = "";
+        _pendingLeave = null;
     }
 
     [RelayCommand]
@@ -146,6 +306,9 @@ public partial class MainWindowViewModel : ObservableObject
         foreach (var p in Pages) p.IsActive = p == current;
     }
 }
+
+/// <summary>A pending decision surfaced in the sidebar; Page is the screen that resolves it.</summary>
+public sealed record ActionAlert(string Text, string Page);
 
 /// <summary>A labeled group of nav rows ("MATCHDAY", "CLUB", ...).</summary>
 public sealed class NavSection
@@ -189,4 +352,21 @@ public abstract class PageViewModel : ObservableObject
 {
     public abstract string Title { get; }
     public abstract string Icon { get; }
+
+    /// <summary>
+    /// True while the page holds edits that only exist in memory. The shell asks before it
+    /// rebuilds the page (which is how unsaved work used to disappear without a word).
+    /// Set by the page; cleared by its own save.
+    /// </summary>
+    public virtual bool IsDirty => false;
+
+    /// <summary>What would be lost, in words — "3 unsaved changes", "an unsaved formation".</summary>
+    public virtual string DirtySummary => "";
+
+}
+
+/// <summary>A page whose unsaved work the shell can commit on the user's behalf.</summary>
+public interface ISaveablePage
+{
+    void SaveNow();
 }

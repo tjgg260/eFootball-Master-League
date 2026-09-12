@@ -12,6 +12,9 @@
     </Grid>
     <TextBlock DockPanel.Dock="Top" Classes="ml-muted" IsVisible="{Binding Empty}"
                Text="Nothing on the wire yet — play a match and the news will follow."/>
+    <TextBlock DockPanel.Dock="Bottom" Classes="ml-label" Margin="0,10,0,0"
+               Foreground="{StaticResource MlSuccessText}" Text="{Binding Status}"
+               TextWrapping="Wrap"/>
 
     <!-- ticker rail: AROUND THE MARKET with faces (Sky-style) -->
     <Border DockPanel.Dock="Right" Classes="ml-panel" Width="250" Margin="14,0,0,0"
@@ -20,7 +23,7 @@
         <TextBlock DockPanel.Dock="Top" Classes="ml-label" Text="AROUND THE MARKET"
                    LetterSpacing="1.4" Margin="0,0,0,10"/>
         <ScrollViewer>
-          <ItemsControl ItemsSource="{Binding Ticker}">
+          <ItemsControl x:Name="TickerList" ItemsSource="{Binding Ticker}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TickerEntry">
                 <Grid ColumnDefinitions="40,*" Margin="0,4">
@@ -50,7 +53,8 @@
     <ScrollViewer>
       <StackPanel>
         <!-- DONE DEAL hero: the latest paid move, Sky-style (bespoke moment — gradient stays) -->
-        <Border CornerRadius="14" Padding="18" Margin="0,0,0,14" IsVisible="{Binding HeroVisible}"
+        <Border x:Name="HeroCard" CornerRadius="14" Padding="18" Margin="0,0,0,14"
+                IsVisible="{Binding HeroVisible}"
                 BorderBrush="{StaticResource MlSuccess}" BorderThickness="1">
           <Border.Background>
             <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
@@ -84,7 +88,7 @@
         </Border>
 
         <!-- the feed: accent-barred cards with faces; click a message to mark it read (P6) -->
-        <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl x:Name="FeedList" ItemsSource="{Binding Rows}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:NewsEntry">
               <Button Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,0,10"
@@ -128,6 +132,21 @@
                       </Grid>
                       <TextBlock Text="{Binding Body}" Foreground="{Binding BodyBrush}"
                                  TextWrapping="Wrap" Margin="0,5,0,0" FontSize="13"/>
+                      <!-- a story waiting on a decision carries the decision (P10) -->
+                      <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0"
+                                  IsVisible="{Binding ShowActions}">
+                        <Button Classes="ml-primary ml-go" FontSize="12" Content="✔ Accept offer"
+                                IsVisible="{Binding ShowOfferActions}"
+                                Command="{Binding $parent[ItemsControl].((vm:InboxViewModel)DataContext).AcceptOfferCommand}"
+                                CommandParameter="{Binding}"/>
+                        <Button Classes="ml-secondary" FontSize="12" Content="✖ Reject"
+                                IsVisible="{Binding ShowOfferActions}"
+                                Command="{Binding $parent[ItemsControl].((vm:InboxViewModel)DataContext).RejectOfferCommand}"
+                                CommandParameter="{Binding}"/>
+                        <Button Classes="ml-primary" FontSize="12" Content="🏛️ Open the Board →"
+                                IsVisible="{Binding ShowBoardAction}"
+                                Command="{Binding $parent[ItemsControl].((vm:InboxViewModel)DataContext).OpenBoardCommand}"/>
+                      </StackPanel>
                     </StackPanel>
                   </Grid>
                 </Border>
