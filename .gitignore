@@ -106,3 +106,23 @@ scratchpad/
 scratchpad_pack_uids.txt
 design/
 *.zip
+
+# ---- third-party tools, mod packs and game-data dumps: supplied locally, never committed ----
+# CRI File System Tools (proprietary, CRI Middleware) — place at repo root; tools/ml_apply.py expects
+# CRI_File_System_Tools_v2.40.13.0/crifilesystem v2.40.13.0/cpkmakec.exe
+CRI_File_System_Tools*/
+# eFootball-Player-Editor.exe, eFootball-WESYS-Unzlib-Tool.exe and any other tool dropped at the root
+/*.exe
+# extracted game trees (bins/ is above; these are its siblings)
+bins-*/
+TomMod/
+New folder/
+# decoded game-table dumps and one-off research scripts
+scratch_*
+*.dec
+cpkmaker.out.csv
+# python bytecode
+__pycache__/
+*.pyc
+# rejected asset batches
+assets/dvx_comps_bad*/
