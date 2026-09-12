@@ -65,6 +65,18 @@ public sealed partial class Session
             StoreRatings(fixtureId, "away", r.Away);
             parts.Add($"{r.Home.Count + r.Away.Count} player ratings stored");
         }
+        if (data.PlayerStats is { } ps)
+        {
+            var n = StorePlayerStats(fixtureId, "home", ps.Home) + StorePlayerStats(fixtureId, "away", ps.Away);
+            var best = ps.Home.Concat(ps.Away)
+                .Where(p => p.Stats.ContainsKey("pass_short_pct"))
+                .OrderByDescending(p => p.Stats.GetValueOrDefault("pass_short"))
+                .FirstOrDefault();
+            parts.Add(best is null
+                ? $"{n} per-player counters stored"
+                : $"{n} per-player counters stored — top passer {best.Stats.GetValueOrDefault("pass_short_pct"):0}% "
+                  + $"on {best.Stats.GetValueOrDefault("pass_short"):0}");
+        }
         return parts.Count > 0 ? "📊 " + string.Join(" · ", parts) : "No data captured.";
     }
 
@@ -96,6 +108,50 @@ public sealed partial class Session
             cmd.Parameters.AddWithValue("$r", ratings[i]);
             cmd.ExecuteNonQuery();
         }
+    }
+
+    /// <summary>Per-player raw counters from the engine record. `slot` is the ENGINE slot 0..39,
+    /// which is not known to line up with <see cref="PlayerRatingsFor"/>'s results-list position —
+    /// do not join them on slot until a live match has confirmed the two orderings agree.</summary>
+    private int StorePlayerStats(int fixtureId, string side, IReadOnlyList<PlayerStatRow> rows)
+    {
+        var n = 0;
+        foreach (var row in rows)
+        {
+            foreach (var (stat, value) in row.Stats)
+            {
+                using var cmd = Db.Connection.CreateCommand();
+                cmd.CommandText = "INSERT OR REPLACE INTO match_player_stats(fixture_id,side,slot,stat,value) " +
+                                  "VALUES($f,$s,$i,$k,$v)";
+                cmd.Parameters.AddWithValue("$f", fixtureId);
+                cmd.Parameters.AddWithValue("$s", side);
+                cmd.Parameters.AddWithValue("$i", row.Slot);
+                cmd.Parameters.AddWithValue("$k", stat);
+                cmd.Parameters.AddWithValue("$v", value);
+                cmd.ExecuteNonQuery();
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /// <summary>Stored per-player counters for a fixture side: engine slot -> stat -> value.</summary>
+    public IReadOnlyDictionary<int, Dictionary<string, double>> PlayerStatsFor(int fixtureId, string side)
+    {
+        var outp = new Dictionary<int, Dictionary<string, double>>();
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT slot, stat, value FROM match_player_stats WHERE fixture_id=$f AND side=$s " +
+                          "ORDER BY slot";
+        cmd.Parameters.AddWithValue("$f", fixtureId);
+        cmd.Parameters.AddWithValue("$s", side);
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+        {
+            var slot = r.GetInt32(0);
+            if (!outp.TryGetValue(slot, out var d)) outp[slot] = d = new Dictionary<string, double>();
+            d[r.GetString(1)] = r.GetDouble(2);
+        }
+        return outp;
     }
 
     /// <summary>Team stats for a fixture as (stat, home, away) rows, for the Stats screen.</summary>
@@ -150,7 +206,10 @@ public sealed partial class Session
         PropertyNameCaseInsensitive = true,
     };
 
-    private sealed record MatchMemory(TeamStatsPair? TeamStats, RatingsPair? Ratings, string? Error);
+    private sealed record MatchMemory(TeamStatsPair? TeamStats, RatingsPair? Ratings,
+                                      PlayerStatsPair? PlayerStats, string? Error);
     private sealed record TeamStatsPair(Dictionary<string, int> Home, Dictionary<string, int> Away);
     private sealed record RatingsPair(List<double> Home, List<double> Away);
+    private sealed record PlayerStatsPair(List<PlayerStatRow> Home, List<PlayerStatRow> Away);
+    private sealed record PlayerStatRow(int Slot, Dictionary<string, double> Stats);
 }

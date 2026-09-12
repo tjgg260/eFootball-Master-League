@@ -80,15 +80,53 @@ def read_ratings(h):
     return []
 
 
+def deep_player_stats(h):
+    """Per-player RAW COUNTERS from the engine's match record (tools/stats_read.py).
+
+    This is the only route to per-player pass completion. Best-effort: it runs a third scan and
+    depends on offsets that are newer than the team-stats and ratings paths above, so any failure
+    here must leave those two untouched — they already work.
+    """
+    import stats_read as sr
+    hits = sr.find_record_slots(h)
+    if not hits:
+        return None
+    scored = [v for v in (sr.verify_chain(h, c) for c in hits) if v]
+    scored.sort(key=lambda v: -v["score"])
+    if not scored or scored[0]["score"] == 0:
+        return None
+    ctl, container = scored[0]["ctl"], scored[0]["container"]
+    out = {"home": [], "away": []}
+    for team_idx, side in ((0, "home"), (1, "away")):
+        for p in range(sr.SLOTS_PER_TEAM):
+            d = sr.read_player(h, ctl, container, team_idx, p)
+            if not d or not d["played"]:
+                continue
+            stats = {sr.ROW_NAMES.get(r, f"row_{r:02x}"): float(t) for r, (t, _c) in d["rows"].items()}
+            for name, (_ok, _att, pct) in sr.derived(d["rows"]).items():
+                stats[f"{name}_pct"] = round(pct, 1)
+            if d["rating"] is not None:
+                stats["rating"] = float(d["rating"])
+            if d["raw"] is not None:
+                stats["raw_score"] = float(d["raw"])
+            out[side].append({"slot": p, "stats": stats})
+    return out if (out["home"] or out["away"]) else None
+
+
 def main():
     pid = find_pid()
     if pid is None:
         print(json.dumps({"error": "eFootball not running"}))
         return 1
     h = _open(pid)
+    deep = None
     try:
         team = locate_best_team(h)
         ratings = read_ratings(h)
+        try:
+            deep = deep_player_stats(h)
+        except Exception:            # noqa: BLE001 - never let deep stats break the proven paths
+            deep = None
     finally:
         k32.CloseHandle(h)
 
@@ -102,6 +140,8 @@ def main():
         # first half = home XI (11), rest = away — the results page lists home then away
         half = 11 if len(ratings) >= 22 else len(ratings) // 2
         result["ratings"] = {"home": ratings[:half], "away": ratings[half:]}
+    if deep:
+        result["player_stats"] = deep
     if not result:
         result["error"] = "no match data in memory — be on the full-time results screen"
     print(json.dumps(result, indent=2))

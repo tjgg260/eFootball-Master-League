@@ -434,6 +434,26 @@ CREATE TABLE IF NOT EXISTS match_player_ratings (
     PRIMARY KEY (fixture_id, side, slot)
 );
 
+-- Per-player RAW COUNTERS read out of the engine's match record (tools/stats_read.py). This is
+-- the only source of per-player pass completion: the game computes it, shows a rating derived
+-- from it, and never writes it anywhere.
+--
+-- `slot` is the ENGINE slot 0..39, which is NOT known to be the same key as
+-- match_player_ratings.slot (that one is the results-list position). Do not join the two tables
+-- on slot until a live match has confirmed the orderings agree.
+--
+-- `stat` is a row name from stats_read.ROW_NAMES ('pass_short'), an unnamed row ('row_62'), a
+-- derived percentage ('pass_short_pct'), the shootout column of a row ('pass_short_c8'), or one
+-- of 'rating' / 'raw_score' / 'ability_min' / 'ability_max'.
+CREATE TABLE IF NOT EXISTS match_player_stats (
+    fixture_id INTEGER NOT NULL REFERENCES fixtures(id),
+    side       TEXT    NOT NULL,           -- 'home' | 'away'
+    slot       INTEGER NOT NULL,           -- engine slot 0..39 (see note above)
+    stat       TEXT    NOT NULL,
+    value      REAL    NOT NULL,
+    PRIMARY KEY (fixture_id, side, slot, stat)
+);
+
 -- The staff DATABASE (FM-style): persistent individual people with 1-20 attributes and
 -- tactical preferences. team_id NULL = free agent. One person per (team, role) is enforced
 -- in code; firing returns the person to the pool rather than deleting them.
