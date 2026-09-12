@@ -1,0 +1,6 @@
+{
+ "description": "OFFLINE, NO GAMEPLAY CHANGE. Renames the matchmaking host string 'pes22-game.cs.konami.net' to 'pes99-game.cs.konami.net' inside your own eFootball.exe, so the client cannot reach Konami's servers and starts straight into offline play. Two ASCII bytes in the string table; no code is touched and gameplay is byte-identical to vanilla. This is the whole difference between the vanilla exe and the 'offline' exe used for Master League play. Reversible with `python tools/exe_patch.py remove tools/data/patches/offline-no-gameplay-change.json`; Steam's 'verify integrity' also reverts it. Offline single-player on an owned copy only.",
+ "patches": [
+  {"name": "matchmaking-host-rename", "module_offset": "0x6e6fae3", "expect": "32 32", "patch": "39 39", "kind": "data"}
+ ]
+}

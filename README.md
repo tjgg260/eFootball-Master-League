@@ -83,6 +83,21 @@ place will not dirty your checkout.
 | Tesseract `eng.traineddata` | `tools/tessdata/` | OCR. Fetch from tesseract-ocr/tessdata_best |
 | Your own game exports, FM exports, face packs | Repo root or `samples/` | The `tools/` import pipeline |
 
+## Playing offline
+
+The game must be offline for a modified database to be safe. The "offline exe" used for
+Master League play is your own `eFootball.exe` with two bytes changed: the matchmaking host
+`pes22-game.cs.konami.net` becomes `pes99-game.cs.konami.net`, so the client cannot reach
+Konami and starts straight into offline play. Gameplay code is untouched. We do not
+redistribute the executable; apply the change to your own copy, with the game closed:
+
+```bash
+python tools/exe_patch.py apply tools/data/patches/offline-no-gameplay-change.json
+```
+
+`python tools/exe_patch.py remove <same spec>` reverses it, and so does Steam's "verify
+integrity of game files". The first apply keeps a byte-exact pristine backup.
+
 ## Operational rules
 
 - Install order after any Konami update: **Konami patch, then EvoMod, then your CSV.** Always.
