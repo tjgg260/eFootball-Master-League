@@ -72,7 +72,16 @@ CREATE TABLE IF NOT EXISTS players (
     height_cm     INTEGER,
     weight_kg     INTEGER,
     overall_rating INTEGER,
-    portrait_path TEXT                          -- face/portrait asset
+    portrait_path TEXT,                         -- face/portrait asset (RFS)
+    -- The three columns below existed ONLY on build/master.db, ALTERed in by the python
+    -- pipeline, and were never written down here. Queries name them all the same — Repository
+    -- reads "WHERE superseded_by IS NULL" and COALESCE(real_face_path, portrait_path) — so every
+    -- database this file creates (MasterDb.OpenInMemory: the tests, ML.Sync, the sample career)
+    -- failed with "no such column" the first time a player was read.
+    real_face_path TEXT,                        -- facepack photo; preferred over portrait_path
+    personality   TEXT,                         -- character label derived from player_traits
+    superseded_by INTEGER                       -- non-null: a merged duplicate of that player id,
+                                                -- kept on file but hidden from every pool
 );
 
 -- abilities keyed by name so we can carry the full FM-style attribute set without a
@@ -215,7 +224,12 @@ CREATE TABLE IF NOT EXISTS inbox (
     subject       TEXT NOT NULL,
     body          TEXT NOT NULL,
     is_read       INTEGER NOT NULL DEFAULT 0,
-    requires_action INTEGER NOT NULL DEFAULT 0
+    requires_action INTEGER NOT NULL DEFAULT 0,
+    -- Imagery for the news feed: the letter's player (his face) and club (its crest). Both were
+    -- live-database-only columns while Session.PostInbox has always inserted into them, so every
+    -- letter written to a database built from this file threw on the insert.
+    player_id     INTEGER,
+    team_id       INTEGER
 );
 
 -- NOTE: no index on squad_members(team_id) — it's a prefix of the (team_id, player_id) primary
@@ -365,7 +379,9 @@ CREATE TABLE IF NOT EXISTS player_knowledge (
 CREATE TABLE IF NOT EXISTS player_appearance (
     player_id INTEGER PRIMARY KEY REFERENCES players(id),   -- rowid alias: already indexed
     skin_tone INTEGER NOT NULL,
-    source    TEXT    NOT NULL DEFAULT 'seeded'
+    source    TEXT    NOT NULL DEFAULT 'seeded',
+    hair_color INTEGER,     -- 5-class hair colour (0 dark - 4 blond); the portrait read selects it
+    rfs_skin   INTEGER      -- exact RFS 1-10 skin code behind skin_tone; imported, no query reads it
 );
 
 -- Live transfer negotiations with selling clubs (P5): one open negotiation per target.

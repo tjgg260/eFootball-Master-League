@@ -12,6 +12,8 @@ namespace ML.App;
 public sealed partial class Session
 {
     /// <summary>The team's chosen in-possession style (0-5), or null if unset.</summary>
+    // teamId and the style are legitimately int — the largest club id in the world is 4,032,815
+    // and a style is 0-5. Player ids are the ones that must be long; don't "tidy" these to match.
     private int? TeamStyleOf(int teamId)
     {
         try
@@ -76,8 +78,14 @@ public sealed partial class Session
         using var r = cmd.ExecuteReader();
         while (r.Read())
         {
-            var pid = r.GetInt32(0);
+            // THE BUG: this dictionary was keyed on GetInt32(player_id) — an unchecked truncation
+            // of the int64 column — while AssignRolesFor looks it up with the real long id. 8.27M
+            // of the world's 10.88M attribute rows are above Int32.MaxValue, and not one of the
+            // current club's 25 players survived the cast: every lookup missed, so both roles were
+            // picked from an EMPTY ability map and then compiled into Player.bin.
+            var pid = r.GetInt64(0);
             if (!map.TryGetValue(pid, out var m)) map[pid] = m = new Dictionary<string, int>();
+            // The attribute value is legitimately an int (0-95 across the world) — leave it.
             m[r.GetString(1)] = r.GetInt32(2);
         }
         return map;

@@ -48,10 +48,24 @@ public static class EntityActions
         void Sep() => items.Add(new Separator());
         void Do(Func<string> verb) { var line = verb(); if (line.Length > 0) status?.Invoke(line); }
 
-        switch (e.Kind)
+        // THE BUG: building this menu asks the Session about ten separate things — his club,
+        // whether he is yours, the armband, both list flags, his age, the scout, the shortlist —
+        // and only the transfer window was guarded. One failed read threw straight out of here,
+        // up through the right-click handler and into Avalonia's input dispatch, where it showed
+        // as a right-click that did nothing at all (or took the window down). Indistinguishable
+        // from the feature being broken. Every probe is guarded one by one below; this is the
+        // backstop, so whatever HAD been built still reaches the manager as a usable menu.
+        try
         {
-            case EntityKind.Player: BuildPlayer(s, e, Add, Info, Sep, Do, status); break;
-            case EntityKind.Club: BuildClub(s, e, Add, Info, Sep, Do); break;
+            switch (e.Kind)
+            {
+                case EntityKind.Player: BuildPlayer(s, e, Add, Info, Sep, Do, status); break;
+                case EntityKind.Club: BuildClub(s, e, Add, Info, Sep, Do); break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Program.Log($"EntityActions.BuildMenu({e.Kind})", ex);
         }
 
         if (extras is not null)
@@ -78,46 +92,85 @@ public static class EntityActions
         return menu;
     }
 
+    /// <summary>
+    /// Every Session read here goes through <see cref="Probe"/>. One of ten failing costs that
+    /// one verb its certainty; it never costs the manager the menu.
+    /// </summary>
     private static void BuildPlayer(Session s, EntityRef e,
         AddItem add, Action<string> info, Action sep, Action<Func<string>> run,
         Action<string>? status)
     {
         void Add(string h, Action a, bool en = true, string? key = null) => add(h, a, en, key);
         var id = e.Id;
-        var name = e.Name.Length > 0 ? e.Name : s.PlayerNameOf(id);
-        var (teamId, club) = s.ClubOfPlayer(id);
+        var name = e.Name.Length > 0 ? e.Name : Probe("PlayerNameOf", () => s.PlayerNameOf(id), "");
+
+        // A read that FAILED and a read that came back "no club" are different answers, and the
+        // menu turns on the difference: only a successful (null, "Free agent") is a free agent.
+        // If the club read threw we offer the enquiry and never the trial — a trial is a verb
+        // that cannot work on a contracted player, and inventing one is worse than omitting it.
+        var clubRead = Probe("ClubOfPlayer",
+            () => { var (t, c) = s.ClubOfPlayer(id); return (Known: true, TeamId: t, Club: c); },
+            (Known: false, TeamId: (int?)null, Club: "club unknown"));
+        var teamId = clubRead.TeamId;
+        var club = clubRead.Club;
+        var free = clubRead.Known && teamId is null;
+
         // Ownership is asked, not computed here: a lad in your own U21s sits in team 9,000,014,
         // so comparing the raw side id against your club called him a rival's asset and offered
         // you the chance to bid for your own player. IsOwnPlayer walks parent_team_id.
-        var own = s.IsOwnPlayer(id);
-        var free = teamId is null;
+        var own = Probe<bool?>("IsOwnPlayer", () => s.IsOwnPlayer(id), null);
+        // That walk costs a second query of its own. If it failed but the club read did not, two
+        // of the three answers are still safe to reach without it: a free agent is nobody's, and
+        // a man in your senior side is plainly yours. A third club's number is NOT safe — it may
+        // be your own U21s, which is the entire reason the walk exists — so that case stays
+        // unknown and takes the reduced menu below rather than a guess.
+        if (own is null && clubRead.Known)
+        {
+            if (teamId is null) own = false;
+            else if (teamId == s.CurrentTeamId) own = true;
+        }
 
-        info($"{name} · {(own ? "your squad" : club)}");
+        info($"{name} · {(own == true ? "your squad" : club)}");
         sep();
 
-        if (own)
+        if (own is null)
+        {
+            // Whose player this is came back unreadable, and EVERY verb below turns on the
+            // answer: one branch renews his contract, the other bids for him. The one verb that
+            // is right either way is a better menu than a guess at the other nine.
+            Add("👤 View profile", () => Nav.Go("Player", EntityRef.Player(id, name)));
+            return;
+        }
+
+        if (own == true)
         {
             // The profile is its own full-width screen now. It used to mean "go to Squad and
             // select his row", which put a man's whole career into a 262px column beside a
             // roster — the one implementation of a profile, for every player in the world.
             Add("👤 View profile", () => Nav.Go("Player", EntityRef.Player(id, name)));
-            var isCaptain = s.Captain == id;
+            var isCaptain = Probe("Captain", () => s.Captain, (long?)null) == id;
             Add("© Make captain", () => { s.Captain = id; status?.Invoke($"{name} wears the armband."); }, !isCaptain, ItemCaptain);
             Add("📃 Renew contract", () => run(() => s.RenewContract(id)));
             Add("👍 Praise", () => run(() => s.TalkTo(id, name, praise: true)));
             Add("👎 Criticise", () => run(() => s.TalkTo(id, name, praise: false)));
             sep();
-            var listed = s.IsTransferListed(id);
+            // Both list flags fall back to "not listed", so a failed read leaves the verb offering
+            // to PUT him on the list. Doing that to a man already on it changes nothing; the
+            // opposite guess would quietly take him off a list you had deliberately put him on.
+            var listed = Probe("IsTransferListed", () => s.IsTransferListed(id), false);
             Add(listed ? "📋 Take off the transfer list" : "📋 Transfer-list",
                 () => { s.SetTransferListed(id, !listed); status?.Invoke(listed ? $"{name} taken off the list." : $"{name} is on the transfer list."); });
-            var loanListed = s.IsLoanListed(id);
+            var loanListed = Probe("IsLoanListed", () => s.IsLoanListed(id), false);
             Add(loanListed ? "↔ Take off the loan list" : "↔ Make available on loan",
                 () => { s.SetLoanListed(id, !loanListed); status?.Invoke(loanListed ? $"{name} is off the loan list." : $"{name} is available on loan."); });
             Add("📢 Offer to clubs", () => run(() => s.OfferToClubs(id)));
             Add("✈ Loan out", () => run(() => s.LoanOut(id)));
             sep();
             Add("🎯 Set training", () => Nav.Go("Training", EntityRef.Player(id, name)));
-            var age = s.PlayerAgeOf(id) ?? 25;
+            // An unreadable age falls back to a settled 25, which offers no youth move at all —
+            // the safe direction, because the two verbs below physically move a player between
+            // sides and we will not do that on a number we could not read.
+            var age = Probe("PlayerAgeOf", () => s.PlayerAgeOf(id), (int?)null) ?? 25;
             if (age <= 21 && teamId is { } tid)
             {
                 Add("🧒 Move to U21s", () => run(() => s.DemoteToYouth(id, tid, "u21")));
@@ -133,17 +186,19 @@ public static class EntityActions
             // Buying him is a screen now, not a 330px rail. Outside the window nothing binding
             // can be agreed, so the verb is not offered then — what IS legal (an enquiry to his
             // club, a trial for a free agent) is right there in this same menu, a line below.
-            bool windowOpen;
-            try { windowOpen = s.TransferWindowOpen(); }
-            catch { windowOpen = true; }   // a failed read must never silently remove a verb
+            // A failed read must never silently remove a verb.
+            var windowOpen = Probe("TransferWindowOpen", () => s.TransferWindowOpen(), true);
             if (windowOpen)
                 Add("💷 Open bidding", () => Nav.Go("Bidding", EntityRef.Player(id, name)),
                     true, ItemBidding);
 
             Add("🛒 Open in Market", () => Nav.Go("Market", EntityRef.Player(id, name)));
             sep();
-            var scoutBusy = s.ActiveScoutJob() is not null;
-            var noScout = s.StaffFor("Scout") is null;
+            // Both scout gates fall back to OPEN. StartScoutJob re-checks each of them itself and
+            // refuses in plain words, so a failed read costs a wasted click and an honest
+            // sentence — where guessing "locked" hides a verb that was there for the taking.
+            var scoutBusy = Probe("ActiveScoutJob", () => s.ActiveScoutJob() is not null, false);
+            var noScout = Probe("StaffFor(Scout)", () => s.StaffFor("Scout") is null, false);
             Add(noScout ? "🔍 Scout player — needs a scout" : scoutBusy ? "🔍 Scout player — scout on a mission" : "🔍 Scout player",
                 () => run(() => s.StartScoutJob("player", id, name)), !noScout && !scoutBusy);
             if (free)
@@ -154,7 +209,7 @@ public static class EntityActions
             {
                 Add("💬 Make enquiry", () => run(() => s.MakeEnquiry(id)));
             }
-            var shortlisted = s.IsShortlisted(id);
+            var shortlisted = Probe("IsShortlisted", () => s.IsShortlisted(id), false);
             Add(shortlisted ? "⭐ Remove from shortlist" : "⭐ Add to shortlist",
                 () => { s.SetShortlisted(id, !shortlisted); status?.Invoke(shortlisted ? $"{name} removed from the shortlist." : $"{name} shortlisted."); });
             if (teamId is { } tid)
@@ -174,7 +229,7 @@ public static class EntityActions
     {
         void Add(string h, Action a, bool en = true) => add(h, a, en);
         var tid = (int)e.Id;
-        var name = e.Name.Length > 0 ? e.Name : s.TeamName(tid);
+        var name = e.Name.Length > 0 ? e.Name : Probe("TeamName", () => s.TeamName(tid), "?");
         var mine = tid == s.CurrentTeamId;
 
         info(name);
@@ -182,12 +237,38 @@ public static class EntityActions
         Add(mine ? "👥 View my squad" : "👥 View squad", () => Nav.Go("Squad", EntityRef.Club(tid, name)));
         if (!mine)
         {
-            var scoutBusy = s.ActiveScoutJob() is not null;
-            var noScout = s.StaffFor("Scout") is null;
+            var scoutBusy = Probe("ActiveScoutJob", () => s.ActiveScoutJob() is not null, false);
+            var noScout = Probe("StaffFor(Scout)", () => s.StaffFor("Scout") is null, false);
             Add(noScout ? "🔍 Scout club — needs a scout" : scoutBusy ? "🔍 Scout club — scout on a mission" : "🔍 Scout club",
                 () => run(() => s.StartScoutJob("club", tid, name)), !noScout && !scoutBusy);
-            var (w, d, l) = s.HeadToHead(s.CurrentTeamId, tid);
-            info(w + d + l == 0 ? "⚔ Never met competitively" : $"⚔ Head-to-head: W{w} D{d} L{l}");
+            // A head-to-head we could not read is left OFF the menu entirely. "Never met
+            // competitively" is a claim about the club's history, and printing it because a
+            // query failed invents a fact rather than admitting a gap.
+            var h2h = Probe("HeadToHead",
+                () => { var (w, d, l) = s.HeadToHead(s.CurrentTeamId, tid); return (Known: true, W: w, D: d, L: l); },
+                (Known: false, W: 0, D: 0, L: 0));
+            if (h2h.Known)
+            {
+                info(h2h.W + h2h.D + h2h.L == 0
+                    ? "⚔ Never met competitively"
+                    : $"⚔ Head-to-head: W{h2h.W} D{h2h.D} L{h2h.L}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// One Session read, plus what to believe when it fails. Every fallback in this file is
+    /// picked so the wrong answer is the harmless one: a verb offered and then refused in words
+    /// beats a verb that silently vanishes, and a flag guessed "off" beats one guessed "on"
+    /// wherever acting on it writes to the career.
+    /// </summary>
+    private static T Probe<T>(string what, Func<T> read, T fallback)
+    {
+        try { return read(); }
+        catch (Exception ex)
+        {
+            Program.Log($"EntityActions probe: {what}", ex);
+            return fallback;
         }
     }
 }
@@ -226,9 +307,19 @@ public static class MlMenu
         host.AddHandler(Gestures.DoubleTappedEvent,
             new EventHandler<TappedEventArgs>((_, e) =>
             {
-                if (RowAt<T>(e.Source, host) is not { } row) return;
-                open(row);
-                e.Handled = true;
+                // Guarded for the same reason Attach is: `open` is a screen's own callback and
+                // usually a Nav.Go, so it can throw for every reason a page build can. Unhandled
+                // here it is an exception raised inside input dispatch, not a failed navigation.
+                try
+                {
+                    if (RowAt<T>(e.Source, host) is not { } row) return;
+                    open(row);
+                    e.Handled = true;
+                }
+                catch (Exception ex)
+                {
+                    Program.Log($"MlMenu.OnDoubleClick<{typeof(T).Name}>", ex);
+                }
             }), RoutingStrategies.Bubble);
     }
 
@@ -237,15 +328,28 @@ public static class MlMenu
     {
         host.AddHandler(InputElement.PointerPressedEvent, (_, e) =>
         {
-            if (!e.GetCurrentPoint(host).Properties.IsRightButtonPressed) return;
-            var item = RowAt<T>(e.Source, host);
-            if (item is null) return;
-            select?.Invoke(item);
-            var menu = menuFor(item);
-            if (menu is null || menu.Items.Count == 0) return;
-            menu.Placement = PlacementMode.Pointer;
-            menu.Open(host);
-            e.Handled = true;
+            // THE BUG: this handler ran naked. menuFor reaches EntityActions.BuildMenu, which
+            // interrogates the Session about a dozen things before a single row exists, and a
+            // throw from any of them landed unhandled on the UI thread mid-input-dispatch — so
+            // the right-click did nothing, or the app went down. Both read as "the menu feature
+            // is broken" rather than "one read failed", and this one handler is wired to every
+            // list in the app. It fails soft now, and the reason lands in ml-crash.log.
+            try
+            {
+                if (!e.GetCurrentPoint(host).Properties.IsRightButtonPressed) return;
+                var item = RowAt<T>(e.Source, host);
+                if (item is null) return;
+                select?.Invoke(item);
+                var menu = menuFor(item);
+                if (menu is null || menu.Items.Count == 0) return;
+                menu.Placement = PlacementMode.Pointer;
+                menu.Open(host);
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                Program.Log($"MlMenu.Attach<{typeof(T).Name}>", ex);
+            }
         }, RoutingStrategies.Tunnel);
     }
 }

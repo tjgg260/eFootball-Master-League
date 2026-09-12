@@ -38,6 +38,37 @@ public partial class SquadView : UserControl
             r => Nav.Go("Player", EntityRef.Player(r.PlayerId, r.Name)));
     }
 
+    /// <summary>
+    /// The ⋯ on a roster row: the SAME menu the right-click opens, for anyone who never
+    /// right-clicks. THE BUG it fixes: both gestures on this grid were invisible — nothing on
+    /// screen was clickable to reach a player's verbs, so the twelve of them may as well not
+    /// have existed. A ContextMenu has to be opened AT a control, which a Command cannot do
+    /// from a ViewModel, so the trigger lives here and delegates to the one builder.
+    /// </summary>
+    private void OnRowMenu(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SquadViewModel vm || sender is not Control btn) return;
+        // Same walk MlMenu.Attach uses, so the button and the right-click can never disagree
+        // about which player was hit.
+        if (MlMenu.RowAt<SquadEntry>(btn) is not { } row) return;
+        vm.Selected = row;   // the card beside the grid follows the man you are acting on
+        var menu = vm.MenuFor(row);
+        if (menu is null || menu.Items.Count == 0) return;
+        menu.Placement = PlacementMode.BottomEdgeAlignedRight;
+        menu.Open(btn);
+    }
+
+    /// <summary>The ⋯ on a loans-strip row — the loanee's own copy of the shared menu.</summary>
+    private void OnLoanMenu(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SquadViewModel vm || sender is not Control btn) return;
+        if (MlMenu.RowAt<LoanRowVm>(btn) is not { } row) return;
+        var menu = vm.MenuForLoan(row);
+        if (menu is null || menu.Items.Count == 0) return;
+        menu.Placement = PlacementMode.BottomEdgeAlignedRight;
+        menu.Open(btn);
+    }
+
     /// <summary>"Set photo…" — copy the owner's chosen image to custom_faces/&lt;player_id&gt;,
     /// where the portrait resolver's tier 0 picks it up ahead of every pack.</summary>
     private async void OnSetPhoto(object? sender, RoutedEventArgs e)

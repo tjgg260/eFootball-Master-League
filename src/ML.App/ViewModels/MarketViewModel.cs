@@ -106,6 +106,27 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     private const string WorldOnly =
         "(p.id < 20000000 OR (p.id >= 700000000 AND NOT (p.id >= 45000000000 AND p.id < 46000000000)))";
 
+    /// <summary>
+    /// The filters that hold in EVERY market mode. They are a const spliced straight into the
+    /// query, deliberately NOT entries in the WHERE list the modes assemble.
+    ///
+    /// THE BUG this shape closes: a copy of the duplicate filter used to be pushed onto that
+    /// list as well, and shortlist mode calls where.Clear() to drop the search box and every
+    /// dropdown. It only ever got away with that because the same clause happened to be spelled
+    /// out a second time in the query text — so the invariant survived by luck, and one tidy-up
+    /// of the "redundant" copy would have made the star list the only pool in the app with no
+    /// one-record-per-human filter. The shortlist verb is attached app-wide by EntityActions, so
+    /// a merged duplicate starred anywhere would then have listed here. There is now no list a
+    /// mode switch can clear these out of, and exactly one place they are written down.
+    ///
+    /// superseded_by: a merged duplicate is KEPT in the table but marked, and the standing ruling
+    /// filters it out of every pool — market, scouting, CPU signings alike. 37,517 of them in the
+    /// world today, and every single one is unattached to a club, so without this they surface as
+    /// signable free agents (a phantom Mbappe alongside the real one at Real Madrid).
+    /// WorldOnly: the career's own copies of a world player, which show the same human twice.
+    /// </summary>
+    private const string AlwaysFilter = "p.superseded_by IS NULL AND " + WorldOnly;
+
     private readonly Session _s;
 
     public MarketViewModel(Session s)
@@ -125,8 +146,9 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             // because both are on the row query below: superseded_by drops merged duplicates,
             // WorldOnly drops the career's own copies of a world player. A headline that
             // counts rows the list will not print is the bug this line exists to prevent.
-            count.CommandText = "SELECT COUNT(*) FROM players WHERE superseded_by IS NULL " +
-                                "AND " + WorldOnly.Replace("p.id", "id");
+            // The `p` alias is here so the headline can share the row query's filter expression
+            // verbatim instead of a hand-copied one with the prefixes stripped back out.
+            count.CommandText = "SELECT COUNT(*) FROM players p WHERE " + AlwaysFilter;
             TotalPlayers = Convert.ToInt32(count.ExecuteScalar());
             Requery();
         }
@@ -198,8 +220,10 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     partial void OnSortByChanged(string value) => Requery();
     partial void OnShortlistOnlyChanged(bool value)
     {
-        OnPropertyChanged(nameof(EmptyLine));
+        // Requery first: it refreshes the starred count the empty line reads, and raises the
+        // line itself on the way through. Raising it beforehand only ever showed the stale one.
         Requery();
+        OnPropertyChanged(nameof(EmptyLine));
     }
     partial void OnClubFilterChanged(string value)
     {
@@ -245,6 +269,10 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     [ObservableProperty] private bool _queryFailed;
     private int _queryGeneration;   // only incremented on the UI thread
 
+    /// <summary>How many players are starred — a different number from how many of them this
+    /// screen can list, which is the distinction the empty state below has to make.</summary>
+    private int _starredCount;
+
     /// <summary>The grid's empty overlay: searching / no db / nothing matches.</summary>
     public bool ShowEmpty => Rows.Count == 0 && !QueryFailed;
     public string EmptyLine => IsSearching
@@ -252,7 +280,15 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         : TotalPlayers == 0
             ? "No master.db found — build the reference world to browse the market."
             : ShortlistOnly
-                ? "Nothing on the shortlist yet — right-click a player and star him."
+                ? _starredCount == 0
+                    ? "Nothing on the shortlist yet — right-click a player and star him."
+                    // Starred, but not names this screen lists. The market shows the world's
+                    // clubs once each; a player starred from inside your own career is your
+                    // career's own copy of one of them, which it deliberately never lists twice.
+                    // Saying "nothing on the shortlist" here would flatly contradict the list the
+                    // manager can see he made, and leave him no idea what to do about it.
+                    : $"You've starred {_starredCount}, but none of them are names this screen " +
+                      "lists — star them from the market itself and they'll be waiting here."
                 : "0 players match these filters — loosen the calibre, age or value cap.";
 
     partial void OnIsSearchingChanged(bool value)
@@ -278,6 +314,10 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         if (ShortlistOnly)
         {
             try { shortlist = _s.ShortlistIds(); } catch { shortlist = Array.Empty<long>(); }
+            // How many are starred, which is not how many will list. Null-tolerant on purpose:
+            // Requery's opening runs straight off a property setter, so a throw here would land
+            // in input dispatch — the very failure mode this pass exists to close.
+            _starredCount = shortlist?.Count ?? 0;
         }
         // The star list is exact: it bypasses the search box and every dropdown, so a shortlisted
         // 34-year-old still shows under an "under 24" filter you forgot you set.
@@ -351,13 +391,10 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             isDeterministic: true);
 
         using var cmd = con.CreateCommand();
+        // OPTIONAL filters only: the ones a mode is allowed to drop. The invariants every mode
+        // must keep are in AlwaysFilter, outside this list, exactly so nothing below can reach
+        // them — see the shortlist branch further down, which empties this list wholesale.
         var where = new List<string>();
-        // One record per human: a merged duplicate is KEPT in the table but marked, and the
-        // standing ruling is that it is filtered out of every pool — market, scouting, CPU
-        // signings alike. Without this the world's 31,865 marked duplicates surface here as
-        // second copies of real players, and a superseded row shows as an unattached free
-        // agent you can sign (a phantom Mbappe alongside the real one at Real Madrid).
-        where.Add("p.superseded_by IS NULL");
         if (!string.IsNullOrWhiteSpace(q.Search)) where.Add("p.name LIKE $q");
         if (q.Position != "All") where.Add("p.position = $pos");
         if (q.MaxAge < 45) where.Add("COALESCE(p.age, 25) <= $age");
@@ -381,6 +418,10 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         if (q.Cap != long.MaxValue) where.Add($"{ValueSql} <= $cap");
         // Shortlist mode: ids only, straight from the career DB — inlined because they are our own
         // numbers, and Requery already blanked every other filter so nothing else can narrow it.
+        // The Clear() is deliberate and reaches ONLY the optional filters above: a star list is a
+        // saved list, not a query, so the search box and every dropdown are meant to fall away.
+        // It cannot reach the one-record-per-human or reference-world filters — those are in
+        // AlwaysFilter, which is spliced into the SQL below and was never in this list.
         if (q.Shortlist is { } starred)
         {
             where.Clear();
@@ -410,8 +451,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             "(SELECT t.logo_path FROM squad_members s JOIN teams t ON t.id=s.team_id " +
             " WHERE s.player_id=p.id LIMIT 1) " +
             "FROM players p " +
-            "WHERE p.superseded_by IS NULL " +   // merged duplicate records stay invisible
-            "AND " + WorldOnly + " " +
+            "WHERE " + AlwaysFilter + " " +     // holds in every mode; no mode can drop it
             (where.Count > 0 ? "AND " + string.Join(" AND ", where) + " " : "") +
             "ORDER BY " + order + " LIMIT 4000";
         if (!string.IsNullOrWhiteSpace(q.Search)) cmd.Parameters.AddWithValue("$q", $"%{q.Search.Trim()}%");
@@ -765,22 +805,33 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     /// </summary>
     public ContextMenu? MenuFor(MarketPlayer row)
     {
-        var extras = new List<MenuItem>();
-        if (!row.Mine && row.Club != "Free agent")
+        // Guarded like the Player and Bidding screens' own builders: this runs inside the
+        // right-click's input dispatch, where a throw is a click that does nothing rather than
+        // a menu that failed. No menu is the honest outcome; a dead gesture is not.
+        try
         {
-            var talks = new MenuItem { Header = "🤝 Open negotiation" };
-            talks.Click += (_, _) => OpenTalks();
-            var loan = new MenuItem { Header = "↔ Loan until June" };
-            loan.Click += (_, _) => LoanIn();
-            extras.Add(talks);
-            extras.Add(loan);
+            var extras = new List<MenuItem>();
+            if (!row.Mine && row.Club != "Free agent")
+            {
+                var talks = new MenuItem { Header = "🤝 Open negotiation" };
+                talks.Click += (_, _) => OpenTalks();
+                var loan = new MenuItem { Header = "↔ Loan until June" };
+                loan.Click += (_, _) => LoanIn();
+                extras.Add(talks);
+                extras.Add(loan);
+            }
+            return EntityActions.BuildMenu(_s, EntityRef.Player(row.Id, row.Name),
+                status: t => SignStatus = t,
+                // A full requery would drop the profile pane and the selection; the verbs report
+                // through the status line instead. The one list that must follow is the star list.
+                refresh: () => { if (ShortlistOnly) Requery(); },
+                extras: extras.Count > 0 ? extras : null);
         }
-        return EntityActions.BuildMenu(_s, EntityRef.Player(row.Id, row.Name),
-            status: t => SignStatus = t,
-            // A full requery would drop the profile pane and the selection; the verbs report
-            // through the status line instead. The one list that must follow is the star list.
-            refresh: () => { if (ShortlistOnly) Requery(); },
-            extras: extras.Count > 0 ? extras : null);
+        catch (Exception ex)
+        {
+            Program.Log("Market.MenuFor", ex);
+            return null;
+        }
     }
 
     /// <summary>

@@ -544,6 +544,20 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
                 status: t => SquadStatus = t, refresh: Reload);
 
     /// <summary>
+    /// Leave the rail for the real screen — the same destination as double-clicking his row and
+    /// as "👤 View profile" on the shared menu.
+    /// THE BUG: the card beside the roster was a dead end. Single-click is the only gesture this
+    /// screen ever taught, and single-click only fills that 336px column, so a manager clicked a
+    /// name, got the cramped card, and concluded the app had no player screen at all.
+    /// </summary>
+    [RelayCommand]
+    private void OpenProfile()
+    {
+        if (Selected is not { } p) { SquadStatus = "Pick a player first."; return; }
+        Nav.Go("Player", EntityRef.Player(p.PlayerId, p.Name));
+    }
+
+    /// <summary>
     /// Re-read everything the menu verbs can have changed (a loan out empties a roster slot,
     /// a demotion moves him to the U21s), keeping the same player selected where he survives.
     /// </summary>

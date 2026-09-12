@@ -50,6 +50,13 @@
         </ItemsControl>
       </StackPanel>
 
+      <!-- THE ROUTE, IN WORDS. Both ways into a player were invisible folklore: a right-click
+           and a double-click that nothing on screen mentions. Single-click was the only gesture
+           this roster ever taught, so the card in the column beside it read as the whole of what
+           a player is. A manager should not have to guess a gesture to open a man. -->
+      <TextBlock DockPanel.Dock="Top" Classes="ml-muted" TextWrapping="Wrap" Margin="2,0,0,10"
+                 Text="Double-click a man to open his full profile. The ⋯ beside him — or a right-click on his row — brings up everything you can do with him."/>
+
       <!-- players out or in on loan, with January recall (P6 fix 5: neutral header) -->
       <Border DockPanel.Dock="Bottom" IsVisible="{Binding HasLoans}"
               Classes="ml-card" Padding="12,8" Margin="0,10,0,0">
@@ -60,6 +67,11 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:LoanRowVm">
                 <DockPanel Margin="0,2,0,0">
+                  <!-- a loanee is a player like any other, so he gets the visible trigger too -->
+                  <Button DockPanel.Dock="Right" Content="⋯" Classes="ml-ghost"
+                          FontSize="14" Padding="8,0" Margin="6,0,0,0" Click="OnLoanMenu"
+                          VerticalAlignment="Center"
+                          ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
                   <Button DockPanel.Dock="Right" Content="Recall" Classes="ml-secondary"
                           FontSize="10" Padding="8,4"
                           IsVisible="{Binding IsOut}"
@@ -152,6 +164,21 @@
               </DataTemplate>
             </DataGridTemplateColumn.CellTemplate>
           </DataGridTemplateColumn>
+          <!-- The visible half of the standing ruling: every entity row carries BOTH a
+               right-click menu and a trigger you can see, over ONE action list. This ⋯ opens
+               the very menu SquadViewModel.MenuFor builds for the right-click — never a
+               second, divergent list. The column that used to sit last here was the injury
+               badge, so the roster had no actions affordance at all. -->
+          <DataGridTemplateColumn Header="" Width="44">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:SquadEntry">
+                <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
+                        Click="OnRowMenu"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
         </DataGrid.Columns>
       </DataGrid>
       <!-- empty state: the filter/search can strip every row -->
@@ -174,13 +201,23 @@
                  Foreground="{DynamicResource MlSuccessText}" TextWrapping="Wrap"
                  Margin="0,10,0,0"/>
       <Panel>
-        <TextBlock Text="Select a player" Classes="ml-muted" FontSize="14"
+        <TextBlock Text="Pick a player from the roster and his card appears here." Classes="ml-muted"
+                   FontSize="13" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="240"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNull}}"/>
 
         <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                       IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
           <StackPanel Spacing="14">
+
+            <!-- The way OUT of the rail, at the top where the decision is made — the same
+                 pattern (and the same destination) as the Market rail's own button. This
+                 column is a preview beside the roster, not the player screen; without a door
+                 it read as the only profile the app had. -->
+            <Button Content="⤢ Open full profile" Command="{Binding OpenProfileCommand}"
+                    Classes="ml-secondary" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    ToolTip.Tip="His whole career, the full width of the window — double-clicking his row does the same"/>
 
             <!-- name / big rating / position tag -->
             <Grid ColumnDefinitions="*,Auto">

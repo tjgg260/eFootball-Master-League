@@ -191,39 +191,89 @@ public sealed partial class Session
     /// ever arranged it, and nothing arranged it until the first competitive matchday was
     /// prepared, long after the manager had been shown the mess.
     ///
-    /// Runs at most once per club (meta xi_seeded_&lt;team&gt;), and only when the side is plainly
-    /// unarranged — which is tested by asking who is in goal, not by reading the ManualXi flag.
-    /// ManualXi is set by pressing Save on the Tactics screen, so it can read "hand-picked" over
-    /// an order nobody ever arranged; an OUTFIELD PLAYER IN THE GOALKEEPER'S SLOT cannot be a
-    /// decision anyone made on purpose, and that is the signal we trust.
+    /// AND THE BUG IN THAT FIX: the first guard asked one question — is the man in the GK slot a
+    /// goalkeeper? On a real Liverpool career slot 0 IS Alisson, so the guard answered "arranged"
+    /// and stood down, while slots 1, 2 and 3 held Mamardashvili, Woodman and Pecsi — three more
+    /// keepers, deployed at centre-back, centre-back and right-back, in an eleven with no
+    /// midfielder and no forward. Same defect, one question too narrow to see it. And the meta
+    /// flag was written BEFORE the guard ran, so a single wrong "looks fine" locked that club out
+    /// of ever being seeded again. The test now reads the whole eleven, and the flag is spent
+    /// only once something has actually been written — a side left alone for looking arranged is
+    /// looked at again next load, because a squad that is sold from under a manager can stop
+    /// looking arranged long after the career began.
+    ///
+    /// ManualXi is deliberately NOT consulted. It is set by pressing Save on the Tactics screen,
+    /// so it can read "hand-picked" over an order nobody ever arranged; the shape of the eleven
+    /// is the evidence, not a flag about it.
     /// </summary>
     public void SeedOpeningXi()
     {
         var key = $"xi_seeded_{CurrentTeamId}";
         if (GetMeta(key) is not null) return;
-        SetMeta(key, "1");            // set first: a failure below must not retry every load
-        if (!KeeperSlotHasNoKeeper()) return;
-        var picked = SuggestXi();
-        if (picked.Count == 0) return;
+        IReadOnlyList<long> picked;
+        try
+        {
+            // Not spending the flag on this path is the point: an arranged side is simply left
+            // alone and re-examined next load. The test is three small reads on one club.
+            if (!XiLooksUnarranged()) return;
+            picked = SuggestXi();
+        }
+        catch
+        {
+            SetMeta(key, "1");        // unreadable squad or shape: give up for good, never loop
+            return;
+        }
         // manual:false — this is the assistant's arrangement, not the manager's, so the AI is
         // still free to re-pick on matchday and the "you picked this yourself" rules stay off.
-        SaveSquadOrder(picked, manual: false);
+        if (picked.Count > 0) SaveSquadOrder(picked, manual: false);
+        SetMeta(key, "1");
     }
 
-    /// <summary>Is the man standing in the formation's goalkeeping slot not a goalkeeper?</summary>
-    private bool KeeperSlotHasNoKeeper()
+    /// <summary>
+    /// Does the eleven standing in slots 0-10 plainly not match the shape it is standing in?
+    ///
+    /// Three signals, any one of which means nobody ever arranged this side:
+    ///   * the man in the goalkeeping slot cannot keep goal;
+    ///   * the eleven does not hold exactly one goalkeeper (the broken Liverpool held four);
+    ///   * fewer than half of them are even in the right unit (GK / DEF / MID / FWD).
+    ///
+    /// Half — six of eleven — is the bar because of what real careers measure at. Across the 44
+    /// career clubs in the live save, every side that had been arranged scored 9, 10 or 11 out of
+    /// 11 on unit agreement; the two nobody had arranged scored 2. An order shuffled at random
+    /// scores about 3 (measured: mean 3.1 over those same 44 squads and shapes). Six sits in the
+    /// middle of an empty gap, and to trip it a hand-picked sheet would need SIX men outside
+    /// their unit — that is not a tactical idea, that is a list in import order.
+    ///
+    /// UNIT agreement is counted, never the exact role: a fullback pushed into midfield or a
+    /// forward dropped to the ten is a decision a manager makes, and must not read as damage.
+    /// Learned positions count too, so a retrained player never makes his own side look broken —
+    /// and a keeper who has learned an outfield role stops counting as a keeper out of place.
+    /// </summary>
+    private bool XiLooksUnarranged()
     {
         var (fid0, _) = OwnFormationIds();
         var slots = Repo.FormationSlots(fid0).OrderBy(sl => sl.SlotIndex).ToList();
-        var gkIndex = slots.FindIndex(sl => Visuals.RoleCodeLabel(sl.Position) == "GK");
-        if (gkIndex < 0) return false;                     // a shape with no keeper: not ours to judge
+        if (slots.Count == 0) return false;                 // no shape to judge against
+        var roles = slots.Select(sl => Visuals.RoleCodeLabel(sl.Position)).ToList();
+        if (!roles.Contains("GK")) return false;            // a shape with no keeper: not ours to judge
         var order = Repo.Squad(CurrentTeamId).OrderBy(m => m.Slot).ToList();
-        if (gkIndex >= order.Count) return false;
-        var pid = order[gkIndex].PlayerId;
-        var registered = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(x => x.Id == pid)?.Position ?? "";
-        if (registered == "GK") return false;
-        try { return !LearnedPositions(pid).Contains("GK"); }
-        catch { return true; }
+        if (order.Count < roles.Count) return false;        // fewer men than slots: nothing to arrange
+
+        var registered = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id, p => p.Position);
+        var keepers = 0;
+        var agree = 0;
+        var keeperSlotManned = true;
+        for (var i = 0; i < roles.Count; i++)
+        {
+            var pid = order[i].PlayerId;
+            var plays = new List<string> { registered.GetValueOrDefault(pid, "") };
+            plays.AddRange(LearnedPositions(pid));
+            var canKeepGoal = plays.Any(p => Visuals.PositionCategory(p) == "GK");
+            if (plays.Any(p => Visuals.PositionCategory(p) == Visuals.PositionCategory(roles[i]))) agree++;
+            if (canKeepGoal && plays.All(p => Visuals.PositionCategory(p) == "GK")) keepers++;
+            if (roles[i] == "GK" && !canKeepGoal) keeperSlotManned = false;
+        }
+        return !keeperSlotManned || keepers != 1 || agree * 2 < roles.Count;
     }
 
     /// <summary>The AI's suggested order for YOUR club (doesn't persist — preview for the UI).</summary>
