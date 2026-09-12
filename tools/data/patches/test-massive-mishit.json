@@ -1,0 +1,40 @@
+{
+ "description": "OBVIOUS TEST \u2014 every pass a massive skewed mishit + dramatic over/under-hit. Forces accuracy factor to 0 (no player kicks straight), horizontal angle error 90deg, elevation 45deg, power error +/-90%, assisted passes not exempt. NOT realistic \u2014 a pipeline sanity test. Revert: exe_patch.py restore, then re-apply loose-realism-v2.json + tuning.",
+ "patches": [
+  {
+   "name": "TEST horiz angle error -> 90 deg",
+   "va": "0x14401b3df",
+   "expect": "f30f590599357502",
+   "patch": "f30f5905a977b301",
+   "kind": "code"
+  },
+  {
+   "name": "TEST elevation error -> 45 deg",
+   "va": "0x14401b423",
+   "expect": "f30f590555357502",
+   "patch": "f30f5905e524b001",
+   "kind": "code"
+  },
+  {
+   "name": "TEST power error -> 0.9 (massive over/under-hit)",
+   "va": "0x14401b3d6",
+   "expect": "f3440f102da9d6b001",
+   "patch": "f3440f102d29bab301",
+   "kind": "code"
+  },
+  {
+   "name": "TEST L: accuracy factor forced 0 (no player kicks straight)",
+   "va": "0x143ed71d0",
+   "expect": "4883ec48",
+   "patch": "0f57c0c3",
+   "kind": "code"
+  },
+  {
+   "name": "TEST K: assisted passes not error-exempt",
+   "va": "0x14401a175",
+   "expect": "0f84e2000000",
+   "patch": "e9e300000090",
+   "kind": "code"
+  }
+ ]
+}

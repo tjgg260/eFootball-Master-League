@@ -1,0 +1,12 @@
+{
+ "description": "BASELINE TECHNIQUE ERROR \u2014 the missing everyday mishit. PROVEN: in ordinary play (jogging, ball arriving ~35km/h, flat, body ~30deg) every difficulty term D evaluates to 0, so the folded factor c = 1.0 and errMax = (1-c)*30 = 0.000 degrees \u2014 for a 45-rated player and a 99-rated player ALIKE. Ability never enters the error on its own; it only ever multiplies a SITUATIONAL penalty: term = (0.1 + 0.6*(1-f)) * D, so D==0 kills it entirely. That is exactly why mistakes only appeared when you overhit or were off-balance. This NOPs the 'multiply by difficulty' gate in the facing-angle factor function, so its ability-scaled penalty applies to EVERY kick: a 99-rated keeps term 0.22 (errMax ~6.6deg, avg miss ~1deg \u2014 still clean), a 45-rated gets term 0.685 (errMax ~20deg, avg miss ~3.5deg+ \u2014 visibly sprays). Poor technique now costs you on ordinary passes, exactly as it should, while elites stay reliable.",
+ "patches": [
+  {
+   "name": "baseline technique error: remove the difficulty gate (facing-angle factor)",
+   "va": "0x14401c1fc",
+   "expect": "f3410f59c9",
+   "patch": "9090909090",
+   "kind": "code"
+  }
+ ]
+}

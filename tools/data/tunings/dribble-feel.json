@@ -1,0 +1,23 @@
+{
+ "_comment": "THEME E dribble feel (STAGED, apply-and-observe: routing/consumer unproven). NOTE: on-ball dribble geometry is attribute-UNIFORM in the constant surface \u2014 real elite-dribbler separation must come from roster Dribbling/Agility/Balance + skill-cards in the app DB, NOT these fields. TurnData bulk scaling omitted here (may be inert via DribbleMatchingLoder JSON \u2014 verify routing before tuning).",
+ "edits": [
+  {
+   "object": "ballplayer",
+   "path": "Feint.rate",
+   "value": 0.72,
+   "_note": "0.9->0.72 mute one-button auto-beats (feints need a follow-up touch)"
+  },
+  {
+   "object": "trap",
+   "path": "reachOut.reach",
+   "value": 0.42,
+   "_note": "0.6->0.42 heavier touch on hard receptions"
+  },
+  {
+   "object": "trap",
+   "path": "busyTrapControl.runTrapStopTurnAngle",
+   "value": 55.0,
+   "_note": "90->55 no 90-degree instant spin on a pressured first touch"
+  }
+ ]
+}

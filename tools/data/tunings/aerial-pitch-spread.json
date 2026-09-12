@@ -1,0 +1,65 @@
+{
+ "_comment": "THEME B [6] pitch/weather spread (STAGED \u2014 do NOT apply until you confirm which boundRate/friction [6] index a default fine-weather/good-pitch match uses; idx0/idx2 hit most matches, idx3 wet / idx4 heavy fire only under selected conditions). All dt270 ball object, reversible.",
+ "edits": [
+  {
+   "object": "ball",
+   "path": "boundRate[2]",
+   "value": 0.66,
+   "_note": "0.72->0.66 dry worn: less lively bounce"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMax[2]",
+   "value": 0.978,
+   "_note": "0.987->0.978"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMin[2]",
+   "value": 0.974,
+   "_note": "0.983->0.974"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateStop[2]",
+   "value": 0.968,
+   "_note": "0.979->0.968"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate[3]",
+   "value": 0.47,
+   "_note": "0.514->0.47 wet: deadened bounce"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMin[3]",
+   "value": 0.986,
+   "_note": "0.980->0.986 wet: ball skids/retains"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateStop[3]",
+   "value": 0.978,
+   "_note": "0.970->0.978"
+  },
+  {
+   "object": "ball",
+   "path": "boundCheckFrictionAddRate[4]",
+   "value": 12.0,
+   "_note": "7.5->12 heavy/snow grip"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMax[4]",
+   "value": 0.94,
+   "_note": "0.955->0.940"
+  },
+  {
+   "object": "ball",
+   "path": "boundCheckBoundAddRate[0]",
+   "value": 15.0,
+   "_note": "10->15 firm pitch livelier"
+  }
+ ]
+}

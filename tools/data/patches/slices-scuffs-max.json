@@ -1,0 +1,96 @@
+{
+ "description": "MORE SLICES & SCUFFS (MAX). The aggressive pack PLUS K: forces the normal kick-error path even for fully-assisted, locked-on passes (which the stock game spares). Result: slices and mishit passes are near-universal \u2014 mis-types \u00d72, 45deg shank/elevation, 20deg floor, 50% power error, wide spread, ability flattened hard, awkward kicks always shank, and assisted passes no longer exempt. Plus L: the per-player accuracy factor is forced to 0 so EVERY kick (even a 99-rated player's, even a normal forward pass) carries the full error \u2014 this is the lever that makes ordinary mishits common, not just the situational ones. Very arcade/chaotic. exe_patch.py restore reverts byte-exact.",
+ "patches": [
+  {
+   "name": "A. mis-type roll x2.0",
+   "va": "0x14401b7d8",
+   "expect": "F3 0F 59 05 6C F2 A6 01",
+   "patch": "F3 0F 59 05 0C 11 E9 01",
+   "kind": "code"
+  },
+  {
+   "name": "A2. mis-type roll x2.0",
+   "va": "0x144019a50",
+   "expect": "F3 44 0F 10 15 F3 0F A7 01",
+   "patch": "F3 44 0F 10 15 93 2E E9 01",
+   "kind": "code"
+  },
+  {
+   "name": "B. scuffed-power error 30% -> 50%",
+   "va": "0x14401b3d6",
+   "expect": "F3 44 0F 10 2D A9 D6 B0 01",
+   "patch": "F3 44 0F 10 2D 69 4E 83 03",
+   "kind": "code"
+  },
+  {
+   "name": "C. horizontal shank 22.5 -> 45 deg",
+   "va": "0x14401b3df",
+   "expect": "F3 0F 59 05 99 35 75 02",
+   "patch": "F3 0F 59 05 29 25 B0 01",
+   "kind": "code"
+  },
+  {
+   "name": "D. slice floor 8 -> 20 deg",
+   "va": "0x144019ec3",
+   "expect": "F3 44 0F 5F 0D F0 90 B3 01",
+   "patch": "F3 44 0F 5F 0D 78 0B A7 01",
+   "kind": "code"
+  },
+  {
+   "name": "E. error spread 4.25 -> 8",
+   "va": "0x14401b3a7",
+   "expect": "F3 0F 10 1D 01 1C B2 02",
+   "patch": "F3 0F 10 1D 0D 7C B3 01",
+   "kind": "code"
+  },
+  {
+   "name": "F. elevation/slice error 22.5 -> 45 deg",
+   "va": "0x14401b423",
+   "expect": "F3 0F 59 05 55 35 75 02",
+   "patch": "F3 0F 59 05 E5 24 B0 01",
+   "kind": "code"
+  },
+  {
+   "name": "G1. flatten ability: 60-90 slope 0.8 -> 0.5",
+   "va": "0x143ed72ba",
+   "expect": "F3 0F 59 05 D2 33 C5 01",
+   "patch": "F3 0F 59 05 86 8F 97 03",
+   "kind": "code"
+  },
+  {
+   "name": "G2. flatten ability: 90+ base 0.9 -> 0.6",
+   "va": "0x143ed72f2",
+   "expect": "F3 0F 58 05 0E FB C7 01",
+   "patch": "F3 0F 58 05 5E 8F 97 03",
+   "kind": "code"
+  },
+  {
+   "name": "H. slice shape cos(90+x) -> cos(135+x): awkward/behind-body kicks always visibly shank",
+   "va": "0x144019eae",
+   "expect": "F3 0F 58 05 DA 8C B3 01",
+   "patch": "F3 0F 58 05 B2 A8 9E 02",
+   "kind": "code"
+  },
+  {
+   "name": "I. category-0 over-hit thresholds 65/75 -> 50/60 km/h",
+   "va": "0x14401e846",
+   "expect": "F3 44 0F 10 0D E5 14 AE 02 F3 44 0F 10 15 04 D8 E7 01",
+   "patch": "F3 44 0F 10 0D 31 8D AC 01 F3 44 0F 10 15 2C F5 A6 01",
+   "kind": "code"
+  },
+  {
+   "name": "K. Disable assisted-pass error exemption (locked-on passes also mishit)",
+   "va": "0x14401a175",
+   "expect": "0F 84 E2 00 00 00",
+   "patch": "E9 E3 00 00 00 90",
+   "kind": "code"
+  },
+  {
+   "name": "L. Force kicking-accuracy factor to 0 (every player kicks like a low-rated one)",
+   "va": "0x143ed71d0",
+   "expect": "48 83 EC 48",
+   "patch": "0F 57 C0 C3",
+   "kind": "code"
+  }
+ ]
+}

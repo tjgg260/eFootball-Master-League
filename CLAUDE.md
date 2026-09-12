@@ -177,6 +177,29 @@ Hard-won rules baked into those tools — change them at your peril:
 - CSV quirks: the editor export truncates `TeamID` to u16; `Slot` is `sort_key // 4` and the
   low bits are flags that must be preserved.
 
+## dt270 gameplay constants (DECODED 2026-08-23)
+
+`dt270_console_all.cpk → common/match/constant/*.bin` = packs of compiled-JSON objects (float /
+int / bool scalars, u32 block offsets for nested objects / arrays / strings). Field names come
+from the game's own loaders, recovered by emulation: `tools/dt270_schema_gen.py` →
+`tools/data/dt270_schema.json` (**re-run after every Konami patch**). Read/edit by name with
+`tools/dt270_objects.py` and `tools/gameplay_tune.py get|set|apply|diff|scale`. Docs:
+[docs/dt270-gameplay.md](docs/dt270-gameplay.md), catalogue [docs/dt270-fields.md](docs/dt270-fields.md).
+Rules: edits in place only (no size change), `dt270_objects.py verify` must stay byte-exact,
+zlib level 9 (zopfli fallback) into the original CPK slot. The old "Q2.14 word" model is dead.
+
+## eFootball.exe gameplay map (2026-08-23)
+
+RTTI is intact (5,791 classes, 782 in `match::`). `tools/exe_map.py` (build/grep/class/disasm/
+xrefs) maps vftables → methods; [docs/exe-gameplay-map.md](docs/exe-gameplay-map.md) holds the
+verified findings: kick error model (`0x14401a900`, `(1−f)·22.5°`), CPU level table
+(`0x146c06f40`, 44×10, hidden LEGEND), `ConstantManager` (`0x148c22b98`) and which dt270
+fields are live. Denuvo: **never modify the exe on disk**; runtime patches only via
+`tools/live_patch.py` (probe first; data-page writes before code-page writes). Cheat Engine is
+blocked, our own ReadProcessMemory works, WriteProcessMemory is untested. Patch specs live in
+`tools/data/patches/`. A browsable index of every dt270 field and exe lever
+(current value + live/inert status): `tools/gameplay_catalog.py` → `build/gameplay-catalog.html`.
+
 ## Phase status
 
 - **Phase 0** — PASSED 2026-08-19. Writeback proven in-game. See [docs/phase0-checklist.md](docs/phase0-checklist.md).

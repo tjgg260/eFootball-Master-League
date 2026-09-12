@@ -1,0 +1,12 @@
+{
+ "description": "Data-page patch (safe first write test): slows the CPU's reaction delay at SUPERSTAR to the PROFESSIONAL value (row 0 of the 44x10 level table B at 0x146c06f40, column 6). Semantics of row 0 per docs/exe-gameplay-map.md (used by ActionWaitTimer 0x1442119c7).",
+ "patches": [
+  {
+   "name": "CPU level table B row0 (reaction delay frames) SUPERSTAR column: 4 -> 16",
+   "module_offset": "0x6c06f5c",
+   "expect": "00 00 80 40",
+   "patch": "00 00 80 41",
+   "kind": "data"
+  }
+ ]
+}

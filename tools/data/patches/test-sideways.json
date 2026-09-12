@@ -1,0 +1,26 @@
+{
+ "description": "SIMPLE SIDEWAYS TEST \u2014 every pass sprays sideways, no vertical. Forces the ability factor to 0 (so every player kicks at the error ceiling), sets the HORIZONTAL error ceiling to 90deg and the VERTICAL ceiling to 0.5deg. Result: essentially every kick deviates left/right, averaging ~36deg and up to 90deg, with almost no up/down. NOT realistic \u2014 a visibility test to confirm the sideways channel works. Remove with: exe_patch.py remove tools/data/patches/test-sideways.json",
+ "patches": [
+  {
+   "name": "TEST: accuracy factor forced 0 (nobody kicks straight)",
+   "va": "0x143ed71d0",
+   "expect": "4883ec48",
+   "patch": "0f57c0c3",
+   "kind": "code"
+  },
+  {
+   "name": "TEST: HORIZONTAL error ceiling -> 90 deg",
+   "va": "0x14401b3df",
+   "expect": "f30f59059d29a701",
+   "patch": "f30f5905a977b301",
+   "kind": "code"
+  },
+  {
+   "name": "TEST: VERTICAL error ceiling -> 0.5 deg (no up/down)",
+   "va": "0x14401b423",
+   "expect": "f30f590519f6a601",
+   "patch": "f30f59051d4e8303",
+   "kind": "code"
+  }
+ ]
+}

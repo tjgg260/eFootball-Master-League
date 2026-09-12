@@ -1,0 +1,47 @@
+{
+ "description": "TECHNIQUE REALISM — the coherent everyday-error foundation. Replaces the crude baseline-technique NOP (which taxed even a stationary player) with SIX surgical constant-repoints that lower the difficulty thresholds so ordinary ON-THE-MOVE match passes cross into the error zone, scaled by BOTH ability and how hard the pass is. A settled/square ball (speed~0, standing) still gives difficulty D=0 -> errMax 0.000 deg for everyone, so elites stay clean on simple balls exactly as real football demands. All six only bite on their own difficulty axis; none touches spin, Magnus, or the elevation-sign bias, so no ballooning path. Quantified (Monte-Carlo of the exact Gaussian at 0x144345eb0, after removing the NOP so D_run multiplies back in): jog-and-pass ab60 E[dev] 0.74deg / P90 1.5deg (26-53cm off at 20m) vs ab90 0.30deg / 0.64deg (10-22cm); running pass ab60 4.1deg / 1.44m vs ab90 1.23deg / 43cm (3.3x spread); first-time on a 60km/h pass ab60 errMax 4.7deg vs ab90 1.2deg (5.9x spread). Standing/walking stays 0.00 for all. Prereq: remove baseline-technique.json first (it NOPs 0x14401c1fc, the D_run multiply these thresholds feed).",
+ "patches": [
+  {
+   "name": "sprint-exertion meter fills from jogging pace (17.5 -> 11 km/h)",
+   "va": "0x143eb867d",
+   "expect": "f30f101d9391c702",
+   "patch": "f30f101d1738ed01",
+   "kind": "code"
+  },
+  {
+   "name": "run/turn difficulty ramp starts at 15 km/h not 22",
+   "va": "0x14401c15a",
+   "expect": "f30f101df6e32802",
+   "patch": "f30f101d9eeebe01",
+   "kind": "code"
+  },
+  {
+   "name": "steeper ability slope on the run penalty (0.6 -> 0.75)",
+   "va": "0x14401c1dc",
+   "expect": "f30f590d74408303",
+   "patch": "f30f590d881ba701",
+   "kind": "code"
+  },
+  {
+   "name": "first-time/incoming-ball-speed comfort window opens at 40 km/h not 60",
+   "va": "0x14401f2a6",
+   "expect": "f30f5825d6eaa601",
+   "patch": "f30f58251a9cd301",
+   "kind": "code"
+  },
+  {
+   "name": "max cleanliness lost to ball speed 0.37 -> 0.5 (ability gate W=0.95f preserved)",
+   "va": "0x14401f29d",
+   "expect": "f3440f5905822b6b02",
+   "patch": "f3440f5905a20f8303",
+   "kind": "code"
+  },
+  {
+   "name": "steeper ability slope on the kick-type/bounce/speed penalty (0.2 -> 0.5)",
+   "va": "0x14401cf37",
+   "expect": "f3440f592580328303",
+   "patch": "f3440f592508338303",
+   "kind": "code"
+  }
+ ]
+}

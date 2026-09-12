@@ -1,0 +1,26 @@
+{
+ "description": "MISHIT SPIN \u2014 make slices, shanks and scuffs carry realistic spin so they read as mis-hit, not just misdirected. P1 unclamps the spin-axis sideways-lean from 45 to 90 deg so a shanked/sliced kick's sidespin grows with the size of the horizontal miss (the actual 'slice' lever); P2b gives assisted passes/shots the same spin build as manual (so assisted mishits curl too); P2 lifts the spin-magnitude cap slightly. Pairs with dt270 ball.magnusRate (amplifier). Stacks on slices-scuffs-max. exe_patch.py restore reverts.",
+ "patches": [
+  {
+   "name": "P1. Unclamp sidespin lean 45->90 deg (sidespin scales with the horizontal miss = real slices/shanks)",
+   "va": "0x144018df0",
+   "expect": "f3 0f 10 35 18 4b b0 01",
+   "patch": "f3 0f 10 35 98 9d b3 01",
+   "kind": "code"
+  },
+  {
+   "name": "P2b. Assisted-kick spin scale 50->80 (assisted passes/shots build the same spin as manual, so their mishits curl)",
+   "va": "0x14401914c",
+   "expect": "f3 0f 59 35 2c e4 ac 01",
+   "patch": "f3 0f 59 35 f4 18 a7 01",
+   "kind": "code"
+  },
+  {
+   "name": "P2. Spin-magnitude cap 0.9->1.0 (mild overall curl/dip increase)",
+   "va": "0x144019177",
+   "expect": "f3 0f 59 05 89 dc b3 01",
+   "patch": "f3 0f 59 05 39 71 83 03",
+   "kind": "code"
+  }
+ ]
+}

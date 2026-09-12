@@ -1,0 +1,12 @@
+{
+ "description": "BALLOON ROOT FIX. The spin axis is built from the same azimuth/elevation as the velocity, so omega x v decomposes: AZIMUTH mismatch -> pure VERTICAL lift (full strength), ELEVATION mismatch -> sideways curl. The lean clamp at 0x144018df0 creates azimuth mismatch = (|az_v - facing| - lean) whenever it bites, running toward 90deg where sin=1 and lift is maximal - firing exactly on shanked kicks. Raising the cap to 180 means the clamp never bites, the azimuth mismatch is always 0, and that lift channel is eliminated. Does NOT reduce curl (curl comes from the elevation channel).",
+ "patches": [
+  {
+   "name": "P1 lean cap 90 -> 180 (eliminates the Magnus LIFT channel)",
+   "va": "0x144018df0",
+   "expect": "f30f1035989db301",
+   "patch": "f30f10359c9db301",
+   "kind": "code"
+  }
+ ]
+}

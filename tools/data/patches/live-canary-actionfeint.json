@@ -1,0 +1,12 @@
+{
+ "description": "WPM-VALIDATION CANARY (order 0 of the exe live-patch plan). Proves WriteProcessMemory works on this Denuvo build BEFORE any other exe write. Target is ActionFeint's lateral-aim magnitude cell 0x146bc6b14 (44.5f) in .tls$ — adversarially confirmed to have EXACTLY ONE referrer (this site, ActionFeint vf2 0x1441761c0), so it is genuinely PRIVATE: no coalesced-literal collateral. It is a DATA page (safest write class). Lowering 44.5->30 tightens the auto-feint's lateral throw — a benign, observable, fully reversible gameplay tweak. VALIDATION SEQUENCE (game must be running): (1) python tools/live_patch.py probe  -> proves attach + relocation; (2) python tools/live_patch.py apply tools/data/patches/live-canary-actionfeint.json --dry-run  -> read-only, confirms these expect bytes are live; (3) python tools/live_patch.py apply tools/data/patches/live-canary-actionfeint.json --i-understand-denuvo  -> the actual write (journaled); (4) observe feints in one match; (5) python tools/live_patch.py restore  -> reverts. If the read-back in step 3 succeeds, the WHOLE exe live-patch plan is unblocked; if it fails or the game destabilises, the entire exe plan stays on paper.",
+ "patches": [
+  {
+   "name": "WPM canary: ActionFeint lateral aim 44.5f -> 30f (genuinely private .tls$ cell, 1 referrer)",
+   "module_offset": "0x6bc6b14",
+   "expect": "00 00 32 42",
+   "patch": "00 00 f0 41",
+   "kind": "data"
+  }
+ ]
+}

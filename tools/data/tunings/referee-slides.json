@@ -1,0 +1,17 @@
+{
+ "_comment": "REFEREE slide commitment (STAGED, low confidence: liveness UNCONFIRMED \u2014 sibling basePosition.pressRate/forceDashDistDefence are DEAD loads. diff-test and observe slide/foul frequency before trusting). Makes the CPU commit more mistimed slides -> more conceded free kicks.",
+ "edits": [
+  {
+   "object": "basePosition",
+   "path": "slideDistMax",
+   "value": 30.0,
+   "_note": "25->30 CPU attempts slides from further"
+  },
+  {
+   "object": "basePosition",
+   "path": "slideJudgeWidthMargin",
+   "value": 12.0,
+   "_note": "10->12 wider mistime window"
+  }
+ ]
+}

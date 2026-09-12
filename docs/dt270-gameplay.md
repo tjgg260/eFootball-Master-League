@@ -1,118 +1,143 @@
-# dt270 gameplay constants — format map and tuning pipeline
+# dt270 gameplay constants — FULLY DECODED (2026-08-23)
 
 The gameplay "feel" of eFootball lives in `dt270_console_all.cpk` → `common/match/constant/*.bin`,
-a separate pack from the dt200 roster data (no overlap — a gameplay mod and our Master League
-roster/tactics can coexist).
+a separate pack from the dt200 roster data (a gameplay mod and our Master League roster/tactics
+coexist). As of 2026-08-23 every byte of it is understood and every parameter is addressable
+**by its real Konami field name**. Field catalogue: [dt270-fields.md](dt270-fields.md).
 
-## Format (mapped, tooling proven)
+> The earlier theory in this file ("Q2.14 fixed-point multiplier tables", "word 131 is tempo")
+> was wrong. The tables are ordinary IEEE floats / int32 / bools in a structured object format.
+> The "sentinel ±52428" values were floats like 0.4 read as integers. Nothing from the old
+> word-index probes should be trusted; the per-patch "calibration" approach is obsolete.
 
-- Each `constant_*.bin` is a WESYS container holding **plain zlib** — no encryption, regardless of
-  the `0xFF` header byte. `tools/dt270_constants.py` decodes and re-packs every variant.
-- Tables are **Q2.14 fixed-point multipliers** (`16384` = ×1.0, `81920` = ×5.0).
-- `constant_team.bin` (mod-era: 817 words) — team-behaviour scalars: tempo, line height,
-  pressing, physicality. EVO_GP_HEAVY's signature is a param block at offsets **820–832** that is
-  `0` (disabled) in every other pack and ×1.0 (enabled) in EVO.
-- `constant_match.bin` — global match rules; `constant_player.bin` — per-behaviour scalars;
-  `constant_ballPerson.bin` — ball physics; `constant_shootAging.bin` — shooting/aging.
-- `mob_anime_control.txt` — plain CSV of crowd/bench reaction animations, trivially editable.
+## Format
 
-## Version families (critical)
+```
+constant_*.bin   WESYS container: 16-byte header, then PLAIN zlib (level 9 reproduces Konami's
+                 bytes exactly — no encryption, whatever the header byte says)
+  payload        PACK: u32 count, u32 8, count × { u32 data_off, u32 data_size, u32 name_off },
+                 then NUL-terminated names "<object>.o", then the object blobs
+  object (.o)    compiled JSON document (the exe still lists the source paths, e.g.
+                 DevelopData/common/match/constant/match/rating.json):
+                   record   = fields in the loader's key order, C-like natural alignment
+                   float/int = 4 bytes inline, bool = 1 byte inline (packed)
+                   nested object / array / string = u32 OFFSET (from object start) to a block
+                   array block = N inline elements (scalars, or inline records whose own
+                                 object/array/string members are again u32 offsets)
+                   strings = NUL-terminated, deduplicated (two fields may share one slot)
+                   blocks are emitted depth-first (children before parent), 16-byte aligned
+```
 
-`constant_match.bin` decoded size fingerprints the game patch a pack targets:
+12 files, 245 objects, 36 object types, ~30,000 named leaf parameters. `ballplayer.o` alone
+(75 KB) is 18,772 of them (turn/touch motion-matching tables).
 
-| pack | family | notes |
+### How the names were recovered (and how to redo it after a Konami patch)
+
+The `.o` blobs carry no names, but `eFootball.exe` does: every object type has a **JSON
+loader** (dev path — walks keys by name with JsonCpp) and a **binary loader** (release path —
+copies `.o` bytes into the same C++ struct), both reachable from a registration table
+`{json path, factory}` → factory → vtable `[dtor, loadJson, loadBin]`.
+
+`tools/dt270_schema_gen.py` finds all of that by shape (no hard-coded addresses) and
+**emulates both loaders with Unicorn**: the JSON loader against a synthetic DOM whose accessors
+return sentinels (→ key path ↦ struct offset + type), the binary loader on the real `.o` bytes
+(→ struct offset ↦ `.o` offset, pointer slots, array strides). The join is the schema
+(`tools/data/dt270_schema.json`), validated by a pure-Python reader against every object in the
+installed pack (245/245 byte-exact). Re-run it after each patch — ~40 s, needs
+`pip install capstone unicorn`.
+
+Known Konami data quirk: `PathToGlory10/12.playerData` has 40 emitted elements but the loader
+reads 88 — the game reads garbage past the object's end there. The reader caps arrays to the
+emitted count and refuses to write beyond it.
+
+## Tooling
+
+```bash
+python tools/dt270_objects.py list                          # files / objects / types
+python tools/dt270_objects.py fields basePosition --depth 2 # browse a field tree
+python tools/dt270_objects.py get ball magnusRate            # read by dotted path
+python tools/dt270_objects.py dump --out build/dt270_json    # every object -> JSON
+python tools/dt270_objects.py verify                         # byte-exact round-trip gate
+
+python tools/gameplay_tune.py get shoot normalShootGageMax99
+python tools/gameplay_tune.py set ball magnusRate=0.05 basePosition.dfLine=12   # edit + install
+python tools/gameplay_tune.py apply my_tuning.json           # batch of {object,path,value}
+python tools/gameplay_tune.py scale --object ball --factor 0.9 --match bound    # float probe
+python tools/gameplay_tune.py diff                           # installed vs pristine, by name
+python tools/gameplay_tune.py restore
+```
+
+Write path (unchanged rules): edits are in place inside the object (no size change, no block
+moves), the edited `constant_*.bin` is re-deflated and dropped into its original CPK slot
+(zero-padded), every other byte of the CPK untouched, round-trip re-decoded before install.
+Small files have little slack (`constant_match.bin`'s slot is 2,582 B); if level-9 zlib no
+longer fits, `encode_constant` falls back to zopfli (~4% smaller, standard deflate) —
+`pip install zopfli`. Strings may only be replaced by same-or-shorter strings.
+
+**In-game verification status:** the patched CPK is proven structurally (reloads through the
+CPK parser, edits read back, 10/12 entries byte-identical). It has NOT yet been booted in-game
+through this path — the first `set` is the live test; keep it to one obvious parameter
+(e.g. `ball.magnusRate` 0.035 → 0.1 makes curl absurd) and `restore` afterwards.
+
+## What is controllable (see dt270-fields.md for every field)
+
+| object | leaf params | lever |
 |---|---|---|
-| EVO_GP_HEAVY, raw dt270 sample | 10622 | v6-era |
-| GabeLogan, BromiV21 | 11904/11912 | adjacent patch |
-| **installed game (2026-08-19)** | **9968** | newer patch; `constant_team` restructured 3270 → **912** |
+| `basePosition` | 220 | **team shape AI**: `dfLine`, `dfLineWidth_3/4/5`, `adjustDefenceLine_Retreat/ForeCheck`, `closeRate_DF_FW`, `forceDashDistDefence/Offence`, `defenceCompact`, `attackLevel`, corner/free-kick/goal-kick shapes (`gkl*`, `cornerKick*`, `freekick*`) |
+| `ball` | 186 | **ball physics**: `magnusRate`, `curve`, `airRegistNormal`, `boundRate[6]`, `frictionRoll*[6]`, `dragSpeedMin/Max`, top/back/non-spin decay, `grounderSpeed` (the `[6]` arrays are per pitch condition) |
+| `shoot` | 124 | **shot power/height gauges** (km/h): `normal/control/powerfullShootGage{Min,Mid,Max}{40,99}[6]` — `[6]` = 5 m distance-to-goal band, 40/99 = attribute; `*_dy` = launch-elevation curve (°), `loop`, `advanceLoop` |
+| `trap` | 126 | first touch: `ballControlRate`, `reachOut`, `reactionTrapBall`, `defenseTrap`, `busyTrapControl`, cancel/blend frames, `trapLoss` |
+| `grounderpass` / `flypass` / `throughpass` / `centering` | 46–118 | pass models: `receiveSpeed[6]`, `passAssistLevel`, `angleY`, `lob`, manual-blend gauges, search/selection |
+| `passget` | 56 | receiving & interception: `manualPassGetRate`, `naturalPassget`, `defence`, `inputMove*`, `trapStopThink*` |
+| `moveMatching` | 220 | **locomotion**: `RouteParameter[14].{acc, dec, rotSpeed, decRotSpeed, accRateDif60/120/180}` + animation `WeightParameter[3]` |
+| `ballplayer` | 18,772 | turn/touch motion-matching tables (`TurnData[1440]`, `touch0[7]`) + `Feint.rate` |
+| `rating` | 133 | match-rating formula: `coef_*[10]` per action, `addPoint.*` bonuses, `df/mf/fw/gk_rate`, `ratingMin/Max` |
+| `cameraInplay` | 60 | in-play camera: move area, margins, `newWideCamera`, drop-point display |
+| `animeAging*` | 6–16 | animation-aging test harness (dev) |
+| `setplayGuide*` | 6–24 | set-piece guide distances / targets |
+| `positionNone`, `positionPK_2..5` | 88 | penalty shoot-out positioning |
+| `ballPersonData`, `ball_person_st###` (73) | 790 | ball-boy / bench / coach / camera-person placement per stadium |
+| `demoarea_*` (104) | 83 | pre-match demo camera areas per stadium & competition billboard set |
+| `modeMatchup`, `userPlayTendencyTest`, `mlScreenShot` | | mode rules / tendency test / internal capture |
+| `PathToGlory*`, `Sugoroku*`, `tutorial*` | | training-mode scenarios |
 
-**A family mismatch installs cleanly and misbehaves silently.** The current Konami patch
-restructured the tables (team 3270→912, ballPerson ~300K→349K), so **none of the older mod packs
-are safe on it** — only `constant_positionPK.bin` kept its layout. Gameplay mods must be rebuilt
-per patch by their authors; the same is true of any custom tuning we author.
+Player **attributes** (speed, stats) are NOT here — they are dt200 (roster) data; dt270 is the
+engine's behaviour model that those attributes feed into.
 
-## Tooling: `tools/gameplay_tune.py`
+## Version families (now explained)
 
-    python tools/gameplay_tune.py status                 # family check: what's safe to install
-    python tools/gameplay_tune.py install --mod evo      # install (refuses family mismatch)
-    python tools/gameplay_tune.py blend --mod evo --amount 0.5   # mod at half strength
-    python tools/gameplay_tune.py restore                # back to the pristine original
+`constant_match.bin` decoded size fingerprints the exe build a pack targets (10622 = v6-era
+mods, 11904/11912 = GabeLogan/Bromi, **9968 = installed game**). The reason is structural: the
+C++ structs change between patches, so old packs' objects have different field sets. The legacy
+`install --mod` path still refuses family mismatches; **named edits are patch-proof** — after a
+Konami update, run `dt270_schema_gen.py` and re-apply your `tuning.json`.
 
-`blend` interpolates every changed word between your original constants and the mod's — a
-strength dial no mod pack offers. First install keeps a `PRISTINE` backup for `restore`.
+## History
 
-## Open research
+- 2026-08-19: container + zlib mapped; tables mistaken for Q2.14 words; per-word A/B plan.
+- 2026-08-20: cross-pack diff study under the wrong model (superseded; old notes removed).
+- 2026-08-23: full decode — binary-DOM format, names from the exe's loaders via emulation,
+  36 types / 245 objects / 245 byte-exact, name-based `get/set/apply/diff/scale`.
 
-Semantic labels for individual words (which offset = sprint speed, which = pressing radius) are
-version-specific and only recoverable by A/B testing in-game per patch. The structure, encoding,
-fixed-point format, and family detection above are stable knowledge; the per-word map churns with
-every Konami patch and is deliberately not hard-coded anywhere.
+## Tuning packs
 
-## Family-9968 self-calibration protocol (P4, 2026-08-20)
-
-The bundled mods (EVO/GabeLogan/Bromi) target older layouts and are family-blocked. The path
-to gameplay control on the CURRENT patch is A/B testing our own pack:
-
-1. `python tools/gameplay_tune.py selftest` — installs a byte-identical re-encode of the
-   game's own constants (round-trip gated). Boot, play a kickoff, `restore`. Proves the
-   write path with zero gameplay risk. **Not yet run — needs an in-game session.**
-2. `python tools/gameplay_tune.py scale --file constant_ballPerson --factor 0.9` — scales
-   every plausible Q2.14 word of ONE file. Play ~10 min, then
-   `... log --note "constant_ballPerson x0.9: <what changed>"` and `restore`.
-3. Repeat per file (`constant_team`, `constant_player`, `constant_match`) and direction
-   (0.9 / 1.15). Verdicts accumulate below as the family-9968 semantic map; presets and the
-   per-match dt270 build on whatever this maps.
-
-Safety: `capture` records the pristine SHA-1 (build/dt270_pristine.sha1); every write is
-guard-checked against pristine-or-last-install, in-place slot patch only, PRISTINE +
-timestamped backups, never while the game runs.
-
-### Calibration verdicts (family 9968)
-
-## Cross-pack diff study (2026-08-20, all five packs)
-
-Packs: installed (family 9968), repo raw + EVO (10622), GabeLogan (11904), Bromi (11912).
-
-**Patch-stable files** (byte-identical installed vs mod-era, layouts survived):
-pathToGlory, positionPK, sugoroku, all three tutorials. None are gameplay levers; none were
-touched by any mod.
-
-**The four gameplay files (team/match/player/ballPerson) all restructured across patches** —
-sizes differ everywhere (team 3270→912, ballPerson 315→349K). Value-fingerprint transfer of
-mod changes into family 9968 FAILED (only degenerate filler runs match): old word indices
-are dead on the current patch. In-game bisection (scale --start/--end) is the only path to
-9968 semantics.
-
-**What the mods agreed on (old constant_team layout, 817 words)** — the consensus cluster
-changed by EVO AND GabeLogan AND Bromi, i.e. the words the modding community identified as
-the gameplay knobs:
-- word 131: base 49.01 → EVO 41.01 (x0.84), Bromi 41.01 (x0.84), GabeLogan 5.01 (x0.10!).
-  One big scalar every "realism/slower" mod reduces — the prime TEMPO/SPEED suspect.
-- word 122: 52430.996 → 2.996 in all three (identical value) — a feature gate/sentinel all
-  mods disable the same way.
-- words 123-125, 133, 164-170, 193: small nudges to ~1.0 and ~5.0 multipliers (±0.5-2%) —
-  fine-tuning scalars.
-- EVO only: word 155 (8.0 → 12.0), word 160 (40.98 → 32.98) — part of its HEAVY identity.
-- constant_match consensus: EVO doubles word 189 (396 → 792) and rewrites threshold-looking
-  words (many ±52428/±104856 sentinel-valued words flipped) — rule/flag territory, higher
-  risk to probe blind.
-- Sentinel values ±858980352 (=52428.0 Q2.14) and ±1717960704 (=104856.0) recur across all
-  files — engine on/off or "unset" markers, not scalars; the scale probe's magnitude filter
-  (1024..262144) correctly skips them.
-
-**Implication for the 9968 hunt:** the old layout had ~one dominant reduced-by-everyone
-scalar (49.0) among small multipliers. When bisecting the new 228-word constant_team, look
-for a lone ~40-50 Q2.14 value — scan shows candidate words listed by
-`python -c "…"` (values 40-56 in the installed table) — probe those words FIRST before
-blind halving.
-
-**Family-9968 constant_team landscape (scan):** 228 words = 156 sentinel-valued + 22 zeros +
-47 small (<0.5) + one 0.5-2.0 + two 4.016s. The old layout's tempo-suspect 49.0 scalar and
-its cluster of ~1.0/~5.0 multipliers are GONE from constant_team — the current patch moved
-the team-behaviour scalars elsewhere. REVISED probe order for the calibration evening:
-  1. constant_match  x0.9   (9,968 B — closest inheritor of the old scalar mass; AI
-                              behaviour/rules — the AI-build-up-speed prime suspect)
-  2. constant_player x0.9   (individual action scalars)
-  3. constant_ballPerson x0.9  (ball feel)
-  4. constant_team last     (mostly flags/ids now; scaling it should do little — a useful
-                              control probe)
+- `tools/data/tunings/loose-realism-v1.json` — **installed 2026-08-23, in-game verdict pending.**
+  155 edits (49 distinct levers + uniform ×0.95 shot-speed tables), produced by four analysts
+  and four skeptics over the decoded dumps (build/dt270_proposals.json has every kept/rejected
+  item with reasoning). Goals: looser first touch (trap.ballControlRate 0.8, trapLossDashOnly
+  off, slower/earlier reaction traps, shorter reachOut, heavier moving touches, livelier bounce),
+  more wayward shooting (higher launch elevation, −5% speed, more drag/curl/knuckle), less
+  assisted/slower passing (PA2/PA3 assist arrays, weak-passer speed/loft, defender reaction
+  spread 0.5→0.3 s), slower/less perfect team shape (forceDashDistDefence 12, pressRate 0.4,
+  spaceCoverRate 0.35, moveStartDist 1.0, transitionSec 6, matchUp continue +10, jog threshold 60,
+  lengthDf_Retreat 32). Honest limits: no explicit error/accuracy term exists in dt270; CPU
+  pass *selection* lives in the exe; assist-array edits affect human passing only.
+  Rollback: `python tools/gameplay_tune.py restore`.
+  **exe-confirmed (docs/exe-gameplay-map.md):** `trap.ballControlRate` multiplies normalised Ball
+  Control into the trap's controllable-speed/error-angle model; `shoot.*_dy.gageMax` is launch
+  elevation; the gauge tables are km/h by attribute × distance band; `ball.magnusRate /
+  airRegistNormal / boundRate` are the Magnus, drag and restitution coefficients — all moved in
+  the intended direction. **Inert** (no reader in this build): `basePosition.pressRate`,
+  `basePosition.forceDashDistDefence` (dead load; only `forceDashDistOffence` is live),
+  `passget.defence.secMin/secMax`. `spaceCoverRate` is likely live. The kick *error* itself is
+  exe-side (`(1−f)·22.5°`, see the map) — `tools/data/patches/kick-error-x2.json`.
