@@ -58,11 +58,13 @@
       <TextBox Text="{Binding GameDir}" Watermark="C:\Program Files (x86)\Steam\steamapps\common\eFootball"/>
       <StackPanel Orientation="Horizontal" Spacing="10">
         <Button Classes="ml-secondary" Content="↻ Check" Command="{Binding CheckMatchExportsCommand}" FontSize="12"/>
+        <Button Classes="ml-secondary" Content="{Binding StatsHostLabel}" Command="{Binding InstallStatsHostCommand}" FontSize="12"/>
+        <Button Classes="ml-secondary" Content="Remove" Command="{Binding RemoveStatsHostCommand}" FontSize="12"/>
       </StackPanel>
       <TextBlock Text="{Binding MatchExportStatus}" Foreground="{StaticResource MlTextBody}"
                  FontSize="12" TextWrapping="Wrap"/>
       <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                 Text="The stats host from efootball-re runs inside the game and writes every finished match to ml_stats\ in this folder. The Office pre-fills the score, scorers and ratings from it for you to confirm. Install it with tools/vendor/efootball-re/memprobe/deploy_host.sh; tools/vendor/efootball-re/VENDOR.md has the steps."/>
+                 Text="The stats host runs inside the game and writes every finished match to ml_stats\ in this folder. The Office pre-fills the score, scorers and ratings from it for you to confirm. Install puts it beside eFootball.exe (keeping a copy of anything it replaces); Remove takes it out. Offline play only."/>
     </StackPanel></Border>
 
     <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">

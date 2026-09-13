@@ -37,6 +37,23 @@ public static class WorldFiles
         }
     }
 
+    /// <summary>
+    /// The eFootball folder the first run found or was shown (build/efootball_dir.txt, which the
+    /// Python tools read too), or null. The stats host writes its match exports inside it.
+    /// </summary>
+    public static string? EFootballDir
+    {
+        get
+        {
+            var db = Database;
+            var build = db is not null ? Path.GetDirectoryName(db) : BuildDir;
+            var file = build is null ? null : Path.Combine(build, "efootball_dir.txt");
+            if (file is null || !File.Exists(file)) return null;
+            var dir = File.ReadAllText(file).Trim();
+            return Directory.Exists(dir) ? dir : null;
+        }
+    }
+
     /// <summary>Where the world is written: the download's (or checkout's) build folder.</summary>
     public static string? BuildDir
     {

@@ -17,7 +17,10 @@ public sealed partial class Session
     /// <summary>The eFootball install folder; the stats host writes ml_stats\ inside it.</summary>
     public string GameDir
     {
-        get => GetMeta("game_dir") is { Length: > 0 } dir ? dir : MatchExportFolder.DefaultGameDir;
+        // A folder set in Settings, else the one the first run found (the same file every tool
+        // reads), else Steam's default — which is wrong for any game in another Steam library.
+        get => GetMeta("game_dir") is { Length: > 0 } dir ? dir
+             : WorldFiles.EFootballDir ?? MatchExportFolder.DefaultGameDir;
         set => SetMeta("game_dir", value.Trim());
     }
 

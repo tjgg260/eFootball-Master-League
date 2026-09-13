@@ -83,6 +83,13 @@ def efootball_dir() -> Path:
     override = os.environ.get("ML_EFOOTBALL_DIR")
     if override:
         return Path(override)
+    # The folder the first run found, or the one the player showed it (tools/first_run.py writes
+    # it). Every tool reads it here, so a game outside Steam's lists is chosen once, not per tool.
+    chosen = Path(__file__).resolve().parent.parent / "build" / "efootball_dir.txt"
+    if chosen.exists():
+        picked = Path(chosen.read_text(encoding="utf-8").strip())
+        if picked.is_dir():
+            return picked
     fallback: Path | None = None
     for root in steam_roots():
         for lib, apps in _libraries(root / "steamapps" / "libraryfolders.vdf"):

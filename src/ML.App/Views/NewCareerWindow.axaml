@@ -88,14 +88,23 @@
                          Text="🌍  Pick a continent" HorizontalAlignment="Center" Margin="0,4,0,10"
                          IsVisible="{Binding HasCatalog}"/>
 
-              <!-- No build/catalog.json: the grid was simply empty, which reads as a broken app
-                   rather than a missing file. Name the file and say how to get it back. -->
-              <Border Classes="ml-card" Padding="24" MaxWidth="520" Margin="0,40,0,0"
+              <!-- No world yet: the download ships none (MVP ruling 2026-09-13). The first run reads
+                   the player's own eFootball. Before this card said "extract the download again",
+                   which was wrong — there was never a world in the download to extract. -->
+              <Border Classes="ml-card" Padding="24" MaxWidth="560" Margin="0,40,0,0"
                       HorizontalAlignment="Center" IsVisible="{Binding !HasCatalog}">
-                <StackPanel Spacing="10">
-                  <TextBlock Classes="ml-h2" Text="No world to browse" HorizontalAlignment="Center"/>
+                <StackPanel Spacing="12">
+                  <TextBlock Classes="ml-h2" Text="Build your world" HorizontalAlignment="Center"/>
                   <TextBlock Classes="ml-body" TextWrapping="Wrap" TextAlignment="Center"
-                             Text="The world list (build\catalog.json) is missing from this folder — extract the download again."/>
+                             Text="Master League reads its players, clubs, leagues and faces from your own eFootball. It takes about a minute, once."/>
+                  <Button HorizontalAlignment="Center" Content="Build from my eFootball"
+                          Command="{Binding BuildWorldCommand}" IsEnabled="{Binding !IsBuilding}"/>
+                  <StackPanel Spacing="6" IsVisible="{Binding NeedGameDir}">
+                    <TextBlock Classes="ml-body" TextWrapping="Wrap" TextAlignment="Center"
+                               Text="eFootball wasn't found automatically. Show me the folder it's installed in."/>
+                    <Button HorizontalAlignment="Center" Content="Choose eFootball folder…"
+                            Click="OnChooseGameDir" IsEnabled="{Binding !IsBuilding}"/>
+                  </StackPanel>
                 </StackPanel>
               </Border>
 

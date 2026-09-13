@@ -112,6 +112,46 @@ public sealed partial class SettingsViewModel : PageViewModel
         FlashSaved();
     }
 
+    // --- the stats host (MVP): the Rust dxgi.dll that exports every finished match ------------
+    // Two-step, because it changes the GAME's own folder: the host is a dxgi.dll that loads into
+    // the running game. The first press says so; only the second installs. Remove undoes it.
+
+    private const string StatsHostIdle = "⚙ Install match stats into eFootball";
+    private bool _statsInstallArmed;
+    [ObservableProperty] private string _statsHostLabel = StatsHostIdle;
+
+    private void StatsLine(string line) =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => MatchExportStatus = line);
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task InstallStatsHost()
+    {
+        if (!_statsInstallArmed)
+        {
+            _statsInstallArmed = true;
+            StatsHostLabel = "⚙ Sure? Install it";
+            MatchExportStatus = "This puts dxgi.dll beside eFootball.exe. It loads into the running game and " +
+                                "writes every finished match to ml_stats, which Record then picks up. Offline " +
+                                "play only, and quit eFootball first. Press again to install — Remove takes it out.";
+            return;
+        }
+        _statsInstallArmed = false;
+        StatsHostLabel = StatsHostIdle;
+        MatchExportStatus = "Installing the stats host…";
+        var ok = await CareerBuilder.RunTool("install_stats_host.py", new[] { "--game-dir", _s.GameDir }, StatsLine);
+        if (!ok) StatsLine("Not installed — " + MatchExportStatus);
+    }
+
+    [RelayCommand]
+    private async System.Threading.Tasks.Task RemoveStatsHost()
+    {
+        _statsInstallArmed = false;
+        StatsHostLabel = StatsHostIdle;
+        var ok = await CareerBuilder.RunTool("install_stats_host.py",
+            new[] { "--remove", "--game-dir", _s.GameDir }, StatsLine);
+        if (!ok) StatsLine("Not removed — " + MatchExportStatus);
+    }
+
     [ObservableProperty] private string _matchExportStatus = "";
 
     [RelayCommand]

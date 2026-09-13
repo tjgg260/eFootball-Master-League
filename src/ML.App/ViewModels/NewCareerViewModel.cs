@@ -128,15 +128,40 @@ public sealed record SaveSlot(string Path, string Club, string SavedLine, string
 public sealed partial class NewCareerViewModel : ObservableObject
 {
     private readonly List<CatalogCountry> _allCountries = new();
-    private readonly Dictionary<int, int> _squadOf;
+    private readonly Dictionary<int, int> _squadOf = new();
 
     public NewCareerViewModel()
     {
+        LoadWorldList();
+
+        // The vault (load/save/new): open on it when there is anything to continue or load;
+        // a truly fresh install goes straight to the world browser.
+        LoadVault();
+        if (HasActiveCareer || SavedCareers.Count > 0)
+        {
+            Stage = CareerStage.Vault;
+            Status = "Continue, load a save, or start again.";
+        }
+        else if (!HasCatalog)
+        {
+            Status = "Build your world from eFootball to begin.";
+        }
+    }
+
+    /// <summary>
+    /// (Re)read the picker's world list. It runs again once the first run has built the world,
+    /// so the continents appear without restarting the app.
+    /// </summary>
+    private void LoadWorldList()
+    {
+        _allCountries.Clear();
+        Continents.Clear();
         _allCountries.AddRange(CatalogData.Load());
         var (continentOverride, squadOf) = ReadCatalogExtras();
-        _squadOf = squadOf;
+        _squadOf.Clear();
+        foreach (var kv in squadOf) _squadOf[kv.Key] = kv.Value;
 
-        // A country's continent: an explicit "continent" key in catalog.json wins (data fix,
+        // A country's continent: an explicit "continent" key in the catalog wins (data fix,
         // e.g. Peru → South America), otherwise the confederation map.
         string ContinentOf(CatalogCountry c) =>
             continentOverride.TryGetValue(c.Name, out var o) ? o : ML.App.Continents.Of(c.Name);
@@ -150,18 +175,54 @@ public sealed partial class NewCareerViewModel : ObservableObject
             if (members.Count > 0)
                 Continents.Add(new ContinentOption(def, members));
         }
+        OnPropertyChanged(nameof(HasCatalog));
+    }
 
-        // The vault (load/save/new): open on it when there is anything to continue or load;
-        // a truly fresh install goes straight to the world browser.
-        LoadVault();
-        if (HasActiveCareer || SavedCareers.Count > 0)
+    // ------------------------------------------------------------------ the first run
+    // The download ships no world (MVP ruling 2026-09-13). The first run reads the player's own
+    // eFootball — keeping a copy of the installed dt200 as the base every match is built from —
+    // builds build/game_world.db and the picker list, and takes the faces from the game.
+
+    /// <summary>True when the first run could not find eFootball: the window offers a folder picker.</summary>
+    [ObservableProperty] private bool _needGameDir;
+
+    [RelayCommand]
+    private async Task BuildWorld(string? gameDir)
+    {
+        if (IsBuilding) return;
+        IsBuilding = true;
+        NeedGameDir = false;
+        var askForFolder = false;
+        try
         {
-            Stage = CareerStage.Vault;
-            Status = "Continue, load a save, or start again.";
+            var args = new List<string>();
+            if (!string.IsNullOrWhiteSpace(gameDir)) { args.Add("--game-dir"); args.Add(gameDir); }
+            var ok = await CareerBuilder.RunTool("first_run.py", args.ToArray(), line =>
+            {
+                var notFound = line.StartsWith("NEED_GAME_DIR", StringComparison.Ordinal);
+                if (notFound) askForFolder = true;
+                Dispatcher.UIThread.Post(() => Status = notFound
+                    ? "Couldn't find eFootball — choose the folder it's installed in."
+                    : line);
+            });
+            if (ok)
+            {
+                LoadWorldList();
+                Stage = CareerStage.Continent;
+                Status = HasCatalog
+                    ? "🌍 Your world is ready — pick a continent."
+                    : "The world was built, but it holds no league to pick a club from.";
+            }
+            else
+            {
+                NeedGameDir = askForFolder;
+                if (!askForFolder)
+                    Status = "Building the world stopped — the last line above says why.";
+            }
         }
-        else if (!HasCatalog)
+        finally
         {
-            Status = "Nothing to browse — the world list didn't come with this copy.";
+            IsBuilding = false;
         }
     }
 
