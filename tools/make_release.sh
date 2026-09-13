@@ -2,7 +2,7 @@
 # Build the "download and play" package: the published app, the world database, and the
 # runtime folders the app resolves by walking up to a root that holds tools/play_match.py.
 #
-#   bash tools/make_release.sh <version> [out-dir]
+#   ML_WORLD_ROOT=<checkout with build/master.db and assets packs> bash tools/make_release.sh <version> [out-dir]
 #
 # Layout of the package (a zip of the MasterLeague/ folder):
 #   app/                published self-contained win-x64 ML.App
@@ -15,7 +15,9 @@ VER="${1:?version, e.g. v0.1.0}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${2:-$REPO/dist}"
 PKG="$OUT/MasterLeague"
-DB="${ML_DB:-$REPO/build/master.db}"
+# The checkout that holds build/master.db and the downloaded asset packs (a worktree may not).
+WORLD="${ML_WORLD_ROOT:-$REPO}"
+DB="${ML_DB:-$WORLD/build/master.db}"
 
 rm -rf "$PKG"; mkdir -p "$PKG"
 echo "== publish app"
@@ -26,7 +28,7 @@ git -C "$REPO" archive HEAD tools assets data docs README.md PLAYTESTING.md LICE
 rm -rf "$PKG/tools/ActionsSmoke" "$PKG/tools/TacticsSmoke"
 echo "== untracked asset packs the database references"
 for d in assets/dvx_logos assets/dvx_flags assets/gen_badges; do
-  [ -d "$REPO/$d" ] && mkdir -p "$PKG/$d" && cp -r "$REPO/$d/." "$PKG/$d/"
+  [ -d "$WORLD/$d" ] && mkdir -p "$PKG/$d" && cp -r "$WORLD/$d/." "$PKG/$d/" || echo "  (no $d under $WORLD)"
 done
 echo "== database"
 mkdir -p "$PKG/build"
