@@ -62,7 +62,8 @@ import kit_author                      # noqa: E402
 RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
 TREE_BASE = REPO / "build" / "tree_base"
 CPKMAKEC = REPO / "CRI_File_System_Tools_v2.40.13.0" / "crifilesystem v2.40.13.0" / "cpkmakec.exe"
-GAME_CPK = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk")
+from steam_paths import game_cpk_dir  # noqa: E402  (tools/ is on sys.path above)
+GAME_CPK = game_cpk_dir()           # Steam's own library list, not a hard-coded C: path
 BACKUPS = Path.home() / "Backups" / "eFootball"
 
 # Host slots: eFootball's generic US placeholder teams (city + colour-code names like "Monterey

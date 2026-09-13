@@ -21,7 +21,9 @@ from datetime import datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-GAME_DT200 = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk\dt200_console_all.cpk")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from steam_paths import game_cpk_dir  # noqa: E402
+GAME_DT200 = game_cpk_dir() / "dt200_console_all.cpk"   # wherever Steam put the game
 REPO_BASE = REPO / "dt200_console_all.cpk"
 TREE_BASE = REPO / "build" / "tree_base"
 BACKUPS = REPO / "build" / "backups"

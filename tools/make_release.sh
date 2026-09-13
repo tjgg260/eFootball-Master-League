@@ -66,6 +66,32 @@ for d in assets/dvx_logos assets/dvx_flags assets/gen_badges; do
   [ -d "$WORLD/$d" ] && mkdir -p "$PKG/$d" && cp -r "$WORLD/$d/." "$PKG/$d/" || echo "  (no $d under $WORLD)"
 done
 
+echo "== OCR model (Apache-2.0) and its licence"
+# Every screenshot/video OCR button in the shipped app failed "OCR model not found": the model is
+# gitignored, so git archive never carried it. It is Apache-2.0 (tesseract-ocr/tessdata_best),
+# which we may ship, with its licence text beside it.
+TESS="$WORLD/tools/tessdata/eng.traineddata"
+[ -f "$TESS" ] || { echo "missing $TESS — the OCR model must be present under ML_WORLD_ROOT"; exit 1; }
+mkdir -p "$PKG/tools/tessdata"
+cp "$TESS" "$PKG/tools/tessdata/"
+cp "$PKG/tools/data/licenses/tessdata-NOTICE.txt" "$PKG/tools/data/licenses/tessdata-LICENSE-Apache-2.0.txt" "$PKG/tools/tessdata/"
+echo "  eng.traineddata $(stat -c %s "$TESS") bytes + NOTICE + Apache-2.0 text"
+
+echo "== VC++ runtime for the OCR engine"
+# tesseract50.dll and leptonica import MSVCP140/VCRUNTIME140(_1); nothing in the self-contained
+# .NET publish provides them, so a Windows that never had the redistributable failed OCR with a
+# load error. Microsoft permits app-local deployment of these three from the VS Redist folder.
+VCDIR="${ML_VCREDIST_DIR:-}"
+if [ -z "$VCDIR" ]; then
+  VCDIR="$(ls -d "/c/Program Files/Microsoft Visual Studio/"*/*/VC/Redist/MSVC/*/x64/Microsoft.VC14*.CRT 2>/dev/null | sort | tail -1 || true)"
+fi
+if [ -n "$VCDIR" ] && [ -f "$VCDIR/msvcp140.dll" ]; then
+  cp "$VCDIR/msvcp140.dll" "$VCDIR/vcruntime140.dll" "$VCDIR/vcruntime140_1.dll" "$PKG/app/"
+  echo "  msvcp140 + vcruntime140 + vcruntime140_1 from $VCDIR"
+else
+  echo "  NOTE: no VS Redist folder found (set ML_VCREDIST_DIR) — OCR will need the VC++ 2015-2022 x64 runtime installed"
+fi
+
 echo "== embedded python (so a downloader installs nothing)"
 # Pinned by sha256 and verified before use — a release must not build on whatever the CDN served
 # today. Downloads come only from python.org and files.pythonhosted.org.

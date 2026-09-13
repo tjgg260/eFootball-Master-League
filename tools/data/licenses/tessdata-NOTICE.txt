@@ -1,0 +1,10 @@
+tools/tessdata/eng.traineddata — the English OCR model used to read scores from screenshots.
+
+Source:   https://github.com/tesseract-ocr/tessdata_best (eng.traineddata)
+Licence:  Apache License 2.0 — the full text is in tessdata-LICENSE-Apache-2.0.txt beside this file.
+Copyright: the Tesseract OCR project contributors. Unmodified.
+
+app/msvcp140.dll, app/vcruntime140.dll, app/vcruntime140_1.dll — the Microsoft Visual C++
+runtime the OCR engine (tesseract50.dll, leptonica) needs. Deployed app-local from the Visual
+Studio Redistributable folder, as Microsoft's redistribution terms for the VC++ runtime permit.
+Copyright Microsoft Corporation. Unmodified.

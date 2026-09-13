@@ -38,7 +38,9 @@ from datetime import datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\eFootball\Binaries\Win64\eFootball.exe")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from steam_paths import game_exe  # noqa: E402
+EXE = game_exe()                    # wherever Steam put the game, not a hard-coded C: path
 BACKUPS = Path.home() / "Backups" / "eFootball"
 PRISTINE = BACKUPS / "eFootball.exe.PRISTINE"
 STATE = REPO / "build" / "exe_patch_state.json"
