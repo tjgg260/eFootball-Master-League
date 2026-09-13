@@ -50,6 +50,7 @@ public partial class MainWindowViewModel : ObservableObject
             // straight onto one for a screenshot run.
             new("Player",   "\uE77B", s => new PlayerViewModel(s)),
             new("Bidding",  "\uE8AB", s => new BiddingViewModel(s)),
+            new("Match Report", "\uE9D2", s => new MatchReportViewModel(s)),
         };
 
         NavItem P(string title) => Pages.First(p => p.Title == title);
@@ -74,6 +75,13 @@ public partial class MainWindowViewModel : ObservableObject
         var startPage = Environment.GetEnvironmentVariable("ML_PAGE");
         var start = Pages.FirstOrDefault(p => p.Title == startPage) ?? Pages[0];
         CurrentPage = start.Build(session);
+        // ... and ML_FOCUS=<Kind>:<id> gives it a subject (ML_PAGE="Match Report" ML_FOCUS=Fixture:9000932),
+        // for the destinations that show nothing without one.
+        if (Environment.GetEnvironmentVariable("ML_FOCUS") is { } focusVar
+            && focusVar.Split(':') is [var kindText, var idText]
+            && Enum.TryParse<EntityKind>(kindText, true, out var kind) && long.TryParse(idText, out var focusId)
+            && CurrentPage is IFocusTarget target)
+            target.Focus(new EntityRef(kind, focusId, ""));
         MarkActive(start);
         PushHistory(start.Title, null);   // where Back eventually returns to
     }

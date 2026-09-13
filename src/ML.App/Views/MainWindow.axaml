@@ -104,6 +104,10 @@
     <DataTemplate DataType="vm:BiddingViewModel">
       <views:BiddingView/>
     </DataTemplate>
+
+    <DataTemplate DataType="vm:MatchReportViewModel">
+      <views:MatchReportView/>
+    </DataTemplate>
   </Window.DataTemplates>
 
   <Grid ColumnDefinitions="230,*">

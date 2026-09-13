@@ -357,7 +357,7 @@ def clear_career(con) -> dict[str, int]:
 
     # ── 4. everything keyed by a career FIXTURE ───────────────────────────────────────────────
     for tbl in ("results", "match_events", "match_team_stats", "match_player_ratings",
-                "player_match_ratings", "match_player_stats"):
+                "player_match_ratings", "match_player_stats", "match_exports"):
         run("match rows", f"DELETE FROM {tbl} WHERE fixture_id >= ? AND fixture_id < ?",
             (FIXTURE_BASE, INF))
     run("match rows", "DELETE FROM fixtures WHERE id >= ? AND id < ?", (FIXTURE_BASE, INF))

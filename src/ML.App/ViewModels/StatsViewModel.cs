@@ -155,14 +155,25 @@ public sealed partial class StatsViewModel : PageViewModel
                 h.HolderIsPlayer ? EntityRef.Player(h.HolderId, h.Team) : EntityRef.Club(h.HolderId, h.Team),
                 status: t => Status = t);
 
-    /// <summary>A filed report is a fixture: the only verb it has is "show me that day".</summary>
+    /// <summary>A filed report is a fixture: read the whole match, or see that day.</summary>
     public ContextMenu? MenuFor(ReportRow r)
     {
         if (r.FixtureId <= 0) return null;
         var menu = new ContextMenu();
+        var report = new MenuItem { Header = "📊 Open match report" };
+        report.Click += (_, _) => OpenReport(r);
+        menu.Items.Add(report);
         var open = new MenuItem { Header = "📅 Show in Calendar" };
         open.Click += (_, _) => Nav.Go("Calendar", new EntityRef(EntityKind.Fixture, r.FixtureId, r.Line));
         menu.Items.Add(open);
         return menu;
+    }
+
+    /// <summary>A click on a filed report: everything the stats host recorded for that match.</summary>
+    [RelayCommand]
+    private void OpenReport(ReportRow? r)
+    {
+        if (r is { FixtureId: > 0 })
+            Nav.Go("Match Report", new EntityRef(EntityKind.Fixture, r.FixtureId, r.Line));
     }
 }

@@ -450,6 +450,19 @@ CREATE TABLE IF NOT EXISTS match_player_stats (
     PRIMARY KEY (fixture_id, side, slot, stat)
 );
 
+-- The stats host's export, VERBATIM, against the fixture it was linked to. The tables above keep
+-- what the league computes with; this keeps everything the host recorded — the per-segment
+-- timeline, the game's form view of each player, engine counters nobody has decoded yet, the
+-- host's confidence labels and caveats — so the Match Report can show all of it, and a counter
+-- decoded later is still there to read in every match already played.
+CREATE TABLE IF NOT EXISTS match_exports (
+    fixture_id INTEGER PRIMARY KEY REFERENCES fixtures(id),
+    stem       TEXT    NOT NULL,           -- match_<kick-off>: the file it was read from
+    json       TEXT    NOT NULL,
+    home_team_index INTEGER NOT NULL DEFAULT 0,  -- which export team was the LEAGUE's home side
+    stored_at  TEXT    NOT NULL
+);
+
 -- The staff DATABASE (FM-style): persistent individual people with 1-20 attributes and
 -- tactical preferences. team_id NULL = free agent. One person per (team, role) is enforced
 -- in code; firing returns the person to the pool rather than deleting them.

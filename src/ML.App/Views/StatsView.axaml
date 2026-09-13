@@ -121,12 +121,18 @@
                    IsVisible="{Binding !MatchReports.Count}"/>
         <ItemsControl x:Name="ReportsList" ItemsSource="{Binding MatchReports}">
           <ItemsControl.ItemTemplate>
+            <!-- a filed report opens the whole match: every counter the stats host kept -->
             <DataTemplate x:DataType="vm:ReportRow">
-              <Grid ColumnDefinitions="70,*,Auto" Margin="0,3">
-                <TextBlock Text="{Binding When}" Classes="ml-muted"/>
-                <TextBlock Grid.Column="1" Text="{Binding Line}" Classes="ml-body"/>
-                <TextBlock Grid.Column="2" Text="{Binding Stats}" Foreground="#9FE6B4" FontSize="12"/>
-              </Grid>
+              <Button Classes="ml-ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                      Padding="6,3" ToolTip.Tip="Open the match report"
+                      Command="{Binding $parent[ItemsControl].((vm:StatsViewModel)DataContext).OpenReportCommand}"
+                      CommandParameter="{Binding}">
+                <Grid ColumnDefinitions="70,*,Auto">
+                  <TextBlock Text="{Binding When}" Classes="ml-muted"/>
+                  <TextBlock Grid.Column="1" Text="{Binding Line}" Classes="ml-body"/>
+                  <TextBlock Grid.Column="2" Text="{Binding Stats}" Foreground="#9FE6B4" FontSize="12"/>
+                </Grid>
+              </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

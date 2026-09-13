@@ -44,6 +44,16 @@ public class MatchExportTests
         Assert.Equal(9, keeper.RawSegments!.First().Value.Length);
     }
 
+    /// <summary>The Match Report shows what the bound fields leave out (segments, raw counters,
+    /// labels, caveats), so the export is kept exactly as the host wrote it.</summary>
+    [Fact]
+    public void KeepsTheExportVerbatim()
+    {
+        var e = Load(Match3Nil);
+        Assert.Equal(File.ReadAllText(Path.Combine(SampleDir(), Match3Nil + ".json")), e.RawJson);
+        Assert.Contains("\"raw_totals\"", e.RawJson);
+    }
+
     [Fact]
     public void RejectsAnotherSchema()
     {

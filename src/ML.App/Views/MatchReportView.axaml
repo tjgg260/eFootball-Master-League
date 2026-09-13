@@ -1,0 +1,277 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ML.App.ViewModels"
+             xmlns:sys="using:System"
+             x:Class="ML.App.Views.MatchReportView"
+             x:DataType="vm:MatchReportViewModel">
+
+  <!-- ═══ THE MATCH REPORT ════════════════════════════════════════════════════════════
+       Everything efootball-re's stats host recorded for one match, read from the export kept
+       verbatim against the fixture: the score, every named counter for both teams, both
+       squads with every counter each player ran up, the counters across the match, the
+       game's pre-match form, every raw engine counter and the host's own caveats.
+       ═════════════════════════════════════════════════════════════════════════════════ -->
+
+  <UserControl.Styles>
+    <!-- Twenty-odd narrow counter columns. The Fluent header keeps a 32px sort-arrow slot to the
+         right of every header, sorted or not, which left a 44px "G" column 4px for its letter —
+         so most headers rendered blank. The player grids don't sort (a dozen rows), so the words
+         may run into that slot. -->
+    <Style Selector="DataGridColumnHeader /template/ ContentPresenter">
+      <Setter Property="Margin" Value="0,0,-30,0"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+
+    <StackPanel IsVisible="{Binding !HasReport}" Spacing="16" MaxWidth="620"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock Text="No match open" Classes="ml-h1" HorizontalAlignment="Center"/>
+      <TextBlock Text="{Binding Status}" Classes="ml-empty" FontSize="13" TextWrapping="Wrap"/>
+    </StackPanel>
+
+    <ScrollViewer Padding="20" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasReport}">
+      <StackPanel Spacing="16">
+
+        <!-- ══ the scoreline ══════════════════════════════════════════════════════ -->
+        <Border Classes="ml-panel" Padding="20,16">
+          <StackPanel Spacing="10">
+            <Grid ColumnDefinitions="*,Auto,*">
+              <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right"
+                          VerticalAlignment="Center">
+                <TextBlock Text="{Binding HomeName}" Classes="ml-h1" VerticalAlignment="Center"/>
+                <Image Source="{Binding HomeCrest}" Width="48" Height="48"/>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Text="{Binding Score}" FontSize="40" FontWeight="Bold"
+                         Foreground="{DynamicResource MlTextHeading}" Margin="28,0" VerticalAlignment="Center"/>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <Image Source="{Binding AwayCrest}" Width="48" Height="48"/>
+                <TextBlock Text="{Binding AwayName}" Classes="ml-h1" VerticalAlignment="Center"/>
+              </StackPanel>
+            </Grid>
+            <TextBlock Text="{Binding WhenLine}" Classes="ml-body" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding MetaLine}" Classes="ml-muted" FontSize="12"
+                       HorizontalAlignment="Center" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Status}" Foreground="#9FE6B4" FontSize="12" TextWrapping="Wrap"
+                       HorizontalAlignment="Center" IsVisible="{Binding !!Status.Length}"/>
+          </StackPanel>
+        </Border>
+
+        <!-- ══ team stats: one line per counter, the bars split between the two sides ══ -->
+        <Border Classes="ml-panel" IsVisible="{Binding HasExport}">
+          <StackPanel>
+            <TextBlock Classes="ml-label" Text="📊 Team stats" Margin="0,0,0,10"/>
+            <ItemsControl ItemsSource="{Binding TeamStats}" HorizontalAlignment="Center" Width="720">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StatBarRow">
+                  <StackPanel Margin="0,4">
+                    <Grid ColumnDefinitions="60,*,220,*,60">
+                      <TextBlock Grid.Column="0" Text="{Binding Home}" Classes="ml-body" FontWeight="Bold"
+                                 HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <Border Grid.Column="1" Height="8" CornerRadius="4" Margin="10,0,6,0"
+                              Width="{Binding HomeWidth}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                              Background="{DynamicResource MlPrimary}"/>
+                      <TextBlock Grid.Column="2" Text="{Binding Label}" Classes="ml-body"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      <Border Grid.Column="3" Height="8" CornerRadius="4" Margin="6,0,10,0"
+                              Width="{Binding AwayWidth}" HorizontalAlignment="Left" VerticalAlignment="Center"
+                              Background="{DynamicResource MlWarn}"/>
+                      <TextBlock Grid.Column="4" Text="{Binding Away}" Classes="ml-body" FontWeight="Bold"
+                                 VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock Text="{Binding Note}" Classes="ml-muted" FontSize="11"
+                               HorizontalAlignment="Center" IsVisible="{Binding HasNote}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="ml-muted" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap"
+                       Text="≈ worked out by the stats host from other counters rather than read from the game directly."/>
+          </StackPanel>
+        </Border>
+
+        <!-- ══ the two squads, every counter each player ran up ═══════════════════════ -->
+        <Border Classes="ml-panel" IsVisible="{Binding HasExport}">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="ml-label" Text="{Binding HomeName, StringFormat='👥 {0}'}"/>
+            <DataGrid x:Name="HomeGrid" ItemsSource="{Binding HomePlayers}" IsReadOnly="True"
+                      HeadersVisibility="Column" CanUserSortColumns="False">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Width="36">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:ReportPlayerRow">
+                      <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True" Margin="4,2">
+                        <Image Source="{Binding Portrait}" Width="26" Height="26" Stretch="UniformToFill"/>
+                      </Border>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="#" Binding="{Binding Shirt}" Width="52"/>
+                <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="190"/>
+                <DataGridTextColumn Header="" Binding="{Binding Status}" Width="190"/>
+                <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="76"/>
+                <DataGridTextColumn Header="Form" Binding="{Binding Form}" Width="104"/>
+                <DataGridTextColumn Header="G" Binding="{Binding Goals}" Width="44"/>
+                <DataGridTextColumn Header="Sh" Binding="{Binding Shots}" Width="46"/>
+                <DataGridTextColumn Header="SoT" Binding="{Binding OnTarget}" Width="50"/>
+                <DataGridTextColumn Header="Pas" Binding="{Binding Passes}" Width="50"/>
+                <DataGridTextColumn Header="Cmp" Binding="{Binding Completed}" Width="54"/>
+                <DataGridTextColumn Header="Pas%" Binding="{Binding PassPct}" Width="58"/>
+                <DataGridTextColumn Header="Crs" Binding="{Binding Crosses}" Width="48"/>
+                <DataGridTextColumn Header="Tkl" Binding="{Binding Tackles}" Width="48"/>
+                <DataGridTextColumn Header="Int" Binding="{Binding Interceptions}" Width="46"/>
+                <DataGridTextColumn Header="Rec" Binding="{Binding Recoveries}" Width="48"/>
+                <DataGridTextColumn Header="Fls" Binding="{Binding Fouls}" Width="46"/>
+                <DataGridTextColumn Header="Off" Binding="{Binding Offsides}" Width="46"/>
+                <DataGridTextColumn Header="Cor" Binding="{Binding Corners}" Width="48"/>
+                <DataGridTextColumn Header="Sav" Binding="{Binding Saves}" Width="48"/>
+                <DataGridTextColumn Header="ShF" Binding="{Binding ShotsFaced}" Width="50"/>
+                <DataGridTextColumn Header="SoTF" Binding="{Binding OnTargetFaced}" Width="56"/>
+                <DataGridTextColumn Header="Rcv" Binding="{Binding Receptions}" Width="50"/>
+                <DataGridTextColumn Header="Tch" Binding="{Binding Touches}" Width="50"/>
+                <DataGridTextColumn Header="Poss" Binding="{Binding Possessions}" Width="54"/>
+                <DataGridTextColumn Header="Kept" Binding="{Binding Kept}" Width="54"/>
+                <DataGridTextColumn Header="On ball (s)" Binding="{Binding PossSeconds}" Width="86"/>
+                <DataGridTextColumn Header="Spr" Binding="{Binding Sprints}" Width="50"/>
+              </DataGrid.Columns>
+            </DataGrid>
+
+            <TextBlock Classes="ml-label" Text="{Binding AwayName, StringFormat='👥 {0}'}" Margin="0,12,0,0"/>
+            <DataGrid x:Name="AwayGrid" ItemsSource="{Binding AwayPlayers}" IsReadOnly="True"
+                      HeadersVisibility="Column" CanUserSortColumns="False">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Width="36">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:ReportPlayerRow">
+                      <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True" Margin="4,2">
+                        <Image Source="{Binding Portrait}" Width="26" Height="26" Stretch="UniformToFill"/>
+                      </Border>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="#" Binding="{Binding Shirt}" Width="52"/>
+                <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="190"/>
+                <DataGridTextColumn Header="" Binding="{Binding Status}" Width="190"/>
+                <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="76"/>
+                <DataGridTextColumn Header="Form" Binding="{Binding Form}" Width="104"/>
+                <DataGridTextColumn Header="G" Binding="{Binding Goals}" Width="44"/>
+                <DataGridTextColumn Header="Sh" Binding="{Binding Shots}" Width="46"/>
+                <DataGridTextColumn Header="SoT" Binding="{Binding OnTarget}" Width="50"/>
+                <DataGridTextColumn Header="Pas" Binding="{Binding Passes}" Width="50"/>
+                <DataGridTextColumn Header="Cmp" Binding="{Binding Completed}" Width="54"/>
+                <DataGridTextColumn Header="Pas%" Binding="{Binding PassPct}" Width="58"/>
+                <DataGridTextColumn Header="Crs" Binding="{Binding Crosses}" Width="48"/>
+                <DataGridTextColumn Header="Tkl" Binding="{Binding Tackles}" Width="48"/>
+                <DataGridTextColumn Header="Int" Binding="{Binding Interceptions}" Width="46"/>
+                <DataGridTextColumn Header="Rec" Binding="{Binding Recoveries}" Width="48"/>
+                <DataGridTextColumn Header="Fls" Binding="{Binding Fouls}" Width="46"/>
+                <DataGridTextColumn Header="Off" Binding="{Binding Offsides}" Width="46"/>
+                <DataGridTextColumn Header="Cor" Binding="{Binding Corners}" Width="48"/>
+                <DataGridTextColumn Header="Sav" Binding="{Binding Saves}" Width="48"/>
+                <DataGridTextColumn Header="ShF" Binding="{Binding ShotsFaced}" Width="50"/>
+                <DataGridTextColumn Header="SoTF" Binding="{Binding OnTargetFaced}" Width="56"/>
+                <DataGridTextColumn Header="Rcv" Binding="{Binding Receptions}" Width="50"/>
+                <DataGridTextColumn Header="Tch" Binding="{Binding Touches}" Width="50"/>
+                <DataGridTextColumn Header="Poss" Binding="{Binding Possessions}" Width="54"/>
+                <DataGridTextColumn Header="Kept" Binding="{Binding Kept}" Width="54"/>
+                <DataGridTextColumn Header="On ball (s)" Binding="{Binding PossSeconds}" Width="86"/>
+                <DataGridTextColumn Header="Spr" Binding="{Binding Sprints}" Width="50"/>
+              </DataGrid.Columns>
+            </DataGrid>
+
+            <TextBlock Classes="ml-muted" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"
+                       Text="G goals · Sh shots · SoT on target · Pas passes · Cmp completed · Crs crosses · Tkl tackles · Int interceptions · Rec ball recoveries · Fls fouls · Off offsides · Cor corners · Sav saves · ShF / SoTF shots and shots on target faced (keepers) · Rcv ball receptions · Tch touches · Poss possessions · Kept possessions kept · On ball: seconds in possession · Spr sprints. Goals, saves and the two keeper columns are worked out by the host, not read from the game. Form: how far the game had his abilities from his file values when the host last read him on the pitch, on average (how many differed). The host calls this pre-match condition; players taken off tired show the biggest drops, so in-match fatigue may be in it too (not yet verified). Double-click a player to open him."/>
+          </StackPanel>
+        </Border>
+
+        <!-- ══ the match's flow: the host splits every counter into time segments ═════ -->
+        <Border Classes="ml-panel" IsVisible="{Binding HasExport}">
+          <StackPanel>
+            <TextBlock Classes="ml-label" Text="📈 Through the match" Margin="0,0,0,10"/>
+            <ItemsControl ItemsSource="{Binding Flow}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FlowRow">
+                  <Border Classes="ml-card" Margin="0,0,10,10" Width="300">
+                    <StackPanel Spacing="6">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding Label}" Classes="ml-body" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Totals}" Classes="ml-muted"/>
+                      </Grid>
+                      <Grid ColumnDefinitions="*,*" Height="44">
+                        <ItemsControl Grid.Column="0" ItemsSource="{Binding Home}" VerticalAlignment="Bottom">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3"/></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FlowBar">
+                              <Border Width="13" Height="{Binding Height}" MinHeight="1" VerticalAlignment="Bottom"
+                                      CornerRadius="2,2,0,0" Background="{DynamicResource MlPrimary}"
+                                      ToolTip.Tip="{Binding Tip}"/>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Away}" VerticalAlignment="Bottom"
+                                      Margin="8,0,0,0">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3"/></ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FlowBar">
+                              <Border Width="13" Height="{Binding Height}" MinHeight="1" VerticalAlignment="Bottom"
+                                      CornerRadius="2,2,0,0" Background="{DynamicResource MlWarn}"
+                                      ToolTip.Tip="{Binding Tip}"/>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </Grid>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="ml-muted" FontSize="11" TextWrapping="Wrap"
+                       Text="Blue is the home side, amber the away side. The stats host keeps every counter in eight time segments that add up to the match total; which minutes each segment covers has not been verified yet, so read these as the match's shape, not as exact periods."/>
+          </StackPanel>
+        </Border>
+
+        <!-- ══ every raw engine counter, decoded or not ═══════════════════════════════ -->
+        <Border Classes="ml-panel" IsVisible="{Binding HasExport}">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="ml-label" Text="🔧 Every engine counter"/>
+            <TextBlock Classes="ml-muted" FontSize="11" TextWrapping="Wrap"
+                       Text="Every counter the game kept for this match that wasn't zero, by the engine's own id. Named ones are what the host has identified; the rest are recorded all the same, so a counter decoded later can be read back from every match already played."/>
+            <DataGrid ItemsSource="{Binding Counters}" IsReadOnly="True" HeadersVisibility="Column"
+                      MaxHeight="380" CanUserSortColumns="True">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="70"/>
+                <DataGridTextColumn Header="What it counts" Binding="{Binding Label}" Width="*"/>
+                <DataGridTextColumn Header="Home" Binding="{Binding Home}" Width="110"/>
+                <DataGridTextColumn Header="Away" Binding="{Binding Away}" Width="110"/>
+                <DataGridTextColumn Header="Confidence" Binding="{Binding Confidence}" Width="200"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </StackPanel>
+        </Border>
+
+        <!-- ══ what the host itself says to be careful about ══════════════════════════ -->
+        <Border Classes="ml-panel" IsVisible="{Binding !!Caveats.Count}">
+          <StackPanel>
+            <TextBlock Classes="ml-label" Text="⚠ The stats host's own caveats" Margin="0,0,0,10"/>
+            <ItemsControl ItemsSource="{Binding Caveats}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="sys:String">
+                  <TextBlock Text="{Binding StringFormat='• {0}'}" Classes="ml-muted" TextWrapping="Wrap"
+                             Margin="0,2"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+  </Panel>
+</UserControl>

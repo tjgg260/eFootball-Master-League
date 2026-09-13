@@ -101,6 +101,15 @@ public sealed partial class Session
                         ("$f", fixtureId), ("$s", side), ("$i", p.Export.Slot), ("$k", stat), ("$v", value));
             }
         }
+        // And the export itself, verbatim: everything above is what the league computes with; this
+        // is everything the host recorded (timeline segments, the game's form view, undecoded
+        // counters, its labels and caveats), for the Match Report and for any counter decoded
+        // later. The game's home side is not necessarily the league's, so which one it was is kept.
+        Insert("INSERT OR REPLACE INTO match_exports(fixture_id,stem,json,home_team_index,stored_at) " +
+               "VALUES($f,$st,$j,$h,$t)",
+            ("$f", fixtureId), ("$st", m.Export.Stem), ("$j", m.Export.RawJson),
+            ("$h", m.Export.Teams.IndexOf(m.Home.Team) is var hi and >= 0 ? hi : 0),
+            ("$t", DateTime.Now.ToString("s", CultureInfo.InvariantCulture)));
         tx.Commit();
         var home = ExportLinker.TeamStats(m.Home, m.Away);
         var away = ExportLinker.TeamStats(m.Away, m.Home);

@@ -28,6 +28,13 @@ public sealed class MatchExport
     /// <summary>The file this export was loaded from, when it came from disk.</summary>
     [JsonIgnore] public string? SourcePath { get; private set; }
 
+    /// <summary>
+    /// The export exactly as the host wrote it. Only the fields the league computes with are bound
+    /// above; the rest (segments, form, raw counters, labels, caveats) live here so the league can
+    /// keep the whole match against its fixture and the Match Report can show all of it.
+    /// </summary>
+    [JsonIgnore] public string RawJson { get; private set; } = "";
+
     /// <summary>The kick-off stamp that names the file (<c>match_20260913_215134</c>).</summary>
     [JsonIgnore] public string Stem => FileStem ?? Path.GetFileNameWithoutExtension(SourcePath ?? "");
 
@@ -35,6 +42,7 @@ public sealed class MatchExport
     {
         var export = JsonSerializer.Deserialize<MatchExport>(json)
                      ?? throw new FormatException("empty match export");
+        export.RawJson = json;
         if (export.Schema != SchemaName)
             throw new FormatException($"unknown match export schema '{export.Schema}' (expected {SchemaName})");
         if (export.Teams.Count != 2)
