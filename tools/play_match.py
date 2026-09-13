@@ -21,17 +21,19 @@ Why host slots
     slots to the authored players. Headcount per slot is unchanged, so every squad invariant holds.
 
 Deploy
-    A new-player author changes Player.bin's length, so this is NOT the in-place PlayerAssignment
-    patch — it is a full cpkmakec rebuild at align=512 (proven to boot; align 2048 is silently
-    ignored). We rebuild from a fresh copy of the pristine build/tree_base every time, so matches
-    never accumulate edits.
+    A new-player author changes Player.bin's length, so the in-place overwrite that suits
+    PlayerAssignment is not enough. tools/cpk_patch.py (the Player Editor's container code) patches
+    every file that differs from the base archive: in place when it fits, otherwise moved into a
+    gap or appended, with only that file's TOC row rewritten. No full rebuild, so no cpkmakec. We
+    stage from a fresh copy of the pristine build/tree_base and patch into the pristine
+    dt200_console_all.cpk every time, so matches never accumulate edits.
 
 Kits
     Host placeholders wear generic US kits, so each compile also authors the fixture clubs' own
     colors (median-cut palette from master.db teams.logo_path, else a deterministic id-hash pair)
     as raw plaintext kit descriptors into the working tree's uniform/team/<slot>/ via
     tools/kit_author.py. On by default; --no-kits skips it. Real eFootball slots keep their
-    shipped kit configs. --compile-only stops after the tree is staged (before cpkmakec) so the
+    shipped kit configs. --compile-only stops after the tree is staged (before the CPK patch) so the
     result can be inspected without building or installing anything.
 """
 from __future__ import annotations
@@ -58,10 +60,11 @@ from rfs_translate import translate    # noqa: E402
 import wesys                           # noqa: E402
 import pesdb                           # noqa: E402
 import kit_author                      # noqa: E402
+import cpk_patch                       # noqa: E402
 
 RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
 TREE_BASE = REPO / "build" / "tree_base"
-CPKMAKEC = REPO / "CRI_File_System_Tools_v2.40.13.0" / "crifilesystem v2.40.13.0" / "cpkmakec.exe"
+BASE_CPK = REPO / "dt200_console_all.cpk"   # the archive tree_base was extracted from (rebaseline.py)
 from steam_paths import game_cpk_dir  # noqa: E402  (tools/ is on sys.path above)
 GAME_CPK = game_cpk_dir()           # Steam's own library list, not a hard-coded C: path
 BACKUPS = Path.home() / "Backups" / "eFootball"
@@ -494,13 +497,14 @@ def _patch_guard(target: Path) -> None:
 
 
 def rebuild_and_install(tree: Path, out: Path, install: bool) -> None:
-    print(f"  rebuilding {out.name} (cpkmakec, align=512)...")
-    r = subprocess.run([str(CPKMAKEC), str(tree), str(out), "-mode=FILENAME", "-align=512"],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        sys.stderr.write(r.stdout + r.stderr)
-        sys.exit("cpkmakec rebuild failed")
-    print(f"  built {out} ({out.stat().st_size:,} bytes)")
+    if not BASE_CPK.exists():
+        sys.exit(f"base CPK missing: {BASE_CPK}\nRun tools/rebaseline.py to take it from the game.")
+    print(f"  patching {out.name} (changed files only, into {BASE_CPK.name})...")
+    try:
+        r = cpk_patch.build(BASE_CPK, tree, out)
+    except cpk_patch.CpkPatchError as e:
+        sys.exit(f"CPK patch refused: {e}")
+    print(f"  built {out} ({r['out_size']:,} bytes, {r['patched']} of {r['files']} files patched)")
     if install:
         target = GAME_CPK / "dt200_console_all.cpk"
         _patch_guard(target)
@@ -748,7 +752,7 @@ def real_slot_match(home_real, away_real, home_name, away_name, args) -> int:
     # config, which is strictly more real than a logo-palette guess would be.
     print("  kit: real eFootball slots keep their shipped kit configs")
     if args.compile_only:
-        print(f"COMPILE-ONLY: working tree staged at {tree} — stopped before cpkmakec (no CPK, no install)")
+        print(f"COMPILE-ONLY: working tree staged at {tree} — stopped before the CPK patch (no CPK, no install)")
         return 0
     rebuild_and_install(tree, Path(args.out), args.install)
     print(f"\nPlay it:  eFootball -> Exhibition/League -> {home_name}  vs  {away_name}")
@@ -768,7 +772,7 @@ def main() -> int:
     ap.add_argument("--no-kits", dest="no_kits", action="store_true",
                     help="skip per-fixture kit authoring (host slots keep their placeholder kits)")
     ap.add_argument("--compile-only", dest="compile_only", action="store_true",
-                    help="stop after the working tree is staged: no cpkmakec rebuild, no install")
+                    help="stop after the working tree is staged: no CPK patch, no install")
     args = ap.parse_args()
 
     if not TREE_BASE.exists():
@@ -847,7 +851,7 @@ def main() -> int:
         ])
 
     if args.compile_only:
-        print(f"COMPILE-ONLY: working tree staged at {tree} — stopped before cpkmakec (no CPK, no install)")
+        print(f"COMPILE-ONLY: working tree staged at {tree} — stopped before the CPK patch (no CPK, no install)")
         return 0
 
     rebuild_and_install(tree, Path(args.out), args.install)

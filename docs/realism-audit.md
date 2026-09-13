@@ -307,10 +307,10 @@ prerequisite** gating the entire exe program.
 
 ## Reading the results back (closing the loop)
 
-Not a gameplay change, but essential for a realistic career: `stats_read.py` reads every player's
-match rating + raw counters (passes attempted/completed, tackles, dribbles, touches, cards, balls
-won/lost) from memory, read-only. Pass completion % etc. fall straight out. See
-[player-stats.md](player-stats.md).
+Not a gameplay change, but essential for a realistic career: efootball-re's stats host exports
+every player's raw counters (passes attempted/completed, tackles, interceptions, shots, …) when a
+match finishes, and `ML.Ingest` stores them against the fixture with a rating per player. Pass
+completion % etc. fall straight out.
 
 ---
 

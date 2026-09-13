@@ -16,7 +16,8 @@
 #   src/ML.Data/schema.sql  the seeder applies this to the database it seeds
 #   tools/ assets/ data/ docs/   tracked files, plus the club-logo and flag packs the DB references
 #   README.md PLAYTESTING.md LICENSE  "Play Master League.bat" (launches app\ML.App.exe)
-# Player faces (facepack/) are NOT shipped: multi-GB. The app falls back to generated avatars.
+# Player faces (facepack/, build/game_faces/) are NOT shipped: multi-GB, and game_faces is Konami's
+# art. A player with eFootball installed runs tools/game_faces.py; otherwise generated avatars.
 set -euo pipefail
 VER="${1:?version, e.g. v0.1.0}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"

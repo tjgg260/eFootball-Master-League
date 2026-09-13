@@ -221,8 +221,8 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty] private string _celebrationSub = "";
 
     /// <summary>
-    /// What the last screenshot read attempt has to say, shown ON the entry desk beside the score
-    /// boxes. A refusal ("that wasn't the full-time screen") has to appear where the user is
+    /// What the last match-export load has to say, shown ON the entry desk beside the score
+    /// boxes. A refusal ("that export is not this fixture") has to appear where the user is
     /// already looking — the muted status line at the foot of the card is not that place.
     /// </summary>
     [ObservableProperty]
@@ -382,25 +382,6 @@ public sealed partial class DashboardViewModel : PageViewModel
         MatchStatus = $"🗣 {reaction}";
     }
 
-    /// <summary>OCR the post-match STATS screen (F12 on it) into the last result's record.</summary>
-    [RelayCommand]
-    private void ImportStats()
-    {
-        if (_lastFixtureId == 0) { MatchStatus = "Record a result first."; return; }
-        var r = ScoreImport.StatsFromLatestScreenshot();
-        if (r is null) { MatchStatus = "Stats OCR unavailable."; return; }
-        var (ph, pa, sh, sa, msg) = r.Value;
-        if (ph is not null || sh is not null)
-        {
-            try { _s.SaveMatchStats(_lastFixtureId, ph, pa, sh, sa); } catch { /* display only */ }
-            MatchStatus = $"📊 {msg} Saved to the match report.";
-        }
-        else
-        {
-            MatchStatus = $"📊 {msg}";
-        }
-    }
-
     [RelayCommand]
     private void PostTalk(string tone)
     {
@@ -497,78 +478,6 @@ public sealed partial class DashboardViewModel : PageViewModel
     public ObservableCollection<EventPickRow> GoalPicks { get; } = new();
     public ObservableCollection<EventPickRow> AssistPicks { get; } = new();
     public ObservableCollection<EventPickRow> CardPicks { get; } = new();
-
-    // --- read team stats + player ratings from the game's live memory (read-only) -----------
-
-    [RelayCommand]
-    private void ReadStatsFromGame()
-    {
-        if (_fixtureId == 0) { MatchStatus = "No fixture to attach stats to."; return; }
-        Log(_s.ReadMatchStatsFromMemory(_fixtureId));
-        // Prefill the ratings entry from what we just read. The recorder wants "Name 7.5"
-        // pairs — bare numbers all land in its no-match bin — so zip the slot-ordered
-        // ratings onto your XI names (same order as the results screen).
-        try
-        {
-            var homeRatings = _s.PlayerRatingsFor(_fixtureId, _homeId == _s.CurrentTeamId ? "home" : "away");
-            if (homeRatings.Count > 0)
-            {
-                var names = _s.XiNamesInSlotOrder();
-                RatingsText = string.Join(", ", homeRatings
-                    .Select((r, i) => i < names.Count ? $"{names[i]} {r.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}" : null)
-                    .Where(s => s is not null));
-            }
-        }
-        catch { /* prefill is best-effort */ }
-    }
-
-    // --- match video analysis: OBS recording → goals with minutes + scorer suggestions -----
-
-    [ObservableProperty] private bool _analyzing;
-
-    [RelayCommand]
-    private async Task AnalyzeRecording()
-    {
-        if (Analyzing) return;
-        Analyzing = true;
-        try
-        {
-            await VideoCapture.StopAsync(Log);           // close the recording if OBS still runs
-            var video = VideoCapture.NewestRecording();
-            if (video is null)
-            {
-                Log("🎞 No recording found — set the video folder in Settings → Match video.");
-                return;
-            }
-            var events = await VideoCapture.AnalyzeAsync(video, Log);
-            if (events.Count == 0)
-            {
-                Log("🎞 No goals detected. If the match had goals, the scoreboard regions need " +
-                    "calibrating — see docs/video-capture.md.");
-                return;
-            }
-            var home = 0;
-            var away = 0;
-            foreach (var ev in events)
-            {
-                if (ev.Side == "home") home++; else away++;
-                // Fuzzy-match the banner text against the 22 names we already know.
-                var pick = ScoreImport.BestNameMatch(ev.PlayerText, MatchPlayerNames);
-                var row = new EventPickRow(MatchPlayerNames) { Selected = pick };
-                GoalPicks.Add(row);
-                Log($"  {ev.Minute}' GOAL ({ev.Side}) " +
-                    (pick is not null ? $"— suggested scorer: {pick}" : "— scorer unreadable, pick manually") +
-                    (string.IsNullOrWhiteSpace(ev.PlayerText) ? "" : $"  [banner: \"{ev.PlayerText}\"]"));
-            }
-            HomeScore = home;
-            AwayScore = away;
-            Log($"🎞 Prefilled {home}-{away} with {events.Count} goal(s) — check the pickers, then Record.");
-        }
-        finally
-        {
-            Analyzing = false;
-        }
-    }
 
     private void Log(string line) => MatchStatus += (MatchStatus.Length > 0 ? "\n" : "") + line;
 
@@ -1092,28 +1001,6 @@ public sealed partial class DashboardViewModel : PageViewModel
         }
     }
 
-    /// <summary>OCR the score off your latest eFootball screenshot into the result boxes.</summary>
-    [RelayCommand]
-    private void ImportScore()
-    {
-        var r = ScoreImport.FromLatestScreenshot();
-        // THE BUG: this guard read `if (r is null)`, but every failure path in ScoreImport returned
-        // a (0, 0, false, message) TUPLE — never null — so the guard never fired once, and the two
-        // lines below happily wrote 0-0 over the score you had just typed. Ok is now the only
-        // success signal, and nothing touches the boxes without it.
-        if (!r.Ok)
-        {
-            ImportNotice = $"⚠ {r.Message}";
-            MatchStatus = r.Message;
-            return;
-        }
-        HomeScore = r.Home;
-        AwayScore = r.Away;
-        // The banner is for trouble only — a clean read speaks for itself in the score boxes.
-        ImportNotice = r.Confident ? "" : "⚠ Low OCR confidence — check the digits before you record.";
-        MatchStatus = r.Message;
-    }
-
     /// <summary>Record the score you played in eFootball, then advance to the next fixture.</summary>
     [RelayCommand]
     private void RecordResult()
@@ -1156,6 +1043,7 @@ public sealed partial class DashboardViewModel : PageViewModel
             if (scorerNote.Length > 0) scorerNote = "\n" + scorerNote;
         }
         catch { /* stats never block recording */ }
+        scorerNote += StoreExportForRecordedFixture(_fixtureId);
 
         // Apply fatigue/recovery, form and injuries. Cup days load only the two clubs involved;
         // league days run the league-wide pass. Guarded so a missing table never blocks recording.

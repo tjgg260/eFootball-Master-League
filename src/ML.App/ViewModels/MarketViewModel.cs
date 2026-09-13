@@ -442,7 +442,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         };
         cmd.CommandText =
             "SELECT p.id, p.name, p.position, COALESCE(p.overall_rating,0), p.age, " +
-            "COALESCE(p.real_face_path, p.portrait_path), " +
+            "COALESCE(p.game_face_path, p.real_face_path, p.portrait_path), " +
             "(SELECT skin_tone FROM player_appearance a WHERE a.player_id=p.id), " +
             "(SELECT t.name FROM squad_members s JOIN teams t ON t.id=s.team_id " +
             " WHERE s.player_id=p.id LIMIT 1), " +
@@ -528,7 +528,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             using var cmd = con.CreateCommand();
             cmd.CommandText =
                 "SELECT p.id, p.name, p.position, COALESCE(p.overall_rating,0), p.age, " +
-                "COALESCE(p.real_face_path, p.portrait_path), " +
+                "COALESCE(p.game_face_path, p.real_face_path, p.portrait_path), " +
                 "(SELECT skin_tone FROM player_appearance a WHERE a.player_id=p.id), " +
                 "(SELECT t.name FROM squad_members s JOIN teams t ON t.id=s.team_id " +
                 " WHERE s.player_id=p.id LIMIT 1), " +
@@ -685,7 +685,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             using (var cmd = con.CreateCommand())
             {
                 cmd.CommandText = "SELECT age, height_cm, weight_kg, nationality, " +
-                                  "COALESCE(real_face_path, portrait_path), " +
+                                  "COALESCE(game_face_path, real_face_path, portrait_path), " +
                                   "(SELECT playstyle FROM player_playstyles WHERE player_id=$p LIMIT 1) " +
                                   "FROM players WHERE id=$p";
                 cmd.Parameters.AddWithValue("$p", value.Id);

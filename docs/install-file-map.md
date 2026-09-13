@@ -36,7 +36,8 @@ through code we can find. Worth a scoped look, not a promise.
 
 ## cpk/ — the CriWare DATA layer (this is what our whole app targets)
 
-Legacy PES/eFootball data tables. We read/write these with cricodecs + vendored Sider (WESYS).
+Legacy PES/eFootball data tables. We read/write these with `tools/cpk_patch.py` (the eFootball
+Player Editor's vendored `cpk.py`) + vendored Sider (WESYS). cricodecs was used until 2026-09-14.
 `_all` = all platforms, `_win` = PC, `_eng/_jpn/_ind/_use` = language/region.
 
 | File | Size | Contents (read) | What it is | Mod |

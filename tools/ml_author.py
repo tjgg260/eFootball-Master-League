@@ -22,7 +22,8 @@ renamed player boots and plays (Paul Mullin).
 The only save-corrupting mistake is a dangling PID (assignment -> missing player); every author
 here inserts the Player.bin record first, so that cannot happen.
 
-Deploy is separate: write the tree, then rebuild with cpkmakec -align=512 (see ml_deploy notes).
+Deploy is separate: write the tree, then patch it into the base CPK with
+`tools/cpk_patch.py build --base <cpk> --tree <tree> --out <cpk>` (see ml_deploy notes).
 
 Usage:
     python tools/ml_author.py --tree build/tree_nl --spec build/nl_squads.json
@@ -367,7 +368,7 @@ def main() -> int:
         return 1
     t.save()
     print(f"\nAuthored {authored} players across {len(spec['clubs'])} clubs. Tree written: {args.tree}")
-    print("Next: rebuild with cpkmakec -align=512 and install.")
+    print("Next: patch the tree into the base CPK (tools/cpk_patch.py build) and install.")
     return 0
 
 

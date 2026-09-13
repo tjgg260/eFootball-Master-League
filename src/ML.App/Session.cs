@@ -68,16 +68,7 @@ public sealed partial class Session
         // line-up: without this the first visit to Tactics showed a left midfielder in goal.
         try { SeedOpeningXi(); }
         catch (Exception ex) { Program.Log("Session.SeedOpeningXi", ex); }   // import order is still playable
-        // OCR paths from settings (meta), falling back to the recorded defaults.
-        if (GetMeta("steam_root") is { Length: > 0 } root) ScoreImport.SteamRoot = root;
-        if (GetMeta("steam_user_id") is { Length: > 0 } uid) ScoreImport.SteamUserId = uid;
         MatchLauncher.AutoBoot = GetMeta("auto_boot") != "0";
-        // Match video pipeline (OBS + ffmpeg) from settings.
-        VideoCapture.RecordMatches = GetMeta("record_matches") == "1";
-        if (GetMeta("obs_url") is { Length: > 0 } obsUrl) VideoCapture.ObsUrl = obsUrl;
-        if (GetMeta("obs_password") is { Length: > 0 } obsPw) VideoCapture.ObsPassword = obsPw;
-        if (GetMeta("ffmpeg_path") is { Length: > 0 } ff) VideoCapture.FfmpegPath = ff;
-        if (GetMeta("video_dir") is { Length: > 0 } vd) VideoCapture.VideoDir = vd;
         Theme.Apply(GetMeta("ui_skin") ?? "Midnight", PrimaryColor);
         EnsureCup();
         // THE WELCOME GOES BEFORE THE OBJECTIVES. EnsureInboxWelcome's guard is "is the inbox

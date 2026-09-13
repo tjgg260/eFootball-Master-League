@@ -1,0 +1,53 @@
+# 宿主运行时要定位的函数特征码。宿主 (sigscan.rs, include_str!) 和 exetool.py 的 `sigs` 子命令读同一份。
+#
+# 格式: 名字 | 字节 (?? = 通配) | 捕获 [| at=键]
+#   捕获 key@偏移:类型[=已解出的键]      偏移相对匹配起点 (十进制)
+#     u8 / u32   直接读出来的立即数/位移
+#     rip        4 字节 RIP 相对位移, 解成绝对地址
+#     call       E8/E9 的 rel32, 解成目标地址
+#     =键        约束: 必须等于前面已经解出的值。多处命中时只留满足全部约束的那处
+#   at=键        不扫描, 只在前面捕获到的这个地址上核对字节 (顺着调用关系走过去)
+#
+# 原则: 位移、立即数、调用目标一律通配 —— 游戏更新后最容易变的正是它们, 也正是要捕获的值。
+# 最终必须恰好剩 1 处, 否则宿主拒绝使用对应功能。按文件顺序解析, 被引用的键要先出现。
+#
+# 扫描范围是所有可执行节 (按节权限选, 不按名字): 这个 build 的游戏代码在 .xcode,
+# 叫 .text 的是 Denuvo 的。
+#
+# 为什么有几条不能直接扫: 表访问器、花名册访问器、统计取值都有**同形的兄弟函数**, 只差位移常量
+# (0x1442D6EF0 就有 5 个兄弟, 表偏移 0x35B0/0x4B00/0x55A8/0x4058/0x3450)。所以从唯一的函数
+# 顺着调用走过去 (at=), 或用约束挑 (=)。
+# 2026-09-13 在原封 exe 和打过补丁的 exe 上验证: exetool.py sigs [--live]
+
+# ATTR_get(player, id) @0x143EA8CB0。前 7 字节就是 MEMORY_MODDING_AI_HANDOFF_ZH §10 记的那串。
+attr_get | 48 83 EC 28 44 8B C2 0F BE 91 ?? ?? ?? ?? 48 8B 89 ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F B6 C0 48 83 C4 28 C3 | sel_off@10:u32 ctx_off@17:u32 attr_chain@22:call
+
+# attr_get 调的转发函数 @0x1442DD650: 先取表对象, 再取属性数组基址
+attr_forward | 40 53 48 83 EC 20 41 8B D8 E8 ?? ?? ?? ?? 48 8B C8 E8 ?? ?? ?? ?? 8B D3 48 8B C8 48 83 C4 20 5B E9 ?? ?? ?? ?? | attr_table@10:call attr_array@18:call | at=attr_chain
+
+# 属性表 sel -> 对象 @0x1442D6EF0。RIP 相对读的就是比赛单例格子
+attr_table | 83 FA ?? 73 ?? 48 63 C2 48 6B C8 ?? 48 8B 05 ?? ?? ?? ?? 48 8B 84 01 ?? ?? ?? ?? C3 48 8B 05 ?? ?? ?? ?? 48 8B 80 ?? ?? ?? ?? C3 | attr_slots@2:u8 attr_stride@11:u8 singleton@15:rip attr_table_off@23:u32 | at=attr_table
+
+# 属性数组基址 @0x144301840
+attr_array | 48 8D 81 ?? ?? ?? ?? C3 | attr_form_off@3:u32 | at=attr_array
+
+# teamobj(T, team) @0x1442D6E40
+team_obj | 83 FA 01 76 ?? 48 8B 81 ?? ?? ?? ?? C3 48 63 C2 48 05 ?? ?? ?? ?? 48 6B C0 ?? 48 8B 04 08 C3 | team_obj_off@8:u32 team_stride@25:u8
+
+# 技能位测试 @0x1442C0000
+skill_test | 83 FA ?? 73 ?? 8B C2 83 E2 1F 48 C1 E8 05 8B 84 81 ?? ?? ?? ?? 0F B6 CA D3 E8 83 E0 01 C3 | skill_bits@2:u8 skill_off@17:u32
+
+# 技能判定(sel, id, teamobj) @0x1442E2640: sel%11 (魔数 0xBA2E8BA3), 调花名册访问器, 尾跳技能位测试
+skill_by_sel | 40 53 48 83 EC 20 8B DA 83 F9 ?? 77 ?? B8 A3 8B 2E BA F7 E1 C1 EA 03 6B C2 0B 2B C8 EB ?? 33 C9 8B D1 49 8B C8 E8 ?? ?? ?? ?? 8B D3 48 8B C8 48 83 C4 20 5B E9 ?? ?? ?? ?? | roster_rec@38:call skill_tail@53:call=skill_test
+
+# 花名册记录视图(teamobj, idx) @0x1442C3050。兄弟 0x1442C2DF0 只差 +0xA8
+roster_rec | 4C 8B C1 83 FA ?? 7C ?? 48 8D 81 ?? ?? ?? ?? C3 48 63 C2 48 63 4C 81 ?? 83 F9 ?? 73 ?? 48 69 C9 ?? ?? ?? ?? 4C 03 C1 49 8D 80 ?? ?? ?? ?? C3 | roster_slots@5:u8 lineup_off@23:u8 rec_stride@32:u32 rec_off@42:u32 | at=roster_rec
+
+# 统计球员块(mgr, team, idx) @0x1442E6640
+player_block | 33 C0 44 8B CA 83 FA 01 4C 8B D1 44 0F 47 C8 45 85 C0 78 ?? 41 83 F8 ?? 72 ?? 44 8B C0 41 8B C0 48 69 D0 ?? ?? ?? ?? 41 8B C1 48 69 C8 ?? ?? ?? ?? 49 8D 04 12 48 81 C1 ?? ?? ?? ?? 48 03 C1 C3 | stat_slots@23:u8 player_stride@35:u32 stats_team_stride@45:u32 players_off@56:u32
+
+# 球队合计循环 @0x14431B4DA (函数 0x14431B4C0 +0x1A)。另有一处同形的 (0x144A2CFFA), 用块偏移/槽距约束挑
+team_total | 33 FF 48 8D 99 ?? ?? ?? ?? 41 8B E8 44 8B F2 8D 77 ?? 0F 1F 40 00 44 8B C5 41 8B D6 48 8B CB E8 ?? ?? ?? ?? 03 F8 48 81 C3 ?? ?? ?? ?? 48 83 EE 01 75 ?? | total_players_off@5:u32=players_off stats_get@32:call total_stride@41:u32=player_stride
+
+# 统计取值(块, id, half) @0x1443378C0。兄弟 0x144339670 同形。half 跳转表: lea rcx,[rip-X] 是映像基址, 位移是表 RVA
+stats_get | 4C 8B C9 83 FA ?? 0F 87 ?? ?? ?? ?? 41 83 F8 05 0F 87 ?? ?? ?? ?? 49 63 C0 48 8D 0D ?? ?? ?? ?? 44 8B 84 81 ?? ?? ?? ?? 4C 03 C1 41 FF E0 | max_id@5:u8 image_base@28:rip jump_table@36:u32 | at=stats_get

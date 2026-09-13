@@ -2,9 +2,8 @@
 
 READ-first, write-guarded. No DLL injection, no code caves, no Cheat Engine. Everything here
 runs from our own process using the same OpenProcess / EnumProcessModules / ReadProcessMemory
-path that tools/mem_probe.py and tools/mem_scan.py already proved works against the live game
-(docs/live-stats-extraction.md: plain external RPM returns real data; CE is singled out, we are
-not). Writes go through VirtualProtectEx + WriteProcessMemory + protection-restore.
+path that the (since deleted) mem_probe.py / mem_scan.py scanners proved works against the live
+game on 2026-08-20: plain external RPM returns real data; CE is singled out, we are not. Writes go through VirtualProtectEx + WriteProcessMemory + protection-restore.
 
     ALWAYS RUN `probe` FIRST. It only READS. It proves we attached to the right process and that
     our RVA->runtime-VA relocation math is correct, before any byte is ever written.
@@ -45,7 +44,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # ---------------------------------------------------------------------------------------------
-# Constants and Win32 plumbing (mirrors tools/mem_probe.py so behaviour is identical)
+# Constants and Win32 plumbing (as the deleted mem_probe.py had it, so behaviour is identical)
 # ---------------------------------------------------------------------------------------------
 IMAGE_BASE = 0x140000000          # eFootball.exe preferred base (DYNAMIC_BASE=False in the PE)
 EXE_NAME = "eFootball.exe"
@@ -104,7 +103,7 @@ Confirmed from the PE (tools/live_patch.py info / probe prints the live view):
       - CreateThread                                                    (background watchdog)
 
 Practical consequences for US (external, read-mostly, offline):
-  * READS are safe and proven (mem_probe.py read 40 regions of real data). `probe` is read-only.
+  * READS are safe and proven (an external probe read 40 regions of real data). `probe` is read-only.
   * A WRITE to an executable page (kind:"code") is the risk: if a CRC/integrity loop later hashes
     that page it will mismatch -> the game CRASHES. This is a self-integrity crash, NOT an online
     ban (we are offline single-player, no VAC here). Undo may not help once it has crashed.

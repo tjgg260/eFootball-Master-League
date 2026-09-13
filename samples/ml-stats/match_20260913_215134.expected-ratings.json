@@ -1,0 +1,217 @@
+{
+ "source": "match_20260913_215134.json",
+ "model": "mlstats-rating/1",
+ "generated_by": "tools/vendor/efootball-re/mlstats/rating.py (model mlstats-rating/1)",
+ "teams": [
+  {
+   "side": "home",
+   "players": [
+    {
+     "slot": 0,
+     "role": "GK",
+     "role_source": "lineup",
+     "match_rating": 6.8,
+     "match_rating_unclamped": 6.838,
+     "minutes_share": 0.833
+    },
+    {
+     "slot": 1,
+     "role": "DEF",
+     "role_source": "actions",
+     "match_rating": 7.3,
+     "match_rating_unclamped": 7.271,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 2,
+     "role": "DEF",
+     "role_source": "actions",
+     "match_rating": 7.0,
+     "match_rating_unclamped": 7.006,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 3,
+     "role": "MID",
+     "role_source": "actions",
+     "match_rating": 7.0,
+     "match_rating_unclamped": 7.012,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 4,
+     "role": "MID",
+     "role_source": "actions",
+     "match_rating": 7.4,
+     "match_rating_unclamped": 7.415,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 5,
+     "role": "DEF",
+     "role_source": "actions",
+     "match_rating": 7.0,
+     "match_rating_unclamped": 7.01,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 6,
+     "role": "DEF",
+     "role_source": "actions",
+     "match_rating": 7.5,
+     "match_rating_unclamped": 7.45,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 7,
+     "role": "MID",
+     "role_source": "actions",
+     "match_rating": 6.6,
+     "match_rating_unclamped": 6.617,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 8,
+     "role": "MID",
+     "role_source": "actions",
+     "match_rating": 6.4,
+     "match_rating_unclamped": 6.405,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 9,
+     "role": "MID",
+     "role_source": "actions",
+     "match_rating": 7.7,
+     "match_rating_unclamped": 7.652,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 10,
+     "role": "FWD",
+     "role_source": "actions",
+     "match_rating": 7.2,
+     "match_rating_unclamped": 7.206,
+     "minutes_share": 1.0
+    }
+   ]
+  },
+  {
+   "side": "away",
+   "players": [
+    {
+     "slot": 0,
+     "role": "GK",
+     "role_source": "lineup",
+     "match_rating": 6.4,
+     "match_rating_unclamped": 6.396,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 1,
+     "role": "DEF",
+     "role_source": "attributes",
+     "match_rating": 5.6,
+     "match_rating_unclamped": 5.64,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 2,
+     "role": "DEF",
+     "role_source": "attributes",
+     "match_rating": 5.8,
+     "match_rating_unclamped": 5.805,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 3,
+     "role": "DEF",
+     "role_source": "attributes",
+     "match_rating": 5.4,
+     "match_rating_unclamped": 5.416,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 4,
+     "role": "DEF",
+     "role_source": "attributes",
+     "match_rating": 6.2,
+     "match_rating_unclamped": 6.168,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 5,
+     "role": "MID",
+     "role_source": "attributes",
+     "match_rating": 5.9,
+     "match_rating_unclamped": 5.893,
+     "minutes_share": 0.833
+    },
+    {
+     "slot": 6,
+     "role": "FWD",
+     "role_source": "attributes",
+     "match_rating": 5.7,
+     "match_rating_unclamped": 5.737,
+     "minutes_share": 0.833
+    },
+    {
+     "slot": 7,
+     "role": "FWD",
+     "role_source": "attributes",
+     "match_rating": 6.1,
+     "match_rating_unclamped": 6.054,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 8,
+     "role": "FWD",
+     "role_source": "attributes",
+     "match_rating": 5.8,
+     "match_rating_unclamped": 5.761,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 9,
+     "role": "FWD",
+     "role_source": "attributes",
+     "match_rating": 5.6,
+     "match_rating_unclamped": 5.615,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 10,
+     "role": "FWD",
+     "role_source": "attributes",
+     "match_rating": 5.9,
+     "match_rating_unclamped": 5.902,
+     "minutes_share": 1.0
+    },
+    {
+     "slot": 15,
+     "role": "FWD",
+     "role_source": "attributes",
+     "match_rating": 5.7,
+     "match_rating_unclamped": 5.7,
+     "minutes_share": null
+    },
+    {
+     "slot": 21,
+     "role": "DEF",
+     "role_source": "attributes",
+     "match_rating": 5.4,
+     "match_rating_unclamped": 5.395,
+     "minutes_share": 0.333
+    },
+    {
+     "slot": 22,
+     "role": "FWD",
+     "role_source": "attributes",
+     "match_rating": 5.8,
+     "match_rating_unclamped": 5.755,
+     "minutes_share": 0.333
+    }
+   ]
+  }
+ ]
+}

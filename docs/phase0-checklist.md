@@ -77,6 +77,12 @@ archive's filename table is encrypted. That is the WESYS container.
 `eFootball-WESYS-Unzlib-Tool.exe` is what produces the files. After extraction they land at the
 CPK-internal path `common\etc\...`:
 
+> **Superseded 2026-09-14.** The unzlib tool is no longer needed. Its author's eFootball Player
+> Editor reads dt200 directly, and its container code is vendored here:
+> `python tools/cpk_patch.py extract <dt200_console_all.cpk> bins`. One correction to the
+> paragraph above: the high-entropy bytes after `CPK ` are CRI's `@UTF` XOR obfuscation of the
+> TOC, not encryption. WESYS is the wrapper *inside*, around each table.
+
 | File | Path (relative to extraction root) | Size |
 |---|---|---|
 | `Player.bin` | `common\etc\pesdb\Player.bin` | 2,264,622 |

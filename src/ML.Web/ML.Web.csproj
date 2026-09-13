@@ -35,7 +35,7 @@
     <Compile Include="..\ML.App\SessionInbox.cs" Link="Engine\SessionInbox.cs" />
     <Compile Include="..\ML.App\SessionKnowledge.cs" Link="Engine\SessionKnowledge.cs" />
     <Compile Include="..\ML.App\SessionLoans.cs" Link="Engine\SessionLoans.cs" />
-    <Compile Include="..\ML.App\SessionMatchMemory.cs" Link="Engine\SessionMatchMemory.cs" />
+    <Compile Include="..\ML.App\SessionMatchExport.cs" Link="Engine\SessionMatchExport.cs" />
     <Compile Include="..\ML.App\SessionMorale.cs" Link="Engine\SessionMorale.cs" />
     <Compile Include="..\ML.App\SessionNegotiation.cs" Link="Engine\SessionNegotiation.cs" />
     <Compile Include="..\ML.App\SessionObjectives.cs" Link="Engine\SessionObjectives.cs" />
@@ -53,8 +53,6 @@
     <Compile Include="..\ML.App\CatalogData.cs" Link="Engine\CatalogData.cs" />
     <Compile Include="..\ML.App\Formations.cs" Link="Engine\Formations.cs" />
     <Compile Include="..\ML.App\MatchLauncher.cs" Link="Engine\MatchLauncher.cs" />
-    <Compile Include="..\ML.App\ScoreImport.cs" Link="Engine\ScoreImport.cs" />
-    <Compile Include="..\ML.App\VideoCapture.cs" Link="Engine\VideoCapture.cs" />
   </ItemGroup>
 
 </Project>

@@ -52,94 +52,17 @@
       <TextBlock Classes="ml-muted" Text="{Binding WorldSeedLine}" TextWrapping="Wrap"/>
     </StackPanel></Border>
 
-    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="ml-label" Text="Match video (OBS + ffmpeg)"/>
-      <CheckBox IsChecked="{Binding RecordMatches}" Foreground="{StaticResource MlTextBody}"
-                Content="Record every match via OBS"/>
-      <TextBlock Classes="ml-muted" Text="OBS WebSocket URL"/>
-      <TextBox Text="{Binding ObsUrl}" Watermark="ws://127.0.0.1:4455"/>
-      <TextBlock Classes="ml-muted" Text="OBS WebSocket password (blank if auth off)"/>
-      <TextBox Text="{Binding ObsPassword}" PasswordChar="•"/>
-      <TextBlock Classes="ml-muted" Text="ffmpeg path"/>
-      <TextBox Text="{Binding FfmpegPath}" Watermark="ffmpeg"/>
-      <TextBlock Classes="ml-muted" Text="Recordings folder (OBS output)"/>
-      <TextBox Text="{Binding VideoDir}" Watermark="C:\Users\you\Videos"/>
-      <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                 Text="Saves as you type. Play Match starts the recording; 🎞 Analyse recording on the Dashboard stops it and mines goals, minutes and scorer suggestions. Setup: docs/video-capture.md."/>
-    </StackPanel></Border>
-
-    <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="ml-label" Text="Screenshot OCR (Steam)"/>
-      <TextBlock Classes="ml-muted" Text="Steam folder"/>
-      <TextBox Text="{Binding SteamRoot}"/>
-      <TextBlock Classes="ml-muted" Text="Steam user id"/>
-      <TextBox Text="{Binding SteamUserId}"/>
-      <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                 Text="Paths save as you type — the next 📷 Import uses them. While the Office is open, every new F12 screenshot in this folder is OCR'd automatically and lands as a pre-filled score for you to confirm."/>
-    </StackPanel></Border>
-
-    <Border Classes="ml-panel" Width="700" Margin="0,0,14,14"><StackPanel Spacing="8">
-      <TextBlock Classes="ml-label" Text="OCR calibration (score regions)"/>
-      <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                 Text="Where the two full-time score boxes sit, as fractions (0–1) of the screenshot. Defaults were measured off a real 2560x1600 capture. Changes re-run OCR live against the loaded screenshot and save instantly."/>
+    <Border Classes="ml-panel" Width="460" Margin="0,0,14,14"><StackPanel Spacing="8">
+      <TextBlock Classes="ml-label" Text="Match data (efootball-re stats host)"/>
+      <TextBlock Classes="ml-muted" Text="eFootball install folder"/>
+      <TextBox Text="{Binding GameDir}" Watermark="C:\Program Files (x86)\Steam\steamapps\common\eFootball"/>
       <StackPanel Orientation="Horizontal" Spacing="10">
-        <TextBlock Classes="ml-muted" Text="Aspect mapping" VerticalAlignment="Center"/>
-        <ComboBox ItemsSource="{Binding OcrAspectOptions}" SelectedItem="{Binding OcrAspect}"
-                  Width="300"/>
+        <Button Classes="ml-secondary" Content="↻ Check" Command="{Binding CheckMatchExportsCommand}" FontSize="12"/>
       </StackPanel>
-      <Grid ColumnDefinitions="52,120,120,120,120" RowDefinitions="Auto,Auto,Auto">
-        <TextBlock Grid.Row="0" Grid.Column="1" Classes="ml-muted" Text="x" Margin="4,0"/>
-        <TextBlock Grid.Row="0" Grid.Column="2" Classes="ml-muted" Text="y" Margin="4,0"/>
-        <TextBlock Grid.Row="0" Grid.Column="3" Classes="ml-muted" Text="w" Margin="4,0"/>
-        <TextBlock Grid.Row="0" Grid.Column="4" Classes="ml-muted" Text="h" Margin="4,0"/>
-        <TextBlock Grid.Row="1" Grid.Column="0" Text="Home" Foreground="{StaticResource MlTextBody}"
-                   FontSize="12" VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding OcrHomeX}" Minimum="0" Maximum="1"
-                       Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-        <NumericUpDown Grid.Row="1" Grid.Column="2" Value="{Binding OcrHomeY}" Minimum="0" Maximum="1"
-                       Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-        <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding OcrHomeW}" Minimum="0" Maximum="1"
-                       Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-        <NumericUpDown Grid.Row="1" Grid.Column="4" Value="{Binding OcrHomeH}" Minimum="0" Maximum="1"
-                       Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-        <TextBlock Grid.Row="2" Grid.Column="0" Text="Away" Foreground="{StaticResource MlTextBody}"
-                   FontSize="12" VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding OcrAwayX}" Minimum="0" Maximum="1"
-                       Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-        <NumericUpDown Grid.Row="2" Grid.Column="2" Value="{Binding OcrAwayY}" Minimum="0" Maximum="1"
-                       Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-        <NumericUpDown Grid.Row="2" Grid.Column="3" Value="{Binding OcrAwayW}" Minimum="0" Maximum="1"
-                       Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-        <NumericUpDown Grid.Row="2" Grid.Column="4" Value="{Binding OcrAwayH}" Minimum="0" Maximum="1"
-                       Increment="0.005" FormatString="0.000" FontSize="12" Margin="2"/>
-      </Grid>
-      <StackPanel Orientation="Horizontal" Spacing="10">
-        <Button Classes="ml-primary" Content="🧪 Test OCR now" Command="{Binding TestOcrCommand}"/>
-        <Button Classes="ml-secondary" Content="Reset to defaults"
-                Command="{Binding ResetOcrRegionsCommand}" FontSize="12"/>
-      </StackPanel>
-      <TextBlock Text="{Binding OcrResultLine}" Foreground="{StaticResource MlSuccessText}"
-                 FontSize="12" TextWrapping="Wrap" FontFamily="Consolas"/>
-      <StackPanel Orientation="Horizontal" Spacing="14">
-        <StackPanel Spacing="4">
-          <TextBlock Classes="ml-muted" Text="Home score crop"/>
-          <Border Background="{StaticResource MlSurfaceApp}" BorderBrush="{StaticResource MlBorder}"
-                  BorderThickness="1" CornerRadius="4" Padding="4">
-            <Image Source="{Binding OcrHomeCrop}" Width="150" Stretch="Uniform"/>
-          </Border>
-        </StackPanel>
-        <StackPanel Spacing="4">
-          <TextBlock Classes="ml-muted" Text="Away score crop"/>
-          <Border Background="{StaticResource MlSurfaceApp}" BorderBrush="{StaticResource MlBorder}"
-                  BorderThickness="1" CornerRadius="4" Padding="4">
-            <Image Source="{Binding OcrAwayCrop}" Width="150" Stretch="Uniform"/>
-          </Border>
-        </StackPanel>
-      </StackPanel>
-      <Border Background="{StaticResource MlSurfaceApp}" BorderBrush="{StaticResource MlBorder}"
-              BorderThickness="1" CornerRadius="4" Padding="4" HorizontalAlignment="Left">
-        <Image Source="{Binding OcrScreenshot}" MaxWidth="640" Stretch="Uniform"/>
-      </Border>
+      <TextBlock Text="{Binding MatchExportStatus}" Foreground="{StaticResource MlTextBody}"
+                 FontSize="12" TextWrapping="Wrap"/>
+      <TextBlock Classes="ml-muted" TextWrapping="Wrap"
+                 Text="The stats host from efootball-re runs inside the game and writes every finished match to ml_stats\ in this folder. The Office pre-fills the score, scorers and ratings from it for you to confirm. Install it with tools/vendor/efootball-re/memprobe/deploy_host.sh; tools/vendor/efootball-re/VENDOR.md has the steps."/>
     </StackPanel></Border>
 
     <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">

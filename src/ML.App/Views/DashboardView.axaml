@@ -121,8 +121,6 @@
                 <Button Content="Hairdryer" Command="{Binding PostTalkCommand}" CommandParameter="Demand" Classes="ml-secondary" FontSize="11"/>
               </StackPanel>
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <Button Content="📊 Import stats" Command="{Binding ImportStatsCommand}" Classes="ml-secondary" FontSize="11"
-                        ToolTip.Tip="F12 on the game's STATS screen first — possession and shots go into the match report"/>
                 <Button Content="Continue →" Command="{Binding CloseReportCommand}" Classes="ml-primary" FontSize="12"
                         HorizontalAlignment="Right"/>
               </StackPanel>
@@ -198,15 +196,9 @@
                       VerticalAlignment="Center"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <Button Content="📷 Import score" Command="{Binding ImportScoreCommand}"
+              <Button Content="📥 Load match export" Command="{Binding LoadMatchExportCommand}"
                       Classes="ml-secondary" FontSize="12"
-                      ToolTip.Tip="Read the score from your latest eFootball screenshot (F12)"/>
-              <Button Content="🎞 Analyse recording" Command="{Binding AnalyzeRecordingCommand}"
-                      Classes="ml-secondary" FontSize="12"
-                      ToolTip.Tip="Mine the OBS recording of the match: goals, minutes and scorer suggestions"/>
-              <Button Content="📊 Read stats from game" Command="{Binding ReadStatsFromGameCommand}"
-                      Classes="ml-secondary" FontSize="12"
-                      ToolTip.Tip="At the full-time results screen: read team stats and player ratings from the game's live memory"/>
+                      ToolTip.Tip="Load the newest finished match the stats host wrote to ml_stats: score, scorers, ratings and every player's counters. New exports pre-fill on their own; this is for loading one by hand."/>
             </StackPanel>
             <!-- Why the import didn't happen, next to the boxes it refused to touch — a refusal
                  buried in the muted status line at the foot of the card is a refusal nobody reads -->

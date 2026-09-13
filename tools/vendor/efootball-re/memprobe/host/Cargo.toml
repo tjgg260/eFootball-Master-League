@@ -1,0 +1,27 @@
+[package]
+name = "efootball_sider"
+version = "1.0.0"
+edition = "2021"
+authors = ["Toriga Modding Team"]
+description = "64-bit Side Loader / Memory Interceptor for eFootball (DirectX Proxy Hook)"
+
+[lib]
+crate-type = ["cdylib"]
+name = "dxgi"
+
+[dependencies]
+chrono = "0.4"
+retour = { version = "0.3", default-features = false }
+
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Threading",
+    "Win32_System_SystemServices",
+    "Win32_System_Diagnostics_Debug",
+] }
+
+[profile.release]
+opt-level = 3
+codegen-units = 1

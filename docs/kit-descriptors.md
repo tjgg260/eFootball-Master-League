@@ -125,10 +125,11 @@ python tools/kit_author.py --team 5002 --ref u0101p1 --gk-ref u0101g1 --colors .
 - Writes to `--out` (default `build/tree_base`) under
   `common/etc/uniform/team/<id>/` as `<id>_DEF_1st|2nd|GK1st.bin`;
   refuses to overwrite without `--force`.
-- **Never** rebuilds a CPK or touches the game install. Deployment stays with
-  the proven tree_base → cpkmakec align=512 rebuild path (and remember the
-  standing note: strip the two stray `.bak` files from tree_base before any
-  rebuild).
+- **Never** builds a CPK or touches the game install. Deployment stays with
+  the tree_base → `tools/cpk_patch.py` path, which patches only changed files
+  into the base dt200 (stray `.bak` files in the tree are skipped). A patch
+  cannot add files, so a descriptor for a team id with no existing kit files
+  in dt200 is refused at deploy.
 
 ## play_match integration (WIRED 2026-08-23 — boot test still pending)
 
@@ -136,7 +137,7 @@ The game has 981 Team.bin slots; a career renders one match at a time, so
 kits for arbitrary ML clubs are a per-fixture projection, not a bulk import.
 `tools/play_match.py` now does that projection on every compile, **on by
 default**; `--no-kits` skips it. `--compile-only` (also new) stops the
-compile after the working tree is staged — before cpkmakec, before any
+compile after the working tree is staged — before the CPK patch, before any
 install — so the staged kits can be inspected.
 
 What runs, per fixture, on the host-slot path (at least one club is not a
@@ -160,7 +161,7 @@ before the CPK rebuild — `author_fixture_kits()` in play_match:
    path (both clubs are real eFootball teams) never authors: those slots
    already carry the club's own shipped kit config, which is more real than
    a palette guess.
-4. Then the normal deploy continues (cpkmakec align=512 → `--install`).
+4. Then the normal deploy continues (`cpk_patch` of the changed files → `--install`).
 
 Verified 2026-08-23 on a `--compile-only` staging of Belshina Bobruisk
 (logo palette) vs Torpedo-BelAZ Zhodino (id-hash fallback) into host slots

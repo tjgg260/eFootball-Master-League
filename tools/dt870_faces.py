@@ -34,16 +34,11 @@ from dt870_harvest import target_set, player_pids  # noqa: E402
 
 def appearance_records(cpk: Path) -> dict[int, bytes]:
     """pid -> 64-byte PlayerAppearance record."""
-    from cricodecs import cpk as C
-    k = C.load(str(cpk))
-    payload = None
-    for idx, e in enumerate(k.files):
-        fp = (e.full_path or "").replace(chr(92), "/").lower()
-        if fp.endswith("common/etc/appearance/playerappearance.bin"):
-            payload = wesys.unpack_wesys_payload(k.file_bytes(idx))
-            break
-    if payload is None:
+    import cpk_patch
+    blob = cpk_patch.read(cpk_patch.load(cpk), "common/etc/appearance/PlayerAppearance.bin")
+    if blob is None:
         raise SystemExit(f"PlayerAppearance.bin not in {cpk.name}")
+    payload = wesys.unpack_wesys_payload(blob)
     out = {}
     for i in range(len(payload) // REC):
         base = i * REC

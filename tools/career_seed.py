@@ -471,6 +471,10 @@ def main() -> int:
     if schema.exists():
         con.executescript(schema.read_text(encoding="utf-8"))
     con.execute("PRAGMA foreign_keys=OFF")
+    # Career copies carry their original's game thumbnail (tools/game_faces.py). The app adds the
+    # column on open; a database the app has never opened may not have it yet.
+    if "game_face_path" not in {r[1] for r in con.execute("PRAGMA table_info(players)")}:
+        con.execute("ALTER TABLE players ADD COLUMN game_face_path TEXT")
 
     templates = real_team_templates(con)
 
@@ -573,20 +577,20 @@ def main() -> int:
             placed = 0
             for src_pid, shirt in db_squad:
                 row = con.execute(
-                    "SELECT name,position,overall_rating,portrait_path,real_face_path,"
+                    "SELECT name,position,overall_rating,portrait_path,real_face_path,game_face_path,"
                     "height_cm,weight_kg,age,nationality FROM players WHERE id=?", (src_pid,)).fetchone()
                 if row is None:
                     continue
-                nm, pos, ovr, portrait, face, h, w, age, nat = row
+                nm, pos, ovr, portrait, face, game_face, h, w, age, nat = row
                 our = next_pid
                 next_pid += 1
-                if portrait or face:
+                if portrait or face or game_face:
                     portraits += 1
                 con.execute(
                     "INSERT INTO players(id,game_pid,is_custom,name,position,overall_rating,"
-                    "portrait_path,real_face_path,height_cm,weight_kg,age,nationality) "
-                    "VALUES(?,?,1,?,?,?,?,?,?,?,?,?)",
-                    (our, our, nm, pos, ovr, portrait, face, h, w, age, nat))
+                    "portrait_path,real_face_path,game_face_path,height_cm,weight_kg,age,nationality) "
+                    "VALUES(?,?,1,?,?,?,?,?,?,?,?,?,?)",
+                    (our, our, nm, pos, ovr, portrait, face, game_face, h, w, age, nat))
                 con.executemany("INSERT INTO player_attributes(player_id,attribute,value) VALUES(?,?,?)",
                                 [(our, a, v) for a, v in con.execute(
                                     "SELECT attribute,value FROM player_attributes WHERE player_id=?",

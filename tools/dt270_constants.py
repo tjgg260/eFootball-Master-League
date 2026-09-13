@@ -73,12 +73,9 @@ def encode_constant(payload: bytes, template: bytes, level: int = 9, max_len: in
 
 
 def _cpk_constant(path: str, filename: str) -> bytes | None:
-    from cricodecs import cpk
-    c = cpk.load(path)
-    for i, e in enumerate(c.files):
-        if e.full_path.endswith(filename):
-            return decode_constant(c.file_bytes(i))
-    return None
+    import cpk_patch
+    blob = cpk_patch.read(cpk_patch.load(path), filename)
+    return None if blob is None else decode_constant(blob)
 
 
 def compare() -> int:
