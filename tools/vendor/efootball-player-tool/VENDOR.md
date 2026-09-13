@@ -10,7 +10,7 @@ Vendored: 2026-09-14
 | File | Why |
 |---|---|
 | `cpk.py` | CRI CPK reader and in-place patcher: `@UTF` de-obfuscation, TOC parsing, CRILAYLA decompression, `Cpk.patch` (in place, else into a gap, else appended; only that file's TOC row changes). |
-| `iostore.py` | UE IoStore (`.utoc`/`.ucas`, TOC v2, Zlib, AES) reader and Texture2D decoder. Used by `tools/game_faces.py` for the player thumbnails in `pak\pc1000_console_win`. Copied from the editor's `scratch/iostore.py` (untracked upstream, file dated 2026-09-13), sha256 `b6f96bbe08530210706c838c78808f63140e94bdc2a1b0a53f26f96188529427`. Needs Pillow and pycryptodome. The container map is upstream `docs/PAK_MAP_ZH.md`. |
+| `iostore.py` | UE IoStore (`.utoc`/`.ucas`, TOC v2, Zlib, AES) reader and Texture2D decoder. Used by `tools/game_faces.py` for the player thumbnails in `pak\pc1000_console_win`. Copied from the editor's `scratch/iostore.py` (untracked upstream, file dated 2026-09-13), sha256 `b6f96bbe08530210706c838c78808f63140e94bdc2a1b0a53f26f96188529427`. Needs Pillow and pycryptodome. The container paths it relies on are documented in `tools/game_faces.py`. |
 
 Copied verbatim, unmodified (sha256 `512280d9454dc0b521737774523187554a7e9b4eab6c6c05215c18cfd1e8da34`
 as copied, CRLF). Do not edit it in place: fix it in the editor and re-pull, so the diff stays

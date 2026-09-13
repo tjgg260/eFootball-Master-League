@@ -17,6 +17,9 @@ TestResults/
 *.trx
 *.coverage
 
+# Cargo build output of the vendored stats host
+tools/vendor/efootball-re/memprobe/host/target/
+
 # The career save itself. Never commit a database.
 *.db
 *.db-shm

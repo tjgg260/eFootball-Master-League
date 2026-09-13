@@ -4,7 +4,7 @@ namespace ML.Ingest;
 
 /// <summary>
 /// Player match ratings from a stats-host export: a port of the <c>match_rating</c> layer of
-/// efootball-re/mlstats/rating.py (model <c>mlstats-rating/1</c>). The game's own ratings are not
+/// tools/vendor/efootball-re/mlstats/rating.py (model <c>mlstats-rating/1</c>). The game's own ratings are not
 /// in the export, so this is what fills them.
 ///
 /// Start at 6.0, add or subtract per action by role, clamp to [3, 10]. Age plays no part — the same
@@ -13,7 +13,7 @@ namespace ML.Ingest;
 ///
 /// Keep it identical to rating.py: tests compare every player of two real exports against the
 /// ratings rating.py produced for them (samples/ml-stats/*.expected-ratings.json). When the Python
-/// model changes, regenerate those files and port the change.
+/// model changes, regenerate those files (tools/rating_reference.py) and port the change.
 /// </summary>
 public static class MatchRating
 {

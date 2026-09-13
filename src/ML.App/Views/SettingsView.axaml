@@ -62,7 +62,7 @@
       <TextBlock Text="{Binding MatchExportStatus}" Foreground="{StaticResource MlTextBody}"
                  FontSize="12" TextWrapping="Wrap"/>
       <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                 Text="The stats host from efootball-re runs inside the game and writes every finished match to ml_stats\ in this folder. The Office pre-fills the score, scorers and ratings from it for you to confirm. Setup is on the efootball-re side: memprobe/deploy_host.sh, then see its mlstats/README.md."/>
+                 Text="The stats host from efootball-re runs inside the game and writes every finished match to ml_stats\ in this folder. The Office pre-fills the score, scorers and ratings from it for you to confirm. Install it with tools/vendor/efootball-re/memprobe/deploy_host.sh; tools/vendor/efootball-re/VENDOR.md has the steps."/>
     </StackPanel></Border>
 
     <Border Classes="ml-panel" Width="340" Margin="0,0,14,14"><StackPanel Spacing="8">

@@ -77,8 +77,8 @@ dotnet test
 `Play Master League.bat` builds `ML.App` on first run and launches it from the repo root.
 
 For the full eFootball integration you also need eFootball on Steam, Python 3.11+ with
-`numpy` and `pycryptodome`, and, to capture results automatically, the stats host from
-efootball-re installed into the game.
+`numpy` and `pycryptodome`, and, to capture results automatically, a Rust toolchain to build
+the stats host in `tools/vendor/efootball-re/` and install it into the game.
 See [PLAYTESTING.md](PLAYTESTING.md) for the step-by-step setup.
 
 ## What you must supply yourself
@@ -91,7 +91,7 @@ place will not dirty your checkout.
 |---|---|---|
 | eFootball install (Steam appid 1665460) | Wherever Steam put it | Everything in Phase 3 and 4 |
 | EvoMod | Installed into the game as its author documents | The install order rule below |
-| efootball-re stats host | Installed into the game with efootball-re's `memprobe/deploy_host.sh`; writes `<eFootball>\ml_stats\match_*.json` | Result capture (Dashboard pre-fill, Settings → Match data) |
+| Stats host build (Rust toolchain) | `bash tools/vendor/efootball-re/memprobe/deploy_host.sh` builds it and installs `dxgi.dll` into the game; it writes `<eFootball>\ml_stats\match_*.json` | Result capture (Dashboard pre-fill, Settings → Match data) |
 | Your own game exports, FM exports, face packs | Repo root or `samples/` | The `tools/` import pipeline |
 
 No CPK tooling has to be supplied. The tools read and patch eFootball's `.cpk` archives directly
@@ -143,9 +143,13 @@ This is deliberate: `tools/vendor/sider/` carries file-format and WESYS cipher c
 [tools/vendor/sider/VENDOR.md](tools/vendor/sider/VENDOR.md). Do not add code under an
 incompatible licence.
 
-`tools/vendor/efootball-player-tool/cpk.py` is the eFootball Player Editor's CPK code, included
-here under GPL-3.0 by its author. Details in
+`tools/vendor/efootball-player-tool/` is the eFootball Player Editor's CPK and IoStore code,
+included here under GPL-3.0 by its author. Details in
 [tools/vendor/efootball-player-tool/VENDOR.md](tools/vendor/efootball-player-tool/VENDOR.md).
+
+`tools/vendor/efootball-re/` is the in-game stats host that writes the match exports. It is built
+on `rust_sider` from Efootball-Sider (GPL-3.0). Details and install steps in
+[tools/vendor/efootball-re/VENDOR.md](tools/vendor/efootball-re/VENDOR.md).
 
 Sider's `dxgi.dll` runtime is not redistributed here. eFootball is a Konami product; this
 project is not affiliated with or endorsed by Konami.

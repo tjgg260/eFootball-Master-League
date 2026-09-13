@@ -1,7 +1,7 @@
 {
  "source": "match_20260913_215134.json",
  "model": "mlstats-rating/1",
- "generated_by": "efootball-re mlstats/rating.py (model mlstats-rating/1)",
+ "generated_by": "tools/vendor/efootball-re/mlstats/rating.py (model mlstats-rating/1)",
  "teams": [
   {
    "side": "home",

@@ -26,7 +26,7 @@ experimental**. This guide covers the easy path first, then the advanced integra
 **Only for the full eFootball integration (optional, advanced):**
 - eFootball on Steam (PC)
 - Python 3.11+ with `numpy` and `pycryptodome`
-- efootball-re's stats host installed into the game (for automatic result capture)
+- A Rust toolchain, to build and install the stats host (for automatic result capture)
 - These are **not needed** to play a career by entering results yourself.
 
 ---
@@ -83,9 +83,10 @@ Board, Finances, Calendar, News, Stats, Table, Settings.
 
 If you play the match *in eFootball* and want the result captured instead of typing it:
 
-1. Install efootball-re's stats host into the game once: close eFootball, run its
-   `memprobe/deploy_host.sh`, and put empty `statshook.on` and `attrhook.on` files in the game
-   folder and in `eFootball\Binaries\Win64` (efootball-re's `mlstats/README.md` has the details).
+1. Install the stats host into the game once: close eFootball, run
+   `bash tools/vendor/efootball-re/memprobe/deploy_host.sh`, and put empty `statshook.on` and
+   `attrhook.on` files in the game folder and in `eFootball\Binaries\Win64`
+   (`tools/vendor/efootball-re/VENDOR.md` has the details).
    **Settings → Match data** shows whether exports are arriving.
 2. **Play Match** compiles the squads and boots eFootball. Play the fixture.
 3. After full time, choose to leave the match and go back to the main menu. About 15 seconds later

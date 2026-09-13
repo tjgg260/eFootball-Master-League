@@ -16,8 +16,9 @@ target.** Never read game state back in as authority after the initial seed.
 This repository is GPL-3.0 because it links vendored Sider code (`tools/vendor/sider/`) for
 WESYS decryption. Deliberate, informed choice — see
 [VENDOR.md](tools/vendor/sider/VENDOR.md). Do not add code here under an incompatible licence.
-`tools/vendor/efootball-player-tool/cpk.py` is included under GPL-3.0 by its author
-([VENDOR.md](tools/vendor/efootball-player-tool/VENDOR.md)).
+`tools/vendor/efootball-player-tool/` is included under GPL-3.0 by its author
+([VENDOR.md](tools/vendor/efootball-player-tool/VENDOR.md)). `tools/vendor/efootball-re/` is the stats
+host, built on Efootball-Sider's GPL-3.0 `rust_sider` ([VENDOR.md](tools/vendor/efootball-re/VENDOR.md)).
 
 ## Standing instructions
 
@@ -76,11 +77,10 @@ Recorded so paths don't have to be rediscovered. Verify before relying on them.
 - Steam user id: `1253972527`
 - Match exports (Phase 3 watcher target, written by efootball-re's stats host):
   `C:\Program Files (x86)\Steam\steamapps\common\eFootball\ml_stats\match_*.json`
-- efootball-re (stats host, exe/memory reverse engineering): the sibling folder `..\efootball-re`
-- eFootball Player Editor source (upstream of the vendored `cpk.py`): the sibling folder
-  `..\efootball-player-tool\efootball-player-tool`. The editor opens
-  dt200 directly, with no cpkmakec and no unzlib tool. Its docs record which `dt*.cpk` holds what
-  (`docs/CPK_MAP_ZH.md`).
+- Stats host source, install and export format: `tools/vendor/efootball-re/` (see its VENDOR.md;
+  upstream is not public)
+- CPK and IoStore code: `tools/vendor/efootball-player-tool/`, from the eFootball Player Editor,
+  which opens dt200 directly with no cpkmakec and no unzlib tool (upstream is not public)
 - Extract dt200's tables into a tree: `python tools/cpk_patch.py extract <cpk> <out_dir>`
 
 ### Source data — where every export actually lives
@@ -226,10 +226,10 @@ blocked, our own ReadProcessMemory works, WriteProcessMemory is untested. Patch 
 - **Phase 3** — capture. Screenshot OCR, OBS video analysis and the external memory scanners were
   deleted 2026-09-14. Results now come from efootball-re's stats host, which is injected into the
   game and writes each finished match to `ml_stats\match_*.json`. `ML.Ingest` links an export to
-  the waiting fixture by PID (never by team name) and rates players with a port of efootball-re's
-  `mlstats/rating.py`. That port must match rating.py exactly:
+  the waiting fixture by PID (never by team name) and rates players with a port of
+  `tools/vendor/efootball-re/mlstats/rating.py`. That port must match rating.py exactly:
   `samples/ml-stats/*.expected-ratings.json` is rating.py's output, and the tests compare every
-  player against it. Regenerate those files when rating.py changes. The export has no possession
+  player against it. After changing rating.py, run `tools/rating_reference.py` and port the change. The export has no possession
   percentage, so `possession` is the share of possession time (counter 0x4B, as in efootball-re's
   report.py). It read 74/26 against the screen's 70/30 in the one match checked. Switch to the
   game's own figure once the host exports it.

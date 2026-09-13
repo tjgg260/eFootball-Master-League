@@ -29,6 +29,6 @@ to work with.
 
 ## Also worth keeping here
 
-- `ml-stats/`: real match exports from efootball-re's stats host (2026-09-13; raw roster record
-  bytes stripped), each with `*.expected-ratings.json`, which is efootball-re's `rating.py` output
-  for that export. `MatchExportTests` pins the C# rating port to those files, player by player.
+- `ml-stats/`: real match exports from the stats host in `tools/vendor/efootball-re/` (2026-09-13;
+  raw roster record bytes stripped), each with `*.expected-ratings.json`, which is that folder's
+  `mlstats/rating.py` output for the export (regenerate with `tools/rating_reference.py`). `MatchExportTests` pins the C# rating port to those files, player by player.

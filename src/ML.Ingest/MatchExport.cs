@@ -11,7 +11,7 @@ namespace ML.Ingest;
 /// attributes. It writes <c>&lt;eFootball&gt;\ml_stats\match_&lt;kick-off&gt;.json</c> atomically
 /// (tmp + rename) once the match is finalised — back at the main menu, at the next kick-off, or
 /// on the next game start. Only the fields the league uses are bound here; the rest are documented
-/// in efootball-re/mlstats/README.md.
+/// in tools/vendor/efootball-re/mlstats/README.md.
 /// </summary>
 public sealed class MatchExport
 {
