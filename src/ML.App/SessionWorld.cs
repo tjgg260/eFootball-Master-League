@@ -532,6 +532,18 @@ public sealed partial class Session
                 $"WHERE p.overall_rating BETWEEN $lo AND $hi AND {needClause} " +
                 "AND COALESCE(p.age, 25) <= 29 " +
                 "AND p.superseded_by IS NULL " +
+                // WHAT THE BUG WAS. A reseed leaves the previous career's own player rows behind
+                // with no club: its copies of world players (20M-700M) and the curated overlay
+                // (45-46bn). Unsquadded, they read as free agents, so CPU clubs went shopping in
+                // the wreckage of the old save and signed them — the league filling up with a
+                // second Saliba while the real one played for Arsenal, and a transfer ticker
+                // announcing him. The reference world is the only pool anyone signs from. This is
+                // the band rule the Market lists by (MarketViewModel.WorldOnly), spelled out here
+                // because that const is private to the view model — keep the two the same.
+                // Academy ids (30-40M) fall inside the excluded band as well, exactly as they do
+                // in the Market, and the academy NOT EXISTS below already covered them.
+                "AND (p.id < 20000000 OR (p.id >= 700000000 " +
+                "AND NOT (p.id >= 45000000000 AND p.id < 46000000000))) " +
                 "AND NOT EXISTS (SELECT 1 FROM squad_members s WHERE s.player_id=p.id) " +
                 "AND NOT EXISTS (SELECT 1 FROM academy a WHERE a.player_id=p.id) " +
                 "ORDER BY (p.id * 2654435761) % 100000 LIMIT 40 OFFSET $off";

@@ -85,8 +85,21 @@
           <ScrollViewer IsVisible="{Binding ShowContinents}">
             <StackPanel Margin="18" Spacing="6">
               <TextBlock Classes="ml-body" Foreground="{StaticResource MlTextMuted}"
-                         Text="🌍  Pick a continent" HorizontalAlignment="Center" Margin="0,4,0,10"/>
-              <ItemsControl ItemsSource="{Binding Continents}">
+                         Text="🌍  Pick a continent" HorizontalAlignment="Center" Margin="0,4,0,10"
+                         IsVisible="{Binding HasCatalog}"/>
+
+              <!-- No build/catalog.json: the grid was simply empty, which reads as a broken app
+                   rather than a missing file. Name the file and say how to get it back. -->
+              <Border Classes="ml-card" Padding="24" MaxWidth="520" Margin="0,40,0,0"
+                      HorizontalAlignment="Center" IsVisible="{Binding !HasCatalog}">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="ml-h2" Text="No world to browse" HorizontalAlignment="Center"/>
+                  <TextBlock Classes="ml-body" TextWrapping="Wrap" TextAlignment="Center"
+                             Text="The world list (build\catalog.json) is missing from this folder — extract the download again."/>
+                </StackPanel>
+              </Border>
+
+              <ItemsControl ItemsSource="{Binding Continents}" IsVisible="{Binding HasCatalog}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate><UniformGrid Columns="3" HorizontalAlignment="Center"/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>

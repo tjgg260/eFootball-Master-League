@@ -159,7 +159,16 @@ public sealed partial class NewCareerViewModel : ObservableObject
             Stage = CareerStage.Vault;
             Status = "Continue, load a save, or start again.";
         }
+        else if (!HasCatalog)
+        {
+            Status = "Nothing to browse — the world list didn't come with this copy.";
+        }
     }
+
+    /// <summary>False when build/catalog.json never loaded. Without it the continent grid is
+    /// simply empty, which reads as a broken app rather than a missing file — so the stage says
+    /// what is wrong instead. The list is built once in the constructor and never changes.</summary>
+    public bool HasCatalog => _allCountries.Count > 0;
 
     // ------------------------------------------------------------------ the career vault
 
@@ -277,7 +286,9 @@ public sealed partial class NewCareerViewModel : ObservableObject
     {
         if (IsBuilding) return;
         Stage = CareerStage.Continent;
-        Status = "🌍 Pick a continent to begin.";
+        Status = HasCatalog
+            ? "🌍 Pick a continent to begin."
+            : "Nothing to browse — the world list didn't come with this copy.";
     }
 
     // The five stages of the drill-down.
@@ -475,12 +486,19 @@ public sealed partial class NewCareerViewModel : ObservableObject
         var rfsId = SelectedTeam.RfsId;
         var compId = SelectedLeague.CompId;
         var tail = new List<string>();
+        // The seeder prints "career snapshot saved: <path>" when it puts the career it is about to
+        // replace into the vault. That line scrolled past with the rest of the build log, so a
+        // user who had just overwritten a save never saw that it had been kept, or where.
+        const string VaultLine = "career snapshot saved:";
+        string? vaulted = null;
         void Log(string line)
         {
             lock (tail)
             {
                 tail.Add(line);
                 if (tail.Count > 40) tail.RemoveAt(0);
+                if (line.TrimStart().StartsWith(VaultLine, StringComparison.OrdinalIgnoreCase))
+                    vaulted = line.TrimStart()[VaultLine.Length..].Trim();
             }
             Dispatcher.UIThread.Post(() => Status = line);
         }
@@ -499,6 +517,12 @@ public sealed partial class NewCareerViewModel : ObservableObject
             session.ManagerName = name;                               // meta key "manager_name"
             if (!string.IsNullOrWhiteSpace(ManagerNationality))
                 session.SetSetting("manager_nat", ManagerNationality.Trim());
+            string? saved;
+            lock (tail) saved = vaulted;
+            Status = saved is null
+                ? $"{club} are yours. Good luck."
+                : $"{club} are yours. Your previous career went to the vault as " +
+                  $"{System.IO.Path.GetFileName(saved)}.";
             CareerStarted?.Invoke(session);
         }
         finally

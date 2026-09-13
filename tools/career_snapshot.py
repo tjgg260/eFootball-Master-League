@@ -11,7 +11,8 @@ world rebuild rewrites career id ranges in place with no undo. This tool separat
 
 It also exports guard_reseed(db_path, action), used by career_seed.py and build_master.py:
 refuse to run while a played career exists, unless ML_CONFIRM_RESEED=1 — and when the user
-does confirm, snapshot the career automatically before proceeding.
+does confirm, snapshot the career automatically before proceeding (any career, played or not:
+the app's New Career sets that variable and promises the vault a copy of whatever is on file).
 
 How rows are classified (dynamic — the table list comes from sqlite_master, the decision from
 column inspection, so new tables are picked up automatically):
@@ -368,7 +369,8 @@ def list_snapshots() -> None:
 def guard_reseed(db_path: Path | str, action: str = "rebuild") -> bool:
     """True when the caller may proceed. Refuses (False) while db_path holds a career with at
     least one played match, unless ML_CONFIRM_RESEED=1 — in which case the career is
-    snapshotted to /careers automatically before returning True."""
+    snapshotted to /careers automatically before returning True. With that variable set the
+    copy is taken for ANY career on file, played or not (see the note below)."""
     db_path = Path(db_path)
     if not db_path.exists():
         return True
@@ -378,9 +380,14 @@ def guard_reseed(db_path: Path | str, action: str = "rebuild") -> bool:
         con.close()
     except sqlite3.Error:
         return True
-    if info is None or not info["played"]:
-        return True                       # no career, or nothing played yet — nothing to lose
-    if os.environ.get("ML_CONFIRM_RESEED") != "1":
+    if info is None:
+        return True                       # no career at all — nothing to lose
+    confirmed = os.environ.get("ML_CONFIRM_RESEED") == "1"
+    if not confirmed:
+        # Nothing played and nobody asked us to keep it: the old, quiet pass-through, so a bare
+        # `python tools/career_seed.py ...` at the command line behaves exactly as it always did.
+        if not info["played"]:
+            return True
         print(f"REFUSING the {action}: {db_path} holds your active career save.", flush=True)
         print(f"  It would DESTROY the {info['club']} career "
               f"(season {info['season_year']}, {info['played']} played match(es)). No undo.")
@@ -390,10 +397,27 @@ def guard_reseed(db_path: Path | str, action: str = "rebuild") -> bool:
         print("      cmd:         set ML_CONFIRM_RESEED=1")
         print("  (with it set, the career is snapshotted to /careers automatically first)")
         return False
+    # WHAT THE BUG WAS. The played test used to sit one line higher — "if info is None or not
+    # info['played']: return True" — so it answered BEFORE anything looked at ML_CONFIRM_RESEED.
+    # The app sets that variable on every New Career (CareerBuilder) and tells the manager that
+    # his current save goes to the vault first; for a career with no result recorded yet it went
+    # nowhere at all. Picking the club, sorting the squad, naming an XI and setting the season up
+    # IS the save — the first result is not what makes it one — and starting a second career
+    # wiped it with no copy anywhere. Consent given, it gets vaulted whether or not a ball has
+    # been kicked. Without consent nothing changes: an unplayed career still waves the caller
+    # through, so the command line behaves as before.
     print(f"ML_CONFIRM_RESEED=1 — snapshotting the {info['club']} career before the {action}…")
     try:
         path = save(db_path, quiet=True)
     except BaseException as e:                       # SystemExit included: never lose a career
+        if not info["played"]:
+            # Nothing has been played, so there is nothing a copy would save that a fresh seed
+            # does not recreate. Refusing here would make every New Career depend on being able
+            # to write careers/ — a read-only folder, a locked OneDrive sync or a full disk
+            # would then block the release's main path for a save that has no results in it.
+            print(f"auto-snapshot FAILED ({e}) — this career has no played match, "
+                  f"so the {action} goes ahead without a copy.")
+            return True
         print(f"auto-snapshot FAILED ({e}) — refusing the {action}.")
         return False
     print(f"career snapshot saved: {path}")
