@@ -46,7 +46,11 @@ public sealed partial class Session
     {
         var squads = new[] { homeTeamId, awayTeamId }
             .SelectMany(teamId => Repo.SquadPlayers(teamId)
-                .Select(p => new SquadPlayer(p.Id, p.GamePid, p.Name, teamId)))
+                // The PID the match was PLAYED under: a career copy's own real eFootball record
+                // (base_pid) when it has one — Play Match puts that record on the pitch, so that
+                // is the PID the stats host exports. game_pid is the copy's internal id, which no
+                // export has ever carried; linking by it alone left every career fixture unlinked.
+                .Select(p => new SquadPlayer(p.Id, p.BasePid ?? p.GamePid, p.Name, teamId)))
             .ToList();
         return ExportLinker.Link(export, homeTeamId, awayTeamId, squads, out reason);
     }

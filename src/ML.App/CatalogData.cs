@@ -68,15 +68,6 @@ public static class CatalogData
         [JsonPropertyName("countries")] public List<CatalogCountry> Countries { get; set; } = new();
     }
 
-    private static string? Find()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir.FullName, "build", "catalog.json");
-            if (File.Exists(candidate)) return candidate;
-            dir = dir.Parent;
-        }
-        return null;
-    }
+    // The game-built world's picker list (build/game_catalog.json) — see WorldFiles.
+    private static string? Find() => WorldFiles.Catalog;
 }

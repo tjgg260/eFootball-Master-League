@@ -2,10 +2,10 @@
 r"""
 game_world.py — build a career world from the player's OWN eFootball install.
 
-THE MVP'S FIRST RUN (ruling 2026-09-13): the download ships no world. On first launch this reads the
-game's dt200 and dt870 archives — Player.bin, PlayerAssignment.bin, Team.bin, Country.bin,
-CompetitionUnit.bin, CategoryTeamList.bin — and writes a small, separate world database. The owner's
-curated build/master.db is a different file and is never opened by this tool.
+THE MVP'S FIRST RUN (rulings 2026-09-13): the download ships no world, and the app's only database
+is the one this writes — build/game_world.db, plus build/game_catalog.json for the New Career
+picker. The owner's curated build/master.db is a different file; it stays on disk and this tool
+never opens it. The MVP world is eFootball-native: the clubs, leagues and players of dt200.
 
 What it reads, and how
   * Containers through tools/cpk_patch.py (the Player Editor's CPK code; no cpkmakec, no cricodecs).
@@ -15,18 +15,23 @@ What it reads, and how
   * Abilities are stored as the game SHOWS them: base cards (PID < 2^32) keep them scaled x25/24
     in the file, and the map carries the rule that undoes it.
 
-Which archive wins
-  dt200 is the one the game reads for offline play (Phase 0 proved a dt200 squad edit renders; the
-  Player Editor calls it "the cpk the game actually reads"). So a club takes its squad from dt200
-  when dt200 has one, else from dt870; its players come from that SAME archive, whose squads never
-  point outside their own Player.bin. The two are never filtered against each other, and nothing is
-  filtered by PID band — both of those have emptied real clubs before.
+Why dt200 only
+  A career club has to be playable, and Play Match renders a fixture by writing the two squads into
+  dt200's own team slots — a club dt200 does not carry has no slot to render into. dt200 is also
+  the archive the game reads offline (Phase 0; the Player Editor calls it "the cpk the game
+  actually reads"). --with-dt870 adds dt870's extra clubs for later; the MVP does not use it.
 
 Identity
   Every player is stored under the PID that exists in Player.bin (players.id = game_pid = PID), and
   every club under its Team.bin id. Real PIDs reach into the 20M-700M range that careers seeded in
   the curated world use for their copies, so this world records its own career range in meta
-  (career_player_band) — well above every PID the game uses — for the seeder to honour.
+  (career_player_band) — well above every PID the game uses — for the seeder and the app to honour.
+
+Strength
+  The game stores no overall rating, but the simulator and the market need one number per player.
+  tools/data/strength_coeffs.json (fitted by derive_strength.py, scored on held-out players) turns
+  abilities + height into it. It fills players.overall_rating for the engine; the app is to show
+  stars, not this number.
 
 Safety
   Writes a temporary file and swaps it in. Refuses to overwrite any database this tool did not build
@@ -34,7 +39,7 @@ Safety
 
 Usage
     python tools/game_world.py [--out build/game_world.db] [--game-dir <eFootball>]
-                               [--dt200 <cpk>] [--dt870 <cpk>] [--replace]
+                               [--dt200 <cpk>] [--with-dt870 [--dt870 <cpk>]] [--replace] [--dry]
 """
 from __future__ import annotations
 
@@ -42,6 +47,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sqlite3
 import struct
 import sys
@@ -57,15 +63,17 @@ import cpk_patch  # noqa: E402
 import pesdb  # noqa: E402
 import wesys  # noqa: E402
 
-READER_VERSION = 1
+READER_VERSION = 2
 LAYOUTS = TOOLS / "data" / "player_layouts.json"
+STRENGTH = TOOLS / "data" / "strength_coeffs.json"
 SCHEMA = REPO / "src" / "ML.Data" / "schema.sql"
 DEFAULT_OUT = REPO / "build" / "game_world.db"
+CATALOG_NAME = "game_catalog.json"
 PESDB = "common/etc/pesdb/"
 
-# Careers seeded into THIS world copy players into [LO, HI): above every PID the game uses (base
-# cards < 2^31, variant cards from ~2^44 up would be 17.6 trillion — the band sits far below that
-# and far above 2^31), and clear of the curated world's 10B FM band and 45-46B overlay.
+# Careers seeded into THIS world copy players into [LO, HI): above every PID the game uses for a base
+# or club card, and clear of the curated world's 10B FM band and 45-46B overlay. The academy mints
+# inside it too (LO+10M .. LO+20M), exactly as the curated world's 30-40M sits inside 20M-700M.
 CAREER_PLAYER_BAND = (50_000_000_000, 51_000_000_000)
 
 # master.db's categorical codes (dt870_harvest.py's tables), keyed by the export's labels.
@@ -81,6 +89,7 @@ SPECIAL_TEAM_WORDS = ("dream team", "event team", "konoha", "uchiha", "dummy", "
 MIN_SQUAD = 11
 MIN_LEAGUE_CLUBS = 8
 MIN_LEAGUE_ONE_COUNTRY = 0.6
+CLUB_RATING_TOP = 16        # a club's catalog rating: the mean strength of its best 16
 
 
 class WorldError(Exception):
@@ -112,10 +121,6 @@ class Archive:
     def fingerprint(self) -> dict:
         data = self.path.read_bytes()
         return {"path": str(self.path), "size": len(data), "sha1": hashlib.sha1(data).hexdigest()}
-
-
-def read_bits(rec: bytes, off: int, width: int) -> int:
-    return (int.from_bytes(rec, "little") >> off) & ((1 << width) - 1)
 
 
 class PlayerDecoder:
@@ -222,7 +227,6 @@ def decode_teams(arch: Archive) -> dict[int, dict]:
 def decode_countries(arch: Archive) -> dict[int, str]:
     """Player nationality id -> English country name, from the game's own Country.bin
     (bits 9-18 of the 8-byte header; the English name is the fifth string)."""
-    import re
     data = arch.table("Country.bin")
     if data is None:
         return {}
@@ -249,10 +253,31 @@ def decode_competitions(arch: Archive) -> tuple[dict[int, dict], dict[int, list[
     members: dict[int, list[int]] = defaultdict(list)
     ctl = arch.table("CategoryTeamList.bin")
     if ctl is not None:
-        rows = sorted(struct.unpack_from("<III", ctl, i * 12) for i in range(len(ctl) // 12))
-        for team, cat, order in sorted(rows, key=lambda t: (t[1], t[2])):
+        rows = [struct.unpack_from("<III", ctl, i * 12) for i in range(len(ctl) // 12)]
+        for team, cat, _order in sorted(rows, key=lambda t: (t[1], t[2])):
             members[cat].append(team)
     return comps, members
+
+
+# ============================================================================ strength
+
+def load_strength(path: Path = STRENGTH) -> dict | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def strength(p: dict, coeffs: dict | None) -> int | None:
+    """The engine's one-number player strength (never shown — the app shows stars)."""
+    if not coeffs:
+        return None
+    c = coeffs["positions"].get(p.get("position") or "")
+    ab = p["abilities"]
+    if c is None or p.get("height_cm") is None or any(a not in ab for a in coeffs["abilities"]):
+        return None
+    raw = sum(w * ab[a] for w, a in zip(c["w"], coeffs["abilities"])) + c["height"] * p["height_cm"] + c["const"]
+    return max(40, int(raw + 0.5))
 
 
 # ============================================================================ building the world
@@ -262,8 +287,8 @@ def is_special(name: str) -> bool:
     return any(w in low for w in SPECIAL_TEAM_WORDS)
 
 
-def build(archives: list[Archive], layouts: dict, log=print) -> dict:
-    """Decode every archive and merge them into one world, in memory."""
+def build(archives: list[Archive], layouts: dict, coeffs: dict | None = None, log=print) -> dict:
+    """Decode every archive and merge them into one world, in memory. Archives in priority order."""
     per = {}
     for arch in archives:
         players, layout = decode_players(arch, layouts)
@@ -275,15 +300,15 @@ def build(archives: list[Archive], layouts: dict, log=print) -> dict:
                            "competitions": decode_competitions(arch), "gate": gate}
         log(f"  {arch.label}: {len(players):,} players ({layout}), {len(blocks):,} squads — gate {gate}")
 
-    order = [a.label for a in archives]                     # primary first
+    order = [a.label for a in archives]
     countries: dict[int, str] = {}
     for label in reversed(order):
         countries.update(per[label]["countries"])
     country_names = set(countries.values())
 
-    # ---- clubs: take each team's squad block from the first archive (in priority order) that has one
+    # ---- clubs: each team's squad block from the first archive (in priority order) that has one
     team_names: dict[int, dict] = {}
-    for label in reversed(order):                            # primary's names win
+    for label in reversed(order):                            # the primary's names win
         team_names.update(per[label]["teams"])
     clubs: dict[int, dict] = {}
     skipped = Counter()
@@ -324,12 +349,16 @@ def build(archives: list[Archive], layouts: dict, log=print) -> dict:
                         unattached += 1
     for p in players.values():
         p["nationality"] = countries.get(p["nat_id"])
+        p["strength"] = strength(p, coeffs)
 
-    # ---- club country = the nationality most of its squad shares
+    # ---- club country = the nationality most of its squad shares; catalog rating = mean strength
     for c in clubs.values():
         nat = Counter(players[pid]["nationality"] for pid, *_ in c["squad"]
                       if pid in players and players[pid]["nationality"])
         c["country"] = nat.most_common(1)[0][0] if nat else None
+        best = sorted((players[pid]["strength"] for pid, *_ in c["squad"]
+                       if pid in players and players[pid]["strength"]), reverse=True)[:CLUB_RATING_TOP]
+        c["rating"] = round(sum(best) / len(best), 1) if best else 0.0
 
     # ---- leagues: a category is a domestic league when enough of our clubs sit in it and most of
     # them share one country. Continental cups (many countries), national-team tournaments (no
@@ -346,7 +375,7 @@ def build(archives: list[Archive], layouts: dict, log=print) -> dict:
     for cid, comp in comps.items():
         if cid >= 65536:
             continue
-        mem = [t for t in members.get(cid, []) if t in clubs]
+        mem = list(dict.fromkeys(t for t in members.get(cid, []) if t in clubs))
         if len(mem) < MIN_LEAGUE_CLUBS:
             continue
         cc = Counter(clubs[t]["country"] for t in mem if clubs[t]["country"])
@@ -372,7 +401,7 @@ def build(archives: list[Archive], layouts: dict, log=print) -> dict:
             "skipped": dict(skipped), "unattached": unattached}
 
 
-# ============================================================================ writing the database
+# ============================================================================ writing
 
 def refuse_foreign(out: Path) -> None:
     if not out.exists():
@@ -388,7 +417,30 @@ def refuse_foreign(out: Path) -> None:
                          f"(This tool never writes over the curated master.db.)")
 
 
-def write(world: dict, out: Path, replace: bool) -> dict:
+def write_catalog(world: dict, path: Path) -> dict:
+    """The New Career picker's world list, in the catalog v3 shape CatalogData already reads:
+    countries -> leagues (by tier) -> clubs. Only leagues whose clubs the world actually holds."""
+    by_country: dict[str, list[dict]] = defaultdict(list)
+    for lg in world["leagues"].values():
+        by_country[lg["country"]].append(lg)
+    countries = []
+    for country in sorted(by_country):
+        leagues = []
+        for lg in sorted(by_country[country], key=lambda x: (x["tier"], x["name"])):
+            teams = [{"name": world["clubs"][t]["name"], "team_id": t, "rating": world["clubs"][t]["rating"],
+                      "squad": len(world["clubs"][t]["squad"]), "faces": 0, "logo": None}
+                     for t in lg["clubs"]]
+            leagues.append({"league_id": lg["id"], "name": lg["name"], "tier": lg["tier"],
+                            "teams": sorted(teams, key=lambda x: -x["rating"])})
+        countries.append({"name": country, "leagues": leagues})
+    doc = {"version": 3, "source": "game", "countries": countries}
+    tmp = path.with_name(path.name + ".building")
+    tmp.write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
+    os.replace(tmp, path)
+    return {"countries": len(countries), "leagues": sum(len(c["leagues"]) for c in countries)}
+
+
+def write(world: dict, out: Path, replace: bool, scope: str) -> dict:
     refuse_foreign(out)
     if out.exists() and not replace:
         raise WorldError(f"{out} already exists; pass --replace to rebuild it")
@@ -415,7 +467,8 @@ def write(world: dict, out: Path, replace: bool) -> dict:
     prow, arow, srow, krow = [], [], [], []
     for p in players.values():
         prow.append((p["pid"], p["pid"], p["pid"], p["name"], p["short_name"], p.get("position") or "CMF",
-                     p.get("age"), p.get("nationality"), p.get("height_cm"), p.get("weight_kg")))
+                     p.get("age"), p.get("nationality"), p.get("height_cm"), p.get("weight_kg"),
+                     p.get("strength")))
         arow += [(p["pid"], k, v) for k, v in p["abilities"].items()]
         for col, table in (("foot", FOOT), ("weak_foot_usage", WEAK_FOOT), ("weak_foot_accuracy", WEAK_FOOT),
                            ("form", FORM), ("injury_resistance", INJURY)):
@@ -428,7 +481,7 @@ def write(world: dict, out: Path, replace: bool) -> dict:
             srow.append((p["pid"], p["secondary_style"], "secondary"))
         krow += [(p["pid"], s, "innate") for s in p["skills"]]
     con.executemany("INSERT INTO players(id,game_pid,base_pid,is_custom,name,short_name,position,age,"
-                    "nationality,height_cm,weight_kg) VALUES(?,?,?,0,?,?,?,?,?,?,?)", prow)
+                    "nationality,height_cm,weight_kg,overall_rating) VALUES(?,?,?,0,?,?,?,?,?,?,?,?)", prow)
     con.executemany("INSERT INTO player_attributes(player_id,attribute,value) VALUES(?,?,?)", arow)
     con.executemany("INSERT INTO player_playstyles(player_id,playstyle,kind) VALUES(?,?,?)", srow)
     con.executemany("INSERT INTO player_skills(player_id,skill,source) VALUES(?,?,?)", krow)
@@ -442,6 +495,7 @@ def write(world: dict, out: Path, replace: bool) -> dict:
     con.executemany("INSERT INTO squad_members(team_id,player_id,squad_number,slot,role) VALUES(?,?,?,?,?)", sm)
     meta = {
         "world_source": "game",
+        "world_scope": scope,
         "world_reader_version": str(READER_VERSION),
         "world_built_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "career_player_band": f"{CAREER_PLAYER_BAND[0]},{CAREER_PLAYER_BAND[1]}",
@@ -451,28 +505,29 @@ def write(world: dict, out: Path, replace: bool) -> dict:
     con.commit()
     con.close()
     os.replace(tmp, out)
+    cat = write_catalog(world, out.with_name(CATALOG_NAME))
     return {"players": len(prow), "attribute_rows": len(arow), "playstyle_rows": len(srow),
-            "skill_rows": len(krow), "squad_rows": len(sm), "clubs": len(clubs), "leagues": len(leagues)}
+            "skill_rows": len(krow), "squad_rows": len(sm), "clubs": len(clubs), "leagues": len(leagues),
+            "catalog": cat}
 
 
 # ============================================================================ command line
 
 def find_archives(args) -> list[Archive]:
-    if args.dt200 or args.dt870:
-        pairs = [("dt200", args.dt200), ("dt870", args.dt870)]
+    if args.dt200:
+        dt200, dt870 = Path(args.dt200), (Path(args.dt870) if args.dt870 else None)
     else:
         if args.game_dir:
             os.environ["ML_EFOOTBALL_DIR"] = args.game_dir
         from steam_paths import game_cpk_dir
         cpk = game_cpk_dir()
-        pairs = [("dt200", cpk / "dt200_console_all.cpk"), ("dt870", cpk / "dt870_console_win.cpk")]
-    out = []
-    for label, p in pairs:
-        if p and Path(p).exists():
-            out.append(Archive(label, Path(p)))
-    if not out or out[0].label != "dt200":
-        raise WorldError("dt200_console_all.cpk not found — it is the archive the game reads, and the "
-                         "world is built from it first. Point --game-dir at your eFootball folder.")
+        dt200, dt870 = cpk / "dt200_console_all.cpk", cpk / "dt870_console_win.cpk"
+    if not dt200.exists():
+        raise WorldError(f"dt200_console_all.cpk not found at {dt200} — it is the archive the game reads, "
+                         f"and the world is built from it. Point --game-dir at your eFootball folder.")
+    out = [Archive("dt200", dt200)]
+    if args.with_dt870 and dt870 and dt870.exists():
+        out.append(Archive("dt870", dt870))
     return out
 
 
@@ -482,6 +537,7 @@ def main() -> int:
     ap.add_argument("--game-dir", default=None, help="the eFootball install folder (default: found via Steam)")
     ap.add_argument("--dt200", default=None)
     ap.add_argument("--dt870", default=None)
+    ap.add_argument("--with-dt870", action="store_true", help="add dt870's extra clubs (not used by the MVP)")
     ap.add_argument("--layouts", default=str(LAYOUTS))
     ap.add_argument("--replace", action="store_true", help="rebuild a world this tool built before")
     ap.add_argument("--dry", action="store_true", help="decode and report; write nothing")
@@ -489,14 +545,19 @@ def main() -> int:
     t0 = time.time()
     try:
         layouts = json.loads(Path(args.layouts).read_text(encoding="utf-8"))["layouts"]
+        coeffs = load_strength()
+        if coeffs is None:
+            print("note: no tools/data/strength_coeffs.json — player strength left empty")
         archives = find_archives(args)
+        scope = "+".join(a.label for a in archives)
         print("reading " + ", ".join(f"{a.label} ({a.path.name})" for a in archives))
-        world = build(archives, layouts)
+        world = build(archives, layouts, coeffs)
         clubs, leagues, players = world["clubs"], world["leagues"], world["players"]
         in_league = sum(1 for c in clubs.values() if c.get("league_id"))
+        rated = sum(1 for p in players.values() if p.get("strength"))
         print(f"clubs {len(clubs):,} ({in_league:,} in a league, {len(clubs) - in_league:,} unaffiliated); "
-              f"players {len(players):,} ({world['unattached']:,} unattached national-team players); "
-              f"skipped squads {world['skipped']}")
+              f"players {len(players):,} ({world['unattached']:,} unattached national-team players, "
+              f"{rated:,} with a strength); skipped squads {world['skipped']}")
         by_country = defaultdict(list)
         for lg in leagues.values():
             by_country[lg["country"]].append(lg)
@@ -507,7 +568,7 @@ def main() -> int:
         if args.dry:
             print(f"dry run — nothing written ({time.time() - t0:.1f}s)")
             return 0
-        counts = write(world, Path(args.out), args.replace)
+        counts = write(world, Path(args.out), args.replace, scope)
         print(f"wrote {args.out}: {counts} ({time.time() - t0:.1f}s)")
         return 0
     except WorldError as e:

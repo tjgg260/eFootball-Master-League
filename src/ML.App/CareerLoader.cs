@@ -270,26 +270,7 @@ public static class CareerLoader
         return int.TryParse(value, out var n) ? n : null;
     }
 
-    private static string? FindMasterDb()
-    {
-        // A shipped package can drop master.db right next to the exe (or in build/ under it);
-        // a dev checkout keeps it in the repo's build/. Check the simple spots first, then walk up.
-        var baseDir = AppContext.BaseDirectory;
-        foreach (var direct in new[]
-                 {
-                     Path.Combine(baseDir, "master.db"),
-                     Path.Combine(baseDir, "build", "master.db"),
-                 })
-        {
-            if (File.Exists(direct)) return direct;
-        }
-        var dir = new DirectoryInfo(baseDir);
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir.FullName, "build", "master.db");
-            if (File.Exists(candidate)) return candidate;
-            dir = dir.Parent;
-        }
-        return null;
-    }
+    // The career lives in the one world the app uses: build/game_world.db (WorldFiles). The name
+    // is kept for the callers above; master.db itself is never opened any more (ruling 2026-09-13).
+    private static string? FindMasterDb() => WorldFiles.Database;
 }

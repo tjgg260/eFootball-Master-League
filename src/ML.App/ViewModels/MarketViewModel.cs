@@ -103,8 +103,10 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     /// The market lists the REFERENCE WORLD only. Career copies (20M-700M) and the curated
     /// career overlay (45-46B) are a career's own duplicates of world players — listing them
     /// shows the same human twice. Matches ML.Web's long-standing market filter.
-    private const string WorldOnly =
-        "(p.id < 20000000 OR (p.id >= 700000000 AND NOT (p.id >= 45000000000 AND p.id < 46000000000)))";
+    /// The band is the WORLD's, not a constant: a game-built world keeps real PIDs in 20M-700M and
+    /// puts its careers elsewhere (Session.CareerPlayerBand), so a fixed 20M-700M hid ~1,600 real
+    /// players from the market there. Same expression the CPU clubs shop by.
+    private string WorldOnly => _s.WorldPlayerClause();
 
     /// <summary>
     /// The filters that hold in EVERY market mode. They are a const spliced straight into the
@@ -125,7 +127,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     /// signable free agents (a phantom Mbappe alongside the real one at Real Madrid).
     /// WorldOnly: the career's own copies of a world player, which show the same human twice.
     /// </summary>
-    private const string AlwaysFilter = "p.superseded_by IS NULL AND " + WorldOnly;
+    private string AlwaysFilter => "p.superseded_by IS NULL AND " + WorldOnly;
 
     private readonly Session _s;
 
@@ -1091,18 +1093,6 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         LoadOffers();
     }
 
-    private static string? FindMasterDb()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir.FullName, "build", "master.db");
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-            dir = dir.Parent;
-        }
-        return null;
-    }
+    // The market browses the one world the app uses (WorldFiles: build/game_world.db).
+    private static string? FindMasterDb() => WorldFiles.Database;
 }

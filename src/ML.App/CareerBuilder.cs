@@ -117,7 +117,19 @@ public static class CareerBuilder
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        // The seeder used to be given no --db and fell back to its own default, build/master.db —
+        // so the picker browsed one world and the career was built in another. It is told exactly
+        // which world, and which picker list, the app is looking at.
+        var world = WorldFiles.Database;
+        var catalog = WorldFiles.Catalog;
+        if (world is null || catalog is null)
+        {
+            log("The world hasn't been built from your eFootball yet — nothing to seed a career into.");
+            return null;
+        }
         psi.ArgumentList.Add(Path.Combine("tools", "career_seed.py"));
+        psi.ArgumentList.Add("--db"); psi.ArgumentList.Add(world);
+        psi.ArgumentList.Add("--catalog"); psi.ArgumentList.Add(catalog);
         psi.ArgumentList.Add("--comp-id"); psi.ArgumentList.Add(compId.ToString());
         psi.ArgumentList.Add("--rfs-id"); psi.ArgumentList.Add(rfsId.ToString());
         psi.ArgumentList.Add("--team"); psi.ArgumentList.Add(teamName);
@@ -148,26 +160,10 @@ public static class CareerBuilder
             return null;
         }
 
-        // The hand-curated squads (2026/27 Liverpool/Arsenal etc.) are the OWNER'S overlay, not the
-        // downloader's: the script reads his RFS database and his editor export. A fresh unzip has
-        // neither, so it crashed on the missing file — and the failure was swallowed, so a career
-        // that had seeded perfectly well ended with a Python traceback scrolling past in the build
-        // log. Run it only when both inputs are really there, and report the exit code, don't eat it.
-        var editorCsv = Path.Combine(root, "samples", "editor-bundled-players.csv");
-        var rfsDb = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "OneDrive", "Documents", "RFS", "DB", "RFS.DB");
-        if (File.Exists(editorCsv) && File.Exists(rfsDb))
-        {
-            var code = await RunScript(root, "update_career_squad.py", log);
-            if (code != 0)
-                log($"The hand-picked squad update didn't finish (exit code {code}) — " +
-                    "the career is fine, it just keeps the squads the seed built.");
-        }
-        else
-        {
-            log("Using the squads the seed built — the hand-picked squad update needs files this copy doesn't have.");
-        }
+        // The curated 2026/27 squad overlay (update_career_squad.py) is NOT run any more: it writes
+        // the curated world's 45-46bn overlay players into whatever database it is handed, and the
+        // world is now the one read from the player's own eFootball — its squads ARE the game's.
+        // (Ruling 2026-09-13: master.db and its overlays stay in the background until the MVP is proven.)
 
         return CareerLoader.TryLoad();
     }

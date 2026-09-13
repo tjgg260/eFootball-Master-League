@@ -542,8 +542,9 @@ public sealed partial class Session
                 // because that const is private to the view model — keep the two the same.
                 // Academy ids (30-40M) fall inside the excluded band as well, exactly as they do
                 // in the Market, and the academy NOT EXISTS below already covered them.
-                "AND (p.id < 20000000 OR (p.id >= 700000000 " +
-                "AND NOT (p.id >= 45000000000 AND p.id < 46000000000))) " +
+                // The band is now the world's own (Session.CareerPlayerBand) — one expression
+                // shared with the Market, no longer two hand-kept copies.
+                "AND " + WorldPlayerClause() + " " +
                 "AND NOT EXISTS (SELECT 1 FROM squad_members s WHERE s.player_id=p.id) " +
                 "AND NOT EXISTS (SELECT 1 FROM academy a WHERE a.player_id=p.id) " +
                 "ORDER BY (p.id * 2654435761) % 100000 LIMIT 40 OFFSET $off";
@@ -718,16 +719,10 @@ public sealed partial class Session
 
     // ------------------------------------------------------------------ academy
 
-    private const int AcademyIdBase = 30_000_000;
-
-    /// <summary>
-    /// Top of the academy's own id band. The band [30m, 40m) is what makes an academy id an
-    /// academy id: ten million slots, empty in every world we ship, well clear of the imported
-    /// namespaces (real players run to ~700m, curated to ~45bn, generated to ~50bn), and small
-    /// enough that a prospect's id still fits the int <c>game_pid</c> column. Allocation MUST be
-    /// bounded by it — see AcademyIntake for what happened when it wasn't.
-    /// </summary>
-    private const int AcademyIdCeiling = 40_000_000;
+    // The academy's id band [AcademyIdBase, AcademyIdCeiling) is now the WORLD's (SessionBands.cs):
+    // 30M-40M in the curated world, as it always was, and inside the game-built world's own career
+    // band there — its 30M-40M holds real eFootball players. Allocation stays bounded by it; see
+    // AcademyIntake for what happened when it wasn't.
 
     /// <summary>
     /// Preseason intake: every club's academy produces two prospects (16-18, raw ratings, built

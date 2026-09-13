@@ -135,6 +135,26 @@ def real_team_slots() -> dict[str, tuple[int, str]]:
     return slots
 
 
+def real_team_ids() -> dict[int, tuple[int, str]]:
+    """Every Team.bin team in the pristine tree by id -> (team_id, name)."""
+    team = wesys.unpack_wesys_payload((TREE_BASE / "common/etc/pesdb/Team.bin").read_bytes())
+    out = {}
+    for off in range(0, len(team), 1600):
+        tid = struct.unpack_from("<I", team, off + 12)[0]
+        out[tid] = (tid, team[off + 396:off + 444].split(b"\0")[0].decode("utf-8", "replace").strip())
+    return out
+
+
+def base_team_slot(db_path: str, team_id: int, by_id: dict) -> tuple[int, str] | None:
+    """The career club's own eFootball team slot, from teams.base_team_id — set on every club a
+    game-built world seeds. The slot is known, so there is nothing to guess from the name."""
+    import sqlite3
+    con = sqlite3.connect(db_path)
+    row = con.execute("SELECT base_team_id FROM teams WHERE id=?", (team_id,)).fetchone()
+    con.close()
+    return by_id.get(row[0]) if row and row[0] is not None else None
+
+
 def rfs_team_id(db: RfsDb, name: str) -> tuple[int, str]:
     """Resolve a club name (substring, case-insensitive) to its RFS team id + canonical name."""
     tt = db.tables["teams"]
@@ -276,7 +296,7 @@ def squad_from_db(db_path: str, team_id: int):
     for pid, shirt in con.execute(
             "SELECT player_id, squad_number FROM squad_members WHERE team_id=? ORDER BY slot",
             (team_id,)).fetchall():
-        p = con.execute("SELECT name, position FROM players WHERE id=?", (pid,)).fetchone()
+        p = con.execute("SELECT name, position, base_pid FROM players WHERE id=?", (pid,)).fetchone()
         if not p:
             continue
         abilities = dict(con.execute(
@@ -291,7 +311,7 @@ def squad_from_db(db_path: str, team_id: int):
         # face colour instead of the donor's (tools/appearance.py for the layout).
         skin = con.execute(
             "SELECT skin_tone FROM player_appearance WHERE player_id=?", (pid,)).fetchone()
-        players.append({"name": p[0], "position": p[1],
+        players.append({"name": p[0], "position": p[1], "base_pid": p[2],
                         "shirt": shirt if 1 <= shirt <= 99 else len(players) + 1,
                         "abilities": abilities, "role": role[0] if role else None,
                         "secondary_role": srole[0] if srole else None,
@@ -553,10 +573,23 @@ _STYLE_TABLE = None
 
 
 def _style_table():
+    """(position category, style name) -> the 5-bit in-possession value at bit 374.
+
+    THE DEPENDENCY THIS REMOVES: it was built on every compile from the editor's bundled export
+    (samples/editor-bundled-players.csv) — Konami data a download cannot ship — so Play Match died
+    on a fresh install before writing a single role. tools/data/player_layouts.json already carries
+    the same fact, proven 100% on 23,498 players: the style is the 8-bit window at bit 372 floored
+    to a multiple of 4, i.e. its id is the 5-bit value at 374, and it is NOT position-scoped. The
+    table keeps its (category, style) shape so the writer below is untouched."""
     global _STYLE_TABLE
     if _STYLE_TABLE is None:
-        from playstyle_bits import build_style_table
-        _STYLE_TABLE = build_style_table()
+        layouts = json.loads((REPO / "tools" / "data" / "player_layouts.json").read_text(encoding="utf-8"))
+        att = layouts["layouts"]["400"]["styles"]["att_table"]          # "id" -> style name
+        by_name: dict[str, int] = {}
+        for sid, name in att.items():
+            by_name.setdefault(name, int(sid))
+        _STYLE_TABLE = {(cat, name): sid for name, sid in by_name.items()
+                        for cat in ("GK", "DEF", "MID", "FWD")}
     return _STYLE_TABLE
 
 
@@ -639,7 +672,13 @@ def reconcile_real_slot(tree: Path, slot_id: int, squad) -> tuple[int, int, list
     for ix in sorted(range(len(squad)), key=lambda i: -len(squad[i]["name"].split())):
         p = squad[ix]
         pid = None
-        for r in slot_recs:
+        # The player's own eFootball record first, when the career knows it (base_pid — every
+        # copy in a game-built world does). Name matching was the only route, and it missed
+        # anyone whose name the game spells differently, or took the wrong "Gabriel".
+        bp = p.get("base_pid")
+        if bp is not None and bp in pid2offset and bp not in used:
+            pid = bp
+        for r in ([] if pid is not None else slot_recs):
             if r["player_id"] not in used and _name_matches(p["name"], pid2name.get(r["player_id"], "")):
                 pid = r["player_id"]; break
         if pid is None:
@@ -766,7 +805,8 @@ def main() -> int:
     ap.add_argument("--away", help="away club name (RFS lookup)")
     ap.add_argument("--home-id", type=int, dest="home_id", help="home team id in master.db (career)")
     ap.add_argument("--away-id", type=int, dest="away_id", help="away team id in master.db (career)")
-    ap.add_argument("--db", default=str(REPO / "build" / "master.db"), help="master DB for --home-id/--away-id")
+    ap.add_argument("--db", default=str(REPO / "build" / "game_world.db"),
+                    help="the career DB for --home-id/--away-id (the MVP world: game_world.db)")
     ap.add_argument("--install", action="store_true", help="copy the rebuilt dt200 into the game")
     ap.add_argument("--out", default=str(REPO / "build" / "dt200_console_all.cpk"))
     ap.add_argument("--no-kits", dest="no_kits", action="store_true",
@@ -803,8 +843,12 @@ def main() -> int:
     # If eFootball already has both clubs, use its real teams (real faces, kits, badges) — no
     # authoring. Only clubs eFootball lacks get authored into placeholder hosts below.
     slots = real_team_slots()
-    home_real = slots.get(_norm_club(home_name))
-    away_real = slots.get(_norm_club(away_name))
+    by_id = real_team_ids()
+    # The club's own slot when the career records it (base_team_id); the name only as a fallback.
+    home_real = ((base_team_slot(args.db, args.home_id, by_id) if args.home_id else None)
+                 or slots.get(_norm_club(home_name)))
+    away_real = ((base_team_slot(args.db, args.away_id, by_id) if args.away_id else None)
+                 or slots.get(_norm_club(away_name)))
     if home_real and away_real:
         return real_slot_match(home_real, away_real, home_name, away_name, args)
 

@@ -32,7 +32,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 
-CATALOG = REPO / "build" / "catalog.json"
+# The MVP world (ruling 2026-09-13): build/game_world.db, built from the player's own eFootball by
+# tools/game_world.py, with its picker list build/game_catalog.json beside it. The curated
+# build/master.db + build/catalog.json still seed when named explicitly with --db / --catalog.
+DEFAULT_DB = REPO / "build" / "game_world.db"
+GAME_CATALOG = "game_catalog.json"
+CURATED_CATALOG = REPO / "build" / "catalog.json"
 
 LEAGUE_ID = 9000       # top flight
 LEAGUE_ID_2 = 9001     # second division (promotion/relegation between the two)
@@ -90,6 +95,14 @@ CARRY_OVER_META = frozenset({
 #   a fresh download inheriting a previous save's reputation is the wrong first impression.
 #   Left OUT until the owner rules. Adding the string here is the whole change.
 CARRY_OVER_CAREER: frozenset[str] = frozenset()
+
+# Facts about the WORLD, not the save: which eFootball it was read from and, above all, the id
+# range its careers copy players into. They are not preferences either, so they sit in neither
+# list above — and the allowlist clear would have deleted them. Losing career_player_band is not
+# cosmetic: the next career would fall back to 20M-700M, where a game-built world keeps ~1,600
+# REAL players, and its clean slate would delete them.
+WORLD_META = frozenset({"world_source", "world_scope", "world_reader_version", "world_built_at",
+                        "world_archives", "career_player_band"})
 
 # Curated fallback shapes: (label, [(role_code, x, y) per slot 0..10]). Used when a club has no
 # real eFootball counterpart to copy a formation from. Game coordinate ranges: x 12-92 (centre
@@ -240,6 +253,21 @@ def lower_tier_clubs(country: dict, league: dict, size: int):
     return out, name
 
 
+def player_band(con) -> tuple[int, int]:
+    """[lo, hi): the id range this world's careers copy players into. A world built from the game
+    records its own (meta career_player_band), because real eFootball PIDs occupy 20M-700M; the
+    curated world has no key and keeps PLAYER_LO/PLAYER_HI, exactly as before."""
+    try:
+        row = con.execute("SELECT value FROM meta WHERE key='career_player_band'").fetchone()
+    except sqlite3.Error:
+        row = None
+    if row and row[0]:
+        lo, hi = (int(x) for x in str(row[0]).split(","))
+        if 0 < lo < hi:
+            return lo, hi
+    return PLAYER_LO, PLAYER_HI
+
+
 def clear_career(con) -> dict[str, int]:
     """Wipe every trace of the previous career out of an open connection — and nothing else.
 
@@ -272,6 +300,8 @@ def clear_career(con) -> dict[str, int]:
         raise RuntimeError("clear_career: PRAGMA foreign_keys must be OFF before the transaction "
                            "opens — the deletes are band-ordered, not FK-ordered")
 
+    band_lo, band_hi = player_band(con)
+
     def run(step: str, sql: str, params: tuple = ()) -> None:
         before = con.total_changes
         try:
@@ -302,7 +332,7 @@ def clear_career(con) -> dict[str, int]:
                 "squad_members", "players"):
         col = "id" if tbl == "players" else "player_id"
         run("career player rows", f"DELETE FROM {tbl} WHERE {col} >= ? AND {col} < ?",
-            (PLAYER_LO, PLAYER_HI))
+            (band_lo, band_hi))
 
     # ── 2. squads: career clubs' rosters, and the curated overlay's memberships ────────────────
     run("squad rows", f"DELETE FROM squad_members WHERE {teams_band('team_id')}")
@@ -364,13 +394,13 @@ def clear_career(con) -> dict[str, int]:
     # the mark still hides them from every pool that reads "WHERE superseded_by IS NULL".
     run("pointers cleared",
         "UPDATE players SET superseded_by=NULL WHERE superseded_by >= ? AND superseded_by < ?",
-        (PLAYER_LO, PLAYER_HI))
+        (band_lo, band_hi))
     # And a world club that recorded a career club as the team it derives from.
     run("pointers cleared", f"UPDATE teams SET base_team_id=NULL "
                             f"WHERE {teams_band('base_team_id')} AND NOT {teams_band('id')}")
 
     # ── 8. meta: keep the allowlist, delete the save ──────────────────────────────────────────
-    keep = tuple(sorted(CARRY_OVER_META | CARRY_OVER_CAREER))
+    keep = tuple(sorted(CARRY_OVER_META | CARRY_OVER_CAREER | WORLD_META))
     run("meta keys", f"DELETE FROM meta WHERE key NOT IN ({','.join('?' * len(keep))})", keep)
     return counts
 
@@ -404,7 +434,9 @@ def main() -> int:
                     help="unambiguous managed-club id (preferred over --team)")
     ap.add_argument("--comp-id", type=int, default=None, dest="comp_id",
                     help="REAL league to play in (catalog comp_id, e.g. 13 = Premier League)")
-    ap.add_argument("--db", default=str(REPO / "build" / "master.db"))
+    ap.add_argument("--db", default=str(DEFAULT_DB))
+    ap.add_argument("--catalog", default=None,
+                    help="the picker list (default: game_catalog.json beside --db)")
     args = ap.parse_args()
 
     # ── career-save guard (roadmap item 7): a reseed DELETES the current career's id ranges.
@@ -414,9 +446,12 @@ def main() -> int:
     if not guard_reseed(Path(args.db), action="career reseed"):
         return 2
 
-    if not CATALOG.exists():
-        sys.exit("build/catalog.json missing — run tools/build_catalog.py first")
-    catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
+    catalog_path = Path(args.catalog) if args.catalog else Path(args.db).with_name(GAME_CATALOG)
+    if not args.catalog and not catalog_path.exists() and Path(args.db).name == "master.db":
+        catalog_path = CURATED_CATALOG                     # the curated world, named explicitly
+    if not catalog_path.exists():
+        sys.exit(f"{catalog_path} missing — build the world first: python tools/game_world.py")
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     # Catalog v3 renamed comp_id->league_id and rfs_id->team_id. Alias the old keys so the rest of
     # this seeder (which reads comp_id/rfs_id) works against both v2 and v3 catalogs.
     for _co in catalog.get("countries", []):
@@ -471,6 +506,8 @@ def main() -> int:
     if schema.exists():
         con.executescript(schema.read_text(encoding="utf-8"))
     con.execute("PRAGMA foreign_keys=OFF")
+    game_world = (con.execute("SELECT value FROM meta WHERE key='world_source'").fetchone()
+                  or [None])[0] == "game"
     # Career copies carry their original's game thumbnail (tools/game_faces.py). The app adds the
     # column on open; a database the app has never opened may not have it yet.
     if "game_face_path" not in {r[1] for r in con.execute("PRAGMA table_info(players)")}:
@@ -492,7 +529,8 @@ def main() -> int:
                 "VALUES(?,?,2,3,3,586)", (LEAGUE_ID_2, div2_name))
     con.execute("INSERT INTO seasons(id,year,is_current) VALUES(?,?,1)", (SEASON_ID, 2026))
 
-    next_pid = PLAYER_BASE + 1
+    band_lo, band_hi = player_band(con)
+    next_pid = band_lo + 1
     tid_counter = 0
     tier_team_ids = {LEAGUE_ID: [], LEAGUE_ID_2: []}
     managed_tid, managed_lg = TEAM_BASE, LEAGUE_ID
@@ -586,15 +624,34 @@ def main() -> int:
                 next_pid += 1
                 if portrait or face or game_face:
                     portraits += 1
+                # base_pid: in a game-built world the source row's id IS its eFootball PID. The
+                # copy carries it so Play Match puts the real record on the pitch and the stats
+                # host's export (which reports real PIDs) links back to this player. Without it a
+                # career fixture's export never linked — the collaborator's open issue.
                 con.execute(
-                    "INSERT INTO players(id,game_pid,is_custom,name,position,overall_rating,"
+                    "INSERT INTO players(id,game_pid,base_pid,is_custom,name,position,overall_rating,"
                     "portrait_path,real_face_path,game_face_path,height_cm,weight_kg,age,nationality) "
-                    "VALUES(?,?,1,?,?,?,?,?,?,?,?,?,?)",
-                    (our, our, nm, pos, ovr, portrait, face, game_face, h, w, age, nat))
+                    "VALUES(?,?,?,1,?,?,?,?,?,?,?,?,?,?)",
+                    (our, our, src_pid if game_world else None, nm, pos, ovr, portrait, face,
+                     game_face, h, w, age, nat))
                 con.executemany("INSERT INTO player_attributes(player_id,attribute,value) VALUES(?,?,?)",
                                 [(our, a, v) for a, v in con.execute(
                                     "SELECT attribute,value FROM player_attributes WHERE player_id=?",
                                     (src_pid,)).fetchall()])
+                if game_world:
+                    # The game's own roles and skills travel with the player: Play Match writes
+                    # the career copy's playstyles back into Player.bin, and a copy with none
+                    # would have them wiped on the pitch.
+                    con.executemany(
+                        "INSERT OR IGNORE INTO player_playstyles(player_id,playstyle,kind) VALUES(?,?,?)",
+                        [(our, st, k) for st, k in con.execute(
+                            "SELECT playstyle,kind FROM player_playstyles WHERE player_id=?",
+                            (src_pid,)).fetchall()])
+                    con.executemany(
+                        "INSERT OR IGNORE INTO player_skills(player_id,skill,source) VALUES(?,?,?)",
+                        [(our, sk, so) for sk, so in con.execute(
+                            "SELECT skill,source FROM player_skills WHERE player_id=?",
+                            (src_pid,)).fetchall()])
                 s = shirt if (shirt and 1 <= shirt <= 99) else 1
                 con.execute("INSERT INTO squad_members(team_id,player_id,squad_number,slot) VALUES(?,?,?,?)",
                             (tid, our, s, placed))

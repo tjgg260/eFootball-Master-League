@@ -54,8 +54,11 @@ public sealed record PlayerRow
     // Liverpool and Arsenal, and every screen built on Session.Squad() — Tactics first — died
     // before it existed. The write side (academy prospects, sample data) already fits.
     public long GamePid { get; init; }
-    public int? BasePid { get; init; }
-    public int? DonorPid { get; init; }
+    // LONG for the same reason: base_pid is a real eFootball PID, and the current game's club cards
+    // carry PIDs past 2^44. As an int? the first such row would throw out of Repository, exactly as
+    // GamePid did on Tactics.
+    public long? BasePid { get; init; }
+    public long? DonorPid { get; init; }
     public bool IsCustom { get; init; }
     public string Name { get; init; } = "";
     public string? ShortName { get; init; }

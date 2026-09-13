@@ -56,7 +56,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 REPO = Path(__file__).resolve().parent.parent
-DEFAULT_DB = REPO / "build" / "master.db"
+DEFAULT_DB = REPO / "build" / "game_world.db"   # the MVP world (ruling 2026-09-13)
 CAREERS_DIR = REPO / "careers"
 
 # ── career id ranges ────────────────────────────────────────────────────────────────────────
@@ -116,6 +116,22 @@ def _pred_for(kind: str, col: str) -> str:
     if kind == "formation":
         return f"({c} >= {FORMATION_LO})"
     raise ValueError(kind)
+
+
+def _use_bands(con: sqlite3.Connection) -> None:
+    """Take this database's career player range from meta. A game-built world keeps real
+    eFootball PIDs in 20M-700M and records its own range (career_player_band). Saving it with
+    the curated range would vault real players as career rows, and a restore's clear would
+    delete them."""
+    global PLAYER_LO, PLAYER_HI
+    try:
+        row = con.execute("SELECT value FROM meta WHERE key='career_player_band'").fetchone()
+    except sqlite3.Error:
+        row = None
+    if row and row[0]:
+        lo, hi = (int(x) for x in str(row[0]).split(","))
+        if 0 < lo < hi:
+            PLAYER_LO, PLAYER_HI = lo, hi
 
 
 def career_predicate(table: str, cols: list[str]) -> str | None:
@@ -183,6 +199,7 @@ def career_info(con: sqlite3.Connection) -> dict | None:
 # ── save ────────────────────────────────────────────────────────────────────────────────────
 def save(db_path: Path, out_path: Path | None = None, quiet: bool = False) -> Path:
     con = ro_connect(db_path)
+    _use_bands(con)
     info = career_info(con)
     if info is None:
         raise SystemExit(f"no career in {db_path} (meta.current_team_id missing) — "
@@ -274,6 +291,7 @@ def restore(snap_path: Path, db_path: Path, backup: bool = True) -> None:
     con = sqlite3.connect(db_path, timeout=120)
     con.execute("PRAGMA busy_timeout=120000")
     con.execute("PRAGMA foreign_keys=OFF")
+    _use_bands(con)
     con.execute("ATTACH ? AS snap", (str(snap_path),))
     con.execute("BEGIN")
     snap_tables = {n for n, _ in _tables(con, "snap")}

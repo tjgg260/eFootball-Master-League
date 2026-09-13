@@ -53,6 +53,8 @@
     <Compile Include="..\ML.App\CatalogData.cs" Link="Engine\CatalogData.cs" />
     <Compile Include="..\ML.App\Formations.cs" Link="Engine\Formations.cs" />
     <Compile Include="..\ML.App\MatchLauncher.cs" Link="Engine\MatchLauncher.cs" />
+    <Compile Include="..\ML.App\WorldFiles.cs" Link="Engine\WorldFiles.cs" />
+    <Compile Include="..\ML.App\SessionBands.cs" Link="Engine\SessionBands.cs" />
   </ItemGroup>
 
 </Project>

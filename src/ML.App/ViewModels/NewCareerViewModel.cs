@@ -188,8 +188,9 @@ public sealed partial class NewCareerViewModel : ObservableObject
         // The active career: read master's meta directly — cheap, no Session construction.
         try
         {
-            var master = System.IO.Path.Combine(root, "build", "master.db");
-            if (File.Exists(master))
+            // The active career lives in the one world the app uses (WorldFiles), not master.db.
+            var master = WorldFiles.Database;
+            if (master is not null)
             {
                 using var con = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={master};Mode=ReadOnly");
                 con.Open();
@@ -567,15 +568,5 @@ public sealed partial class NewCareerViewModel : ObservableObject
         return (continents, squads);
     }
 
-    private static string? FindCatalog()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            var candidate = Path.Combine(dir.FullName, "build", "catalog.json");
-            if (File.Exists(candidate)) return candidate;
-            dir = dir.Parent;
-        }
-        return null;
-    }
+    private static string? FindCatalog() => WorldFiles.Catalog;
 }

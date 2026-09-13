@@ -35,13 +35,20 @@ public static class Continents
         ["Saudi Arabia"] = "Asia", ["Japan"] = "Asia", ["China"] = "Asia", ["Korea Republic"] = "Asia",
         ["Iran"] = "Asia", ["Thailand"] = "Asia", ["Uzbekistan"] = "Asia", ["Qatar"] = "Asia",
         ["United Arab Emirates"] = "Asia", ["India"] = "Asia", ["Rest of Asia"] = "Asia",
+        // eFootball's own spellings (Country.bin) — the game-built world names countries the way the
+        // game does, and anything not in this map lands in Europe, which is where Malaysia's league
+        // went until these were here.
+        ["Malaysia"] = "Asia", ["China PR"] = "Asia", ["IR Iran"] = "Asia", ["Korea DPR"] = "Asia",
+        ["Chinese Taipei"] = "Asia", ["Hong Kong, China"] = "Asia", ["Indonesia"] = "Asia",
+        ["Vietnam"] = "Asia", ["Singapore"] = "Asia", ["Philippines"] = "Asia", ["Iraq"] = "Asia",
+        ["Jordan"] = "Asia", ["Kuwait"] = "Asia", ["Oman"] = "Asia", ["Bahrain"] = "Asia",
         // Africa
         ["Egypt"] = "Africa", ["Nigeria"] = "Africa", ["Rest of Africa"] = "Africa", ["Tunisia"] = "Africa",
         ["Algeria"] = "Africa", ["Ghana"] = "Africa", ["Morocco"] = "Africa", ["South Africa"] = "Africa",
         // Oceania
         ["Australia"] = "Oceania",
         // Everything else is Europe (UEFA), incl. the transcontinental members below:
-        ["Turkey"] = "Europe", ["Russia"] = "Europe", ["Israel"] = "Europe", ["Kazakhstan"] = "Europe",
+        ["Turkey"] = "Europe", ["Türkiye"] = "Europe", ["Russia"] = "Europe", ["Israel"] = "Europe", ["Kazakhstan"] = "Europe",
         ["Azerbaijan"] = "Europe", ["Armenia"] = "Europe", ["Georgia"] = "Europe",
     };
 

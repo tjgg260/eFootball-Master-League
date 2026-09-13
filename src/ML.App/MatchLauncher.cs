@@ -60,6 +60,15 @@ public static class MatchLauncher
         psi.ArgumentList.Add(Path.Combine("tools", "play_match.py"));
         psi.ArgumentList.Add("--home-id"); psi.ArgumentList.Add(homeId.ToString());
         psi.ArgumentList.Add("--away-id"); psi.ArgumentList.Add(awayId.ToString());
+        // The compile reads the SAME world the app plays in. It used to fall back to its own
+        // default, build/master.db, so a career in one database would have been compiled from another.
+        var world = WorldFiles.Database;
+        if (world is null)
+        {
+            log("The world hasn't been built from your eFootball yet — nothing to compile.");
+            return false;
+        }
+        psi.ArgumentList.Add("--db"); psi.ArgumentList.Add(world);
         psi.ArgumentList.Add("--install");
         psi.Environment["PYTHONIOENCODING"] = "utf-8";
 
