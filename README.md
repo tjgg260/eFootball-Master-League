@@ -48,6 +48,16 @@ Testers should start with [PLAYTESTING.md](PLAYTESTING.md).
 | `samples/` | Schema notes derived from real exports. Real exports are not committed |
 | `assets/` | Competition and club artwork used by the app |
 
+## Download and play
+
+The [Releases page](https://github.com/tjgg260/eFootball-Master-League/releases) carries a
+zip with the built app and the world database. Unzip it anywhere, double-click
+`Play Master League.bat`, and start a new career. Nothing else is needed to run a career by
+entering results yourself. Player photos are not included, so portraits are generated
+avatars; club crests and flags are.
+
+`tools/make_release.sh <version>` builds that package from a checkout.
+
 ## Building and running
 
 Requirements:
