@@ -57,13 +57,13 @@ CONSTS = ("constant_team.bin", "constant_match.bin", "constant_player.bin",
 
 def load_cpk_constants(path: Path) -> dict[str, tuple[bytes, bytes]]:
     """filename -> (container bytes, decoded payload) for every match constant in a dt270 CPK."""
-    from cricodecs import cpk
-    c = cpk.load(str(path))
+    import cpk_patch
+    c = cpk_patch.load(path)
     out = {}
-    for i, e in enumerate(c.files):
-        name = e.full_path.split("/")[-1]
+    for f in c.files:
+        name = f.path.split("/")[-1]
         if name.startswith("constant_") or name.endswith(".txt"):
-            blob = c.file_bytes(i)
+            blob = c.read(f.path)
             out[name] = (blob, decode_constant(blob) if name.endswith(".bin") else blob)
     return out
 

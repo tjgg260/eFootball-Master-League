@@ -55,23 +55,14 @@ FOOT = {"Right foot": 0, "Left foot": 1}
 
 def player_pids(cpk: Path) -> set[int]:
     """External PID set from a CPK's Player.bin (auto-detects 392/400 stride)."""
-    k = _load_cpk(cpk)
-    payload = None
-    for idx, e in enumerate(k.files):
-        fp = (e.full_path or "").replace(chr(92), "/").lower()
-        if fp.endswith("common/etc/pesdb/player.bin"):
-            payload = wesys.unpack_wesys_payload(k.file_bytes(idx))
-            break
-    if payload is None:
+    import cpk_patch
+    blob = cpk_patch.read(cpk_patch.load(cpk), "common/etc/pesdb/Player.bin")
+    if blob is None:
         raise SystemExit(f"Player.bin not found in {cpk.name}")
+    payload = wesys.unpack_wesys_payload(blob)
     stride = 392 if len(payload) % 392 == 0 else 400
     return {struct.unpack_from("<Q", payload, i * stride + 8)[0]
             for i in range(len(payload) // stride)}
-
-
-def _load_cpk(path: Path):
-    from cricodecs import cpk as C
-    return C.load(str(path))
 
 
 def target_set() -> tuple[set[int], dict]:

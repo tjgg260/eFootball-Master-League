@@ -11,21 +11,22 @@ public sealed record CompileOptions
     /// <summary>Extracted base CPK tree to author into (a working, boots-fine base).</summary>
     public required string TreePath { get; init; }
 
+    /// <summary>The archive <see cref="TreePath"/> was extracted from. Changed files are patched into a copy of it.</summary>
+    public required string BaseCpk { get; init; }
+
     /// <summary>Output CPK path.</summary>
     public required string OutputCpk { get; init; }
 
     public string Python { get; init; } = "python";
-
-    /// <summary>cpkmakec must build at 512 — the game silently ignores other alignments.</summary>
-    public int Alignment { get; init; } = 512;
 }
 
 public sealed record CompileResult(bool Success, string SpecPath, string OutputCpk, string Log);
 
 /// <summary>
 /// Compiles the master DB into a dt200 CPK by driving the proven Python authoring pipeline:
-/// export the spec, run ml_author.py against the extracted tree, then rebuild the CPK with
-/// cpkmakec at alignment 512. The DB is authoritative; this renders it into the game.
+/// export the spec, run ml_author.py against the extracted tree, then patch the files that changed
+/// into a copy of the base CPK (tools/cpk_patch.py — no full rebuild, so the base's header and
+/// alignment survive). The DB is authoritative; this renders it into the game.
 /// </summary>
 public sealed class Compiler
 {
@@ -50,10 +51,8 @@ public sealed class Compiler
             return new CompileResult(false, specPath, _opts.OutputCpk, log.ToString());
         }
 
-        var cpkmakec = Path.Combine(_opts.RepoRoot,
-            "CRI_File_System_Tools_v2.40.13.0", "crifilesystem v2.40.13.0", "cpkmakec.exe");
-        var build = Run(cpkmakec,
-            $"\"{_opts.TreePath}\" \"{_opts.OutputCpk}\" -mode=FILENAME -align={_opts.Alignment}", log);
+        var build = Run(_opts.Python,
+            $"tools/cpk_patch.py build --base \"{_opts.BaseCpk}\" --tree \"{_opts.TreePath}\" --out \"{_opts.OutputCpk}\"", log);
 
         var success = build == 0 && File.Exists(_opts.OutputCpk);
         log.AppendLine(success ? $"built {_opts.OutputCpk}" : "cpk build failed");
@@ -94,7 +93,7 @@ public sealed class Compiler
         var stderr = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
-        // Keep the tail — cpkmakec spams progress bars we do not want in the log.
+        // Keep the tail so a long run does not swamp the log.
         var tail = string.Concat(stdout.TakeLast(400)) + stderr;
         log.AppendLine($"$ {Path.GetFileName(exe)} {args}\n{tail.Trim()}");
         return process.ExitCode;

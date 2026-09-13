@@ -66,6 +66,9 @@ public sealed class MasterDb : IDisposable
         // column" on every database created from the schema. Fixed in both places — the schema for
         // a new file, these migrations for a file that predates the column.
         AddColumn("players", "real_face_path", "TEXT");
+        // eFootball's own UI thumbnail (pc1000 ui/Data/Thumbnail/Player/<PID>_), written by
+        // tools/game_faces.py. Preferred over every pack.
+        AddColumn("players", "game_face_path", "TEXT");
         AddColumn("players", "superseded_by", "INTEGER");
         AddColumn("inbox", "player_id", "INTEGER");
         AddColumn("inbox", "team_id", "INTEGER");

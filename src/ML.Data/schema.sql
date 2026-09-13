@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS players (
     -- database this file creates (MasterDb.OpenInMemory: the tests, ML.Sync, the sample career)
     -- failed with "no such column" the first time a player was read.
     real_face_path TEXT,                        -- facepack photo; preferred over portrait_path
+    game_face_path TEXT,                        -- eFootball's own thumbnail (tools/game_faces.py); preferred over both
     personality   TEXT,                         -- character label derived from player_traits
     superseded_by INTEGER                       -- non-null: a merged duplicate of that player id,
                                                 -- kept on file but hidden from every pool
@@ -415,8 +416,9 @@ CREATE TABLE IF NOT EXISTS player_status (
 -- Loans (P-next): players parked at another club for the season; recalls from the January
 -- window; everyone comes home at rollover. direction: 'out' = yours at a host, 'in' = theirs
 -- with you.
--- Team-level match stats OCR'd from the game's full-time STATS screen (video/screenshot
--- pipeline). One row per fixture per side; stat keys are the screen's own row labels.
+-- Team-level match stats from efootball-re's stats host export (ML.Ingest.ExportLinker.TeamStats).
+-- One row per fixture per side; stat keys are the full-time STATS screen's own row labels, plus
+-- possession_time (raw counter). possession is the share of possession time, not the screen's figure.
 CREATE TABLE IF NOT EXISTS match_team_stats (
     fixture_id INTEGER NOT NULL REFERENCES fixtures(id),
     side       TEXT    NOT NULL,           -- 'home' | 'away'
@@ -425,30 +427,24 @@ CREATE TABLE IF NOT EXISTS match_team_stats (
     PRIMARY KEY (fixture_id, side, stat)
 );
 
--- Per-player match ratings read from live memory (read-only). Ordered by the results screen.
+-- Per-player match ratings from a stats host export, rated by ML.Ingest.MatchRating (a port of
+-- efootball-re's rating.py; the export carries no game rating). `slot` is the export's roster
+-- slot, the same key as match_player_stats.slot.
 CREATE TABLE IF NOT EXISTS match_player_ratings (
     fixture_id INTEGER NOT NULL REFERENCES fixtures(id),
     side       TEXT    NOT NULL,           -- 'home' | 'away'
-    slot       INTEGER NOT NULL,           -- 0-based position in the results list
+    slot       INTEGER NOT NULL,           -- the export's roster slot (0-10 started, 11+ bench)
     rating     REAL    NOT NULL,
     PRIMARY KEY (fixture_id, side, slot)
 );
 
--- Per-player RAW COUNTERS read out of the engine's match record (tools/stats_read.py). This is
--- the only source of per-player pass completion: the game computes it, shows a rating derived
--- from it, and never writes it anywhere.
---
--- `slot` is the ENGINE slot 0..39, which is NOT known to be the same key as
--- match_player_ratings.slot (that one is the results-list position). Do not join the two tables
--- on slot until a live match has confirmed the orderings agree.
---
--- `stat` is a row name from stats_read.ROW_NAMES ('pass_short'), an unnamed row ('row_62'), a
--- derived percentage ('pass_short_pct'), the shootout column of a row ('pass_short_c8'), or one
--- of 'rating' / 'raw_score' / 'ability_min' / 'ability_max'.
+-- Per-player counters from a stats host export. `stat` is one of the export's action names
+-- ('passes', 'passes_completed', 'tackles', …), 'rating', or 'player_id' (the league player the
+-- export's PID resolved to — absent when it resolved to nobody).
 CREATE TABLE IF NOT EXISTS match_player_stats (
     fixture_id INTEGER NOT NULL REFERENCES fixtures(id),
     side       TEXT    NOT NULL,           -- 'home' | 'away'
-    slot       INTEGER NOT NULL,           -- engine slot 0..39 (see note above)
+    slot       INTEGER NOT NULL,           -- the export's roster slot
     stat       TEXT    NOT NULL,
     value      REAL    NOT NULL,
     PRIMARY KEY (fixture_id, side, slot, stat)

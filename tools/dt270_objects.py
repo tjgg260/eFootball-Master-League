@@ -440,15 +440,15 @@ def describe(template: dict, depth: int | None = None, _indent: int = 0, _out=No
 def load_game_packs(cpk_path: Path = GAME_DT270, schema: Schema | None = None) -> dict[str, tuple[bytes, Pack]]:
     """filename -> (container blob, Pack) for every constant_*.bin in a dt270 CPK."""
     sys.path.insert(0, str(REPO / "tools"))
-    from cricodecs import cpk                       # noqa: E402
+    import cpk_patch                                # noqa: E402
     from dt270_constants import decode_constant     # noqa: E402
     schema = schema or Schema.load()
-    c = cpk.load(str(cpk_path))
+    c = cpk_patch.load(cpk_path)
     out = {}
-    for i, e in enumerate(c.files):
-        name = e.full_path.split("/")[-1]
+    for f in c.files:
+        name = f.path.split("/")[-1]
         if name.startswith("constant_") and name.endswith(".bin"):
-            blob = c.file_bytes(i)
+            blob = c.read(f.path)
             out[name] = (blob, Pack(decode_constant(blob), schema))
     return out
 

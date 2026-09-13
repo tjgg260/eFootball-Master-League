@@ -52,14 +52,13 @@ def check(name: str, ok: bool, detail: str = "") -> bool:
 
 def cpk_payloads(path: Path) -> dict[str, bytes]:
     """filename -> decoded WESYS payload for the pesdb files we verify."""
-    from cricodecs import cpk
-    c = cpk.load(str(path))
+    import cpk_patch
+    c = cpk_patch.load(path)
     out: dict[str, bytes] = {}
-    for i, e in enumerate(c.files):
-        fp = e.full_path.replace("\\", "/")
-        for fn in FILES:
-            if fp.endswith(PESDB + fn):
-                out[fn] = wesys.unpack_wesys_payload(c.file_bytes(i))
+    for fn in FILES:
+        blob = cpk_patch.read(c, PESDB + fn)
+        if blob is not None:
+            out[fn] = wesys.unpack_wesys_payload(blob)
     missing = [fn for fn in FILES if fn not in out]
     if missing:
         sys.exit(f"{path}: missing {missing} — not a dt200 CPK?")
@@ -165,14 +164,11 @@ def main() -> int:
         name = con.execute("SELECT name FROM teams WHERE id=?", (db_team,)).fetchone()[0]
         team = base["Tactics.bin"]  # team ids come from Tactics.bin; names need Team.bin — use the
         del team                    # built tree's Team.bin path via the base CPK instead:
-        from cricodecs import cpk
-        c = cpk.load(args.base)
-        for i, e in enumerate(c.files):
-            if e.full_path.replace("\\", "/").endswith(PESDB + "Team.bin"):
-                tb = wesys.unpack_wesys_payload(c.file_bytes(i))
-                break
-        else:
+        import cpk_patch
+        blob = cpk_patch.read(cpk_patch.load(args.base), PESDB + "Team.bin")
+        if blob is None:
             sys.exit("Team.bin not in base CPK")
+        tb = wesys.unpack_wesys_payload(blob)
         for off in range(0, len(tb), 1600):
             tid = struct.unpack_from("<I", tb, off + 12)[0]
             nm = tb[off + 396:off + 396 + 48].split(b"\0")[0].decode("utf-8", "replace").strip()

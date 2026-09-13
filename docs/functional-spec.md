@@ -59,9 +59,9 @@ masked-range → revealed animation in Market rows.
 
 Working: play_match install → manual score import → `PlayOutMatchday(md, exceptFixture)` CPU sim
 (engine version replaces my MatchdayEngine one) → morale/objectives/career/fans updates
-(`UpdateMoraleAfterMatchday`, `ApplyFansAfterResult`, `ApplyCareerAfterResult`), OCR
-(`ScoreImport` + Steam screenshot dir), match memory stats (`TeamStatsFor`, `PlayerRatingsFor`),
-OBS video (`VideoCapture`).
+(`UpdateMoraleAfterMatchday`, `ApplyFansAfterResult`, `ApplyCareerAfterResult`), result capture
+from efootball-re's stats host (`MatchExportService` watching ml_stats, `Session.LinkMatchExport`,
+`Session.StoreMatchExport`).
 - Team talks: `TalkAvailable` / `ApplyTeamTalk(fixture, preMatch, tone)` / `TalkHint`.
 **Needs design (b)**: pre-match screen (XIs, odds via `MatchOdds`, opposition briefing, team talk)
 and post-match report (score, scorers, ratings grid `PlayerRatingsFor`, stats, talk, morale swings).

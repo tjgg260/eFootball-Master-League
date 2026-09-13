@@ -76,17 +76,16 @@ public sealed partial class Session
     /// <summary>Portrait path + skin tone for a news face (either may be missing).</summary>
     public (string? PortraitPath, int? SkinTone) NewsFaceOf(long playerId)
     {
-        // Follow the app's portrait precedence: eFootball real face (real_face_path) beats the RFS
-        // photo. The generic avatar tier is drawn by the caller when both paths are absent.
+        // Follow the app's portrait precedence: eFootball's own thumbnail (game_face_path), then
+        // the facepack photo, then the RFS photo. The generic avatar is drawn by the caller when
+        // all three are absent.
         using var cmd = Db.Connection.CreateCommand();
-        cmd.CommandText = "SELECT p.real_face_path, p.portrait_path, a.skin_tone FROM players p " +
-                          "LEFT JOIN player_appearance a ON a.player_id = p.id WHERE p.id=$p";
+        cmd.CommandText = "SELECT COALESCE(p.game_face_path, p.real_face_path, p.portrait_path), a.skin_tone " +
+                          "FROM players p LEFT JOIN player_appearance a ON a.player_id = p.id WHERE p.id=$p";
         cmd.Parameters.AddWithValue("$p", playerId);
         using var r = cmd.ExecuteReader();
         if (!r.Read()) return (null, null);
-        var real = r.IsDBNull(0) ? null : r.GetString(0);
-        var rfs = r.IsDBNull(1) ? null : r.GetString(1);
-        return (real ?? rfs, r.IsDBNull(2) ? null : r.GetInt32(2));
+        return (r.IsDBNull(0) ? null : r.GetString(0), r.IsDBNull(1) ? null : r.GetInt32(1));
     }
 
     /// <summary>The market ticker with identities: latest moves, fees and faces.</summary>

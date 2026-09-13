@@ -16,13 +16,17 @@ target.** Never read game state back in as authority after the initial seed.
 This repository is GPL-3.0 because it links vendored Sider code (`tools/vendor/sider/`) for
 WESYS decryption. Deliberate, informed choice — see
 [VENDOR.md](tools/vendor/sider/VENDOR.md). Do not add code here under an incompatible licence.
+`tools/vendor/efootball-player-tool/cpk.py` is included under GPL-3.0 by its author
+([VENDOR.md](tools/vendor/efootball-player-tool/VENDOR.md)).
 
 ## Standing instructions
 
 - **Never hand-roll the binary formats.** Superseded 2026-08-19: we now read and write
   `PlayerAssignment.bin` directly, but *only* through vendored Sider code whose layouts and
-  cipher came from upstream. Do not write a new parser from scratch, and do not edit the
-  vendored files in place — re-pull from upstream so the diff stays visible.
+  cipher came from upstream. CPK containers are handled the same way, only through the
+  vendored Player Editor `cpk.py` via `tools/cpk_patch.py`. Do not write a new parser from
+  scratch, and do not edit the vendored files in place. Re-pull from upstream so the diff stays
+  visible.
 - **No write happens without a byte-exact round-trip proof first.** `prove_round_trip()` in
   `tools/ml_apply.py` rebuilds the *unmodified* source file and compares byte for byte. If it
   cannot, we do not understand the format well enough to be trusted, and nothing is written.
@@ -48,7 +52,7 @@ WESYS decryption. Deliberate, informed choice — see
 |---|---|---|
 | `src/ML.Core` | League engine. Pure C#, **no I/O, no packages** | 2 |
 | `src/ML.Data` | SQLite + Dapper persistence | 1 |
-| `src/ML.Ingest` | Steam screenshot watcher, region calibration, Tesseract OCR | 3 |
+| `src/ML.Ingest` | efootball-re match exports: parse, watch ml_stats, link to the fixture by PID, rate players | 3 |
 | `src/ML.Sync` | CSV diff and writeback against `applied_state` | 4 |
 | `src/ML.App` | Avalonia UI | 1 |
 | `tests/ML.Core.Tests` | Engine tests | 2 |
@@ -70,9 +74,14 @@ Recorded so paths don't have to be rediscovered. Verify before relying on them.
 - Steam: `C:\Program Files (x86)\Steam`
 - eFootball appid: `1665460` — install dir `steamapps\common\eFootball`
 - Steam user id: `1253972527`
-- Screenshot dir (Phase 3 watcher target, created on first F12):
-  `C:\Program Files (x86)\Steam\userdata\1253972527\760\remote\1665460\screenshots`
-- Tesseract model: `tools/tessdata/eng.traineddata`
+- Match exports (Phase 3 watcher target, written by efootball-re's stats host):
+  `C:\Program Files (x86)\Steam\steamapps\common\eFootball\ml_stats\match_*.json`
+- efootball-re (stats host, exe/memory reverse engineering): the sibling folder `..\efootball-re`
+- eFootball Player Editor source (upstream of the vendored `cpk.py`): the sibling folder
+  `..\efootball-player-tool\efootball-player-tool`. The editor opens
+  dt200 directly, with no cpkmakec and no unzlib tool. Its docs record which `dt*.cpk` holds what
+  (`docs/CPK_MAP_ZH.md`).
+- Extract dt200's tables into a tree: `python tools/cpk_patch.py extract <cpk> <out_dir>`
 
 ### Source data — where every export actually lives
 
@@ -119,7 +128,7 @@ build_catalog -> fix_catalog_dupes -> fix_catalog_geo -> merge_split_club -> fix
   -> repoint_stale_slots -> verify_identity_fm
   -> fix_club_display_names -> sync_team_leagues -> link_logos_by_fm_id -> crest_from_rfs
   -> gen_club_badges -> fill_squads (+ spine rows for generated ids) -> link_faces_by_fm_id
-  -> link_career_copies -> fix_fullback_shortage -> refresh_roles_for_position -> assign_roles
+  -> link_career_copies -> game_faces -> fix_fullback_shortage -> refresh_roles_for_position -> assign_roles
   -> rerank_slots -> fix_shirt_numbers -> validate_db -> audit_world
 ```
 
@@ -167,11 +176,20 @@ Hard-won rules baked into those tools — change them at your peril:
 - **PlayerAssignment is a POSITIONAL format.** A record's club is its physical position in
   the file, not its `TeamID` value. A transfer swaps *which player occupies* a record; it
   never moves a record or edits `TeamID`. Editing `TeamID` put a winger in goal.
-- **Never rebuild or re-serialise the CPK.** cpkmakec rebuilds at alignment 2048 and the game
-  silently ignores anything but 512. cricodecs `save()` after a size-changing `replace_bytes`
-  re-lays-out the archive and the game black-screens. The deploy does a **pure in-place byte
-  patch**: the edited payload re-packs at zlib level 1 to the exact original length, so its
-  bytes drop into the same slot and every other byte of the CPK is untouched.
+- **Never rebuild or re-serialise the CPK.** cpkmakec rebuilt at alignment 2048 and the game
+  silently ignored it. cricodecs `save()` after a size-changing `replace_bytes` re-laid-out the
+  archive and the game black-screened. Both are gone (2026-09-14). Every CPK read and write goes
+  through `tools/cpk_patch.py`, which wraps the eFootball Player Editor's `cpk.py`
+  (`tools/vendor/efootball-player-tool/`). `Cpk.patch` swaps **one file**. If it fits its slot
+  it goes in place. If not, it moves into a gap or is appended, and only that file's TOC row
+  changes. The header, the alignment and every other file stay byte-identical. The editor proved
+  the move case in-game on 2026-09-07: Player.bin at zlib 6 is appended and dt200 grows once,
+  from 19.7 to 24.2 MB. Gates: the TOC must re-serialise byte-exact before an edit, and after
+  the edit every untouched file must read back identical. A patch **cannot add a file**, because
+  the TOC row count is fixed, so a tree file the base lacks is refused.
+- `cpk.py` reads `Align=2048` from the current dt200 header, both the game's copy and the
+  editor's `.bak`. That is not the 512 recorded in August. A patch keeps whatever the base says,
+  so there is no alignment to choose and nothing to "fix".
 - **WESYS payload is encrypted** (v6.0.0), decrypted via vendored Sider code. Level 1 repacks
   Konami's files byte-identically.
 - CSV quirks: the editor export truncates `TeamID` to u16; `Slot` is `sort_key // 4` and the
@@ -205,7 +223,16 @@ blocked, our own ReadProcessMemory works, WriteProcessMemory is untested. Patch 
 - **Phase 0** — PASSED 2026-08-19. Writeback proven in-game. See [docs/phase0-checklist.md](docs/phase0-checklist.md).
 - **Phase 1** — data foundation. Real schemas recovered in `/samples`; SQLite seed not built.
 - **Phase 2** — league engine. Built and tested.
-- **Phase 3** — capture. Not started.
+- **Phase 3** — capture. Screenshot OCR, OBS video analysis and the external memory scanners were
+  deleted 2026-09-14. Results now come from efootball-re's stats host, which is injected into the
+  game and writes each finished match to `ml_stats\match_*.json`. `ML.Ingest` links an export to
+  the waiting fixture by PID (never by team name) and rates players with a port of efootball-re's
+  `mlstats/rating.py`. That port must match rating.py exactly:
+  `samples/ml-stats/*.expected-ratings.json` is rating.py's output, and the tests compare every
+  player against it. Regenerate those files when rating.py changes. The export has no possession
+  percentage, so `possession` is the share of possession time (counter 0x4B, as in efootball-re's
+  report.py). It read 74/26 against the screen's 70/30 in the one match checked. Switch to the
+  game's own figure once the host exports it.
 - **Phase 4** — writeback. Core mechanism proven early (tools/ml_*.py); needs the `applied_state`
   diff model and the ML.Sync integration.
 - **Phase 5** — not started.

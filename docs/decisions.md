@@ -65,3 +65,19 @@ curl -sL -o tools/tessdata/eng.traineddata https://github.com/tesseract-ocr/tess
 `SquadRules` defaults (18–35 players, 2 GK) are guesses. Phase 0 step 6 measures the real
 limits. Phase 4 refuses to emit a CSV that violates them, so a wrong value here either blocks a
 legal transfer or lets a corrupt squad through.
+
+## 2026-09-14 — Results come from efootball-re's stats host; OCR, video and memory scans deleted
+
+Supersedes the two 2026-08-18 Phase 3 entries above (image library, Tesseract model). Screenshot
+OCR, OBS recording analysis and the external ReadProcessMemory readers are gone, along with
+Tesseract, ImageSharp and the research scanners behind them. efootball-re's host runs inside the
+game and writes each finished match to `ml_stats\match_*.json`: per-player counters keyed by
+dt200 PID, and team totals that matched the full-time screen in its recorded match.
+
+- An export belongs to a fixture only if at least 3 players on each side resolve to that club's
+  `game_pid`. Team names and the game's home/away never decide it.
+- Ratings are a C# port of efootball-re's `mlstats/rating.py`, pinned to its output by
+  `samples/ml-stats/*.expected-ratings.json`.
+- The export has no possession percentage. `possession` is the share of possession time
+  (counter 0x4B), which read 74/26 against the screen's 70/30 in the one match checked. Switch to the
+  game's own figure once the host exports it.

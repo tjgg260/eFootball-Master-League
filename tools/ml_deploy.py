@@ -15,14 +15,14 @@ Two hard-won rules are enforced here rather than trusted:
    scrambling every squad in the game.
 
 2. NEVER REBUILD OR RE-SERIALISE THE CPK. Two failures proved this the hard way:
-     - cpkmakec rebuilds at alignment 2048; the game silently ignores anything but 512.
+     - cpkmakec rebuilds at alignment 2048; the game silently ignored the result.
      - cricodecs replace_bytes()+save() re-lays-out the whole archive. Even at the right
        alignment it shed 60 KB and the game black-screened on boot.
-   So we do a PURE IN-PLACE BYTE PATCH: locate the file's exact bytes inside the CPK and
-   overwrite only them, leaving every other byte identical. This works because the modified
-   PlayerAssignment payload re-packs at zlib level 1 to the exact same length as the original
-   (the record count is unchanged), so nothing downstream has to move. If a future edit ever
-   changes the length, we refuse rather than relayout.
+   So we PATCH ONE FILE (tools/cpk_patch.py, the Player Editor's container code): the new
+   PlayerAssignment bytes go into the file's own slot when they fit, which they normally do
+   because the record count is unchanged. If they ever do not, the file moves into a gap or to
+   the end and only its TOC row changes - the path the editor proved in-game with Player.bin.
+   Either way every other byte of the CPK is verified identical to the base before writing.
 """
 from __future__ import annotations
 
@@ -36,15 +36,12 @@ from datetime import datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "tools"))
 sys.path.insert(0, str(REPO / "tools" / "vendor" / "sider"))
 
 import wesys  # noqa: E402
 import pesdb  # noqa: E402
-
-try:
-    from cricodecs import cpk
-except ImportError:
-    sys.exit("cricodecs is required:  pip install cricodecs")
+import cpk_patch  # noqa: E402
 
 GAME_CPK = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk")
 ARCHIVE_PATH = "common/etc/pesdb/PlayerAssignment.bin"
@@ -139,18 +136,13 @@ def main() -> int:
     out_cpk.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"base   {base_cpk.name} ({base_cpk.stat().st_size:,} bytes)")
-    raw = bytearray(base_cpk.read_bytes())
-    archive = cpk.load(base_cpk)
-    idx = next(i for i, e in enumerate(archive.files) if e.full_path == ARCHIVE_PATH)
-
-    blob = archive.file_bytes(idx)
+    base = base_cpk.read_bytes()
+    archive = cpk_patch.load(base_cpk)
+    entry = cpk_patch.find(archive, ARCHIVE_PATH)
+    if entry is None:
+        sys.exit(f"{ARCHIVE_PATH} is not in {base_cpk.name}")
+    blob = archive.read(entry.path)
     nibble = blob[1] & 0x0F
-    slot = len(blob)
-
-    # Find the file's exact bytes inside the CPK. The 24-byte WESYS+record prefix is unique.
-    offset = raw.find(blob[:24])
-    if offset < 0 or bytes(raw[offset:offset + slot]) != blob:
-        sys.exit("could not locate PlayerAssignment.bin bytes in the CPK for in-place patch")
 
     payload = build_payload(Path(args.csv), wesys.unpack_wesys_payload(blob))
     validate(payload)
@@ -158,21 +150,18 @@ def main() -> int:
     packed = wesys.pack_wesys_container(payload, key_nibble=nibble, compression_level=1)
     if wesys.unpack_wesys_payload(packed) != payload:
         sys.exit("WESYS round-trip failed - nothing written")
-    if len(packed) != slot:
-        sys.exit(f"re-packed blob is {len(packed):,} bytes, slot is {slot:,}. In-place patch needs "
-                 "an exact fit; a length change would require a relayout, which the game rejects.")
 
-    # Pure in-place overwrite. Every other byte of the CPK is untouched.
-    original = bytes(raw)
-    raw[offset:offset + slot] = packed
-    out_cpk.write_bytes(bytes(raw))
+    # Patch only this file. Every other byte of the CPK is verified identical before we write.
+    try:
+        out = cpk_patch.patch_bytes(base, {entry.path: packed})
+    except cpk_patch.CpkPatchError as exc:
+        sys.exit(f"CPK patch refused - nothing written: {exc}")
+    out_cpk.write_bytes(out)
 
-    delta = sum(1 for o, n in zip(original[offset:offset + slot], packed) if o != n)
-    rebuilt = cpk.load(out_cpk)
-    if rebuilt.alignment != archive.alignment or out_cpk.stat().st_size != base_cpk.stat().st_size:
-        sys.exit("structural drift from base; refusing to install")
-    print(f"built  {out_cpk} ({out_cpk.stat().st_size:,} bytes, {delta} bytes changed vs base, "
-          f"align={rebuilt.alignment}, tver={rebuilt.tver!r})")
+    placed = cpk_patch.find(cpk_patch.load(out_cpk), ARCHIVE_PATH)
+    where = "in place" if placed.offset == entry.offset else f"moved {entry.offset:,} -> {placed.offset:,}"
+    print(f"built  {out_cpk} ({len(out):,} bytes; PlayerAssignment.bin {len(blob):,} -> "
+          f"{len(packed):,} bytes, {where}; align={archive.align})")
 
     if not args.install:
         print("not installed (pass --install)")

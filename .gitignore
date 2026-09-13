@@ -17,9 +17,6 @@ TestResults/
 *.trx
 *.coverage
 
-# Tesseract model — 15 MB, fetched from tesseract-ocr/tessdata_best, not source
-tools/tessdata/*.traineddata
-
 # The career save itself. Never commit a database.
 *.db
 *.db-shm
@@ -32,10 +29,9 @@ tools/tessdata/*.traineddata
 *.cpk
 *.pak
 
-# Raw screenshots — keep only the deliberate calibration samples in /samples
+# Raw screenshots
 *.jpg
 *.jpeg
-!samples/results-*.png
 
 # The editor's bundled player database: 13 MB of third-party data, not ours to
 # redistribute. Its shape is recorded in samples/schema-players.md instead.
@@ -69,7 +65,6 @@ HDGraphic_Toriga.zip
 tools/__pycache__/
 build/pc0000_paths.txt
 build/iostore_assets.txt
-build/mem_scan_state.json
 build/stats_map.json
 build/ce/cmd.txt
 build/ce/cmd.done

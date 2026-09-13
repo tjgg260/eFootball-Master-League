@@ -4,7 +4,7 @@ ml_apply.py — read, edit and repack eFootball's PlayerAssignment.bin.
 
 This is the Phase 4 writeback path in miniature: decrypt the WESYS container, edit records,
 validate the result, and only then write. It never edits the game's files directly — it works
-on an extracted tree and rebuilds a CPK from it.
+on an extracted tree and patches the changed files into a copy of the CPK.
 
 Safety rules, enforced not documented:
   * every write is preceded by a byte-exact round-trip proof on the ORIGINAL bytes
@@ -16,6 +16,7 @@ WESYS decryption comes from vendored Sider code (GPL-3.0) — see tools/vendor/s
 That licence is why this repository is GPL-3.0.
 
 Usage:
+    python tools/cpk_patch.py extract "<eFootball>/cpk/dt200_console_all.cpk" bins
     python tools/ml_apply.py inspect
     python tools/ml_apply.py squad --team 102
     python tools/ml_apply.py transfer --pid 137924 --to 102 --shirt 18 \
@@ -28,11 +29,11 @@ import argparse
 import datetime as _dt
 import shutil
 import struct
-import subprocess
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "tools"))
 sys.path.insert(0, str(REPO / "tools" / "vendor" / "sider"))
 
 import wesys  # noqa: E402  (vendored, path set above)
@@ -55,7 +56,7 @@ def use_tree(tree: str | None) -> None:
         BINS = Path(tree).resolve()
         ASSIGNMENT_BIN = BINS / "common" / "etc" / "pesdb" / "PlayerAssignment.bin"
 BACKUP_DIR = Path.home() / "Backups" / "eFootball"
-CPKMAKEC = REPO / "CRI_File_System_Tools_v2.40.13.0" / "crifilesystem v2.40.13.0" / "cpkmakec.exe"
+GAME_DT200 = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk\dt200_console_all.cpk")
 
 REC = pesdb.ASSIGNMENT_RECORD_SIZE  # 24
 
@@ -324,46 +325,28 @@ def cmd_transfer(args) -> int:
     return 0
 
 
-def match_source_archive(out: Path, align: int) -> None:
-    """
-    Compare the rebuilt archive against the one it replaces.
-
-    A CPK built to the wrong alignment is the nastiest failure this project has hit: the file
-    is structurally valid, cricodecs reads it back perfectly, the payload verifies clean — and
-    the game silently ignores it and keeps showing the old data. Nothing errors. The only
-    visible symptom is "my edit didn't apply".
-
-    eFootball's archives are all 512. cpkmakec defaults to 2048.
-    """
-    try:
-        from cricodecs import cpk as _cpk
-    except ImportError:
-        return
-
-    target = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk") / out.name
-    if not target.exists():
-        return
-
-    original = _cpk.load(target)
-    if original.alignment != align:
-        print(f"\n  WARNING: {out.name} in the game folder is {align=} but the archive you are")
-        print(f"  replacing uses alignment {original.alignment}. A mismatched build loads")
-        print(f"  without error and is ignored. Rebuild with --align {original.alignment}.")
-
-
 def cmd_build_cpk(args) -> int:
-    if not CPKMAKEC.exists():
-        raise ApplyError(f"cpkmakec not found at {CPKMAKEC}")
+    """
+    Patch the files in the tree that differ from the base archive into a copy of it.
+
+    This used to be a full cpkmakec rebuild, and the nastiest failure it had was a wrong
+    alignment: structurally valid, read back perfectly, silently ignored by the game. A patch
+    cannot have that failure - the header, the alignment and every untouched file keep the base
+    archive's own bytes (tools/cpk_patch.py).
+    """
+    import cpk_patch
+    base = Path(args.base).resolve()
+    if not base.exists():
+        raise ApplyError(f"base CPK not found at {base}")
     out = Path(args.out).resolve()
-    match_source_archive(out, args.align)
-    cmd = [str(CPKMAKEC), str(BINS), str(out), f"-mode={args.mode}", f"-align={args.align}", "-view"]
-    print("  " + " ".join(cmd))
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    sys.stdout.write(result.stdout)
-    if result.returncode != 0:
-        sys.stderr.write(result.stderr)
-        return result.returncode
-    print(f"built {out} ({out.stat().st_size:,} bytes)")
+    if out == base:
+        raise ApplyError("--out must not be the base archive; install is a separate, backed-up step")
+    try:
+        r = cpk_patch.build(base, BINS, out)
+    except cpk_patch.CpkPatchError as exc:
+        raise ApplyError(str(exc)) from exc
+    print(f"built {out} ({r['out_size']:,} bytes, {r['patched']} of {r['files']} files patched "
+          f"into {base.name})")
     return 0
 
 
@@ -387,13 +370,10 @@ def main() -> int:
     p.add_argument("--swap-shirt", type=int, default=None, dest="swap_shirt")
     p.add_argument("--dry-run", action="store_true")
 
-    p = sub.add_parser("build-cpk", help="rebuild a CPK from bins/ via cpkmakec")
+    p = sub.add_parser("build-cpk", help="patch the changed files in bins/ into a copy of a base CPK")
     p.add_argument("--out", required=True)
-    p.add_argument("--mode", default="FILENAME")
-    # 512, NOT cpkmakec's 2048 default. eFootball's own archives and EvoMod's are all
-    # built at 512, and a 2048-aligned rebuild is silently ignored by the game - it loads
-    # without error and simply shows the old data.
-    p.add_argument("--align", type=int, default=512)
+    p.add_argument("--base", default=str(GAME_DT200),
+                   help="the archive the tree was extracted from (default: the game's dt200)")
 
     args = ap.parse_args()
     use_tree(args.tree)

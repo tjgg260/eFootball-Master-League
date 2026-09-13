@@ -3,6 +3,7 @@ using System.IO;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ML.Ingest;
 
 namespace ML.App.ViewModels;
 
@@ -15,8 +16,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     public SettingsViewModel(Session s)
     {
         _s = s;
-        _steamRoot = s.GetSetting("steam_root") ?? ScoreImport.SteamRoot;
-        _steamUserId = s.GetSetting("steam_user_id") ?? ScoreImport.SteamUserId;
+        _gameDir = s.GameDir;
         _fmAttributes = s.FmAttributeMode;
         _selectedSkin = s.GetSetting("ui_skin") ?? "Midnight";
         _maskStrict = s.GetSetting("mask_strict") ?? "Standard";
@@ -26,13 +26,9 @@ public sealed partial class SettingsViewModel : PageViewModel
         _autoBoot = s.GetSetting("auto_boot") != "0";
         _realNames = s.GetSetting("real_names") != "0";
         _managerName = s.ManagerName;
-        _recordMatches = s.GetSetting("record_matches") == "1";
-        _obsUrl = s.GetSetting("obs_url") ?? VideoCapture.ObsUrl;
-        _obsPassword = s.GetSetting("obs_password") ?? "";
-        _ffmpegPath = s.GetSetting("ffmpeg_path") ?? "ffmpeg";
-        _videoDir = s.GetSetting("video_dir") ?? "";
         WorldSeedLine = $"World seed: {s.WorldSeed} (this career's universe — unique per save)";
         LoadBackups();
+        CheckMatchExports();
     }
 
     public override string Title => "Settings";
@@ -104,52 +100,43 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     public string WorldSeedLine { get; }
 
-    // ---------------------------------------------------------------- match video (OBS + ffmpeg)
+    // ---------------------------------------------------------------- match data (stats host)
 
-    [ObservableProperty] private bool _recordMatches;
-    partial void OnRecordMatchesChanged(bool value)
+    [ObservableProperty] private string _gameDir;
+    partial void OnGameDirChanged(string value)
     {
-        _s.SetSetting("record_matches", value ? "1" : "0");
-        VideoCapture.RecordMatches = value;
-        Status = value
-            ? "Matches record via OBS (needs OBS running with WebSocket server on). Analyse from the Dashboard."
-            : "Match recording off.";
+        if (string.IsNullOrWhiteSpace(value)) return;
+        _s.GameDir = value;
+        MatchExportService.Instance.Start(_s.MatchExportDir);
+        CheckMatchExports();
         FlashSaved();
     }
 
-    // Text fields autosave as they change (a tiny settings write per edit) — no Save button,
-    // no "did I save?" ambiguity. The quiet "Saved." flash confirms each persist.
+    [ObservableProperty] private string _matchExportStatus = "";
 
-    [ObservableProperty] private string _obsUrl;
-    partial void OnObsUrlChanged(string value)
+    [RelayCommand]
+    private void CheckMatchExports()
     {
-        _s.SetSetting("obs_url", value.Trim());
-        VideoCapture.ObsUrl = value.Trim();
-        FlashSaved();
-    }
-
-    [ObservableProperty] private string _obsPassword;
-    partial void OnObsPasswordChanged(string value)
-    {
-        _s.SetSetting("obs_password", value.Trim());
-        VideoCapture.ObsPassword = value.Trim();
-        FlashSaved();
-    }
-
-    [ObservableProperty] private string _ffmpegPath;
-    partial void OnFfmpegPathChanged(string value)
-    {
-        _s.SetSetting("ffmpeg_path", value.Trim());
-        VideoCapture.FfmpegPath = value.Trim();
-        FlashSaved();
-    }
-
-    [ObservableProperty] private string _videoDir;
-    partial void OnVideoDirChanged(string value)
-    {
-        _s.SetSetting("video_dir", value.Trim());
-        VideoCapture.VideoDir = value.Trim();
-        FlashSaved();
+        var dir = _s.MatchExportDir;
+        if (!Directory.Exists(_s.GameDir))
+        {
+            MatchExportStatus = $"✗ {_s.GameDir} does not exist.";
+            return;
+        }
+        var files = MatchExportFolder.MatchFiles(dir);
+        if (files.Count == 0)
+        {
+            MatchExportStatus = Directory.Exists(dir)
+                ? $"… {dir} is there but holds no finished match yet. Play one and return to the main menu."
+                : $"✗ No ml_stats folder yet: the stats host has not exported a match on this install.";
+            return;
+        }
+        var latest = MatchExportFolder.LatestFinal(dir, out _);
+        MatchExportStatus = latest is null
+            ? $"… {files.Count} match file(s) in {dir}, none readable as a finished match."
+            : $"✓ {files.Count} match export(s). Newest: {latest.Stem} " +
+              $"({latest.Teams[0].Total("goals")}–{latest.Teams[1].Total("goals")}, " +
+              $"{latest.Teams.Sum(t => t.Players.Count)} players).";
     }
 
     [ObservableProperty] private string _managerName;
@@ -158,24 +145,6 @@ public sealed partial class SettingsViewModel : PageViewModel
         if (string.IsNullOrWhiteSpace(value)) return;
         _s.ManagerName = value;
         Status = $"You are {_s.ManagerName} — the press and the board use this name.";
-        FlashSaved();
-    }
-
-    // ---------------------------------------------------------------- OCR paths
-
-    [ObservableProperty] private string _steamRoot;
-    partial void OnSteamRootChanged(string value)
-    {
-        _s.SetSetting("steam_root", value.Trim());
-        ScoreImport.SteamRoot = value.Trim();
-        FlashSaved();
-    }
-
-    [ObservableProperty] private string _steamUserId;
-    partial void OnSteamUserIdChanged(string value)
-    {
-        _s.SetSetting("steam_user_id", value.Trim());
-        ScoreImport.SteamUserId = value.Trim();
         FlashSaved();
     }
 

@@ -402,12 +402,11 @@ offside, cards, FK/corner taken, dribble(+success), ball touches, balls won by
 interception/tackle/block/wedge, balls lost while dribbling/passing, GK shots faced/on
 target/saves/PA saves.
 
-**Extraction:** `tools/stats_read.py scan | dump [--raw] | save --fixture N | correlate` —
-read-only ReadProcessMemory, finds RecordSlot by signature-scanning the rating float array
-(40/team, stride 0x10, within the clamp), then walks
-`container(RecordSlot+0x78118) + 0x65C0 + team*0x38238 + player*0x13E8`, rows at `+0x10`
-(0x77 × 9 int32), DNP flag `+0x10cc`. Writes `match_player_stats(fixture_id, side, slot, stat,
-value)` incl. derived `*_pct` completion rates.
+**Extraction:** superseded 2026-09-14. The external ReadProcessMemory reader that walked this
+record (`tools/stats_read.py`) was deleted, along with the other memory scanners. Per-player
+counters now come from efootball-re's stats host, which runs inside the game and exports every
+finished match to `ml_stats\match_*.json` (see `ML.Ingest`). The layout notes above still
+describe what the engine keeps.
 
 ### Rating internals — two corrections that matter (2026-08-24)
 
@@ -435,17 +434,3 @@ formula reads `(Foul - OffSide)`. Victim rows are `0x40`/`0x41`. Set to **-8** i
 (= cancels a successful tackle). GK has no foul term; adding one needs a new term, not a weight.
 Caveat: fouls in a penalty shootout land in column 8, which mode-5 does not sum.
 
-### Is reading memory safe? (why `stats_read.py` cannot crash the game)
-
-The process is opened with `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ` only — deliberately
-**not** `VM_WRITE` / `VM_OPERATION`. No injection, no debugger attach, no thread suspend, no
-`VirtualProtectEx`. `ReadProcessMemory` has the kernel copy pages out; the target is neither
-modified nor paused and does not observe it. A failed read just returns false and is handled.
-This is the same read-only path `mem_probe.py` / `mem_scan.py` proved on this game (2026-08-20)
-and that `read_match_memory.py` (already wired into `ML.App/SessionMatchMemory.cs`) uses at the
-full-time screen. Writing is the risky class, and none of the stats path writes.
-
-The scan is vectorised with numpy (cumsum window test over stride-0x10 float phases); a
-pure-Python loop over every 16-byte candidate would take hours on a 350 MB+ process. Scan math is
-unit-tested against a synthetic planted rating array (finds the exact RecordSlot, values read
-back identical).

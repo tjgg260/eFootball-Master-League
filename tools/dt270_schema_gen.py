@@ -609,14 +609,14 @@ def main() -> int:
 
     # objects from the installed pack (schema-less Pack parse)
     sys.path.insert(0, str(REPO / "tools"))
-    from cricodecs import cpk as cpkmod                 # noqa: E402
+    import cpk_patch                                    # noqa: E402
     from dt270_constants import decode_constant         # noqa: E402
-    c = cpkmod.load(a.cpk)
+    c = cpk_patch.load(a.cpk)
     objects: dict[str, bytes] = {}
-    for i, e in enumerate(c.files):
-        name = e.full_path.split("/")[-1]
+    for f in c.files:
+        name = f.path.split("/")[-1]
         if name.startswith("constant_") and name.endswith(".bin"):
-            pack = Pack(decode_constant(c.file_bytes(i)))
+            pack = Pack(decode_constant(c.read(f.path)))
             for n in pack.names():
                 objects[n] = pack.object_bytes(n)
     print(f"  {len(objects)} objects in {a.cpk}")

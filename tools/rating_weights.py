@@ -171,12 +171,9 @@ def cmd_restore(_a):
     pristine = gt.BACKUPS / "dt270_console_all.PRISTINE.cpk"
     if not pristine.exists():
         sys.exit("no pristine dt270 backup")
-    from cricodecs import cpk
-    c = cpk.load(str(pristine))
-    stock = None
-    for i, e in enumerate(c.files):
-        if e.full_path.endswith("constant_match.bin"):
-            stock = Pack(decode_constant(c.file_bytes(i)), Schema.load()).object("rating")
+    import cpk_patch
+    blob = cpk_patch.read(cpk_patch.load(pristine), "constant_match.bin")
+    stock = None if blob is None else Pack(decode_constant(blob), Schema.load()).object("rating")
     _schema, packs = gt._schema_packs(gt.game_dt270())
     fname, _blob, pack = gt._find(packs, "rating")
     view = pack.object("rating")

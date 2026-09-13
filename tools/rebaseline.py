@@ -54,15 +54,9 @@ def main() -> int:
     shutil.copy2(GAME_DT200, REPO_BASE)
     print(f"new base: {REPO_BASE.name} ({REPO_BASE.stat().st_size:,} bytes, from the game dir)")
 
-    from cricodecs import cpk
-    c = cpk.load(str(REPO_BASE))
-    n = 0
-    for i, e in enumerate(c.files):
-        rel = e.full_path.lstrip("/")
-        out = TREE_BASE / rel
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_bytes(c.file_bytes(i))
-        n += 1
+    sys.path.insert(0, str(REPO / "tools"))
+    import cpk_patch
+    n = cpk_patch.extract(REPO_BASE, TREE_BASE)
     print(f"extracted {n} files into {TREE_BASE.relative_to(REPO)}")
 
     missing = [f for f in MUST_EXIST if not (TREE_BASE / f).exists()]

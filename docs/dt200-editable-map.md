@@ -1,7 +1,7 @@
 # dt200 — what we can change and have reflected in eFootball
 
 Everything in `dt200_console_all.cpk` is WESYS-wrapped data the game loads at boot. Our proven
-pipeline (`play_match.rebuild_and_install`, align=512, in-place patch, sha guard, `.bak`) can write
+pipeline (`play_match.rebuild_and_install` → `tools/cpk_patch.py` changed-file patch, sha guard, `.bak`) can write
 **any** of it back — the only work per file is: (1) locate the field, (2) prove round-trip, (3) UI.
 So this is a menu of "what could the app edit," ranked by value ÷ effort.
 

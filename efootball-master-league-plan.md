@@ -28,6 +28,11 @@ decrypts WESYS, handles the 400-byte record layout, supports `PlayerAssignment.b
 membership + squad numbers), and does CSV export/import with *sparse import* — writing back
 only changed fields. That CSV interface is our API. Do not reimplement it.
 
+> **Superseded.** Since 2026-08-19 we read and write the tables directly through vendored Sider
+> code. Since 2026-09-14 we also read and patch the CPK through the editor's own `cpk.py`
+> (`tools/vendor/efootball-player-tool/`). The editor is the eFootball Player Editor, which
+> earlier notes called "RBsGameLab's Player.bin Editor". It is now optional, for hand edits and CSV exports.
+
 ---
 
 ## Phase 0 — Proof of concept (manual, no code)
@@ -112,6 +117,11 @@ no negative budgets, no orphaned players.
 ---
 
 ## Phase 3 — Result capture
+
+> **Superseded 2026-09-14.** The screenshot/OCR plan below was built and then deleted. Results
+> now come from efootball-re's stats host, which runs inside the game and exports every finished
+> match (`ml_stats\match_*.json`). `ML.Ingest` links the export to the fixture by PID and
+> pre-fills the confirm screen. See `docs/decisions.md`, 2026-09-14.
 
 **Steam screenshot pipeline. No memory reading, no injection.**
 

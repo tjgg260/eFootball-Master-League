@@ -309,7 +309,7 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
             SELECT s.player_id PlayerId, s.squad_number Number, p.name Name, p.position Position,
                    COALESCE(p.age,0) Age, COALESCE(p.overall_rating,0) Rating,
                    p.nationality Nationality,
-                   p.height_cm HeightCm, p.weight_kg WeightKg, p.portrait_path PortraitPath,
+                   p.height_cm HeightCm, p.weight_kg WeightKg, COALESCE(p.game_face_path, p.real_face_path, p.portrait_path) PortraitPath,
                    (SELECT playstyle FROM player_playstyles WHERE player_id=s.player_id
                         AND kind='primary' LIMIT 1) Playstyle,
                    COALESCE(c.fatigue,0) Fatigue, c.injured_until_md InjuredUntil,

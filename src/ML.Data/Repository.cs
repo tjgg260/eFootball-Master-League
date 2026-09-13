@@ -110,13 +110,14 @@ public sealed class Repository
         "VALUES(@playerId,@toTeamId,@seasonId,'signing')", new { playerId, toTeamId, seasonId });
 
     /// <summary>Just one club's players (joined via squad_members) — avoids loading the whole DB.
-    /// PortraitPath prefers the facepack photo (real_face_path) over the RFS portrait: career
-    /// copies carry their face in real_face_path, so a portrait_path-only read shows no faces.</summary>
+    /// PortraitPath prefers eFootball's own thumbnail (game_face_path), then the facepack photo
+    /// (real_face_path), then the RFS portrait: career copies carry their face in the first two,
+    /// so a portrait_path-only read shows no faces.</summary>
     public IReadOnlyList<PlayerRow> SquadPlayers(int teamId) => _c.Query<PlayerRow>(
         "SELECT p.id Id,p.game_pid GamePid,p.base_pid BasePid,p.donor_pid DonorPid,p.is_custom IsCustom," +
         "p.name Name,p.short_name ShortName,p.position Position,p.age Age,p.dob Dob,p.nationality Nationality," +
         "p.height_cm HeightCm,p.weight_kg WeightKg,p.overall_rating OverallRating," +
-        "COALESCE(p.real_face_path, p.portrait_path) PortraitPath " +
+        "COALESCE(p.game_face_path, p.real_face_path, p.portrait_path) PortraitPath " +
         "FROM players p JOIN squad_members s ON s.player_id=p.id WHERE s.team_id=@teamId", new { teamId }).ToList();
 
     // --- condition ------------------------------------------------------------

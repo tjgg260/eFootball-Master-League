@@ -1,6 +1,6 @@
 # /samples
 
-Real CSV exports from the RBsGameLab Player.bin Editor. **Phase 1 is blocked until these
+Real CSV exports from the eFootball Player Editor. **Phase 1 is blocked until these
 exist.**
 
 The build plan forbids guessing column names or attribute field names — the schema is derived
@@ -29,5 +29,6 @@ to work with.
 
 ## Also worth keeping here
 
-- One full-time results screenshot per resolution you play at, for OCR region calibration
-  (Phase 3). Name them `results-1920x1080.png` and so on.
+- `ml-stats/`: real match exports from efootball-re's stats host (2026-09-13; raw roster record
+  bytes stripped), each with `*.expected-ratings.json`, which is efootball-re's `rating.py` output
+  for that export. `MatchExportTests` pins the C# rating port to those files, player by player.

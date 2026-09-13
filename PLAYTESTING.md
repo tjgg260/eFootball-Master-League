@@ -26,7 +26,7 @@ experimental**. This guide covers the easy path first, then the advanced integra
 **Only for the full eFootball integration (optional, advanced):**
 - eFootball on Steam (PC)
 - Python 3.11+ with `numpy` and `pycryptodome`
-- OBS Studio + ffmpeg (for match-video capture)
+- efootball-re's stats host installed into the game (for automatic result capture)
 - These are **not needed** to play a career by entering results yourself.
 
 ---
@@ -81,26 +81,25 @@ Board, Finances, Calendar, News, Stats, Table, Settings.
 
 ## 5. eFootball integration (optional, experimental — expect rough edges)
 
-If you play the match *in eFootball* and want stats/score captured instead of typing them:
+If you play the match *in eFootball* and want the result captured instead of typing it:
 
-1. In **Settings → Match video**, point the app at OBS (WebSocket) and your recordings folder,
-   and set your ffmpeg path. Turn on "Record every match".
-2. **Play Match** boots eFootball and starts an OBS recording.
-3. After full time, back in the app:
-   - **📷 Import** — reads the score from your latest F12 screenshot.
-   - **🎞 Analyse recording** — mines the OBS recording for goals + minutes.
-   - **📊 Read stats from game** — reads team stats (pass completion, tackles…) and player
-     ratings straight from the game's memory while you're on the full-time results screen.
-   - Then review and **Record**.
+1. Install efootball-re's stats host into the game once: close eFootball, run its
+   `memprobe/deploy_host.sh`, and put empty `statshook.on` and `attrhook.on` files in the game
+   folder and in `eFootball\Binaries\Win64` (efootball-re's `mlstats/README.md` has the details).
+   **Settings → Match data** shows whether exports are arriving.
+2. **Play Match** compiles the squads and boots eFootball. Play the fixture.
+3. After full time, choose to leave the match and go back to the main menu. About 15 seconds later
+   the host writes the match, and the Dashboard opens the result pre-filled: score, scorers,
+   every player's rating. Check it, add assists and cards, and **Record**. Recording also stores
+   the team stats and each player's counters.
+   - **📥 Load match export** loads the newest export by hand if nothing pre-filled.
 
 **Known issues here (help us test these):**
-- The video scoreboard OCR ships with generic 16:9 regions and **needs calibrating to your HUD**
-  or it can misread the score (see `docs/video-capture.md`). Until calibrated, **type the score
-  yourself** — it's the reliable path.
-- "Read stats from game" reads stats + ratings but **not the score** yet; enter the score
-  separately.
-- These three capture steps will be merged into one automatic "import on match end" flow in a
-  future build — for now they're separate buttons.
+- The host has no goal minutes, assists or cards. Pick those by hand.
+- Goals come from a counter efootball-re labels as inferred, so glance at the score before you
+  record.
+- An export only pre-fills when its players' ids match the fixture's two squads. A match played
+  on a squad file the app did not compile is refused, and the reason is shown.
 
 **For a smooth playtest, we recommend: play in eFootball, then just type the score + a few
 ratings and hit Record.** The management depth is the thing to test.
@@ -133,8 +132,8 @@ python tools/career_snapshot.py restore careers/<file>.db
 
 - ✅ **Solid**: the management sim — squads, tactics, league/cup sim, transfers, board, staff,
   youth, finances, news, season rollover.
-- ⚠️ **Experimental**: eFootball auto-capture (score/goals/stats from screenshots, recordings,
-  memory). Works on the dev setup; may need calibration on yours. Type results if in doubt.
+- ⚠️ **Experimental**: eFootball result capture through efootball-re's stats host (score,
+  scorers, ratings, stats). Needs the host installed into the game. Type results if in doubt.
 - 🧪 **Dev-only for now**: the game-file writeback (compiling squads into eFootball, custom
   team names) needs Python + your own eFootball extraction and isn't part of the basic playtest.
 

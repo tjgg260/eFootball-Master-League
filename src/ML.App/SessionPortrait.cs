@@ -5,8 +5,8 @@ namespace ML.App;
 /// <summary>Where a player's portrait came from, in the app's fixed precedence order.</summary>
 public enum PortraitSource
 {
-    /// <summary>eFootball's own real/scanned face, rendered from the 3D model. Highest priority.
-    /// Populated only once the pak face-asset + render pipeline exists (players.real_face_path).</summary>
+    /// <summary>eFootball's own face: the game's UI thumbnail by PID (players.game_face_path, from
+    /// pak\pc1000 via tools/game_faces.py), else the facepack photo (players.real_face_path).</summary>
     EfootballRealFace,
     /// <summary>An RFS real-photo portrait PNG.</summary>
     Rfs,
@@ -23,7 +23,7 @@ public sealed partial class Session
 {
     /// <summary>
     /// Resolve a player's portrait by the app's precedence:
-    ///   1. eFootball real face (3D)  — players.real_face_path, when we have it
+    ///   1. eFootball's own face      — players.game_face_path (game thumbnail), then real_face_path
     ///   2. RFS real photo            — players.portrait_path
     ///   3. eFootball generic face    — drawn from skin tone + hair colour (never fails)
     /// Tiers 1 and 2 only win if the file actually loads; otherwise we fall through to the avatar.
@@ -46,26 +46,27 @@ public sealed partial class Session
             }
         }
 
-        string? realFace = null, rfs = null;
+        string? gameFace = null, realFace = null, rfs = null;
         int? skin = null, hair = null;
         using (var cmd = Db.Connection.CreateCommand())
         {
             cmd.CommandText =
-                "SELECT p.real_face_path, p.portrait_path, a.skin_tone, a.hair_color " +
+                "SELECT p.game_face_path, p.real_face_path, p.portrait_path, a.skin_tone, a.hair_color " +
                 "FROM players p LEFT JOIN player_appearance a ON a.player_id = p.id WHERE p.id=$p";
             cmd.Parameters.AddWithValue("$p", playerId);
             using var r = cmd.ExecuteReader();
             if (r.Read())
             {
-                realFace = r.IsDBNull(0) ? null : r.GetString(0);
-                rfs = r.IsDBNull(1) ? null : r.GetString(1);
-                skin = r.IsDBNull(2) ? null : r.GetInt32(2);
-                hair = r.IsDBNull(3) ? null : r.GetInt32(3);
+                gameFace = r.IsDBNull(0) ? null : r.GetString(0);
+                realFace = r.IsDBNull(1) ? null : r.GetString(1);
+                rfs = r.IsDBNull(2) ? null : r.GetString(2);
+                skin = r.IsDBNull(3) ? null : r.GetInt32(3);
+                hair = r.IsDBNull(4) ? null : r.GetInt32(4);
             }
         }
 
-        // Tier 1: eFootball real face from the 3D pipeline (reserved until faces are extractable).
-        var img = Visuals.LoadBitmap(realFace);
+        // Tier 1: eFootball's own face — the game's UI thumbnail by PID, then the facepack photo.
+        var img = Visuals.LoadBitmap(gameFace) ?? Visuals.LoadBitmap(realFace);
         if (img is not null) return new PortraitInfo(img, PortraitSource.EfootballRealFace, skin, hair);
 
         // Tier 2: RFS real photo.

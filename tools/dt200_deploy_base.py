@@ -1,8 +1,9 @@
 """Deploy the modified build/tree_base into the game's dt200 CPK — a permanent base edit.
 
 After dt200_rename.py has written corrected team names + league order into build/tree_base,
-this rebuilds the whole dt200 CPK (cpkmakec, align=512 — the ONLY alignment the game accepts)
-and installs it, so the names are right in eFootball's own menus without running our app.
+this patches every file of the tree that differs from the base dt200 into a copy of it
+(tools/cpk_patch.py — no full rebuild, the base's header and alignment are kept) and installs it,
+so the names are right in eFootball's own menus without running our app.
 Reuses play_match's proven rebuild_and_install (patch guard + backup + sha tracking).
 
 Close eFootball first. Usage: python tools/dt200_deploy_base.py [--build-only]
@@ -21,7 +22,7 @@ def main() -> int:
     out = pm.REPO / "build" / "dt200_console_all.cpk"
     if not (pm.TREE_BASE / "common/etc/pesdb/Team.bin").exists():
         sys.exit("build/tree_base not found — run the rebaseline + dt200_rename first.")
-    print(f"rebuilding dt200 from {pm.TREE_BASE} (install={install})")
+    print(f"patching dt200 from {pm.TREE_BASE} (install={install})")
     pm.rebuild_and_install(pm.TREE_BASE, out, install)
     if install:
         print("done — team names are now corrected in the game's own menus.")
