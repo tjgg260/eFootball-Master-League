@@ -47,7 +47,13 @@ public sealed record CoachRow
 public sealed record PlayerRow
 {
     public long Id { get; init; }
-    public int GamePid { get; init; }
+    // A LONG. The world rebuild sets game_pid = id for every curated and generated record —
+    // 306,185 of 401,149 players on the live save, every one of them past Int32 — and Dapper
+    // mapping an int64 column into an int property does not truncate, it THROWS. So
+    // Repository.SquadPlayers threw OverflowException for any club in the 45bn band, which is
+    // Liverpool and Arsenal, and every screen built on Session.Squad() — Tactics first — died
+    // before it existed. The write side (academy prospects, sample data) already fits.
+    public long GamePid { get; init; }
     public int? BasePid { get; init; }
     public int? DonorPid { get; init; }
     public bool IsCustom { get; init; }

@@ -183,13 +183,15 @@ public sealed class Repository
         _c.Execute("UPDATE fixtures SET played=1 WHERE id=@FixtureId", r);
     }
 
-    public void AddMatchEvent(int fixtureId, int? playerId, string eventType, int minute) => _c.Execute(
+    public void AddMatchEvent(int fixtureId, long? playerId, string eventType, int minute) => _c.Execute(
         "INSERT INTO match_events(fixture_id,player_id,event_type,minute) " +
         "VALUES(@fixtureId,@playerId,@eventType,@minute)",
         new { fixtureId, playerId, eventType, minute });
 
-    public IReadOnlyList<(int PlayerId, string EventType, int Minute)> MatchEvents(int fixtureId) =>
-        _c.Query<(int PlayerId, string EventType, int Minute)>(
+    // PlayerId is a long for the same reason PlayerRow.GamePid is: Dapper throws, not truncates,
+    // when an int64 column meets an int tuple element, and player ids run to 50bn.
+    public IReadOnlyList<(long PlayerId, string EventType, int Minute)> MatchEvents(int fixtureId) =>
+        _c.Query<(long PlayerId, string EventType, int Minute)>(
             "SELECT player_id PlayerId, event_type EventType, minute Minute FROM match_events " +
             "WHERE fixture_id=@fixtureId ORDER BY minute", new { fixtureId }).ToList();
 

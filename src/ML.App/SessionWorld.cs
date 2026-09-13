@@ -792,7 +792,7 @@ public sealed partial class Session
                 {
                     // Id is the handle and is long; game_pid is an int column, and the academy
                     // band is bounded below 40m precisely so this cast is always exact.
-                    Id = id, GamePid = (int)id, IsCustom = true, Name = name, Position = position,
+                    Id = id, GamePid = id, IsCustom = true, Name = name, Position = position,
                     Age = age, Nationality = club.ShortName, OverallRating = rating,
                 });
                 // Real potential: most are journeymen; ~1 in 9 is a genuine prospect.
@@ -867,7 +867,7 @@ public sealed partial class Session
             var id = r.GetInt64(0);
             rows.Add(new PlayerRow
             {
-                Id = id, GamePid = (int)id, IsCustom = true, Name = r.GetString(1),
+                Id = id, GamePid = id, IsCustom = true, Name = r.GetString(1),
                 Position = r.IsDBNull(2) ? "CMF" : r.GetString(2),
                 Age = r.IsDBNull(3) ? null : r.GetInt32(3),
                 OverallRating = r.IsDBNull(4) ? null : r.GetInt32(4),

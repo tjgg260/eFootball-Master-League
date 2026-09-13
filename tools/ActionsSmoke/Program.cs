@@ -322,6 +322,25 @@ Console.WriteLine("\na wage on the page adds up to the bill");
     Check("and they never exceed the club's bill", sum <= bill, $"£{sum:N0} of £{bill:N0}");
 }
 
+Console.WriteLine("\na club whose game ids outgrow Int32 (Liverpool, Arsenal)");
+{
+    // THE TACTICS CRASH. The rebuild sets game_pid = id for the curated band, and Dapper THROWS
+    // on int64 -> int. Give this squad the same shape and prove every reader survives it.
+    using (var up = db.Connection.CreateCommand())
+    {
+        up.CommandText = "UPDATE players SET game_pid = id + 45000000000 " +
+                         "WHERE id IN (SELECT player_id FROM squad_members WHERE team_id=$t)";
+        up.Parameters.AddWithValue("$t", s.CurrentTeamId);
+        up.ExecuteNonQuery();
+    }
+    var read = 0; var picked = 0; var threw = "";
+    try { read = s.Repo.SquadPlayers(s.CurrentTeamId).Count; picked = s.SuggestXi().Count; }
+    catch (Exception ex) { threw = ex.GetType().Name + ": " + ex.Message; }
+    Check("the squad still reads", read > 0 && threw.Length == 0, threw.Length > 0 ? threw : $"{read} players");
+    Check("and the assistant can still order the whole squad", picked == read, $"{picked} of {read} placed");
+    Check("the game id survived the round-trip", s.Repo.SquadPlayers(s.CurrentTeamId).All(p => p.GamePid > int.MaxValue));
+}
+
 db.Connection.Dispose();
 try { File.Delete(work); } catch { /* the temp copy can wait for the OS */ }
 
