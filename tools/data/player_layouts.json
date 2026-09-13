@@ -1,0 +1,1595 @@
+{
+ "generated_by": "tools/derive_player_layouts.py",
+ "thresholds": {
+  "min_purity": 0.95,
+  "min_agree_392_vs_400": 0.9,
+  "min_r": 0.9,
+  "min_skill_f1": 0.95
+ },
+ "layouts": {
+  "400": {
+   "scalars": {
+    "height_cm": [
+     248,
+     8,
+     100
+    ],
+    "weight_kg": [
+     280,
+     7,
+     30
+    ],
+    "age": [
+     536,
+     6,
+     10
+    ]
+   },
+   "codes": {
+    "position": [
+     556,
+     4
+    ],
+    "foot": [
+     654,
+     1
+    ],
+    "weak_foot_usage": [
+     478,
+     2
+    ],
+    "weak_foot_accuracy": [
+     578,
+     2
+    ],
+    "form": [
+     582,
+     2
+    ],
+    "injury_resistance": [
+     542,
+     2
+    ]
+   },
+   "tables": {
+    "position": {
+     "0": "GK",
+     "1": "CB",
+     "2": "LB",
+     "3": "RB",
+     "4": "DMF",
+     "5": "CMF",
+     "6": "LMF",
+     "7": "RMF",
+     "8": "AMF",
+     "9": "LWF",
+     "10": "RWF",
+     "11": "SS",
+     "12": "CF"
+    },
+    "foot": {
+     "0": "Right foot",
+     "1": "Left foot"
+    },
+    "weak_foot_usage": {
+     "0": "Almost Never",
+     "1": "Rarely",
+     "2": "Occasionally",
+     "3": "Regularly"
+    },
+    "weak_foot_accuracy": {
+     "0": "Low",
+     "1": "Medium",
+     "2": "High",
+     "3": "Very High"
+    },
+    "form": {
+     "0": "Inconsistent",
+     "1": "Standard",
+     "2": "Unwavering"
+    },
+    "injury_resistance": {
+     "0": "Low",
+     "1": "Medium",
+     "2": "High"
+    }
+   },
+   "abilities": {
+    "offensive_awareness": 498,
+    "ball_control": 396,
+    "dribbling": 492,
+    "tight_possession": 550,
+    "low_pass": 524,
+    "lofted_pass": 448,
+    "finishing": 530,
+    "heading": 402,
+    "set_piece_taking": 368,
+    "curl": 428,
+    "speed": 434,
+    "acceleration": 486,
+    "kicking_power": 384,
+    "jumping": 408,
+    "physical_contact": 518,
+    "balance": 504,
+    "stamina": 480,
+    "defensive_awareness": 390,
+    "tackling": 454,
+    "aggression": 512,
+    "defensive_engagement": 544,
+    "gk_awareness": 472,
+    "gk_catching": 416,
+    "gk_parrying": 466,
+    "gk_reflexes": 460,
+    "gk_reach": 422
+   },
+   "ability_display": {
+    "unscaled_from_pid": 4294967296,
+    "num": 24,
+    "den": 25,
+    "floor": 40
+   },
+   "styles": {
+    "att": [
+     372,
+     8
+    ],
+    "def": [
+     440,
+     6
+    ],
+    "att_table": {
+     "0": "Basic",
+     "1": "Goal Poacher",
+     "2": "Dummy Runner",
+     "3": "Fox in the Box",
+     "4": "Prolific Winger",
+     "5": "Classic No. 10",
+     "6": "Hole Player",
+     "7": "Box-to-Box",
+     "8": "Anchor Man",
+     "10": "Extra Frontman",
+     "11": "Attacking Full-back",
+     "12": "Defensive Full-back",
+     "13": "Deep-Lying Forward",
+     "14": "Creative Playmaker",
+     "15": "Build Up",
+     "18": "Roaming Flank",
+     "19": "Cross Specialist",
+     "20": "Orchestrator",
+     "21": "Full-back Finisher",
+     "22": "Target Man",
+     "34": "Basic",
+     "35": "Basic"
+    },
+    "def_table": {
+     "0:0": "Basic",
+     "0:16": "Attacking GK",
+     "0:17": "Defensive GK",
+     "0:9": "The Destroyer",
+     "10:0": "Basic",
+     "11:0": "Basic",
+     "12:0": "Basic",
+     "13:0": "Basic",
+     "14:0": "Basic",
+     "15:0": "Basic",
+     "18:0": "Basic",
+     "19:0": "Basic",
+     "1:0": "Basic",
+     "20:0": "Basic",
+     "21:0": "Basic",
+     "22:0": "Basic",
+     "2:0": "Basic",
+     "34:0": "Attacking GK",
+     "35:0": "Attacking GK",
+     "3:0": "Basic",
+     "4:0": "Basic",
+     "5:0": "Basic",
+     "6:0": "Basic",
+     "7:0": "Box-to-Box",
+     "8:0": "Anchor Man"
+    }
+   },
+   "record_size": 400,
+   "name_offset": 88,
+   "name_fields": {
+    "full": 3,
+    "shirt": 2
+   },
+   "u32": {
+    "youth_club": 0,
+    "loan_parent_club": 4,
+    "club": 16
+   },
+   "loan_end": [
+    192,
+    25
+   ],
+   "skills": {
+    "Acceleration Burst": 632,
+    "Acrobatic Clearance": 679,
+    "Acrobatic Finishing": 669,
+    "Aerial Fort": 609,
+    "Aerial Superiority": 606,
+    "Attack Trigger": 624,
+    "Attacking Surge": 634,
+    "Blitz Curler": 659,
+    "Blocker": 673,
+    "Bullet Header": 604,
+    "Captaincy": 620,
+    "Chip Shot Control": 641,
+    "Chop Turn": 287,
+    "Cut Behind & Turn": 677,
+    "Dipping Shot": 655,
+    "Double Touch": 668,
+    "Edged Crossing": 658,
+    "Fighting Spirit": 612,
+    "First-time Shot": 650,
+    "Flip Flap": 611,
+    "Fortress": 670,
+    "GK Directing Defence": 575,
+    "GK High Punt": 223,
+    "GK Long Throw": 667,
+    "GK Low Punt": 617,
+    "GK Penalty Saver": 633,
+    "GK Spirit Roar": 631,
+    "Game-changing Pass": 642,
+    "Gamesmanship": 619,
+    "Heading": 625,
+    "Heel Trick": 640,
+    "Interception": 636,
+    "Knuckle Shot": 652,
+    "Long Range Shooting": 662,
+    "Long Throw": 666,
+    "Long-Range Curler": 676,
+    "Long-reach Tackle": 351,
+    "Low Lofted Pass": 615,
+    "Low Screamer": 626,
+    "Magnetic Feet": 608,
+    "Man Marking": 638,
+    "Marseille Turn": 621,
+    "Momentum Dribbling": 646,
+    "No Look Pass": 651,
+    "One-touch Pass": 644,
+    "Outside Curler": 623,
+    "Penalty Specialist": 665,
+    "Phenomenal Finishing": 622,
+    "Phenomenal Pass": 637,
+    "Pinpoint Crossing": 605,
+    "Rabona": 657,
+    "Rising Shot": 630,
+    "Scissors Feint": 663,
+    "Scotch Move": 671,
+    "Shadow Hunt": 656,
+    "Sliding Tackle": 635,
+    "Snap Strike": 639,
+    "Sole Control": 675,
+    "Sombrero": 603,
+    "Super-sub": 660,
+    "Tap Trick": 628,
+    "Through Passing": 613,
+    "Track Back": 661,
+    "Visionary Pass": 664,
+    "Weighted Pass": 610,
+    "Willpower": 627
+   },
+   "skill_source": {
+    "Acceleration Burst": "export-verified",
+    "Acrobatic Clearance": "export-verified",
+    "Acrobatic Finishing": "export-verified",
+    "Aerial Fort": "export-verified",
+    "Aerial Superiority": "export-verified",
+    "Attack Trigger": "export-verified",
+    "Attacking Surge": "export-verified",
+    "Blitz Curler": "export-verified",
+    "Blocker": "export-verified",
+    "Bullet Header": "export-verified",
+    "Captaincy": "export-verified",
+    "Chip Shot Control": "export-verified",
+    "Chop Turn": "export-verified",
+    "Cut Behind & Turn": "export-verified",
+    "Dipping Shot": "export-verified",
+    "Double Touch": "export-verified",
+    "Edged Crossing": "export-verified",
+    "Fighting Spirit": "export-verified",
+    "First-time Shot": "export-verified",
+    "Flip Flap": "export-verified",
+    "Fortress": "export-verified",
+    "GK Directing Defence": "export-verified",
+    "GK High Punt": "export-verified",
+    "GK Long Throw": "export-verified",
+    "GK Low Punt": "export-verified",
+    "GK Penalty Saver": "export-verified",
+    "GK Spirit Roar": "export-verified",
+    "Game-changing Pass": "export-verified",
+    "Gamesmanship": "export-verified",
+    "Heading": "export-verified",
+    "Heel Trick": "export-verified",
+    "Interception": "export-verified",
+    "Knuckle Shot": "export-verified",
+    "Long Range Shooting": "export-verified",
+    "Long Throw": "export-verified",
+    "Long-Range Curler": "export-verified",
+    "Long-reach Tackle": "export-verified",
+    "Low Lofted Pass": "export-verified",
+    "Low Screamer": "export-verified",
+    "Magnetic Feet": "export-verified",
+    "Man Marking": "export-verified",
+    "Marseille Turn": "export-verified",
+    "Momentum Dribbling": "export-verified",
+    "No Look Pass": "export-verified",
+    "One-touch Pass": "export-verified",
+    "Outside Curler": "export-verified",
+    "Penalty Specialist": "export-verified",
+    "Phenomenal Finishing": "export-verified",
+    "Phenomenal Pass": "export-verified",
+    "Pinpoint Crossing": "export-verified",
+    "Rabona": "export-verified",
+    "Rising Shot": "export-verified",
+    "Scissors Feint": "export-verified",
+    "Scotch Move": "export-verified",
+    "Shadow Hunt": "export-verified",
+    "Sliding Tackle": "export-verified",
+    "Snap Strike": "editor",
+    "Sole Control": "export-verified",
+    "Sombrero": "export-verified",
+    "Super-sub": "export-verified",
+    "Tap Trick": "export-verified",
+    "Through Passing": "export-verified",
+    "Track Back": "export-verified",
+    "Visionary Pass": "export-verified",
+    "Weighted Pass": "export-verified",
+    "Willpower": "export-verified"
+   },
+   "ai_styles": {
+    "Trickster": 616,
+    "Mazing Run": 680,
+    "Speeding Bullet": 674,
+    "Incisive Run": 649,
+    "Early Cross": 614,
+    "Long Ranger": 647,
+    "Long Ball Expert": 678
+   },
+   "scores": {
+    "position": {
+     "purity_vs_export": 1.0
+    },
+    "foot": {
+     "purity_vs_export": 1.0
+    },
+    "weak_foot_usage": {
+     "purity_vs_export": 1.0
+    },
+    "weak_foot_accuracy": {
+     "purity_vs_export": 1.0
+    },
+    "form": {
+     "purity_vs_export": 1.0
+    },
+    "injury_resistance": {
+     "purity_vs_export": 1.0
+    },
+    "height_cm": {
+     "exact_vs_export": 1.0
+    },
+    "weight_kg": {
+     "exact_vs_export": 1.0
+    },
+    "age": {
+     "exact_vs_export": 1.0
+    },
+    "offensive_awareness": {
+     "exact_raw": 0.0863,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "ball_control": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "dribbling": {
+     "exact_raw": 0.0062,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "tight_possession": {
+     "exact_raw": 0.0092,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "low_pass": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "lofted_pass": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "finishing": {
+     "exact_raw": 0.1054,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "heading": {
+     "exact_raw": 0.0321,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "set_piece_taking": {
+     "exact_raw": 0.0071,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "curl": {
+     "exact_raw": 0.0122,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "speed": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "acceleration": {
+     "exact_raw": 0.0001,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "kicking_power": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "jumping": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "physical_contact": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "balance": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "stamina": {
+     "exact_raw": 0.0,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "defensive_awareness": {
+     "exact_raw": 0.0011,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "tackling": {
+     "exact_raw": 0.0016,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "aggression": {
+     "exact_raw": 0.0051,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "defensive_engagement": {
+     "exact_raw": 0.0008,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "gk_awareness": {
+     "exact_raw": 0.881,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "gk_catching": {
+     "exact_raw": 0.881,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "gk_parrying": {
+     "exact_raw": 0.881,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "gk_reflexes": {
+     "exact_raw": 0.881,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "gk_reach": {
+     "exact_raw": 0.881,
+     "exact_display": 1.0,
+     "r_display": 1.0
+    },
+    "primary_style": {
+     "purity_vs_export": 1.0,
+     "keys": 22
+    },
+    "secondary_style": {
+     "purity_vs_export": 1.0,
+     "keys": 25
+    },
+    "skill:Acceleration Burst": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Acrobatic Clearance": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Acrobatic Finishing": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Aerial Fort": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Aerial Superiority": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Attack Trigger": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Attacking Surge": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Blitz Curler": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Blocker": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Bullet Header": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Captaincy": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Chip Shot Control": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Chop Turn": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Cut Behind & Turn": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Dipping Shot": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Double Touch": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Edged Crossing": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Fighting Spirit": {
+     "f1_vs_export": 1.0
+    },
+    "skill:First-time Shot": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Flip Flap": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Fortress": {
+     "f1_vs_export": 1.0
+    },
+    "skill:GK Directing Defence": {
+     "f1_vs_export": 1.0
+    },
+    "skill:GK High Punt": {
+     "f1_vs_export": 1.0
+    },
+    "skill:GK Long Throw": {
+     "f1_vs_export": 1.0
+    },
+    "skill:GK Low Punt": {
+     "f1_vs_export": 1.0
+    },
+    "skill:GK Penalty Saver": {
+     "f1_vs_export": 1.0
+    },
+    "skill:GK Spirit Roar": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Game-changing Pass": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Gamesmanship": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Heading": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Heel Trick": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Interception": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Knuckle Shot": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Long Range Shooting": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Long Throw": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Long-Range Curler": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Long-reach Tackle": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Low Lofted Pass": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Low Screamer": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Magnetic Feet": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Man Marking": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Marseille Turn": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Momentum Dribbling": {
+     "f1_vs_export": 1.0
+    },
+    "skill:No Look Pass": {
+     "f1_vs_export": 1.0
+    },
+    "skill:One-touch Pass": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Outside Curler": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Penalty Specialist": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Phenomenal Finishing": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Phenomenal Pass": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Pinpoint Crossing": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Rabona": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Rising Shot": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Scissors Feint": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Scotch Move": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Shadow Hunt": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Sliding Tackle": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Snap Strike": {
+     "holders": 0,
+     "source": "editor"
+    },
+    "skill:Sole Control": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Sombrero": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Super-sub": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Tap Trick": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Through Passing": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Track Back": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Visionary Pass": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Weighted Pass": {
+     "f1_vs_export": 1.0
+    },
+    "skill:Willpower": {
+     "f1_vs_export": 1.0
+    },
+    "ai:Trickster": {
+     "f1_vs_export": 1.0
+    },
+    "ai:Mazing Run": {
+     "f1_vs_export": 1.0
+    },
+    "ai:Speeding Bullet": {
+     "f1_vs_export": 1.0
+    },
+    "ai:Incisive Run": {
+     "f1_vs_export": 1.0
+    },
+    "ai:Early Cross": {
+     "f1_vs_export": 1.0
+    },
+    "ai:Long Ranger": {
+     "f1_vs_export": 1.0
+    },
+    "ai:Long Ball Expert": {
+     "f1_vs_export": 1.0
+    }
+   },
+   "unverified": []
+  },
+  "392": {
+   "scalars": {
+    "height_cm": [
+     248,
+     8,
+     100
+    ],
+    "weight_kg": [
+     280,
+     7,
+     30
+    ],
+    "age": [
+     524,
+     6,
+     11
+    ]
+   },
+   "codes": {
+    "position": [
+     548,
+     4
+    ],
+    "foot": [
+     644,
+     1
+    ],
+    "weak_foot_usage": [
+     510,
+     2
+    ],
+    "weak_foot_accuracy": [
+     571,
+     2
+    ],
+    "form": [
+     576,
+     2
+    ],
+    "injury_resistance": [
+     567,
+     2
+    ]
+   },
+   "tables": {
+    "position": {
+     "0": "GK",
+     "1": "CB",
+     "2": "LB",
+     "3": "RB",
+     "4": "DMF",
+     "5": "CMF",
+     "6": "LMF",
+     "7": "RMF",
+     "8": "AMF",
+     "9": "LWF",
+     "10": "RWF",
+     "11": "SS",
+     "12": "CF"
+    },
+    "foot": {
+     "0": "Right foot",
+     "1": "Left foot"
+    },
+    "weak_foot_usage": {
+     "0": "Almost Never",
+     "1": "Rarely",
+     "2": "Occasionally",
+     "3": "Regularly"
+    },
+    "weak_foot_accuracy": {
+     "0": "Low",
+     "1": "Medium",
+     "2": "High",
+     "3": "Very High"
+    },
+    "form": {
+     "0": "Inconsistent",
+     "1": "Standard",
+     "2": "Unwavering"
+    },
+    "injury_resistance": {
+     "0": "Low",
+     "1": "Medium",
+     "2": "High"
+    }
+   },
+   "abilities": {
+    "offensive_awareness": 480,
+    "ball_control": 390,
+    "dribbling": 472,
+    "tight_possession": 536,
+    "low_pass": 504,
+    "lofted_pass": 518,
+    "finishing": 512,
+    "heading": 396,
+    "set_piece_taking": 368,
+    "curl": 454,
+    "speed": 422,
+    "acceleration": 466,
+    "kicking_power": 374,
+    "jumping": 402,
+    "physical_contact": 498,
+    "balance": 486,
+    "stamina": 460,
+    "defensive_awareness": 384,
+    "tackling": 428,
+    "aggression": 492,
+    "defensive_engagement": 530,
+    "gk_awareness": 448,
+    "gk_catching": 408,
+    "gk_parrying": 440,
+    "gk_reflexes": 434,
+    "gk_reach": 416
+   },
+   "ability_display": {
+    "unscaled_from_pid": 4294967296,
+    "num": 24,
+    "den": 25,
+    "floor": 40
+   },
+   "styles": {
+    "att": [
+     184,
+     8
+    ],
+    "def": [
+     439,
+     6
+    ],
+    "att_table": {
+     "0": "Basic",
+     "2": "Goal Poacher",
+     "4": "Dummy Runner",
+     "6": "Fox in the Box",
+     "8": "Prolific Winger",
+     "10": "Classic No. 10",
+     "12": "Hole Player",
+     "14": "Box-to-Box",
+     "16": "Anchor Man",
+     "18": "Basic",
+     "20": "Extra Frontman",
+     "22": "Attacking Full-back",
+     "24": "Defensive Full-back",
+     "26": "Deep-Lying Forward",
+     "28": "Creative Playmaker",
+     "30": "Build Up",
+     "32": "Basic",
+     "34": "Basic",
+     "36": "Roaming Flank",
+     "38": "Cross Specialist",
+     "40": "Orchestrator",
+     "42": "Full-back Finisher",
+     "44": "Target Man"
+    },
+    "def_table": {
+     "0:0": "Basic",
+     "0:3": "Basic",
+     "0:32": "Basic",
+     "0:34": "Basic",
+     "0:36": "Basic",
+     "0:38": "Basic",
+     "0:42": "Defensive GK",
+     "0:44": "Basic",
+     "0:46": "Basic",
+     "0:48": "Basic",
+     "0:5": "Basic",
+     "0:50": "Basic",
+     "0:52": "Basic",
+     "0:54": "Basic",
+     "0:55": "Basic",
+     "0:56": "Basic",
+     "0:58": "Basic",
+     "0:62": "Basic",
+     "0:7": "Basic",
+     "10:0": "Basic",
+     "12:0": "Basic",
+     "14:0": "Box-to-Box",
+     "16:0": "Anchor Man",
+     "18:0": "The Destroyer",
+     "20:0": "Basic",
+     "22:0": "Basic",
+     "24:0": "Basic",
+     "26:0": "Basic",
+     "28:0": "Basic",
+     "2:0": "Basic",
+     "30:0": "Basic",
+     "32:0": "Attacking GK",
+     "32:1": "Attacking GK",
+     "32:11": "Attacking GK",
+     "32:15": "Attacking GK",
+     "32:17": "Attacking GK",
+     "32:2": "Attacking GK",
+     "32:21": "Attacking GK",
+     "32:3": "Attacking GK",
+     "32:32": "Basic",
+     "32:34": "Basic",
+     "32:35": "Basic",
+     "32:36": "Attacking GK",
+     "32:38": "Attacking GK",
+     "32:4": "Attacking GK",
+     "32:40": "Attacking GK",
+     "32:42": "Attacking GK",
+     "32:44": "Attacking GK",
+     "32:45": "Attacking GK",
+     "32:46": "Attacking GK",
+     "32:48": "Attacking GK",
+     "32:49": "Basic",
+     "32:5": "Attacking GK",
+     "32:50": "Attacking GK",
+     "32:51": "Attacking GK",
+     "32:52": "Attacking GK",
+     "32:53": "Attacking GK",
+     "32:54": "Attacking GK",
+     "32:55": "Attacking GK",
+     "32:56": "Attacking GK",
+     "32:57": "Attacking GK",
+     "32:58": "Attacking GK",
+     "32:59": "Attacking GK",
+     "32:60": "Attacking GK",
+     "32:61": "Attacking GK",
+     "32:62": "Attacking GK",
+     "32:63": "Attacking GK",
+     "32:7": "Attacking GK",
+     "32:9": "Basic",
+     "34:0": "Defensive GK",
+     "34:1": "Defensive GK",
+     "34:11": "Defensive GK",
+     "34:2": "Defensive GK",
+     "34:21": "Basic",
+     "34:27": "Defensive GK",
+     "34:3": "Defensive GK",
+     "34:30": "Defensive GK",
+     "34:32": "Basic",
+     "34:36": "Defensive GK",
+     "34:38": "Defensive GK",
+     "34:40": "Basic",
+     "34:42": "Defensive GK",
+     "34:44": "Defensive GK",
+     "34:46": "Defensive GK",
+     "34:48": "Defensive GK",
+     "34:49": "Basic",
+     "34:5": "Defensive GK",
+     "34:50": "Defensive GK",
+     "34:51": "Defensive GK",
+     "34:52": "Defensive GK",
+     "34:53": "Defensive GK",
+     "34:54": "Defensive GK",
+     "34:55": "Defensive GK",
+     "34:56": "Defensive GK",
+     "34:57": "Defensive GK",
+     "34:58": "Defensive GK",
+     "34:59": "Defensive GK",
+     "34:6": "Basic",
+     "34:60": "Defensive GK",
+     "34:61": "Defensive GK",
+     "34:62": "Defensive GK",
+     "34:63": "Defensive GK",
+     "34:7": "Defensive GK",
+     "34:9": "Defensive GK",
+     "36:0": "Basic",
+     "38:0": "Basic",
+     "40:0": "Basic",
+     "42:0": "Basic",
+     "44:0": "Basic",
+     "44:20": "Basic",
+     "4:0": "Basic",
+     "6:0": "Basic",
+     "8:0": "Basic"
+    }
+   },
+   "record_size": 392,
+   "name_offset": 84,
+   "name_fields": {
+    "full": 4,
+    "shirt": 1
+   },
+   "skills": {
+    "Acrobatic Clearance": 667,
+    "Acrobatic Finishing": 658,
+    "Aerial Superiority": 598,
+    "Blocker": 661,
+    "Captaincy": 610,
+    "Chip Shot Control": 632,
+    "Chop Turn": 351,
+    "Cut Behind & Turn": 665,
+    "Dipping Shot": 645,
+    "Double Touch": 657,
+    "Fighting Spirit": 603,
+    "First-time Shot": 641,
+    "GK High Punt": 287,
+    "GK Long Throw": 656,
+    "GK Low Punt": 608,
+    "GK Penalty Saver": 624,
+    "Gamesmanship": 609,
+    "Heading": 614,
+    "Heel Trick": 631,
+    "Interception": 627,
+    "Knuckle Shot": 643,
+    "Long Range Shooting": 651,
+    "Long-Range Curler": 664,
+    "Low Lofted Pass": 606,
+    "Man Marking": 629,
+    "Marseille Turn": 618,
+    "No Look Pass": 642,
+    "One-touch Pass": 635,
+    "Outside Curler": 612,
+    "Penalty Specialist": 654,
+    "Pinpoint Crossing": 597,
+    "Rabona": 647,
+    "Rising Shot": 621,
+    "Scissors Feint": 652,
+    "Scotch Move": 660,
+    "Sliding Tackle": 626,
+    "Sole Control": 663,
+    "Sombrero": 595,
+    "Super-sub": 649,
+    "Through Passing": 604,
+    "Track Back": 650,
+    "Weighted Pass": 601
+   },
+   "skill_source": {
+    "Acrobatic Clearance": "cross-layout",
+    "Acrobatic Finishing": "cross-layout",
+    "Aerial Superiority": "cross-layout",
+    "Blocker": "cross-layout",
+    "Captaincy": "cross-layout",
+    "Chip Shot Control": "cross-layout",
+    "Chop Turn": "cross-layout",
+    "Cut Behind & Turn": "cross-layout",
+    "Dipping Shot": "cross-layout",
+    "Double Touch": "cross-layout",
+    "Fighting Spirit": "cross-layout",
+    "First-time Shot": "cross-layout",
+    "GK High Punt": "cross-layout",
+    "GK Long Throw": "cross-layout",
+    "GK Low Punt": "cross-layout",
+    "GK Penalty Saver": "cross-layout",
+    "Gamesmanship": "cross-layout",
+    "Heading": "cross-layout",
+    "Heel Trick": "cross-layout",
+    "Interception": "cross-layout",
+    "Knuckle Shot": "cross-layout",
+    "Long Range Shooting": "cross-layout",
+    "Long-Range Curler": "cross-layout",
+    "Low Lofted Pass": "cross-layout",
+    "Man Marking": "cross-layout",
+    "Marseille Turn": "cross-layout",
+    "No Look Pass": "cross-layout",
+    "One-touch Pass": "cross-layout",
+    "Outside Curler": "cross-layout",
+    "Penalty Specialist": "cross-layout",
+    "Pinpoint Crossing": "cross-layout",
+    "Rabona": "cross-layout",
+    "Rising Shot": "cross-layout",
+    "Scissors Feint": "cross-layout",
+    "Scotch Move": "cross-layout",
+    "Sliding Tackle": "cross-layout",
+    "Sole Control": "cross-layout",
+    "Sombrero": "cross-layout",
+    "Super-sub": "cross-layout",
+    "Through Passing": "cross-layout",
+    "Track Back": "cross-layout",
+    "Weighted Pass": "cross-layout"
+   },
+   "ai_styles": {
+    "Early Cross": 605,
+    "Incisive Run": 640,
+    "Long Ball Expert": 666,
+    "Long Ranger": 637,
+    "Mazing Run": 615,
+    "Speeding Bullet": 662,
+    "Trickster": 607
+   },
+   "scores": {
+    "position": {
+     "purity_vs_export": 0.9565,
+     "raw_agree_vs_400": 0.9511
+    },
+    "foot": {
+     "purity_vs_export": 0.9962,
+     "raw_agree_vs_400": 0.9959
+    },
+    "weak_foot_usage": {
+     "purity_vs_export": 0.9788,
+     "raw_agree_vs_400": 0.9756
+    },
+    "weak_foot_accuracy": {
+     "purity_vs_export": 0.984,
+     "raw_agree_vs_400": 0.9813
+    },
+    "form": {
+     "purity_vs_export": 0.9868,
+     "raw_agree_vs_400": 0.9844
+    },
+    "injury_resistance": {
+     "purity_vs_export": 0.9822,
+     "raw_agree_vs_400": 0.9796
+    },
+    "height_cm": {
+     "exact_vs_export": 0.973,
+     "agree_vs_400": 0.9705
+    },
+    "weight_kg": {
+     "exact_vs_export": 0.9696,
+     "agree_vs_400": 0.966
+    },
+    "offensive_awareness": {
+     "exact_raw": 0.1059,
+     "exact_display": 0.8449,
+     "r_display": 0.9843
+    },
+    "ball_control": {
+     "exact_raw": 0.015,
+     "exact_display": 0.818,
+     "r_display": 0.978
+    },
+    "dribbling": {
+     "exact_raw": 0.0189,
+     "exact_display": 0.8354,
+     "r_display": 0.9858
+    },
+    "tight_possession": {
+     "exact_raw": 0.0249,
+     "exact_display": 0.8399,
+     "r_display": 0.9862
+    },
+    "low_pass": {
+     "exact_raw": 0.0222,
+     "exact_display": 0.8091,
+     "r_display": 0.9738
+    },
+    "lofted_pass": {
+     "exact_raw": 0.0158,
+     "exact_display": 0.8177,
+     "r_display": 0.9674
+    },
+    "finishing": {
+     "exact_raw": 0.1192,
+     "exact_display": 0.8499,
+     "r_display": 0.9844
+    },
+    "heading": {
+     "exact_raw": 0.0461,
+     "exact_display": 0.8583,
+     "r_display": 0.986
+    },
+    "set_piece_taking": {
+     "exact_raw": 0.0154,
+     "exact_display": 0.8954,
+     "r_display": 0.9817
+    },
+    "curl": {
+     "exact_raw": 0.024,
+     "exact_display": 0.8834,
+     "r_display": 0.9856
+    },
+    "speed": {
+     "exact_raw": 0.0126,
+     "exact_display": 0.8081,
+     "r_display": 0.9767
+    },
+    "acceleration": {
+     "exact_raw": 0.0108,
+     "exact_display": 0.816,
+     "r_display": 0.9801
+    },
+    "kicking_power": {
+     "exact_raw": 0.0114,
+     "exact_display": 0.8527,
+     "r_display": 0.9656
+    },
+    "jumping": {
+     "exact_raw": 0.0152,
+     "exact_display": 0.8519,
+     "r_display": 0.9662
+    },
+    "physical_contact": {
+     "exact_raw": 0.0169,
+     "exact_display": 0.8306,
+     "r_display": 0.9777
+    },
+    "balance": {
+     "exact_raw": 0.0143,
+     "exact_display": 0.8538,
+     "r_display": 0.9814
+    },
+    "stamina": {
+     "exact_raw": 0.0137,
+     "exact_display": 0.8106,
+     "r_display": 0.9752
+    },
+    "defensive_awareness": {
+     "exact_raw": 0.02,
+     "exact_display": 0.8317,
+     "r_display": 0.977
+    },
+    "tackling": {
+     "exact_raw": 0.0165,
+     "exact_display": 0.8424,
+     "r_display": 0.9859
+    },
+    "aggression": {
+     "exact_raw": 0.0199,
+     "exact_display": 0.8398,
+     "r_display": 0.9812
+    },
+    "defensive_engagement": {
+     "exact_raw": 0.0135,
+     "exact_display": 0.852,
+     "r_display": 0.9747
+    },
+    "gk_awareness": {
+     "exact_raw": 0.8828,
+     "exact_display": 0.9748,
+     "r_display": 0.996
+    },
+    "gk_catching": {
+     "exact_raw": 0.8822,
+     "exact_display": 0.9765,
+     "r_display": 0.996
+    },
+    "gk_parrying": {
+     "exact_raw": 0.8824,
+     "exact_display": 0.9764,
+     "r_display": 0.9967
+    },
+    "gk_reflexes": {
+     "exact_raw": 0.8831,
+     "exact_display": 0.9733,
+     "r_display": 0.9969
+    },
+    "gk_reach": {
+     "exact_raw": 0.8824,
+     "exact_display": 0.977,
+     "r_display": 0.9967
+    },
+    "primary_style": {
+     "purity_vs_export": 0.9454,
+     "keys": 23
+    },
+    "secondary_style": {
+     "purity_vs_export": 0.9174,
+     "keys": 113
+    },
+    "age": {
+     "bias_chosen": 11,
+     "shared_diff_top4": {
+      "11": 16406,
+      "10": 599,
+      "12": 11,
+      "8": 5
+     },
+     "agree_vs_400": 0.9634
+    },
+    "skill:Acceleration Burst": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Acrobatic Clearance": {
+     "f1_vs_400": 0.9753,
+     "bit": 667
+    },
+    "skill:Acrobatic Finishing": {
+     "f1_vs_400": 0.9776,
+     "bit": 658
+    },
+    "skill:Aerial Fort": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Aerial Superiority": {
+     "f1_vs_400": 0.962,
+     "bit": 598
+    },
+    "skill:Attack Trigger": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Attacking Surge": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Blitz Curler": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Blocker": {
+     "f1_vs_400": 0.9561,
+     "bit": 661
+    },
+    "skill:Bullet Header": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Captaincy": {
+     "f1_vs_400": 0.9609,
+     "bit": 610
+    },
+    "skill:Chip Shot Control": {
+     "f1_vs_400": 0.9661,
+     "bit": 632
+    },
+    "skill:Chop Turn": {
+     "f1_vs_400": 0.9823,
+     "bit": 351
+    },
+    "skill:Cut Behind & Turn": {
+     "f1_vs_400": 0.9863,
+     "bit": 665
+    },
+    "skill:Dipping Shot": {
+     "f1_vs_400": 0.9755,
+     "bit": 645
+    },
+    "skill:Double Touch": {
+     "f1_vs_400": 0.9839,
+     "bit": 657
+    },
+    "skill:Edged Crossing": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Fighting Spirit": {
+     "f1_vs_400": 0.9626,
+     "bit": 603
+    },
+    "skill:First-time Shot": {
+     "f1_vs_400": 0.9691,
+     "bit": 641
+    },
+    "skill:Flip Flap": {
+     "f1_vs_400": 0.8958,
+     "bit": 602
+    },
+    "skill:Fortress": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:GK Directing Defence": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:GK High Punt": {
+     "f1_vs_400": 0.9861,
+     "bit": 287
+    },
+    "skill:GK Long Throw": {
+     "f1_vs_400": 0.978,
+     "bit": 656
+    },
+    "skill:GK Low Punt": {
+     "f1_vs_400": 0.9809,
+     "bit": 608
+    },
+    "skill:GK Penalty Saver": {
+     "f1_vs_400": 0.9507,
+     "bit": 624
+    },
+    "skill:GK Spirit Roar": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Game-changing Pass": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Gamesmanship": {
+     "f1_vs_400": 0.9645,
+     "bit": 609
+    },
+    "skill:Heading": {
+     "f1_vs_400": 0.9614,
+     "bit": 614
+    },
+    "skill:Heel Trick": {
+     "f1_vs_400": 0.9821,
+     "bit": 631
+    },
+    "skill:Interception": {
+     "f1_vs_400": 0.9672,
+     "bit": 627
+    },
+    "skill:Knuckle Shot": {
+     "f1_vs_400": 0.9695,
+     "bit": 643
+    },
+    "skill:Long Range Shooting": {
+     "f1_vs_400": 0.9703,
+     "bit": 651
+    },
+    "skill:Long Throw": {
+     "f1_vs_400": 0.9488,
+     "bit": 655
+    },
+    "skill:Long-Range Curler": {
+     "f1_vs_400": 0.9646,
+     "bit": 664
+    },
+    "skill:Long-reach Tackle": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Low Lofted Pass": {
+     "f1_vs_400": 0.9717,
+     "bit": 606
+    },
+    "skill:Low Screamer": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Magnetic Feet": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Man Marking": {
+     "f1_vs_400": 0.9733,
+     "bit": 629
+    },
+    "skill:Marseille Turn": {
+     "f1_vs_400": 0.9736,
+     "bit": 618
+    },
+    "skill:Momentum Dribbling": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:No Look Pass": {
+     "f1_vs_400": 0.965,
+     "bit": 642
+    },
+    "skill:One-touch Pass": {
+     "f1_vs_400": 0.9645,
+     "bit": 635
+    },
+    "skill:Outside Curler": {
+     "f1_vs_400": 0.9845,
+     "bit": 612
+    },
+    "skill:Penalty Specialist": {
+     "f1_vs_400": 0.9626,
+     "bit": 654
+    },
+    "skill:Phenomenal Finishing": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Phenomenal Pass": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Pinpoint Crossing": {
+     "f1_vs_400": 0.959,
+     "bit": 597
+    },
+    "skill:Rabona": {
+     "f1_vs_400": 0.9651,
+     "bit": 647
+    },
+    "skill:Rising Shot": {
+     "f1_vs_400": 0.9796,
+     "bit": 621
+    },
+    "skill:Scissors Feint": {
+     "f1_vs_400": 0.9559,
+     "bit": 652
+    },
+    "skill:Scotch Move": {
+     "f1_vs_400": 0.9801,
+     "bit": 660
+    },
+    "skill:Shadow Hunt": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Sliding Tackle": {
+     "f1_vs_400": 0.9673,
+     "bit": 626
+    },
+    "skill:Snap Strike": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Sole Control": {
+     "f1_vs_400": 0.9845,
+     "bit": 663
+    },
+    "skill:Sombrero": {
+     "f1_vs_400": 0.9759,
+     "bit": 595
+    },
+    "skill:Super-sub": {
+     "f1_vs_400": 0.9648,
+     "bit": 649
+    },
+    "skill:Tap Trick": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Through Passing": {
+     "f1_vs_400": 0.9725,
+     "bit": 604
+    },
+    "skill:Track Back": {
+     "f1_vs_400": 0.963,
+     "bit": 650
+    },
+    "skill:Visionary Pass": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "skill:Weighted Pass": {
+     "f1_vs_400": 0.9623,
+     "bit": 601
+    },
+    "skill:Willpower": {
+     "f1_vs_400": null,
+     "note": "nobody holds it in dt200"
+    },
+    "ai:Early Cross": {
+     "f1_vs_400": 0.9759,
+     "bit": 605
+    },
+    "ai:Incisive Run": {
+     "f1_vs_400": 0.9783,
+     "bit": 640
+    },
+    "ai:Long Ball Expert": {
+     "f1_vs_400": 0.9759,
+     "bit": 666
+    },
+    "ai:Long Ranger": {
+     "f1_vs_400": 0.9755,
+     "bit": 637
+    },
+    "ai:Mazing Run": {
+     "f1_vs_400": 0.9806,
+     "bit": 615
+    },
+    "ai:Speeding Bullet": {
+     "f1_vs_400": 0.9777,
+     "bit": 662
+    },
+    "ai:Trickster": {
+     "f1_vs_400": 0.9831,
+     "bit": 607
+    }
+   },
+   "unverified": [
+    "primary_style",
+    "secondary_style"
+   ]
+  }
+ }
+}
