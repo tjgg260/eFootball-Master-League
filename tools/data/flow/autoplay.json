@@ -1,0 +1,10 @@
+[
+  {"_": "boot: skip the title/licence 'press any button' screen",
+   "node": "ProcPreStartup", "event": "proceed", "to": "Common/CmnReset"},
+  {"_": "boot: skip the logo and the title screen once the user/login checks are done",
+   "node": "Intro/ProcessIntroInputUserInfo", "event": "proceed", "to": "Intro/IntroEnd"},
+  {"_": "boot: go straight into the exhibition flow instead of the top menu",
+   "node": "Intro/IntroEnd", "event": "proceed", "to": "Exhibition/ExhibiFlowRoot"},
+  {"_": "after the match: the exhibition group ends on the top menu as a fresh screen (it was never on the stack)",
+   "node": "Exhibition/ExhibiFlowRoot", "event": "end", "to": "TopMenu/TopMenu", "go": "forward"}
+]
