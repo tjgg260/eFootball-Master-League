@@ -48,6 +48,15 @@ public sealed partial class Session
         ("possession_time", "Possession time (s)"), ("sprints", "Sprints"),
     };
 
+    // Counters efootball-re identified after this host was built (ML.Ingest.ExportCounters), read by
+    // engine id and shown straight after the named counter they belong with.
+    private static readonly (string AfterKey, string Id)[] IdentifiedPlacement =
+    {
+        ("goals", ExportCounters.PenaltyGoals), ("goals", ExportCounters.FinesseShotGoals),
+        ("shots_on_target", ExportCounters.ChipShots),
+        ("fouls", ExportCounters.YellowCards), ("fouls", ExportCounters.RedCards),
+    };
+
     // Counters worth watching across the match (engine ids from the host's labels).
     private static readonly (string Label, string Id)[] FlowSeries =
     {
@@ -117,9 +126,16 @@ public sealed partial class Session
                 h = Math.Round(h / PossessionUnitsPerSecond);
                 a = Math.Round(a / PossessionUnitsPerSecond);
             }
-            var conf = confidenceOf.GetValueOrDefault(key);
+            // efootball-re's later findings outrank the label the host that wrote this export carried
+            var conf = ExportCounters.ByKey(key)?.Confidence ?? confidenceOf.GetValueOrDefault(key);
             var inferred = conf?.StartsWith("inferred", StringComparison.OrdinalIgnoreCase) == true;
             stats.Add(new ReportTeamStat(label, h, a, false, inferred, inferred ? conf : null));
+            foreach (var (_, id) in IdentifiedPlacement.Where(x => x.AfterKey == key))
+            {
+                var c = ExportCounters.ById(id)!;
+                stats.Add(new ReportTeamStat(c.Label, Raw(home, id), Raw(away, id), false, c.Inferred,
+                    c.Inferred ? c.Confidence : null));
+            }
         }
 
         // ---- players, joined to the league player the export's PID resolved to when it was recorded
@@ -133,9 +149,14 @@ public sealed partial class Session
         // ---- every raw engine counter, decoded or not
         var ids = RawIds(home).Union(RawIds(away), StringComparer.OrdinalIgnoreCase)
             .OrderBy(id => Convert.ToInt32(id, 16)).ToList();
-        var counters = ids.Select(id => new ReportCounter(id,
-            labels.TryGetValue(id, out var l) && l.Key.Length > 0 ? l.Key.Replace('_', ' ') : "not yet identified",
-            Raw(home, id), Raw(away, id), labels.TryGetValue(id, out var l2) ? l2.Confidence : "")).ToList();
+        var counters = ids.Select(id =>
+        {
+            var known = ExportCounters.ById(id);
+            var hasLabel = labels.TryGetValue(id, out var l) && l.Key.Length > 0;
+            var name = known?.Label.ToLowerInvariant() ?? (hasLabel ? l.Key.Replace('_', ' ') : "not yet identified");
+            var confidence = known?.Confidence ?? (hasLabel ? l.Confidence : "");
+            return new ReportCounter(id, name, Raw(home, id), Raw(away, id), confidence);
+        }).ToList();
 
         var caveats = root.TryGetProperty("caveats", out var cv) && cv.ValueKind == JsonValueKind.Array
             ? cv.EnumerateArray().Select(c => c.GetString() ?? "").Where(c => c.Length > 0).ToList()
@@ -167,6 +188,9 @@ public sealed partial class Session
             if (p.TryGetProperty("actions", out var ac) && ac.ValueKind == JsonValueKind.Object)
                 foreach (var a in ac.EnumerateObject())
                     if (a.Value.TryGetInt64(out var n)) actions[a.Name] = n;
+            // the identified counters, by engine id: in raw_segments whether or not the host named them
+            foreach (var c in ExportCounters.Identified)
+                actions[c.Key] = PlayerRaw(p, c.Id);
             var (formAvg, formChanged) = Form(p);
             rows.Add(new ReportPlayer(slot, link.PlayerId, name, shirt, status, link.Rating, actions, formAvg, formChanged));
         }
@@ -210,11 +234,37 @@ public sealed partial class Session
         return sum;
     }
 
+    /// <summary>One player's counter by engine id: the first 8 of its 9 segments (the host's match total).</summary>
+    private static long PlayerRaw(JsonElement player, string id)
+    {
+        if (!player.TryGetProperty("raw_segments", out var segs) || segs.ValueKind != JsonValueKind.Object) return 0;
+        foreach (var prop in segs.EnumerateObject())
+        {
+            if (!string.Equals(prop.Name, id, StringComparison.OrdinalIgnoreCase) || prop.Value.ValueKind != JsonValueKind.Array)
+                continue;
+            long sum = 0;
+            var i = 0;
+            foreach (var v in prop.Value.EnumerateArray())
+            {
+                if (i++ >= 8) break;
+                if (v.TryGetInt64(out var n)) sum += n;
+            }
+            return sum;
+        }
+        return 0;
+    }
+
     private static long Total(JsonElement team, string key) =>
         team.TryGetProperty("totals", out var t) && t.TryGetProperty(key, out var v) && v.TryGetInt64(out var n) ? n : 0;
 
-    private static long Raw(JsonElement team, string id) =>
-        team.TryGetProperty("raw_totals", out var t) && t.TryGetProperty(id, out var v) && v.TryGetInt64(out var n) ? n : 0;
+    private static long Raw(JsonElement team, string id)
+    {
+        if (!team.TryGetProperty("raw_totals", out var t) || t.ValueKind != JsonValueKind.Object) return 0;
+        foreach (var prop in t.EnumerateObject())
+            if (string.Equals(prop.Name, id, StringComparison.OrdinalIgnoreCase) && prop.Value.TryGetInt64(out var n))
+                return n;
+        return 0;
+    }
 
     private static IEnumerable<string> RawIds(JsonElement team) =>
         team.TryGetProperty("raw_totals", out var t) && t.ValueKind == JsonValueKind.Object

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using ML.Ingest;
 
 namespace ML.Core.Tests;
@@ -310,5 +311,84 @@ public class MatchExportTests
         Assert.Equal(65, home["possession"]);
         Assert.Equal(35, away["possession"]);
         Assert.Equal(e.Teams[0].RawTotals["0x4B"], home["possession_time"]);
+    }
+
+    // --- counters identified after the vendored host was built, read by engine id --------------
+
+    [Fact]
+    public void ReadsACounterByEngineIdFromTheFirstEightSegments()
+    {
+        var e = MatchExport.Parse("""
+            {"schema":"efootball-re/match-stats/1","final":true,"teams":[
+              {"side":"home","raw_totals":{"0x3E":2},"players":[
+                {"slot":0,"actions":{},"raw_segments":{"0x3E":[0,1,0,0,1,0,0,0,9]}}]},
+              {"side":"away","raw_totals":{},"players":[{"slot":0,"actions":{}}]}]}
+            """);
+        var booked = e.Teams[0].Players[0];
+        Assert.Equal(2L, booked.Raw(ExportCounters.YellowCards));   // the 9th segment is not the match
+        Assert.Equal(2L, booked.Raw("0x3e"));                        // any case of the id
+        Assert.Equal(0L, booked.Raw(ExportCounters.RedCards));       // a counter that did not move
+        Assert.Equal(0L, e.Teams[1].Players[0].Raw(ExportCounters.YellowCards));  // no raw_segments at all
+        Assert.Equal(2L, e.Teams[0].Raw(ExportCounters.YellowCards));
+        Assert.Equal(0L, e.Teams[1].Raw(ExportCounters.YellowCards));
+    }
+
+    [Fact]
+    public void AnIdentifiedCounterReadsWhatTheHostRecordedInARealExport()
+    {
+        // The 3-0 was recorded before 0x13 had a name: it is in raw_segments all the same, and it
+        // moved for the three scorers only, never for the four who hit the target without scoring.
+        var e = Load(Match3Nil);
+        var arsenal = e.Teams[0];
+        Assert.Equal(3L, arsenal.Raw(ExportCounters.FinesseShotGoals));
+        foreach (var p in arsenal.Players)
+            Assert.Equal((long)p.Action("goals"), p.Raw(ExportCounters.FinesseShotGoals));
+        Assert.Equal(0L, e.Teams[1].Raw(ExportCounters.FinesseShotGoals));
+    }
+
+    [Fact]
+    public void BookingsComeFromTheCardCountersByEngineId()
+    {
+        // A real export, with cards added the way the host writes them: per player in raw_segments,
+        // per team in raw_totals. Neither sample match had a booking.
+        var node = JsonNode.Parse(File.ReadAllText(Path.Combine(SampleDir(), Match3Nil + ".json")))!;
+        JsonObject Segments(int team, int player)
+        {
+            var p = node["teams"]![team]!["players"]![player]!.AsObject();
+            if (p["raw_segments"] is not JsonObject segs) { segs = new JsonObject(); p["raw_segments"] = segs; }
+            return segs;
+        }
+        Segments(0, 0)["0x3E"] = new JsonArray(0, 1, 0, 0, 0, 0, 0, 0, 5);   // one yellow (the 9th is not the match)
+        Segments(1, 2)["0x3E"] = new JsonArray(0, 1, 0, 0, 1, 0, 0, 0, 0);   // two yellows...
+        Segments(1, 2)["0x3F"] = new JsonArray(0, 0, 0, 0, 1, 0, 0, 0, 0);   // ...and sent off
+        node["teams"]![0]!["raw_totals"]!["0x3E"] = 1;
+        node["teams"]![1]!["raw_totals"]!["0x3E"] = 2;
+        node["teams"]![1]!["raw_totals"]!["0x3F"] = 1;
+        var e = MatchExport.Parse(node.ToJsonString());
+
+        var linked = ExportLinker.Link(e, 10, 20, SquadsFor(e, 10, 20), out var reason);
+        Assert.True(linked is not null, reason);
+
+        var bookings = ExportLinker.Bookings(linked!);
+        Assert.Equal(2, bookings.Count);
+        var yellow = bookings.Single(b => ReferenceEquals(b.Player.Export, e.Teams[0].Players[0]));
+        Assert.Equal((1, 0), (yellow.Yellows, yellow.Reds));
+        var sentOff = bookings.Single(b => ReferenceEquals(b.Player.Export, e.Teams[1].Players[2]));
+        Assert.Equal((2, 1), (sentOff.Yellows, sentOff.Reds));
+        Assert.All(bookings, b => Assert.NotNull(b.Player.Player));
+
+        var home = ExportLinker.TeamStats(linked!.Home, linked.Away);
+        var away = ExportLinker.TeamStats(linked.Away, linked.Home);
+        Assert.Equal((1, 0), (home["yellow_cards"], home["red_cards"]));
+        Assert.Equal((2, 1), (away["yellow_cards"], away["red_cards"]));
+    }
+
+    [Fact]
+    public void AMatchWithoutCardsHasNoBookings()
+    {
+        var e = Load(Match3Nil);
+        var linked = ExportLinker.Link(e, 10, 20, SquadsFor(e, 10, 20), out _)!;
+        Assert.Empty(ExportLinker.Bookings(linked));
+        Assert.Equal(0, ExportLinker.TeamStats(linked.Home, linked.Away)["yellow_cards"]);
     }
 }

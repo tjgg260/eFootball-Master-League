@@ -72,6 +72,9 @@ public sealed class ExportTeam
     [JsonPropertyName("players")] public List<ExportPlayer> Players { get; init; } = new();
 
     public long Total(string key) => Totals.GetValueOrDefault(key);
+
+    /// <summary>A counter by engine id (<c>"0x3E"</c>), named by the host or not; 0 when it did not move.</summary>
+    public long Raw(string id) => ExportCounters.TryLookup(RawTotals, id, out var v) ? v : 0;
 }
 
 public sealed class ExportPlayer
@@ -99,6 +102,15 @@ public sealed class ExportPlayer
     [JsonPropertyName("attributes_form")] public int[]? AttributesForm { get; init; }
 
     public int Action(string key) => Actions.GetValueOrDefault(key);
+
+    /// <summary>
+    /// A counter by engine id, named by the host or not: the sum of the first 8 of its 9 segments,
+    /// which is the host's match total (the 9th is not part of it). 0 when it did not move.
+    /// </summary>
+    public long Raw(string id) =>
+        ExportCounters.TryLookup(RawSegments, id, out var segments) && segments is not null
+            ? segments.Take(8).Sum()
+            : 0;
 }
 
 /// <summary>Where the stats host writes, and which files in there are finished matches.</summary>

@@ -103,17 +103,36 @@ public sealed partial class DashboardViewModel
             if (!MatchPlayerNames.Contains(name)) MatchPlayerNames.Add(name);
             GoalPicks.Add(new EventPickRow(MatchPlayerNames) { Selected = name });
         }
+        // Bookings, by engine id (0x3E yellow, 0x3F red): one card row per card the host counted.
+        CardPicks.Clear();
+        var bookings = ExportLinker.Bookings(linked);
+        foreach (var b in bookings.Where(b => b.Player.Player is not null))
+        {
+            var name = b.Player.Player!.Name;
+            if (!MatchPlayerNames.Contains(name)) MatchPlayerNames.Add(name);
+            for (var i = 0; i < b.Yellows; i++) CardPicks.Add(new EventPickRow(MatchPlayerNames) { Selected = name });
+            for (var i = 0; i < b.Reds; i++) CardPicks.Add(new EventPickRow(MatchPlayerNames) { Selected = name, IsRed = true });
+        }
         RatingsText = Session.ExportRatingsText(linked);
         _exportForFixture = linked;
         _exportFixtureId = _fixtureId;
 
+        var notices = new List<string>();
         var unresolved = Session.UnresolvedScorers(linked);
-        ImportNotice = unresolved.Count > 0
-            ? $"⚠ Goals by players in neither squad: {string.Join(", ", unresolved)}. Add those scorers by hand."
-            : "";
+        if (unresolved.Count > 0)
+            notices.Add($"⚠ Goals by players in neither squad: {string.Join(", ", unresolved)}. Add those scorers by hand.");
+        var unbooked = bookings.Where(b => b.Player.Player is null).Select(b => b.Player.DisplayName).ToList();
+        if (unbooked.Count > 0)
+            notices.Add($"⚠ Cards for players in neither squad: {string.Join(", ", unbooked)}. Add those by hand.");
+        var sentOff = bookings.Where(b => b.Player.Player is not null && b.Reds > 0 && b.Yellows > 0)
+            .Select(b => b.Player.Player!.Name).ToList();
+        if (sentOff.Count > 0)
+            notices.Add($"⚠ Sent off after a booking: {string.Join(", ", sentOff)}. The host lists the yellows as well as the red — remove any your league doesn't keep.");
+        ImportNotice = string.Join(Environment.NewLine, notices);
         ResultEntryOpen = true;
+        var cardCount = CardPicks.Count;
         Log($"📥 {export.Stem}: {_homeName} {linked.Home.Goals}–{linked.Away.Goals} {_awayName}, " +
-            $"{GoalPicks.Count} scorer(s) and {linked.Resolved} ratings pre-filled from the stats host. " +
+            $"{GoalPicks.Count} scorer(s), {cardCount} card(s) and {linked.Resolved} ratings pre-filled from the stats host. " +
             "Goals are the host's inferred counter, so check the score, then Record.");
     }
 

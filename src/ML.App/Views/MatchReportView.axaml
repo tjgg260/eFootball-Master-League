@@ -112,8 +112,11 @@
                 <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="76"/>
                 <DataGridTextColumn Header="Form" Binding="{Binding Form}" Width="104"/>
                 <DataGridTextColumn Header="G" Binding="{Binding Goals}" Width="44"/>
+                <DataGridTextColumn Header="Pen" Binding="{Binding PenaltyGoals}" Width="48"/>
+                <DataGridTextColumn Header="Fin" Binding="{Binding FinesseGoals}" Width="46"/>
                 <DataGridTextColumn Header="Sh" Binding="{Binding Shots}" Width="46"/>
                 <DataGridTextColumn Header="SoT" Binding="{Binding OnTarget}" Width="50"/>
+                <DataGridTextColumn Header="Chip" Binding="{Binding ChipShots}" Width="52"/>
                 <DataGridTextColumn Header="Pas" Binding="{Binding Passes}" Width="50"/>
                 <DataGridTextColumn Header="Cmp" Binding="{Binding Completed}" Width="54"/>
                 <DataGridTextColumn Header="Pas%" Binding="{Binding PassPct}" Width="58"/>
@@ -122,6 +125,8 @@
                 <DataGridTextColumn Header="Int" Binding="{Binding Interceptions}" Width="46"/>
                 <DataGridTextColumn Header="Rec" Binding="{Binding Recoveries}" Width="48"/>
                 <DataGridTextColumn Header="Fls" Binding="{Binding Fouls}" Width="46"/>
+                <DataGridTextColumn Header="YC" Binding="{Binding YellowCards}" Width="44"/>
+                <DataGridTextColumn Header="RC" Binding="{Binding RedCards}" Width="44"/>
                 <DataGridTextColumn Header="Off" Binding="{Binding Offsides}" Width="46"/>
                 <DataGridTextColumn Header="Cor" Binding="{Binding Corners}" Width="48"/>
                 <DataGridTextColumn Header="Sav" Binding="{Binding Saves}" Width="48"/>
@@ -155,8 +160,11 @@
                 <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="76"/>
                 <DataGridTextColumn Header="Form" Binding="{Binding Form}" Width="104"/>
                 <DataGridTextColumn Header="G" Binding="{Binding Goals}" Width="44"/>
+                <DataGridTextColumn Header="Pen" Binding="{Binding PenaltyGoals}" Width="48"/>
+                <DataGridTextColumn Header="Fin" Binding="{Binding FinesseGoals}" Width="46"/>
                 <DataGridTextColumn Header="Sh" Binding="{Binding Shots}" Width="46"/>
                 <DataGridTextColumn Header="SoT" Binding="{Binding OnTarget}" Width="50"/>
+                <DataGridTextColumn Header="Chip" Binding="{Binding ChipShots}" Width="52"/>
                 <DataGridTextColumn Header="Pas" Binding="{Binding Passes}" Width="50"/>
                 <DataGridTextColumn Header="Cmp" Binding="{Binding Completed}" Width="54"/>
                 <DataGridTextColumn Header="Pas%" Binding="{Binding PassPct}" Width="58"/>
@@ -165,6 +173,8 @@
                 <DataGridTextColumn Header="Int" Binding="{Binding Interceptions}" Width="46"/>
                 <DataGridTextColumn Header="Rec" Binding="{Binding Recoveries}" Width="48"/>
                 <DataGridTextColumn Header="Fls" Binding="{Binding Fouls}" Width="46"/>
+                <DataGridTextColumn Header="YC" Binding="{Binding YellowCards}" Width="44"/>
+                <DataGridTextColumn Header="RC" Binding="{Binding RedCards}" Width="44"/>
                 <DataGridTextColumn Header="Off" Binding="{Binding Offsides}" Width="46"/>
                 <DataGridTextColumn Header="Cor" Binding="{Binding Corners}" Width="48"/>
                 <DataGridTextColumn Header="Sav" Binding="{Binding Saves}" Width="48"/>
@@ -180,7 +190,7 @@
             </DataGrid>
 
             <TextBlock Classes="ml-muted" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"
-                       Text="G goals · Sh shots · SoT on target · Pas passes · Cmp completed · Crs crosses · Tkl tackles · Int interceptions · Rec ball recoveries · Fls fouls · Off offsides · Cor corners · Sav saves · ShF / SoTF shots and shots on target faced (keepers) · Rcv ball receptions · Tch touches · Poss possessions · Kept possessions kept · On ball: seconds in possession · Spr sprints. Goals, saves and the two keeper columns are worked out by the host, not read from the game. Form: how far the game had his abilities from his file values when the host last read him on the pitch, on average (how many differed). The host calls this pre-match condition; players taken off tired show the biggest drops, so in-match fatigue may be in it too (not yet verified). Double-click a player to open him."/>
+                       Text="G goals · Pen penalty goals · Fin finesse-shot goals · Sh shots · SoT on target · Chip chip shots (attempts and goals not yet told apart) · Pas passes · Cmp completed · Crs crosses · Tkl tackles · Int interceptions · Rec ball recoveries · Fls fouls · YC / RC yellow and red cards · Off offsides · Cor corners · Sav saves · ShF / SoTF shots and shots on target faced (keepers) · Rcv ball receptions · Tch touches · Poss possessions · Kept possessions kept · On ball: seconds in possession · Spr sprints. Goals, saves and the two keeper columns are worked out by the host, not read from the game. Form: how far the game had his abilities from his file values when the host last read him on the pitch, on average (how many differed). The host calls this pre-match condition; players taken off tired show the biggest drops, so in-match fatigue may be in it too (not yet verified). Double-click a player to open him."/>
           </StackPanel>
         </Border>
 

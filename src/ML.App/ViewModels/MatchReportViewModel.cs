@@ -20,7 +20,8 @@ public sealed record ReportPlayerRow(long PlayerId, Bitmap? Portrait, string Shi
     string Rating, long Goals, long Shots, long OnTarget, long Passes, long Completed, string PassPct,
     long Crosses, long Tackles, long Interceptions, long Recoveries, long Fouls, long Offsides, long Corners,
     long Saves, long ShotsFaced, long OnTargetFaced, long Receptions, long Touches, long Possessions,
-    long Kept, long PossSeconds, long Sprints, string Form);
+    long Kept, long PossSeconds, long Sprints, string Form,
+    long YellowCards, long RedCards, long PenaltyGoals, long FinesseGoals, long ChipShots);
 
 public sealed record FlowBar(double Height, string Tip);
 
@@ -145,7 +146,8 @@ public sealed partial class MatchReportViewModel : PageViewModel, IFocusTarget
                 p.FormAverage is { } f
                     ? (Math.Abs(f) < 0.05 ? "±0" : f.ToString("+0.0;−0.0", CultureInfo.InvariantCulture)) +
                       (p.FormChanged > 0 ? $" ({p.FormChanged})" : "")
-                    : ""));
+                    : "",
+                A("yellow_cards"), A("red_cards"), A("penalty_goals"), A("finesse_shot_goals"), A("chip_shots")));
         }
     }
 

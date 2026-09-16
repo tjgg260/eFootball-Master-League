@@ -11,6 +11,9 @@ public sealed record LinkedPlayer(ExportPlayer Export, SquadPlayer? Player, Play
 
 public sealed record LinkedSide(ExportTeam Team, int TeamId, long Goals, IReadOnlyList<LinkedPlayer> Players);
 
+/// <summary>One player's cards in an export: counters 0x3E (yellow) and 0x3F (red), by engine id.</summary>
+public sealed record Booking(LinkedPlayer Player, int Yellows, int Reds);
+
 /// <summary>An export tied to a fixture: its two teams put on the fixture's home and away sides.</summary>
 public sealed record LinkedMatch(MatchExport Export, LinkedSide Home, LinkedSide Away, int Resolved, int WithPid)
 {
@@ -108,6 +111,9 @@ public static class ExportLinker
             ["interceptions"] = (int)side.Team.Total("interceptions"),
             ["tackles"] = (int)side.Team.Total("tackles"),
             ["saves"] = (int)side.Team.Total("saves"),
+            // Read by engine id (see ExportCounters): the host counts them whether or not it names them.
+            ["yellow_cards"] = (int)side.Team.Raw(ExportCounters.YellowCards),
+            ["red_cards"] = (int)side.Team.Raw(ExportCounters.RedCards),
         };
         var mine = side.Team.RawTotals.GetValueOrDefault("0x4B");
         var theirs = opponent.Team.RawTotals.GetValueOrDefault("0x4B");
@@ -118,4 +124,16 @@ public static class ExportLinker
         }
         return stats;
     }
+
+    /// <summary>
+    /// Every booked player of both sides, fixture home first: yellows from 0x3E, reds from 0x3F, as
+    /// the host counted them. 0x3F moved on each of the four second-yellow dismissals efootball-re
+    /// watched; whether 0x3E also counts that second yellow was not recorded. So a sent-off player
+    /// may carry yellows as well as the red, and the manager confirms what the league keeps.
+    /// </summary>
+    public static IReadOnlyList<Booking> Bookings(LinkedMatch m) =>
+        m.AllPlayers
+            .Select(p => new Booking(p, (int)p.Export.Raw(ExportCounters.YellowCards), (int)p.Export.Raw(ExportCounters.RedCards)))
+            .Where(b => b.Yellows > 0 || b.Reds > 0)
+            .ToList();
 }

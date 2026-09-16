@@ -519,7 +519,9 @@ public sealed partial class DashboardViewModel : PageViewModel
             string.Join(", ", rows.Select(r => r.Selected).Where(s => !string.IsNullOrWhiteSpace(s)));
         var goals = Fold(GoalPicks);
         var assists = Fold(AssistPicks);
-        var cards = Fold(CardPicks);
+        var cards = string.Join(", ", CardPicks
+            .Where(r => !string.IsNullOrWhiteSpace(r.Selected))
+            .Select(r => r.IsRed ? $"{r.Selected} r" : r.Selected));
         if (goals.Length > 0) ScorersText = goals;
         if (assists.Length > 0) AssistsText = assists;
         if (cards.Length > 0) CardsText = cards;
@@ -1153,4 +1155,7 @@ public sealed partial class EventPickRow : ObservableObject
     public ObservableCollection<string> Players { get; }
 
     [ObservableProperty] private string? _selected;
+
+    /// <summary>Card rows only: a red, not a yellow. Folds as "Name r", the stats engine's red.</summary>
+    [ObservableProperty] private bool _isRed;
 }

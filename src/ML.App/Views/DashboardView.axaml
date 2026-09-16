@@ -246,9 +246,14 @@
               <ItemsControl ItemsSource="{Binding CardPicks}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:EventPickRow">
-                    <ComboBox ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}"
-                              HorizontalAlignment="Stretch" Margin="0,2"
-                              PlaceholderText="booked…"/>
+                    <!-- a card row is a yellow until its toggle says red (folds as "Name r") -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                      <ComboBox Grid.Column="0" ItemsSource="{Binding Players}" SelectedItem="{Binding Selected}"
+                                HorizontalAlignment="Stretch" PlaceholderText="booked…"/>
+                      <ToggleButton Grid.Column="1" IsChecked="{Binding IsRed}" Margin="4,0,0,0"
+                                    Padding="6,2" FontSize="12" Background="#232B36"
+                                    ToolTip.Tip="Red card (off = yellow)" Content="🟥"/>
+                    </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
