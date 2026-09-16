@@ -56,8 +56,10 @@ zip with the built app and the world database. Unzip it anywhere, double-click
 `Play Master League.bat`, and start a new career. Nothing else is needed to run a career by
 entering results yourself. Player photos are not included in the package: with eFootball
 installed, `python tools/game_faces.py` decodes the game's own player thumbnails into
-`build/game_faces/` and links them by PID. Without that, portraits are generated avatars. Club
-crests and flags are included.
+`build/game_faces/` and links them by PID. Without that, portraits are generated avatars.
+`python tools/game_emblems.py` does the same for club crests: it decodes them from the game's paks
+into `build/game_emblems/`, with installed mods such as EvoMod taking precedence, so unlicensed
+clubs show the real crests the mod ships. The first run does both.
 
 `tools/make_release.sh <version>` builds that package from a checkout.
 

@@ -9,6 +9,8 @@ first_run.py — everything a download needs before its first career, from the p
      it has to be the state before OUR changes, so a later match can always be built from it.
   3. build the world:   build/game_world.db + build/game_catalog.json   (tools/game_world.py)
   4. the faces:         build/game_faces/<PID>.png                      (tools/game_faces.py)
+  5. the club crests:   build/game_emblems/<team id>.png                 (tools/game_emblems.py)
+                        from the game's paks, with installed mods such as EvoMod on top
 
 Nothing already there is rebuilt unless asked: a world holds your careers, so --rebuild-world is
 the only way this replaces one; --rebase takes a fresh copy of the installed dt200 (after a Konami
@@ -76,6 +78,7 @@ def main() -> int:
     ap.add_argument("--rebase", action="store_true", help="take a fresh copy of the installed dt200")
     ap.add_argument("--rebuild-world", action="store_true", help="rebuild game_world.db (its careers are lost)")
     ap.add_argument("--skip-faces", action="store_true")
+    ap.add_argument("--skip-crests", action="store_true")
     args = ap.parse_args()
 
     game = find_game(args.game_dir)
@@ -118,6 +121,12 @@ def main() -> int:
         say("Taking the player faces from the game…")
         if run("game_faces.py", "--db", str(WORLD), "--pak", str(game / "pak")) != 0:
             say("Faces could not be read this time — the careers work without them.")
+
+    if not args.skip_crests:
+        say("Taking the club crests from the game and your mods…")
+        if run("game_emblems.py", "--db", str(WORLD), "--catalog", str(WORLD.parent / "game_catalog.json"),
+               "--dt200", str(BASE_CPK), "--game-dir", str(game)) != 0:
+            say("Crests could not be read this time — clubs show their initials instead.")
 
     say("WORLD_READY")
     return 0
