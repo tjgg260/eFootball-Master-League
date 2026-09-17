@@ -121,6 +121,10 @@ def main() -> int:
         say("Taking the player faces from the game…")
         if run("game_faces.py", "--db", str(WORLD), "--pak", str(game / "pak")) != 0:
             say("Faces could not be read this time — the careers work without them.")
+        say("Taking the club crests from the game…")
+        # BC7, so this one needs Pillow; without it the tool says so and the clubs keep their initials.
+        if run("game_crests.py", "--db", str(WORLD), "--pak", str(game / "pak")) != 0:
+            say("Crests could not be read this time — the clubs show their initials instead.")
 
     if not args.skip_crests:
         say("Taking the club crests from the game and your mods…")
