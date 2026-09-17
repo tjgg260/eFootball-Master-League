@@ -16,8 +16,17 @@ backgrounds, not the crest.
 BC7 needs Pillow — unlike the DXT5 player heads, there is no numpy fallback for it, so without
 Pillow this writes nothing and says so (the release bundles Pillow for exactly this).
 
+EvoMod (optional, --evomod)
+    EvoMod 6.0's own container (PesConsole/Content/Paks/~mods/EvoMod_BASE_P) carries 452 club
+    crests — the REAL ones for the clubs eFootball leaves unlicensed, so Albacete BN gets Albacete
+    Balompié's bat and castles instead of Konami's invented shield. Where EvoMod has a club its
+    crest wins; every other club still comes from the game. Its index is stored unencrypted while
+    its file data is not, which open_container() handles. Re-run without --evomod to go back to
+    the game's own crests.
+
 What it writes
     build/game_crests/<team id>.png   Konami's art: build/ is gitignored, the release ships none of it
+    build/evomod_crests/<team id>.png EvoMod's art, kept apart from the game's for the same reason
     teams.logo_path                   'build/game_crests/<id>.png', for every row of that club,
                                       career copies included (they carry base_team_id)
     game_catalog.json  "logo"         the same path, which is where the New Career picker reads it
@@ -25,6 +34,7 @@ What it writes
     python tools/game_crests.py --dry     # resolve and report; decode nothing, write nothing
     python tools/game_crests.py           # decode what is missing, write the paths
     python tools/game_crests.py --pak <dir> --db <file> --catalog <file>
+    python tools/game_crests.py --evomod "...\EvoMod_6.0"   # real crests where the game invents
 
 Idempotent: a PNG already on disk is not decoded again, and a row whose path is already right is
 not rewritten. Close the app first — it holds the database open.
@@ -37,6 +47,7 @@ import re
 import sqlite3
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -51,8 +62,25 @@ EMBLEM = re.compile(r"/Symbol/Emblem/e_(\d+)(_[a-z_]+)\.uasset$")
 # Real crest first, then the game's invented one, largest size first within each.
 VARIANTS = ("_r_ll", "_r_l", "_r", "_f_ll", "_f_l", "_f")
 OUT = REPO / "build" / "game_crests"
+EVO_OUT = REPO / "build" / "evomod_crests"
+EVO_CONTAINER = "PesConsole/Content/Paks/~mods/EvoMod_BASE_P.utoc"
 DB = REPO / "build" / "game_world.db"
 CATALOG = REPO / "build" / "game_catalog.json"
+
+
+def open_container(utoc: Path) -> iostore.Container:
+    """A container, whether or not its directory index is encrypted. The game encrypts its index;
+    EvoMod's repacked container leaves it in the clear while still encrypting the file data, so the
+    reader is given a pass-through for the index only and the real key is back before any read."""
+    try:
+        return iostore.Container(str(utoc))
+    except Exception:
+        real = iostore._dec
+        iostore._dec = lambda b: b
+        try:
+            return iostore.Container(str(utoc))
+        finally:
+            iostore._dec = real
 
 
 def emblem_paths(container: iostore.Container) -> dict[int, str]:
@@ -80,20 +108,32 @@ def catalog_teams(catalog: dict):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry", action="store_true")
-    ap.add_argument("--pak", default=None, help="eFootball\\pak (default: found via Steam)")
+    ap.add_argument("--pak", default=None, help="eFootball pak folder (default: found via Steam)")
     ap.add_argument("--db", default=str(DB))
     ap.add_argument("--catalog", default=None, help="default: game_catalog.json beside --db")
+    ap.add_argument("--evomod", default=None,
+                    help="an EvoMod_6.0 folder: its crests (the real ones, where eFootball invents) win")
     args = ap.parse_args()
 
     pak = Path(args.pak) if args.pak else game_faces.default_pak()
     utoc = pak / CONTAINER
     if not utoc.exists():
-        sys.exit(f"{utoc} not found — pass --pak <eFootball>\\pak")
+        sys.exit(f"{utoc} not found — pass --pak <the eFootball pak folder>")
 
     t0 = time.time()
+    # (name, emblems by team id, container, output folder, the path a row stores)
+    sources = []
+    if args.evomod:
+        root = Path(args.evomod)
+        evo_utoc = root if root.suffix == ".utoc" else root / EVO_CONTAINER
+        if not evo_utoc.exists():
+            sys.exit(f"{evo_utoc} not found — pass --evomod <EvoMod_6.0 folder>")
+        evo = open_container(evo_utoc)
+        sources.append(("EvoMod", emblem_paths(evo), evo, EVO_OUT, "build/evomod_crests"))
+        print(f"{evo_utoc.name}: {len(sources[-1][1]):,} club crests")
     container = iostore.Container(str(utoc))
-    emblems = emblem_paths(container)
-    print(f"{CONTAINER}: {len(emblems):,} club emblems ({time.time() - t0:.1f}s; "
+    sources.append(("the game", emblem_paths(container), container, OUT, "build/game_crests"))
+    print(f"{CONTAINER}: {len(sources[-1][1]):,} club emblems ({time.time() - t0:.1f}s; "
           f"AES via {game_faces.AES_BACKEND}, images via {'Pillow' if game_faces.HAVE_PIL else 'numpy'})")
     if not game_faces.HAVE_PIL:
         print("Club crests are BC7, which needs Pillow (pip install pillow); nothing decoded.")
@@ -104,31 +144,43 @@ def main() -> int:
     con = sqlite3.connect(db)
     teams = con.execute("SELECT id, game_team_id, base_team_id, name, logo_path FROM teams").fetchall()
 
+    def pick(team_id):
+        """The first source that has this club: EvoMod before the game when it was asked for."""
+        for name, emblems, cont, out_dir, prefix in sources:
+            if team_id in emblems:
+                return name, emblems[team_id], cont, out_dir, f"{prefix}/{team_id}.png"
+        return None
+
     # base_team_id is the Team.bin id a career copy was made from; game_team_id is it for the world's own.
-    resolved: dict[int, int] = {}
+    chosen: dict[int, tuple] = {}
+    row_path: dict[int, str] = {}
     for row_id, game_team_id, base_team_id, _name, _logo in teams:
         for candidate in (base_team_id, game_team_id):
-            if candidate in emblems:
-                resolved[row_id] = candidate
+            if candidate is None:
+                continue
+            got = pick(candidate)
+            if got is not None:
+                chosen[candidate] = got
+                row_path[row_id] = got[4]
                 break
-    clubs = set(resolved.values())
-    print(f"teams {len(teams):,}: {len(resolved):,} rows resolve to {len(clubs):,} club crests")
+    from_each = Counter(v[0] for v in chosen.values())
+    print(f"teams {len(teams):,}: {len(row_path):,} rows resolve to {len(chosen):,} club crests"
+          + (" (" + ", ".join(f"{n}: {c:,}" for n, c in from_each.most_common()) + ")" if len(from_each) > 1 else ""))
 
-    missing = sorted(c for c in clubs if not (OUT / f"{c}.png").exists())
-    updates = [(f"build/game_crests/{resolved[row_id]}.png" if row_id in resolved else None, row_id)
-               for row_id, _g, _b, _n, logo in teams
-               if (f"build/game_crests/{resolved[row_id]}.png" if row_id in resolved else None) != logo]
+    missing = [(tid, v) for tid, v in sorted(chosen.items()) if not (v[3] / f"{tid}.png").exists()]
+    updates = [(row_path.get(row_id), row_id) for row_id, _g, _b, _n, logo in teams
+               if row_path.get(row_id) != logo]
     print(f"crests to decode {len(missing):,}; team rows to update {len(updates):,}")
     if args.dry:
         print("--dry: nothing decoded, nothing written.")
         return 0
 
-    OUT.mkdir(parents=True, exist_ok=True)
     failed = []
     t0 = time.time()
-    for i, team_id in enumerate(missing, 1):
+    for i, (team_id, (_name, asset, cont, out_dir, _rel)) in enumerate(missing, 1):
+        out_dir.mkdir(parents=True, exist_ok=True)
         try:
-            if not game_faces.decode(container, emblems[team_id], OUT / f"{team_id}.png"):
+            if not game_faces.decode(cont, asset, out_dir / f"{team_id}.png"):
                 failed.append(team_id)
         except Exception as ex:  # noqa: BLE001 — one bad texture never stops the rest
             failed.append(team_id)
@@ -136,11 +188,11 @@ def main() -> int:
                 print(f"   {team_id}: {ex!r}")
         if i % 200 == 0:
             print(f"   decoded {i:,}/{len(missing):,} ({time.time() - t0:.0f}s)", flush=True)
-    print(f"decoded {len(missing) - len(failed):,} PNGs into build/game_crests "
-          f"({time.time() - t0:.0f}s), {len(failed)} could not be decoded")
+    print(f"decoded {len(missing) - len(failed):,} PNGs ({time.time() - t0:.0f}s), "
+          f"{len(failed)} could not be decoded")
 
-    if failed:
-        bad = set(failed)
+    bad = set(failed)
+    if bad:
         updates = [(None if path and int(Path(path).stem) in bad else path, row_id) for path, row_id in updates]
     con.executemany("UPDATE teams SET logo_path=? WHERE id=?", updates)
     con.commit()
@@ -148,12 +200,11 @@ def main() -> int:
 
     if catalog_path.exists():
         catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-        bad = set(failed)
         wrote = 0
         for team in catalog_teams(catalog):
             team_id = team.get("team_id")
-            if team_id in clubs and team_id not in bad:
-                path = f"build/game_crests/{team_id}.png"
+            if team_id in chosen and team_id not in bad:
+                path = chosen[team_id][4]
                 if team.get("logo") != path:
                     team["logo"] = path
                     wrote += 1
