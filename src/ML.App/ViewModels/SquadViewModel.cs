@@ -797,12 +797,14 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
             ? $"🟥 Suspended — {Session.SuspensionSpan(value.SuspendedMatches)} ({value.SuspendedReason})"
             : value.IsInjured
             ? $"🚑 Injured — unavailable until matchday {value.InjuredUntil}"
-            : value.Fatigue >= 40 ? "😮‍💨 Exhausted — needs rest before he breaks down"
+            // True now: tools/match_condition.py shaves a tired man's abilities in the compiled match.
+            : value.Fatigue >= 40 ? "😮‍💨 Exhausted — he plays well below himself in the match (pace and " +
+                                    "stamina go first) and is likelier to break down. Rest him."
             // Healed. The stale injured_until_md is still on the row (it is only cleared at
             // season rollover), so name the date as history instead of letting it read as an
             // absence — the same stale flag that used to keep the red badge lit until April.
             : value.InjuredUntil is int back ? $"Fit again — back since matchday {back}"
-            : value.Fatigue >= 20 ? "Match-fit, carrying normal fatigue"
+            : value.Fatigue >= 20 ? "Match-fit, carrying some fatigue — a touch off his best in the match"
             : "Fully fit and available";
         try
         {
