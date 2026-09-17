@@ -201,6 +201,13 @@
               <Button Content="‹ back" Command="{Binding BackToPreMatchCommand}" Classes="ml-ghost"
                       VerticalAlignment="Center"/>
             </StackPanel>
+            <!-- a level cup tie went to penalties in the game: the desk asks who won them -->
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding NeedsShootout}">
+              <TextBlock Text="Level at the end — who won the shoot-out?" Classes="ml-body"
+                         Foreground="#E0A526" VerticalAlignment="Center"/>
+              <ToggleButton Content="{Binding ShootoutHomeLabel}" IsChecked="{Binding ShootoutHome}" FontSize="12"/>
+              <ToggleButton Content="{Binding ShootoutAwayLabel}" IsChecked="{Binding ShootoutAway}" FontSize="12"/>
+            </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button Content="📥 Load match export" Command="{Binding LoadMatchExportCommand}"
                       Classes="ml-secondary" FontSize="12"

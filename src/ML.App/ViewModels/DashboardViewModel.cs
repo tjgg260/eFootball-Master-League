@@ -194,6 +194,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     [NotifyPropertyChangedFor(nameof(SeasonOver))]
     [NotifyPropertyChangedFor(nameof(ShowPreMatch))]
     [NotifyPropertyChangedFor(nameof(ShowResultEntry))]
+    [NotifyPropertyChangedFor(nameof(NeedsShootout))]
     private bool _hasNextMatch;
 
     // ── matchday theatre (UX P1): the card is an OCCASION before kickoff and an entry desk
@@ -201,10 +202,25 @@ public sealed partial class DashboardViewModel : PageViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowPreMatch))]
     [NotifyPropertyChangedFor(nameof(ShowResultEntry))]
+    [NotifyPropertyChangedFor(nameof(NeedsShootout))]
     private bool _resultEntryOpen;
 
     public bool ShowPreMatch => HasNextMatch && !ResultEntryOpen;
     public bool ShowResultEntry => HasNextMatch && ResultEntryOpen;
+
+    // ── a cup tie needs a winner ──────────────────────────────────────────────────────
+    // A level score in a knockout went to penalties in the game. The desk asks who won them;
+    // without the answer the engine used to flip its own coin (Session.CupWinnerOf).
+    public bool NeedsShootout => ShowResultEntry && _kind == "cup" && (int)HomeScore == (int)AwayScore;
+    public string ShootoutHomeLabel => _homeName;
+    public string ShootoutAwayLabel => _awayName;
+
+    [ObservableProperty] private bool _shootoutHome;
+    [ObservableProperty] private bool _shootoutAway;
+    partial void OnShootoutHomeChanged(bool value) { if (value) ShootoutAway = false; }
+    partial void OnShootoutAwayChanged(bool value) { if (value) ShootoutHome = false; }
+    partial void OnHomeScoreChanged(decimal value) => OnPropertyChanged(nameof(NeedsShootout));
+    partial void OnAwayScoreChanged(decimal value) => OnPropertyChanged(nameof(NeedsShootout));
 
     /// <summary>The narrative line of the pre-match card ("In the other dugout: …").</summary>
     [ObservableProperty]
@@ -304,7 +320,13 @@ public sealed partial class DashboardViewModel : PageViewModel
             var home = _s.TeamName(homeId);
             var away = _s.TeamName(awayId);
             ReportScore = $"{home}  {homeGoals} – {awayGoals}  {away}";
-            var leagueId = _s.Repo.Fixtures(_s.SeasonId).FirstOrDefault(f => f.Id == fixtureId)?.LeagueId ?? 9002;
+            var fixture = _s.Repo.Fixtures(_s.SeasonId).FirstOrDefault(f => f.Id == fixtureId);
+            var leagueId = fixture?.LeagueId ?? 9002;
+            // A level cup tie went to penalties: the score line alone does not say who went through.
+            int? shootoutWinner = kind == "cup" && homeGoals == awayGoals && fixture is not null
+                ? _s.CupWinnerOf(fixture) : null;
+            if (shootoutWinner is { } through)
+                ReportScore += $"   ·   {_s.TeamName(through)} won on penalties";
             ReportComp = kind == "cup" ? Session.CupNameFor(leagueId)
                 : kind == "friendly" ? "Preseason Friendly" : _s.LeagueName;
             var youHome = homeId == _s.CurrentTeamId;
@@ -312,8 +334,11 @@ public sealed partial class DashboardViewModel : PageViewModel
             var them = youHome ? awayGoals : homeGoals;
             (ReportVerdict, ReportVerdictBrush) = us > them
                 ? ("FULL TIME — VICTORY", Visuals.Brush("#8BE04A"))
-                : us == them ? ("FULL TIME — DRAW", Visuals.Brush("#E0A526"))
-                : ("FULL TIME — DEFEAT", Visuals.Brush("#F0655A"));
+                : us < them ? ("FULL TIME — DEFEAT", Visuals.Brush("#F0655A"))
+                // level: a league draw is a draw, a cup tie is whoever held their nerve
+                : shootoutWinner is null ? ("FULL TIME — DRAW", Visuals.Brush("#E0A526"))
+                : shootoutWinner == _s.CurrentTeamId ? ("THROUGH ON PENALTIES", Visuals.Brush("#8BE04A"))
+                : ("OUT ON PENALTIES", Visuals.Brush("#F0655A"));
 
             ReportEvents.Clear();
             foreach (var (type, player, teamId) in _s.EventsForFixture(fixtureId))
@@ -583,6 +608,10 @@ public sealed partial class DashboardViewModel : PageViewModel
             catch { PreTalkVisible = false; }
             HasNextMatch = true;
             ResultEntryOpen = false;          // a fresh fixture always opens on the OCCASION
+            ShootoutHome = ShootoutAway = false;
+            OnPropertyChanged(nameof(ShootoutHomeLabel));
+            OnPropertyChanged(nameof(ShootoutAwayLabel));
+            OnPropertyChanged(nameof(NeedsShootout));
             // NOTE: FtVisible is NOT reset here — RecordResult raises the banner and then
             // loads the next fixture; clearing it here killed the moment before one frame
             // rendered (the audit's "dead banner"). It clears with the report, or on kickoff.
@@ -1010,6 +1039,21 @@ public sealed partial class DashboardViewModel : PageViewModel
     private void RecordResult()
     {
         if (!HasNextMatch) return;
+        if (_kind == "cup" && (int)HomeScore == (int)AwayScore)
+        {
+            if (!ShootoutHome && !ShootoutAway)
+            {
+                ImportNotice = "A cup tie needs a winner — it finished level, so pick who won the shoot-out.";
+                return;
+            }
+            try { _s.SetCupShootoutWinner(_fixtureId, ShootoutHome ? _homeId : _awayId); }
+            catch (Exception ex)
+            {
+                Program.Log("Dashboard.SetCupShootoutWinner", ex);
+                ImportNotice = $"The shoot-out winner could not be saved: {ex.Message}";
+                return;
+            }
+        }
         // Snapshot the gauges so the report can show what this result MOVED (P3).
         int moraleBefore = 60, boardBefore = 58, fansBefore = 55;
         try { moraleBefore = _s.SquadMoraleAverage(); } catch { }

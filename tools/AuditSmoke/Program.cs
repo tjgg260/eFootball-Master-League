@@ -215,6 +215,33 @@ Console.WriteLine("\nA4  cards become bans (they used to be decoration)");
 }
 
 // ---------------------------------------------------------------------------------------------
+Console.WriteLine("\nB3  a level cup tie goes to whoever won the shoot-out (it used to be the app's coin)");
+{
+    var tie = s.Repo.Fixtures(season).First(f => f.Kind == "cup" && !f.Played);
+    void Reset(bool unplay)
+    {
+        using var c = db.Connection.CreateCommand();
+        c.CommandText = "DELETE FROM meta WHERE key=$k; DELETE FROM results WHERE fixture_id=$f" +
+                        (unplay ? "; UPDATE fixtures SET played=0 WHERE id=$f" : "");
+        c.Parameters.AddWithValue("$k", $"cup_pens_{tie.Id}");
+        c.Parameters.AddWithValue("$f", tie.Id);
+        c.ExecuteNonQuery();
+    }
+    // Both sides in turn: one of them is the side the app's own coin would NOT have picked, so
+    // two passes prove the manager's answer is what counts, not luck.
+    foreach (var winner in new[] { tie.AwayTeamId, tie.HomeTeamId })
+    {
+        Reset(unplay: false);
+        s.SetCupShootoutWinner(tie.Id, winner);
+        s.Repo.RecordResult(new ResultRow { FixtureId = tie.Id, HomeGoals = 1, AwayGoals = 1 });
+        var fresh = new Session(db, s.CurrentTeamId, season);   // no cached results
+        Check($"1-1, {fresh.TeamName(winner)} named the shoot-out winner: they go through",
+            fresh.CupWinnerOf(tie) == winner);
+    }
+    Reset(unplay: true);
+}
+
+// ---------------------------------------------------------------------------------------------
 Console.WriteLine("\nA6  Advance Season with your own cup ties unplayed (the cup used to freeze, no winner)");
 {
     var myTies = s.Repo.Fixtures(season)

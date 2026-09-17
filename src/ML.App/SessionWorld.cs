@@ -218,6 +218,15 @@ public sealed partial class Session
         }
     }
 
+    /// <summary>
+    /// Who won the shoot-out of a level cup tie YOU played. CupWinnerOf reads the same key before
+    /// it rolls its own, so this has to be set before the round is advanced. Until it existed a tie
+    /// you drew 1-1 and won on penalties in eFootball was decided by a coin the app flipped, and
+    /// half the time it knocked you out of a cup you had just gone through in.
+    /// </summary>
+    public void SetCupShootoutWinner(int fixtureId, int winnerTeamId) =>
+        SetMeta($"cup_pens_{fixtureId}", winnerTeamId.ToString());
+
     /// <summary>Winner of a played cup tie; drawn ties go to penalties, decided once, seeded.</summary>
     public int CupWinnerOf(FixtureRow f)
     {
@@ -1849,6 +1858,12 @@ public sealed partial class Session
         // as served are handed back, or re-recording it would serve them twice.
         try { UnsettleSuspensions(last.Id); }
         catch (Exception ex) { Program.Log("Session.UnsettleSuspensions", ex); }
+        using (var pens = Db.Connection.CreateCommand())
+        {
+            pens.CommandText = "DELETE FROM meta WHERE key=$k";   // a re-entered tie picks its winner again
+            pens.Parameters.AddWithValue("$k", $"cup_pens_{last.Id}");
+            pens.ExecuteNonQuery();
+        }
         _results = null;
         _elos = null;
         // The caller prints this verbatim, so it has to be the truth about a partial undo.
