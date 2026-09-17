@@ -61,6 +61,8 @@ import wesys                           # noqa: E402
 import pesdb                           # noqa: E402
 import kit_author                      # noqa: E402
 import cpk_patch                       # noqa: E402
+import match_condition                 # noqa: E402
+from ml_apply import prove_round_trip  # noqa: E402
 
 RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
 TREE_BASE = REPO / "build" / "tree_base"
@@ -271,14 +273,55 @@ def write_style(tree: Path, team_id: int, style: int) -> int:
     return changed
 
 
-def squad_from_db(db_path: str, team_id: int):
+def fixture_matchday(db_path: str, home_id: int, away_id: int) -> int | None:
+    """The matchday being compiled: these two clubs' next unplayed meeting this season. It is what
+    "injured until matchday N" is measured against. None when the fixture is not in the career
+    (an exhibition between two clubs), and then nobody is ruled out."""
+    import sqlite3
+    con = sqlite3.connect(db_path)
+    try:
+        season = con.execute("SELECT value FROM meta WHERE key='current_season_id'").fetchone()
+        row = con.execute(
+            "SELECT matchday FROM fixtures WHERE home_team_id=? AND away_team_id=? AND played=0 "
+            "AND (? IS NULL OR season_id=?) ORDER BY matchday LIMIT 1",
+            (home_id, away_id, season[0] if season else None, season[0] if season else None)).fetchone()
+        return row[0] if row else None
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        con.close()
+
+
+_ABILITY_NAMES: frozenset | None = None
+
+
+def _ability_names() -> frozenset:
+    """The 26 names that are abilities. player_attributes also carries form, foot, weak-foot and
+    injury-resistance codes on their own small scales, which condition must never touch."""
+    global _ABILITY_NAMES
+    if _ABILITY_NAMES is None:
+        _ABILITY_NAMES = frozenset(match_condition.AbilityWriter().offsets)
+    return _ABILITY_NAMES
+
+
+def squad_from_db(db_path: str, team_id: int, matchday: int | None = None):
     """
     A club's squad straight from the master DB (the source of truth) — ordered by squad slot, so
     the in-app starting XI (slots 0..10) lands in the host's starting positions. Abilities come
-    from player_attributes, same shape the RFS path produces.
+    from player_attributes, same shape the RFS path produces — and then pass through the player's
+    condition for this fixture (match_condition.for_the_match): "abilities" is what he brings
+    TODAY, "abilities_base" what the career says he is.
     """
     import sqlite3
     con = sqlite3.connect(db_path)
+
+    def optional(sql: str, args: tuple):
+        """One row, or None — also None when the table is from a newer schema than this file."""
+        try:
+            return con.execute(sql, args).fetchone()
+        except sqlite3.OperationalError:
+            return None
+
     row = con.execute("SELECT name FROM teams WHERE id=?", (team_id,)).fetchone()
     if not row:
         con.close()
@@ -296,11 +339,26 @@ def squad_from_db(db_path: str, team_id: int):
     for pid, shirt in con.execute(
             "SELECT player_id, squad_number FROM squad_members WHERE team_id=? ORDER BY slot",
             (team_id,)).fetchall():
-        p = con.execute("SELECT name, position, base_pid FROM players WHERE id=?", (pid,)).fetchone()
+        p = con.execute("SELECT name, position, base_pid, overall_rating FROM players WHERE id=?",
+                        (pid,)).fetchone()
         if not p:
             continue
-        abilities = dict(con.execute(
+        base = dict(con.execute(
             "SELECT attribute, value FROM player_attributes WHERE player_id=?", (pid,)).fetchall())
+        cond = optional("SELECT fatigue, injured_until_md, form FROM player_condition WHERE player_id=?", (pid,))
+        mood = optional("SELECT value FROM morale WHERE player_id=?", (pid,))
+        ban = optional("SELECT matches, reason FROM suspensions WHERE player_id=? AND matches > 0", (pid,))
+        fatigue = cond[0] if cond else 0
+        form = cond[2] if cond and cond[2] is not None else match_condition.NEUTRAL_FORM
+        morale = mood[0] if mood else match_condition.NEUTRAL_MORALE
+        unavailable = None
+        if ban:
+            unavailable = f"suspended ({ban[1]})"
+        elif cond and cond[1] is not None and matchday is not None and cond[1] >= matchday:
+            unavailable = "injured"
+        abilities = dict(base)
+        abilities.update(match_condition.for_the_match(
+            {k: v for k, v in base.items() if k in _ability_names()}, fatigue, form, morale))
         role = con.execute(
             "SELECT playstyle FROM player_playstyles WHERE player_id=? AND kind='primary' LIMIT 1",
             (pid,)).fetchone()
@@ -311,14 +369,35 @@ def squad_from_db(db_path: str, team_id: int):
         # face colour instead of the donor's (tools/appearance.py for the layout).
         skin = con.execute(
             "SELECT skin_tone FROM player_appearance WHERE player_id=?", (pid,)).fetchone()
-        players.append({"name": p[0], "position": p[1], "base_pid": p[2],
+        players.append({"name": p[0], "position": p[1], "base_pid": p[2], "overall": p[3],
                         "shirt": shirt if 1 <= shirt <= 99 else len(players) + 1,
-                        "abilities": abilities, "role": role[0] if role else None,
+                        "abilities": abilities, "abilities_base": base,
+                        "fatigue": fatigue, "form": form, "morale": morale,
+                        "unavailable": unavailable,
+                        "role": role[0] if role else None,
                         "secondary_role": srole[0] if srole else None,
                         "captain": pid == captain_id,
                         "taker_bits": taker_bits.get(pid, 0),
                         "skin_tone": skin[0] if skin else None})
     con.close()
+    return name, players
+
+
+def match_squad(db_path: str, team_id: int, matchday: int | None, quiet: bool = False):
+    """squad_from_db, made ready for THIS fixture: nobody injured or suspended in the XI, and a
+    line in the log for what today's condition costs — the log is where the manager sees why."""
+    name, players = squad_from_db(db_path, team_id, matchday)
+    if not players:
+        return name, players
+    players, notes = match_condition.order_for_availability(players)
+    if not quiet:
+        for note in notes:
+            print(f"  availability {name}: {note}")
+        worn = [p for p in players[:11] if p["abilities"] != p["abilities_base"]]
+        if worn:
+            worst = max(worn, key=lambda p: p["fatigue"])
+            print(f"  condition {name}: {len(worn)} of the XI play below themselves today "
+                  f"(most tired: {worst['name']}, fatigue {worst['fatigue']}/{match_condition.MAX_FATIGUE})")
     return name, players
 
 
@@ -668,6 +747,7 @@ def reconcile_real_slot(tree: Path, slot_id: int, squad) -> tuple[int, int, list
     captain_pid: int | None = None
     taker_by_pid: dict[int, int] = {}                          # resolved pid -> taker bits (fk8/pk16/ckl4/ckr1)
     sec_by_pid: dict[int, str] = {}                            # resolved pid -> out-of-possession role
+    abil_by_pid: dict[int, dict] = {}                          # resolved pid -> abilities for this match
     unmatched_ix: list[tuple[int, str]] = []
     for ix in sorted(range(len(squad)), key=lambda i: -len(squad[i]["name"].split())):
         p = squad[ix]
@@ -697,11 +777,34 @@ def reconcile_real_slot(tree: Path, slot_id: int, squad) -> tuple[int, int, list
                 taker_by_pid[pid] = p["taker_bits"]
             if p.get("secondary_role"):
                 sec_by_pid[pid] = p["secondary_role"]
+            if p.get("abilities"):
+                abil_by_pid[pid] = p["abilities"]
     resolved = [by_ix[ix] for ix in sorted(by_ix)]            # DB slot order
 
     # Write each player's in- AND out-of-possession role into their Player.bin record.
     styles_written = _apply_playstyles(pb, pid2offset, resolved, sec_by_pid)
-    if styles_written:
+
+    # ...and what the career says he IS, as he is today (match_condition). This was the half of the
+    # compile that did not exist on this path: the game played every career fixture with the
+    # abilities Konami shipped. Only fields that differ are written, so a player the career has
+    # not changed, in a squad that is fresh, leaves his record byte-identical.
+    writer = match_condition.AbilityWriter(400)
+    players_changed = fields_changed = 0
+    for pid, targets in abil_by_pid.items():
+        off = pid2offset[pid]
+        rec = bytearray(pb[off:off + 400])
+        n = writer.apply(rec, pid, targets)
+        if n:
+            pb[off:off + 400] = rec
+            players_changed += 1
+            fields_changed += n
+    if fields_changed:
+        print(f"  abilities: {players_changed} player(s) differ from the game's own values today "
+              f"({fields_changed} attribute fields written)")
+
+    if styles_written or fields_changed:
+        # No write without proof we can rebuild what we are about to replace (ml_apply's gate).
+        prove_round_trip(pb_blob, wesys.unpack_wesys_payload(pb_blob), pb_blob[1] & 0x0F)
         pb_path.write_bytes(wesys.pack_wesys_container(bytes(pb), key_nibble=pb_blob[1] & 0x0F,
                                                        compression_level=1))
 
@@ -711,9 +814,14 @@ def reconcile_real_slot(tree: Path, slot_id: int, squad) -> tuple[int, int, list
     # Desired occupant order over the club's existing records (sort_key order): our squad in DB
     # slot order (XI first), then the club's surplus players keeping their current relative order.
     # Trimmed to the club's record count, so the headcount is untouched by construction.
-    occupants = [(pid, max(0, min(98, shirt - 1))) for pid, shirt, _, _ in resolved]
+    # Anyone injured or suspended goes behind even the surplus: the matchday squad is the front of
+    # this list, so the back is the one place a man ruled out cannot be brought on from — and when
+    # the career's squad outgrows the club's records, he is the first the trim below drops.
+    ruled_out = {by_ix[ix][0] for ix in by_ix if squad[ix].get("unavailable")}
+    occupants = [(pid, max(0, min(98, shirt - 1))) for pid, shirt, _, _ in resolved if pid not in ruled_out]
     occupants += [(r["player_id"], r["shirt_number_raw"])
                   for r in slot_recs if r["player_id"] not in our]
+    occupants += [(pid, max(0, min(98, shirt - 1))) for pid, shirt, _, _ in resolved if pid in ruled_out]
     occupants = occupants[:len(slot_recs)]
 
     rewritten = 0
@@ -773,7 +881,7 @@ def real_slot_match(home_real, away_real, home_name, away_name, args) -> int:
     if args.home_id and args.away_id:
         for slot, tid, label, ingame in ((home_real[0], args.home_id, home_name, home_real[1]),
                                          (away_real[0], args.away_id, away_name, away_real[1])):
-            _, squad = squad_from_db(args.db, tid)
+            _, squad = match_squad(args.db, tid, getattr(args, "matchday", None))
             if squad:
                 present, rewritten, unmatched = reconcile_real_slot(tree, slot, squad)
                 note = f", {len(unmatched)} not in eFootball: {unmatched}" if unmatched else ""
@@ -820,8 +928,11 @@ def main() -> int:
 
     if args.home_id and args.away_id:
         # Source of truth: compile the two clubs straight from the career DB (respects the app XI).
-        home_name, home_sq = squad_from_db(args.db, args.home_id)
-        away_name, away_sq = squad_from_db(args.db, args.away_id)
+        # The matchday decides who is injured for THIS fixture. The squads read here feed the
+        # host-slot path; the real-teams path reads its own (and does the talking), so stay quiet.
+        args.matchday = fixture_matchday(args.db, args.home_id, args.away_id)
+        home_name, home_sq = match_squad(args.db, args.home_id, args.matchday, quiet=True)
+        away_name, away_sq = match_squad(args.db, args.away_id, args.matchday, quiet=True)
         if not home_name or not away_name:
             sys.exit(f"team id not found in {args.db}")
     elif args.home and args.away:
