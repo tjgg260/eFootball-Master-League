@@ -994,7 +994,9 @@ public sealed partial class DashboardViewModel : PageViewModel
         try
         {
             var msg = _s.UndoLastResult();
+            ReportVisible = false;   // the report on screen is the result that was just undone
             LoadNextMatch();
+            ResultEntryOpen = HasNextMatch;   // straight back to the desk: undo means re-enter
             MatchStatus = msg;
         }
         catch (Exception ex)
@@ -1014,17 +1016,39 @@ public sealed partial class DashboardViewModel : PageViewModel
         try { boardBefore = _s.BoardConfidenceNow; } catch { }
         try { fansBefore = _s.FanHappiness(); } catch { }
         FoldPicksIntoTexts();   // pickers beat typing (P3)
-        _s.Repo.RecordResult(new ResultRow
+        try
         {
-            FixtureId = _fixtureId, HomeGoals = (int)HomeScore, AwayGoals = (int)AwayScore,
-        });
+            _s.Repo.RecordResult(new ResultRow
+            {
+                FixtureId = _fixtureId, HomeGoals = (int)HomeScore, AwayGoals = (int)AwayScore,
+            });
+        }
+        catch (Exception ex)
+        {
+            // The one call in this method that had no guard — on the most-pressed button in the
+            // app, where a locked file threw straight into the input dispatcher. Nothing has been
+            // written at this point, so the desk stays open with everything still in it.
+            Program.Log("Dashboard.RecordResult", ex);
+            MatchStatus = $"The result could NOT be saved: {ex.Message}" + Environment.NewLine +
+                          "Nothing was recorded — your score and scorers are still here. Try again.";
+            return;
+        }
         // Sim the rest of this matchday (the CPU games) so the league table moves with you,
         // then move the cup along: sim the round's other ties and draw the next round when done.
         // Cup midweeks share matchday numbers with league rounds — recording a cup tie must
         // NOT play out that league round early, so the league pass only runs for league games.
         var condNote = "";
         var condNote2 = "";
-        if (_kind != "cup") _s.PlayOutMatchday(_matchday, _fixtureId);
+        if (_kind != "cup")
+        {
+            try { _s.PlayOutMatchday(_matchday, _fixtureId); }
+            catch (Exception ex)
+            {
+                Program.Log("Dashboard.PlayOutMatchday", ex);
+                condNote2 = Environment.NewLine +
+                            $"The other games this matchday could not be played: {ex.Message}";
+            }
+        }
         try
         {
             _s.AdvanceCup(_matchday, _fixtureId);

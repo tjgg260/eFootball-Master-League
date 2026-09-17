@@ -190,9 +190,14 @@ public sealed partial class NewCareerViewModel : ObservableObject
     private async Task BuildWorld(string? gameDir)
     {
         if (IsBuilding) return;
-        IsBuilding = true;
+        BuildError = "";
+        BuildErrorDetail = "";
+        ShowBusy("Building your world…",
+             "Reading players, clubs, leagues, faces and crests from your eFootball. This takes about " +
+             "a minute, once — the window will unlock when it's done.");
         NeedGameDir = false;
         var askForFolder = false;
+        var tail = new List<string>();
         try
         {
             var args = new List<string>();
@@ -201,6 +206,11 @@ public sealed partial class NewCareerViewModel : ObservableObject
             {
                 var notFound = line.StartsWith("NEED_GAME_DIR", StringComparison.Ordinal);
                 if (notFound) askForFolder = true;
+                lock (tail)
+                {
+                    tail.Add(line);
+                    if (tail.Count > 40) tail.RemoveAt(0);
+                }
                 Dispatcher.UIThread.Post(() => Status = notFound
                     ? "Couldn't find eFootball — choose the folder it's installed in."
                     : line);
@@ -217,7 +227,16 @@ public sealed partial class NewCareerViewModel : ObservableObject
             {
                 NeedGameDir = askForFolder;
                 if (!askForFolder)
-                    Status = "Building the world stopped — the last line above says why.";
+                {
+                    // This used to say "the last line above says why" — but Status is ONE line that
+                    // every log line overwrites, so there was never a line above. The tail is kept
+                    // and shown, the way a failed career build has always shown its own.
+                    BuildError = "Building the world stopped before it finished. Nothing in your " +
+                                 "eFootball was changed — it is safe to try again.";
+                    lock (tail)
+                        BuildErrorDetail = string.Join(Environment.NewLine, tail.TakeLast(14));
+                    Status = "The world build stopped — the reason is in Details above.";
+                }
             }
         }
         finally
@@ -314,18 +333,36 @@ public sealed partial class NewCareerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ContinueCareer()
+    private async Task ContinueCareer()
     {
         if (IsBuilding) return;
-        if (CareerLoader.TryLoad() is { } session) CareerStarted?.Invoke(session);
-        else Status = "Couldn't open the active career — try loading a save from the vault.";
+        ShowBusy("Opening your career…", "Checking the save and loading your club.");
+        Status = "Opening your career…";
+        try
+        {
+            // Let the overlay paint before the open blocks this thread: the button used to go dead
+            // with nothing on screen while the database was checked and migrated.
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                () => { }, Avalonia.Threading.DispatcherPriority.Background);
+            if (CareerLoader.TryLoad() is { } session)
+            {
+                CareerStarted?.Invoke(session);
+                return;
+            }
+            // CareerLoader works out WHY — open in another program, read-only, damaged, moved —
+            // and that sentence used to be read by nothing: every cause printed the same line.
+            Status = CareerLoader.LastFailure
+                     ?? "Couldn't open the active career — try loading a save from the vault.";
+        }
+        finally { IsBuilding = false; }
     }
 
     [RelayCommand]
     private async Task LoadSave(SaveSlot? slot)
     {
         if (slot is null || IsBuilding) return;
-        IsBuilding = true;
+        ShowBusy($"Loading {slot.Club}…",
+             "The career you were on goes to the vault first, then this save is opened.");
         Status = $"Restoring {slot.Club}…";
         try
         {
@@ -338,7 +375,9 @@ public sealed partial class NewCareerViewModel : ObservableObject
                 CareerStarted?.Invoke(session);
                 return;
             }
-            Status = "Restore failed — the save file may be from an incompatible version.";
+            Status = ok && CareerLoader.LastFailure is { } why
+                ? why
+                : "Restore failed — the save file may be from an incompatible version.";
         }
         finally { IsBuilding = false; }
     }
@@ -535,6 +574,19 @@ public sealed partial class NewCareerViewModel : ObservableObject
 
     private bool CanBack() => CanGoBack && !IsBuilding;
 
+    /// <summary>What the full-window lock says it is doing. It used to read "Building your career…
+    /// squads, tactics and fixtures are being written" whatever was running — a first-run world
+    /// build and a vault load included.</summary>
+    [ObservableProperty] private string _busyTitle = "Building your career…";
+    [ObservableProperty] private string _busyNote = "";
+
+    private void ShowBusy(string title, string note)
+    {
+        BusyTitle = title;
+        BusyNote = note;
+        IsBuilding = true;
+    }
+
     private bool CanStart() => SelectedTeam is not null && SelectedLeague is not null && !IsBuilding;
 
     [RelayCommand(CanExecute = nameof(CanStart))]
@@ -543,7 +595,9 @@ public sealed partial class NewCareerViewModel : ObservableObject
         if (SelectedTeam is null || SelectedLeague is null || IsBuilding) return;
         BuildError = "";
         BuildErrorDetail = "";
-        IsBuilding = true;
+        ShowBusy("Building your career…",
+             "Squads, tactics and fixtures are being written. This can take a minute — the window " +
+             "will unlock when it's done.");
         var club = SelectedTeam.Name;
         var rfsId = SelectedTeam.RfsId;
         var compId = SelectedLeague.CompId;

@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         x:Class="ML.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="Master League" Width="1640" Height="820"
+        Title="Master League" Width="1640" Height="820" MinWidth="1280" MinHeight="700"
         Background="{DynamicResource ThemeBgBrush}" TransparencyLevelHint="Mica">
 
   <Window.Styles>
@@ -113,12 +113,12 @@
   <Grid ColumnDefinitions="230,*">
     <!-- sidebar -->
     <Border Grid.Column="0" Background="{DynamicResource ThemePanelAltBrush}">
-      <DockPanel Margin="16">
-        <StackPanel DockPanel.Dock="Top" Margin="6,10,6,14">
+      <DockPanel Margin="16,12">
+        <StackPanel DockPanel.Dock="Top" Margin="6,4,6,10">
           <!-- Back / forward. Pages rebuild from the DB on every visit, so history holds
                (page, focus) entries rather than ViewModels — Back replays the trip instead of
                resurrecting a stale squad. Both routes pass the unsaved-work guard. -->
-          <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,10">
+          <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,0,0,6">
             <Button Classes="ml-ghost" Padding="8,3" FontSize="14"
                     Content="&#x2190;" Command="{Binding GoBackCommand}"
                     ToolTip.Tip="{Binding BackTip}"/>
@@ -155,7 +155,7 @@
                   Command="{Binding ContinueToOfficeCommand}"
                   FontSize="12" FontWeight="Bold"
                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                  Margin="0,12,0,0"/>
+                  Margin="0,8,0,0"/>
         </StackPanel>
 
         <!-- Settings pinned at the foot, outside the scroll -->
@@ -172,13 +172,16 @@
           </Grid>
         </Button>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <!-- AllowAutoHide off: when the list does overflow (a short window, several alerts above
+             it) the bar stays drawn, so rows below the fold are never a secret. -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      AllowAutoHide="False">
           <ItemsControl ItemsSource="{Binding Sections}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:NavSection">
-                <StackPanel Margin="0,0,0,10">
+                <StackPanel Margin="0,0,0,6">
                   <TextBlock Classes="ml-label" Text="{Binding Header}"
-                             LetterSpacing="1" Margin="14,0,0,4"/>
+                             LetterSpacing="1" Margin="14,0,0,2"/>
                   <ItemsControl ItemsSource="{Binding Items}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:NavItem">

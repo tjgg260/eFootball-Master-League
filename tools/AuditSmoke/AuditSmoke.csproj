@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AuditSmoke</RootNamespace>
+  </PropertyGroup>
+
+  <!-- References ML.App itself, as ActionsSmoke does: the engine under test must be the exact
+       code the app runs, and the test project cannot reference ML.App. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ML.App\ML.App.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -198,6 +198,8 @@ public sealed partial class Session
         var n = NegotiationFor(playerId);
         if (n is null || n.State != "agreed") return "No agreed deal to complete.";
         var (rating, age, name) = PlayerBasics(playerId);
+        // The agreed deal survives the refusal: make room and complete it.
+        if (SquadFullRefusal(name) is { } full) return full;
 
         // The agent's floor: the real FM wage (or the model demand) with a modest deal-done discount.
         var demand = RealWageDemand(playerId, rating, age ?? 25, years) * 92 / 100;

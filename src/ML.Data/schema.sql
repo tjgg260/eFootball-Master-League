@@ -393,6 +393,32 @@ CREATE TABLE IF NOT EXISTS player_appearance (
     -- something reads it.
 );
 
+-- Market layer: a player's value, wage and transfer status WHERE A SOURCE SUPPLIED THEM. The world
+-- built from the player's own eFootball has no such source, so there the table is empty and every
+-- reader falls back — Session.ValuationOf / ml_value for the value, ContractNegotiation.WeeklyDemand
+-- for the wage, "open to offers" for the status. It is declared so those reads find a table at all:
+-- it used to exist only where tools/genie_import.py had made it, and on a game-built world the
+-- Market list, every valuation, every wage demand and every bid threw "no such table".
+-- Columns and their order are genie_import.py's (it inserts positionally) — keep them in step.
+CREATE TABLE IF NOT EXISTS player_market (
+    player_id        INTEGER PRIMARY KEY,
+    value            INTEGER,
+    sale_value       INTEGER,
+    wage             INTEGER,
+    contract_end     TEXT,
+    contract_type    TEXT,
+    joined_club      TEXT,
+    min_fee          INTEGER,
+    relegation_fee   INTEGER,
+    non_promo_fee    INTEGER,
+    squad_status     TEXT,
+    perceived_status TEXT,
+    transfer_status  TEXT,           -- 'listed' | 'loan-listed' | 'not-for-sale' | NULL = open
+    squad_rep        TEXT,
+    int_caps         INTEGER,
+    int_goals        INTEGER
+);
+
 -- Live transfer negotiations with selling clubs (P5): one open negotiation per target.
 CREATE TABLE IF NOT EXISTS negotiations (
     player_id   INTEGER PRIMARY KEY REFERENCES players(id),

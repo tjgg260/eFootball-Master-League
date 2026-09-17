@@ -105,6 +105,20 @@
                     <Button HorizontalAlignment="Center" Content="Choose eFootball folder…"
                             Click="OnChooseGameDir" IsEnabled="{Binding !IsBuilding}"/>
                   </StackPanel>
+                  <!-- world-build failure: plain words first, the log's tail behind a fold -->
+                  <Border Classes="ml-card" Padding="14" BorderBrush="{StaticResource MlDanger}"
+                          IsVisible="{Binding HasBuildError}">
+                    <StackPanel Spacing="8">
+                      <TextBlock Classes="ml-body" Foreground="{StaticResource MlDanger}"
+                                 Text="{Binding BuildError}" TextWrapping="Wrap"/>
+                      <Expander Header="Details" IsExpanded="True">
+                        <ScrollViewer MaxHeight="180">
+                          <TextBlock Classes="ml-muted" Text="{Binding BuildErrorDetail}"
+                                     TextWrapping="Wrap" FontFamily="Consolas,Courier New,monospace"/>
+                        </ScrollViewer>
+                      </Expander>
+                    </StackPanel>
+                  </Border>
                 </StackPanel>
               </Border>
 
@@ -324,11 +338,10 @@
       <Border Classes="ml-card" MinWidth="420" MaxWidth="560" Padding="24"
               HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel Spacing="12">
-          <TextBlock Classes="ml-h2" Text="Building your career…"/>
+          <TextBlock Classes="ml-h2" Text="{Binding BusyTitle}"/>
           <TextBlock Classes="ml-body" Text="{Binding Status}" TextWrapping="Wrap"/>
           <ProgressBar IsIndeterminate="True" Height="4" Foreground="{StaticResource MlPrimary}"/>
-          <TextBlock Classes="ml-muted" TextWrapping="Wrap"
-                     Text="Squads, tactics and fixtures are being written. This can take a minute — the window will unlock when it's done."/>
+          <TextBlock Classes="ml-muted" TextWrapping="Wrap" Text="{Binding BusyNote}"/>
         </StackPanel>
       </Border>
     </Panel>

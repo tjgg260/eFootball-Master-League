@@ -39,8 +39,38 @@ public sealed class MasterDb : IDisposable
     private void EnsureSchema()
     {
         _connection.Execute("PRAGMA foreign_keys = ON;");
+        UseWriteAheadLog();
         _connection.Execute(SchemaSql());
         Migrate();
+    }
+
+    /// <summary>
+    /// WAL + synchronous=NORMAL. The engine writes one statement at a time — a result, an event, a
+    /// condition row — and each of those is its own transaction. A world built by tools/game_world.py
+    /// arrives in SQLite's default rollback-journal mode with synchronous=FULL, where every one of
+    /// them is a journal file created, two flushes to disk and a delete: 4.3 ms a write, measured
+    /// on the owner's machine. A season rollover is tens of thousands of writes, and it took 272
+    /// seconds with the window frozen; recording a result pays the same tax on a smaller scale.
+    /// In WAL with NORMAL the same write is ~0.1 ms, because commits append to one log and only a
+    /// checkpoint flushes. It cannot corrupt the file — a power cut can lose the last few commits,
+    /// never the database — and the backup (SQLite's backup API), the vault (SQL, not file copies)
+    /// and the restore swap (which carries the -wal) were all written for a WAL file already.
+    ///
+    /// The mode is stored in the file, so this is a one-time switch per world. It needs a moment
+    /// with no other connection on the file; when it cannot have one the pragma hands back the old
+    /// mode (or throws BUSY) and the career opens exactly as it did before — slower, never broken.
+    /// </summary>
+    private void UseWriteAheadLog()
+    {
+        try
+        {
+            _connection.ExecuteScalar<string>("PRAGMA journal_mode = WAL;", commandTimeout: LockWaitSeconds);
+            _connection.Execute("PRAGMA synchronous = NORMAL;");
+        }
+        catch (SqliteException)
+        {
+            // Locked by another process, or a read-only file. Speed is all that is lost.
+        }
     }
 
     /// <summary>

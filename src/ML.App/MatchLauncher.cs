@@ -47,10 +47,13 @@ public static class MatchLauncher
             return false;
         }
 
+        var python = CareerBuilder.LaunchPython(log);
+        if (python is null) return false;   // the log already says what is missing, in plain words
+
         log($"Compiling {homeName} vs {awayName} from your career database…");
         var psi = new ProcessStartInfo
         {
-            FileName = CareerBuilder.PythonExe(),
+            FileName = python,
             WorkingDirectory = root,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -86,8 +89,7 @@ public static class MatchLauncher
         }
         catch (Exception ex)
         {
-            log($"Failed to run the compiler: {ex.Message}");
-            log("Make sure Python is installed and on PATH.");
+            log($"Couldn't start the match compiler ({python}): {ex.Message}");
             return false;
         }
 

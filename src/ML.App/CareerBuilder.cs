@@ -82,8 +82,11 @@ public static class CareerBuilder
     /// Resolve the interpreter for one launch and name it in the log. A wrong or missing Python is
     /// the commonest reason a seed dies, and the log never said which one it had picked. Null means
     /// there is nothing safe to run, and <paramref name="log"/> has already said why.
+    /// Every launch goes through here — Play Match included: it used to take PythonExe() directly,
+    /// which skips the Problem check, so the button pressed every matchday was the one place the
+    /// Microsoft Store stub could still be launched.
     /// </summary>
-    private static string? LaunchPython(Action<string> log)
+    internal static string? LaunchPython(Action<string> log)
     {
         var (exe, problem) = Resolve();
         if (problem is not null)
@@ -156,7 +159,7 @@ public static class CareerBuilder
         }
         catch (Exception ex)
         {
-            log($"Failed to run the seeder: {ex.Message}. Is Python on PATH?");
+            log($"Couldn't start the career builder ({python}): {ex.Message}");
             return null;
         }
 

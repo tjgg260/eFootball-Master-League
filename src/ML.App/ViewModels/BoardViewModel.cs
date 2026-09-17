@@ -271,7 +271,14 @@ public sealed partial class BoardViewModel : PageViewModel
             desktop.MainWindow = main;
             main.Show();
             old?.Close();
+            return;
         }
+        // The job IS taken — AcceptJobOffer has already moved the career — but the window could
+        // not be rebuilt on it. This branch used to not exist: the confirm click changed the
+        // world and the screen sat there unchanged, saying nothing.
+        OfferStatus = $"You have taken the {offer.Club} job, but the app could not reopen the career" +
+                      (CareerLoader.LastFailure is { } why ? $": {why}" : ".") +
+                      " Close and reopen the app to carry on at your new club.";
     }
 
     /// <summary>Turn an approach down: the club comes off the list and the season goes on.</summary>

@@ -793,8 +793,8 @@ public sealed partial class Session
 
     /// <summary>
     /// Sign a player to the managed club — add them to the squad. If they exist in eFootball, the
-    /// match reconcile puts their real record (real face/rating) into your team; a squad that grows
-    /// past 32 drops its lowest-rated reserve so it stays legal.
+    /// match reconcile puts their real record (real face/rating) into your team. A full squad
+    /// refuses the signing (SquadFullRefusal) — it never removes somebody to make room.
     /// </summary>
     public string SignPlayer(long playerId)
     {
@@ -817,6 +817,7 @@ public sealed partial class Session
                 rating = r.IsDBNull(1) ? null : r.GetInt32(1);
             }
         }
+        if (SquadFullRefusal(name) is { } full) return full;
 
         var used = squad.Select(s => s.SquadNumber).ToHashSet();
         var shirt = Enumerable.Range(1, 99).FirstOrDefault(n => !used.Contains(n), 99);
@@ -825,14 +826,6 @@ public sealed partial class Session
             TeamId = CurrentTeamId, PlayerId = playerId, SquadNumber = shirt, Slot = squad.Count,
         });
         Repo.RecordTransfer(playerId, CurrentTeamId, SeasonId);
-
-        // Trim to a legal size by releasing the weakest reserve.
-        var withNew = Repo.SquadPlayers(CurrentTeamId).OrderBy(p => p.OverallRating ?? 0).ToList();
-        if (withNew.Count > 32)
-        {
-            var drop = withNew.First(p => p.Id != playerId);
-            Repo.RemoveSquadMember(CurrentTeamId, drop.Id);
-        }
 
         _teamCache = null;
         return $"Signed {name}{(rating is { } v ? $" ({v})" : "")} — squad number {shirt}. " +
@@ -1078,7 +1071,10 @@ public sealed partial class Session
                 });
             }
         }
-        RunWeeklyEconomy(matchday, fixtures);
+        // The league pass takes the gate for the LEAGUE game only: Repo.Fixtures(season, matchday)
+        // also returns that number's cup ties, whose gate belongs to the cup pass.
+        RunWeeklyEconomy(matchday, fixtures.Where(f => f.Kind != "cup").ToList(),
+            weekAlreadyRun: GetMeta($"cond_cup_{SeasonId}_{matchday}") is not null);
         SetMeta(guard, "1");
     }
 
@@ -1100,9 +1096,24 @@ public sealed partial class Session
     /// training ground works, scouts report, morale moves, wages go out, gate money comes in.
     /// Called from both the league pass and the cup pass — cup weeks used to silently skip
     /// the entire weekly economy (P0 fix).
+    /// <para>
+    /// THE BUG the flag closes: league matchday N is a Saturday and cup matchday N the Wednesday
+    /// after it (SeasonCalendar.DateOf) — one calendar week, two passes, each behind its own
+    /// guard. A manager still in a cup paid that week's wages twice, handed the bank two loan
+    /// instalments, and ran the training ground twice off one week. The week now runs ONCE,
+    /// for whichever of the two matches is recorded first; the other match adds only what
+    /// belongs to a match — its gate. Each pass reads the OTHER pass's guard, so a career
+    /// saved mid-week under the old code is covered without a new key.
+    /// </para>
     /// </summary>
-    private void RunWeeklyEconomy(int matchday, IReadOnlyList<FixtureRow> fixtures)
+    private void RunWeeklyEconomy(int matchday, IReadOnlyList<FixtureRow> fixtures, bool weekAlreadyRun)
     {
+        if (weekAlreadyRun)
+        {
+            TakeGate(fixtures);
+            SyncBudget();
+            return;
+        }
         RepayLoanInstalment();   // the bank collects every matchweek
         var trainingNotes = ApplyTraining().ToList();   // the training ground works every matchweek
         try { trainingNotes.AddRange(AdvanceSkillTraining()); }   // skill work ticks too (P1)
@@ -1129,12 +1140,7 @@ public sealed partial class Session
         // The weekly economy: wages out every matchweek, gate receipts in when you play at home.
         var (_, _, weeklyWages) = FinancialOverview();
         Finances.PayWages(weeklyWages);
-        var home = fixtures.FirstOrDefault(f => f.HomeTeamId == CurrentTeamId && f.Played);
-        if (home is not null)
-        {
-            var attendance = Math.Clamp(8000 + (EloOf(CurrentTeamId) - 1450) * 30, 4000, 60000);
-            Finances.RecordMatchday(attendance, 24);
-        }
+        TakeGate(fixtures);
         SyncBudget();
         try { MidSeasonReview(matchday); } catch { /* the review never blocks the pass */ }
         try { RunDeadlineDay(matchday); } catch { /* deadline drama never blocks the pass */ }
@@ -1162,6 +1168,15 @@ public sealed partial class Session
                 "Market screen, and the free-agent pool is live.", matchday);
             SetMeta($"jan_{SeasonId}", "1");
         }
+    }
+
+    /// <summary>Gate receipts are per MATCH, not per week: a home cup tie fills the ground as well
+    /// as Saturday's league game does.</summary>
+    private void TakeGate(IReadOnlyList<FixtureRow> fixtures)
+    {
+        if (!fixtures.Any(f => f.HomeTeamId == CurrentTeamId && f.Played)) return;
+        var attendance = Math.Clamp(8000 + (EloOf(CurrentTeamId) - 1450) * 30, 4000, 60000);
+        Finances.RecordMatchday(attendance, 24);
     }
 
     /// <summary>One snapshot per matchday pass: money, fans, board, ELO (item 11 charts).</summary>

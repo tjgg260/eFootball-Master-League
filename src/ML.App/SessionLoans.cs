@@ -65,6 +65,7 @@ public sealed partial class Session
         if (Repo.Squad(owner.Value.TeamId).Count <= 18)
             return $"{owner.Value.Name} can't spare him — squad at the minimum.";
         var (rating, age, name) = PlayerBasics(playerId);
+        if (SquadFullRefusal(name) is { } full) return full;
         var fee = ValuationOf(rating, age) / 10;
         if (!Finances.TrySpendOnTransfer(fee, minBalanceAfter: 0))
             return $"The loan fee is £{fee:N0} — you have £{Finances.Balance:N0}.";

@@ -134,6 +134,10 @@ public partial class MainWindowViewModel : ObservableObject
             if (_session.PendingOffers().Count > 0) Alerts.Add(new ActionAlert("⚠ offers on the table", "Market"));
             if (_session.IsDeadlineDay()) Alerts.Add(new ActionAlert("⚠ DEADLINE DAY", "Market"));
             if (_session.JobOffers().Count > 0) Alerts.Add(new ActionAlert("⚠ a job offer", "Board"));
+            // The career that opened is the OLD one: the restore staged in Settings could not be
+            // swapped in. Settings prints the full sentence (CareerLoader.LastRestoreProblem).
+            if (CareerLoader.LastRestoreProblem is not null)
+                Alerts.Add(new ActionAlert("⚠ restore NOT applied", "Settings"));
             HasActions = Alerts.Count > 0;
             ActionsLine = "";
         }

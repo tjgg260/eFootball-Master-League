@@ -46,13 +46,17 @@
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Margin" Value="0,0,0,10"/>
     </Style>
+    <!-- Row height is a budget, not a taste: 16 rows + 4 section heads + the club block + Settings
+         have to fit the default 820px window. At 14,10 / 14px they needed ~745px of the ~565 the
+         scroller gets, so History was cut at the fold and the whole WORLD group (Market, Scouting,
+         News) sat below it behind a scrollbar that hides itself. -->
     <Style Selector="Button.nav">
       <Setter Property="HorizontalAlignment" Value="Stretch"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="#C7CEDA"/>
-      <Setter Property="Padding" Value="14,10"/>
-      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Padding" Value="14,6"/>
+      <Setter Property="FontSize" Value="13"/>
       <Setter Property="CornerRadius" Value="8"/>
     </Style>
     <Style Selector="Button.nav:pointerover /template/ ContentPresenter">

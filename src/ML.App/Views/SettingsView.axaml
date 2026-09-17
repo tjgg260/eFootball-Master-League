@@ -20,7 +20,7 @@
       <ComboBox ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedSkin}"
                 HorizontalAlignment="Stretch"/>
       <CheckBox IsChecked="{Binding FmAttributes}" Foreground="{StaticResource MlTextBody}"
-                Content="FM view — colour bands, unscouted players hidden"/>
+                Content="Scouted view — colour bands, unscouted players hidden"/>
       <TextBlock Classes="ml-muted" TextWrapping="Wrap"
                  Text="Bands: red poor · amber average · green good · blue elite. Knowledge grows by facing clubs and scouting; coach, scout and analyst reports are always on."/>
     </StackPanel></Border>

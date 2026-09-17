@@ -25,6 +25,9 @@ public partial class App : Application
 
             // Start on the New Career picker: choose any club, and its real league is built and opened.
             var picker = new NewCareerViewModel();
+            // A fast resume that could not open the career lands here; say why rather than
+            // presenting the picker as if there were no career.
+            if (CareerLoader.LastFailure is { } why) picker.Status = why;
             var window = new NewCareerWindow { DataContext = picker };
             picker.CareerStarted += session =>
             {

@@ -120,9 +120,15 @@
                 <Button Content="Measured" Command="{Binding PostTalkCommand}" CommandParameter="Calm" Classes="ml-secondary" FontSize="11"/>
                 <Button Content="Hairdryer" Command="{Binding PostTalkCommand}" CommandParameter="Demand" Classes="ml-secondary" FontSize="11"/>
               </StackPanel>
+              <!-- Undo lives HERE, on the result it undoes. It used to sit only inside the entry
+                   desk, which closes the moment a result is recorded — so the button vanished at
+                   exactly the moment a typo was noticed. -->
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="Continue →" Command="{Binding CloseReportCommand}" Classes="ml-primary" FontSize="12"
                         HorizontalAlignment="Right"/>
+                <Button Content="↩ Wrong score? Undo" Command="{Binding UndoResultCommand}"
+                        Classes="ml-ghost" FontSize="12"
+                        ToolTip.Tip="Clears this result and its scorers, cards and ratings, and reopens the desk so you can enter it again. The rest of the week (wages, training, the other clubs' games) stands."/>
               </StackPanel>
             </StackPanel>
           </Border>

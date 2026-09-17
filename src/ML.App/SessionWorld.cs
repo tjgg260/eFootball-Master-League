@@ -235,7 +235,12 @@ public sealed partial class Session
     /// Sim the remaining ties on a cup matchday (whichever cup owns it) and draw the next round
     /// once complete. Call after recording any result on that matchday.
     /// </summary>
-    public void AdvanceCup(int matchday, int exceptFixtureId)
+    /// <param name="includeOwnTies">Rollover only. Advance Season sims the rest of the LEAGUE, your own
+    /// games included, but this method never touched your cup ties — so a manager who advanced with a
+    /// tie outstanding froze that cup for good: the round waited for a result that was never coming,
+    /// and the season closed with no winner, no prize and no honour. At rollover nobody is left to
+    /// play it, so it is simmed like any other.</param>
+    public void AdvanceCup(int matchday, int exceptFixtureId, bool includeOwnTies = false)
     {
         foreach (var cup in Cups)
         {
@@ -251,7 +256,8 @@ public sealed partial class Session
             foreach (var f in Repo.Fixtures(SeasonId, matchday)
                          .Where(f => f.Kind == "cup" && f.LeagueId == cup.LeagueId
                                      && !f.Played && f.Id != exceptFixtureId
-                                     && f.HomeTeamId != CurrentTeamId && f.AwayTeamId != CurrentTeamId))
+                                     && (includeOwnTies
+                                         || (f.HomeTeamId != CurrentTeamId && f.AwayTeamId != CurrentTeamId))))
             {
                 var h = XiStrengthOf(f.HomeTeamId);
                 var a = XiStrengthOf(f.AwayTeamId);
@@ -303,7 +309,7 @@ public sealed partial class Session
         {
             foreach (var round in cup.Rounds)
             {
-                AdvanceCup(round.Matchday, exceptFixtureId: -1);
+                AdvanceCup(round.Matchday, exceptFixtureId: -1, includeOwnTies: true);
             }
         }
     }
@@ -1525,6 +1531,28 @@ public sealed partial class Session
             : "Window closed until the summer";
     }
 
+    /// <summary>The most players a club can register — eFootball's own squad ceiling, so the most
+    /// the match compile can put in the team.</summary>
+    public const int MaxSquadSize = 32;
+
+    /// <summary>
+    /// Non-null when there is no room to register another player: the sentence to show instead
+    /// of doing the deal.
+    /// <para>
+    /// THE BUG this replaces: a signing that took the squad past 32 went through, took the money,
+    /// and then quietly removed the lowest-rated player in the squad to make room — no message, no
+    /// fee, no record of it. The manager found out when a youngster he was developing was simply
+    /// gone. Who leaves is the manager's call, so the deal waits until he has made it.
+    /// </para>
+    /// </summary>
+    private string? SquadFullRefusal(string incomingName)
+    {
+        var registered = Repo.Squad(CurrentTeamId).Count;
+        return registered < MaxSquadSize ? null
+            : $"Your squad is full ({registered} of {MaxSquadSize}). Sell, release or loan someone " +
+              $"out first — then {incomingName} can be registered.";
+    }
+
     /// <summary>
     /// Bid for a player. bidPct is your offer as a percentage of market value (85 / 100 / 115).
     /// Free agents take fair value; a club holding the player wants a premium (they may counter),
@@ -1554,6 +1582,7 @@ public sealed partial class Session
                 age = r.IsDBNull(2) ? null : r.GetInt32(2);
             }
         }
+        if (SquadFullRefusal(name) is { } full) return full;
 
         var value = MarketValueOf(playerId, rating, age);
         var bid = value * bidPct / 100;
@@ -1613,12 +1642,6 @@ public sealed partial class Session
             t.ExecuteNonQuery();
         }
 
-        var withNew = Repo.SquadPlayers(CurrentTeamId).OrderBy(p => p.OverallRating ?? 0).ToList();
-        if (withNew.Count > 32)
-        {
-            var drop = withNew.First(p => p.Id != playerId);
-            Repo.RemoveSquadMember(CurrentTeamId, drop.Id);
-        }
         _teamCache = null;
         _shooterPool = null;
         var from = seller is { } s2 ? $" from {s2.Name}" : "";
@@ -1848,11 +1871,13 @@ public sealed partial class Session
             }
         }
         // Cup weeks are matchweeks too: wages, training, loans, scouts, morale and gate money
-        // all run — they used to be silently skipped on cup days (P0 fix).
+        // all run — they used to be silently skipped on cup days (P0 fix). But only ONCE a week:
+        // if Saturday's league pass already ran this matchday number, the tie adds its gate alone.
         try
         {
             RunWeeklyEconomy(matchday,
-                Repo.Fixtures(SeasonId, matchday).Where(f => f.Kind == "cup").ToList());
+                Repo.Fixtures(SeasonId, matchday).Where(f => f.Kind == "cup").ToList(),
+                weekAlreadyRun: GetMeta($"cond_applied_{SeasonId}_{matchday}") is not null);
         }
         catch { /* the weekly pass never blocks recording */ }
         SetMeta(guard, "1");

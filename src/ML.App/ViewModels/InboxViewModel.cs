@@ -138,11 +138,18 @@ public sealed partial class InboxViewModel : PageViewModel
     private void MarkRead(NewsEntry? entry)
     {
         if (entry is null || !entry.Unread) return;
-        using (var cmd = _s.Db.Connection.CreateCommand())
+        try
         {
+            using var cmd = _s.Db.Connection.CreateCommand();
             cmd.CommandText = "UPDATE inbox SET is_read=1 WHERE id=$id";
             cmd.Parameters.AddWithValue("$id", entry.Id);
             cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            // A click on a letter must never take the app down; it simply stays unread.
+            Program.Log("Inbox.MarkRead", ex);
+            return;
         }
         var i = Rows.IndexOf(entry);
         if (i >= 0) Rows[i] = entry with { Unread = false };

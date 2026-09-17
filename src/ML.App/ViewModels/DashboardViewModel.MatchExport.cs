@@ -51,7 +51,8 @@ public sealed partial class DashboardViewModel
         var export = MatchExportFolder.LatestFinal(_s.MatchExportDir, out var reason);
         if (export is null)
         {
-            RefuseExport(reason + " The stats host writes one per match; install it with tools/vendor/efootball-re/memprobe/deploy_host.sh.");
+            RefuseExport(reason + " The stats host writes one per match — install it from Settings → " +
+                         "Install match stats into eFootball.");
             return;
         }
         PrefillFromExport(export, ExportTrigger.Manual);

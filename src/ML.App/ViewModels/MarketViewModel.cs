@@ -126,8 +126,13 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     /// world today, and every single one is unattached to a club, so without this they surface as
     /// signable free agents (a phantom Mbappe alongside the real one at Real Madrid).
     /// WorldOnly: the career's own copies of a world player, which show the same human twice.
+    /// overall_rating &lt;= 99: eFootball's own placeholder rows (every ability 95, overall 105-116,
+    /// on "Team Yellow" / "Team Blue") are not players. On a world built from the game they are
+    /// IN the table, and with a valuation driven by rating they sat at the top of the default
+    /// "Most valuable" sort at £1.4 billion each. The rows are left alone; they just never list.
     /// </summary>
-    private string AlwaysFilter => "p.superseded_by IS NULL AND " + WorldOnly;
+    private string AlwaysFilter =>
+        "p.superseded_by IS NULL AND COALESCE(p.overall_rating,0) <= 99 AND " + WorldOnly;
 
     private readonly Session _s;
 
@@ -261,7 +266,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     // It said "click one for the full profile", and a click does no such thing — it selects the
     // row and fills the rail. The full profile is a double-click, or the button on the rail.
     [ObservableProperty] private string _signStatus =
-        "Search the world's players — double-click one to open him. Fees are real.";
+        "Search the world's players — double-click one to open him. Values follow ability and age.";
 
     // --- async requery (P6): the 376k-row read happens off the UI thread ------------
     // Rows only ever mutate on the UI thread; a generation counter drops stale results
@@ -280,7 +285,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     public string EmptyLine => IsSearching
         ? "Searching…"
         : TotalPlayers == 0
-            ? "No master.db found — build the reference world to browse the market."
+            ? "No players to show — the world hasn't been built from your eFootball yet."
             : ShortlistOnly
                 ? _starredCount == 0
                     ? "Nothing on the shortlist yet — right-click a player and star him."
@@ -862,7 +867,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             if (row is null)
             {
                 IsSearching = false;
-                SignStatus = $"{name} isn't in the reference world — nothing to show.";
+                SignStatus = $"{name} isn't on the market list — nothing to show.";
                 return;
             }
             if (Rows.All(r => r.Id != row.Id)) Rows.Insert(0, row);

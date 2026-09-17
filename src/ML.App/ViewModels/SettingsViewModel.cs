@@ -29,6 +29,7 @@ public sealed partial class SettingsViewModel : PageViewModel
         WorldSeedLine = $"World seed: {s.WorldSeed} (this career's universe — unique per save)";
         LoadBackups();
         CheckMatchExports();
+        if (CareerLoader.LastRestoreProblem is { } restoreProblem) Status = restoreProblem;
     }
 
     public override string Title => "Settings";
@@ -54,9 +55,9 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         _s.FmAttributeMode = value;
         Status = value
-            ? "FM view ON — colour bands (red poor · amber average · green good · blue elite), " +
+            ? "Scouted view ON — colour bands (red poor · amber average · green good · blue elite), " +
               "unscouted players hidden. Reports stay on."
-            : "FM view OFF — raw attribute numbers everywhere.";
+            : "Scouted view OFF — raw attribute numbers everywhere.";
         FlashSaved();
     }
 
