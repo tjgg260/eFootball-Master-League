@@ -189,9 +189,9 @@
                 <!-- IsInjured is "still injured as of the matchday we are picking for", not
                      "has an injury date on file" — see SquadEntry.IsInjured -->
                 <Border Width="18" Height="18" CornerRadius="9" Background="{DynamicResource MlDanger}"
-                        IsVisible="{Binding IsInjured}" ToolTip.Tip="{Binding InjuryTip}"
+                        IsVisible="{Binding IsUnavailable}" ToolTip.Tip="{Binding InjuryTip}"
                         HorizontalAlignment="Center" VerticalAlignment="Center">
-                  <TextBlock Text="+" FontSize="13" FontWeight="Bold" Foreground="White"
+                  <TextBlock Text="{Binding UnavailableGlyph}" FontSize="13" FontWeight="Bold" Foreground="White"
                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
                 </Border>
               </DataTemplate>

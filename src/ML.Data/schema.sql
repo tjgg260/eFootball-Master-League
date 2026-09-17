@@ -135,6 +135,20 @@ CREATE TABLE IF NOT EXISTS player_condition (
     form             REAL NOT NULL DEFAULT 6.5
 );
 
+-- Bans. A red card, or every fifth yellow of the season, puts a row here (ML.Core SuspensionRules);
+-- each competitive fixture his club then plays takes one off `matches`, and the row goes at zero.
+-- While it stands he cannot start: Session.PrepareMatchday treats him as it treats an injury, and
+-- tools/play_match.py reads this table so he cannot be compiled into the XI either.
+-- from_fixture_id is the match that earned it — that fixture never serves it, and undoing that
+-- result takes the ban back off.
+CREATE TABLE IF NOT EXISTS suspensions (
+    player_id       INTEGER PRIMARY KEY REFERENCES players(id),
+    matches         INTEGER NOT NULL,
+    reason          TEXT    NOT NULL,          -- 'red card' | '5 yellow cards' | both
+    season_id       INTEGER NOT NULL,
+    from_fixture_id INTEGER NOT NULL
+);
+
 -- ---------------------------------------------------------------- tactics
 
 CREATE TABLE IF NOT EXISTS formations (

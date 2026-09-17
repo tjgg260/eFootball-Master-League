@@ -1429,7 +1429,9 @@ public sealed partial class Session
     {
         foreach (var teamId in new[] { homeTeamId, awayTeamId })
         {
-            var squad = Repo.Squad(teamId).Where(m => m.Slot is >= 0 and <= 10).ToList();
+            var banned = SuspensionsAt(teamId);
+            var squad = Repo.Squad(teamId)
+                .Where(m => m.Slot is >= 0 and <= 10 && !banned.ContainsKey(m.PlayerId)).ToList();
             if (squad.Count == 0) continue;
             for (var c = rng.Next(3); c > 0; c--)
             {
@@ -1447,6 +1449,8 @@ public sealed partial class Session
         AttributeGoals(fixtureId, homeId, homeGoals, rng);
         AttributeGoals(fixtureId, awayId, awayGoals, rng);
         AttributeCards(fixtureId, homeId, awayId, rng);
+        try { SettleSuspensions(fixtureId, homeId, awayId); }
+        catch (Exception ex) { Program.Log("Session.SettleSuspensions (simmed)", ex); }
     }
 
     /// <summary>A player's goals this season (for the squad card).</summary>
@@ -1841,6 +1845,10 @@ public sealed partial class Session
             cmd.Parameters.AddWithValue("$f", last.Id);
             cmd.ExecuteNonQuery();
         }
+        // The cards are gone, so the bans they earned go too — and the bans this match counted
+        // as served are handed back, or re-recording it would serve them twice.
+        try { UnsettleSuspensions(last.Id); }
+        catch (Exception ex) { Program.Log("Session.UnsettleSuspensions", ex); }
         _results = null;
         _elos = null;
         // The caller prints this verbatim, so it has to be the truth about a partial undo.

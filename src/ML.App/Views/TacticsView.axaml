@@ -890,7 +890,7 @@
                       </Border>
                       <Ellipse Width="9" Height="9" Fill="{Binding CondBrush}"
                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,1,0"/>
-                      <TextBlock Text="✚" Foreground="#FF5B5B" FontSize="10" FontWeight="Bold"
+                      <TextBlock Text="{Binding UnavailableGlyph}" Foreground="#FF5B5B" FontSize="10" FontWeight="Bold"
                                  HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1,-1,0,0"
                                  IsVisible="{Binding ShowInjury}"/>
                       <!-- drop-target wash: he is what the drag would land on right now -->
@@ -1093,7 +1093,8 @@
                          never grows by two rows and the strip height stays fixed. -->
                     <Border Classes="ml-chip ml-danger" HorizontalAlignment="Center"
                             IsVisible="{Binding Injured}">
-                      <TextBlock Text="INJ"/>
+                      <!-- INJ or SUSP: either way he cannot be picked (BenchEntry.Tag) -->
+                      <TextBlock Text="{Binding Tag}"/>
                     </Border>
                     <Border Classes="ml-chip ml-warn" HorizontalAlignment="Center"
                             IsVisible="{Binding IsTired}">

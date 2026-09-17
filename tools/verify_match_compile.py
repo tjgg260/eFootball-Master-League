@@ -92,8 +92,9 @@ def main() -> int:
     con.execute("INSERT OR REPLACE INTO player_condition(player_id,fatigue,injured_until_md,form) VALUES(?,0,?,6.5)",
                 (hurt[0], matchday + 2))
     con.execute("CREATE TABLE IF NOT EXISTS suspensions(player_id INTEGER PRIMARY KEY, matches INTEGER NOT NULL, "
-                "reason TEXT NOT NULL, season_id INTEGER NOT NULL)")
-    con.execute("INSERT OR REPLACE INTO suspensions VALUES(?,1,'red card',?)", (banned[0], season))
+                "reason TEXT NOT NULL, season_id INTEGER NOT NULL, from_fixture_id INTEGER NOT NULL)")
+    con.execute("INSERT OR REPLACE INTO suspensions(player_id, matches, reason, season_id, from_fixture_id) "
+                "VALUES(?,1,'red card',?,0)", (banned[0], season))
     con.commit()
     want_grown = base_of(grown[0])
     writer = match_condition.AbilityWriter(400)

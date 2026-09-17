@@ -132,8 +132,22 @@ public sealed record SquadEntry
     /// </summary>
     public bool IsInjured => InjuredUntil is int u && u >= AsOfMatchday;
 
-    /// <summary>Why the badge is lit: the matchday he is due back for.</summary>
-    public string InjuryTip => InjuredUntil is int u ? $"Out injured until matchday {u}" : "";
+    /// <summary>Club fixtures he still has to sit out (0 = no ban) and what earned it.</summary>
+    public int SuspendedMatches { get; init; }
+    public string SuspendedReason { get; init; } = "";
+    public bool IsSuspended => SuspendedMatches > 0;
+
+    /// <summary>Cannot be picked for the match in question, for either reason — what the red
+    /// badge in the grid lights for.</summary>
+    public bool IsUnavailable => IsInjured || IsSuspended;
+
+    /// <summary>Why the badge is lit: the ban, or the matchday he is due back for.</summary>
+    public string InjuryTip => IsSuspended
+        ? $"Suspended — {Session.SuspensionSpan(SuspendedMatches)} ({SuspendedReason})"
+        : InjuredUntil is int u ? $"Out injured until matchday {u}" : "";
+
+    /// <summary>The badge's glyph: a cross for the treatment room, a card for a ban.</summary>
+    public string UnavailableGlyph => IsSuspended ? "▮" : "+";
     public string HeightDisplay => HeightCm is > 0 ? $"{HeightCm} cm" : "—";
     public string WeightDisplay => WeightKg is > 0 ? $"{WeightKg} kg" : "—";
     public string AgeDisplay => Age > 0 ? Age.ToString() : "—";
@@ -313,11 +327,13 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
                    (SELECT playstyle FROM player_playstyles WHERE player_id=s.player_id
                         AND kind='primary' LIMIT 1) Playstyle,
                    COALESCE(c.fatigue,0) Fatigue, c.injured_until_md InjuredUntil,
-                   COALESCE(m.value,50) Morale
+                   COALESCE(m.value,50) Morale,
+                   COALESCE(b.matches,0) SuspendedMatches, COALESCE(b.reason,'') SuspendedReason
             FROM squad_members s
             JOIN players p ON p.id=s.player_id
             LEFT JOIN player_condition c ON c.player_id=s.player_id
             LEFT JOIN morale m ON m.player_id=s.player_id
+            LEFT JOIN suspensions b ON b.player_id=s.player_id AND b.matches > 0
             WHERE s.team_id=@teamId
             ORDER BY s.slot
             """, new { teamId });
@@ -348,6 +364,8 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
                 Fatigue = r.Fatigue,
                 InjuredUntil = r.InjuredUntil,
                 AsOfMatchday = _asOfMd,
+                SuspendedMatches = r.SuspendedMatches,
+                SuspendedReason = r.SuspendedReason,
                 Morale = r.Morale,
                 HeightCm = r.HeightCm,
                 WeightKg = r.WeightKg,
@@ -477,7 +495,7 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
     private int _asOfMd;
 
     public IReadOnlyList<FilterChipVm> FilterChips { get; } =
-        new[] { "All", "GK", "DEF", "MID", "FWD", "Injured", "Tired", "Unhappy", "Listed" }
+        new[] { "All", "GK", "DEF", "MID", "FWD", "Injured", "Suspended", "Tired", "Unhappy", "Listed" }
             .Select(n => new FilterChipVm(n) { IsActive = n == "All" }).ToList();
 
     [ObservableProperty] private string _squadSearch = "";
@@ -646,6 +664,7 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
             // one definition of "injured" for the whole screen: the chip, the badge and the
             // Absence line must never disagree about who can play
             "Injured" => set.Where(p => p.IsInjured),
+            "Suspended" => set.Where(p => p.IsSuspended),
             "Tired" => set.Where(p => p.Fatigue >= 40),
             "Unhappy" => set.Where(p => p.Morale < 40),
             "Listed" => set.Where(p => _s.IsTransferListed(p.PlayerId)),
@@ -774,7 +793,9 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
 
         // Transfer / Value / Absence tab lines (real market + condition data).
         RefreshTransferLines(value.PlayerId);
-        AbsenceLine = value.IsInjured
+        AbsenceLine = value.IsSuspended
+            ? $"🟥 Suspended — {Session.SuspensionSpan(value.SuspendedMatches)} ({value.SuspendedReason})"
+            : value.IsInjured
             ? $"🚑 Injured — unavailable until matchday {value.InjuredUntil}"
             : value.Fatigue >= 40 ? "😮‍💨 Exhausted — needs rest before he breaks down"
             // Healed. The stale injured_until_md is still on the row (it is only cleared at
@@ -1244,6 +1265,8 @@ public sealed partial class SquadViewModel : PageViewModel, IFocusTarget
         public string? Playstyle { get; init; }
         public int Fatigue { get; init; }
         public int? InjuredUntil { get; init; }
+        public int SuspendedMatches { get; init; }
+        public string SuspendedReason { get; init; } = "";
         public int Morale { get; init; }
     }
 }

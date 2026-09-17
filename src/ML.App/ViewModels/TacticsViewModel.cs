@@ -39,7 +39,10 @@ public sealed record BenchEntry(
     public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // own squad: true letter
     public Avalonia.Media.IBrush CondBrush =>
         Visuals.Brush(Injured ? "#D64545" : Fatigue < 20 ? "#1F9D4D" : Fatigue < 40 ? "#E0A526" : "#D64545");
-    public string Tag => Injured ? "INJ" : Fatigue >= 40 ? "TIRED" : "";
+    /// <summary>Banned, not hurt. <see cref="Injured"/> is still true for him — it means "cannot be
+    /// picked" everywhere this screen sorts, dots and swaps — and this only changes the WORD.</summary>
+    public bool Suspended { get; init; }
+    public string Tag => Suspended ? "SUSP" : Injured ? "INJ" : Fatigue >= 40 ? "TIRED" : "";
     /// <summary>Amber bench flag: leggy but not injured (injury outranks tiredness).</summary>
     public bool IsTired => !Injured && Fatigue >= 40;
     /// <summary>What the touchline chip can actually carry. A sub on the strip is drawn as a
@@ -48,7 +51,7 @@ public sealed record BenchEntry(
     public string Surname => Name.Contains(' ') ? Name[(Name.LastIndexOf(' ') + 1)..] : Name;
     /// <summary>Plain-English condition, for the hover card (never a raw fatigue number).</summary>
     public string CondText =>
-        Injured ? "injured" : Fatigue < 20 ? "fresh" : Fatigue < 40 ? "leggy" : "exhausted";
+        Suspended ? "suspended" : Injured ? "injured" : Fatigue < 20 ? "fresh" : Fatigue < 40 ? "leggy" : "exhausted";
     /// <summary>Hover card: everything the row can't fit — full name, grade, condition, cover.</summary>
     public string Tip => $"{Name} · {Position} · {Grade} · {CondText}" +
         (Learned.Count > 0 ? $" · also covers {string.Join(", ", Learned)}" : "");
@@ -93,6 +96,8 @@ public sealed partial class PitchPlayer : ObservableObject
     public IReadOnlyList<string> Learned { get; }
     public int Fatigue { get; }
     public bool Injured { get; }
+    /// <summary>Banned, not hurt — see BenchEntry.Suspended. Injured is true for him as well.</summary>
+    public bool Suspended { get; init; }
     public string Surname => Name.Contains(' ') ? Name[(Name.LastIndexOf(' ') + 1)..] : Name;
     public Avalonia.Media.Imaging.Bitmap? Portrait { get; }
     public bool HasPortrait => Portrait is not null;
@@ -110,7 +115,7 @@ public sealed partial class PitchPlayer : ObservableObject
 
     /// <summary>Plain-English condition, for the hover card (never a raw fatigue number).</summary>
     public string CondText =>
-        Injured ? "injured" : Fatigue < 20 ? "fresh" : Fatigue < 40 ? "leggy" : "exhausted";
+        Suspended ? "suspended" : Injured ? "injured" : Fatigue < 20 ? "fresh" : Fatigue < 40 ? "leggy" : "exhausted";
 
     /// <summary>Hover card: the whole token in one line — a 52px chip can't say this much.</summary>
     public string Tip => PlayerId == 0
@@ -119,6 +124,8 @@ public sealed partial class PitchPlayer : ObservableObject
           (Role == "Basic" ? "no playstyle" : Role);
 
     public bool ShowInjury => Injured;
+    /// <summary>A cross for the treatment room, a card for a ban.</summary>
+    public string UnavailableGlyph => Suspended ? "▮" : "✚";
 
     /// <summary>One line for a picker list: who he is, where he plays, how good he is. The
     /// rating is a LETTER, exactly as it is on the token — a picker never shows a number.</summary>
@@ -403,6 +410,16 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
     /// already read. A player with no row is fresh, not out of form (see <see cref="FormOf"/>).</summary>
     private readonly Dictionary<long, double> _formByPlayer;
 
+    /// <summary>Standing bans at the club, re-read wherever conditions are: a banned man is
+    /// unavailable exactly as an injured one is, and the row says SUSP instead of INJ.</summary>
+    private IReadOnlyDictionary<long, Session.Suspension> _bans = new Dictionary<long, Session.Suspension>();
+
+    private IReadOnlyDictionary<long, Session.Suspension> LoadBans()
+    {
+        try { return _s.SuspensionsAt(_s.CurrentTeamId); }
+        catch { return new Dictionary<long, Session.Suspension>(); }
+    }
+
     public TacticsViewModel(Session s)
     {
         _s = s;
@@ -428,6 +445,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         // Tokens fill position-aware: squad slot i (the current XI order) mans formation slot i,
         // labelled with the fid's slot role code — NOT best-rating-first. The rest form the bench.
         var conditions = s.Repo.ConditionsFor(s.CurrentTeamId).ToDictionary(c => c.PlayerId);
+        _bans = LoadBans();
         var md = s.NextFixture()?.Matchday ?? 0;
         // The next fixture is resolved ONCE here, for the opponent preview and the condition
         // read. The rail's 📈 Form tab counts a man's last six starts up to that same matchday,
@@ -437,7 +455,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         (int Fatigue, bool Injured) CondOf(long pid)
         {
             conditions.TryGetValue(pid, out var c);
-            return (c?.Fatigue ?? 0, c?.InjuredUntilMd is int u && u >= md);
+            return (c?.Fatigue ?? 0, _bans.ContainsKey(pid) || (c?.InjuredUntilMd is int u && u >= md));
         }
 
         var squad = _s.Squad().OrderBy(x => x.Slot.Slot).ToList();
@@ -453,7 +471,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
                                         player.OverallRating ?? 0, player.PortraitPath, pos,
                                         _s.RoleOf(player.Id), left, top,
                                         player.Position, _s.LearnedPositions(player.Id), fat, inj,
-                                        AttrsOf(player.Id));
+                                        AttrsOf(player.Id)) { Suspended = _bans.ContainsKey(player.Id) };
             }
             else
             {
@@ -467,7 +485,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
             var (fat, inj) = CondOf(player.Id);
             Bench.Add(new BenchEntry(player.Id, slot.SquadNumber, player.Name, player.Position,
                                      player.OverallRating ?? 0, player.PortraitPath, fat, inj,
-                                     _s.LearnedPositions(player.Id)));
+                                     _s.LearnedPositions(player.Id)) { Suspended = _bans.ContainsKey(player.Id) });
         }
         SelectedPlayer = Players.FirstOrDefault();
         InitTakers();
@@ -1392,11 +1410,12 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         if (onScreen.SetEquals(squad.Select(x => x.Player.Id))) return;   // nobody left — keep your XI
 
         var conditions = _s.Repo.ConditionsFor(_s.CurrentTeamId).ToDictionary(c => c.PlayerId);
+        _bans = LoadBans();
         var md = _s.NextFixture()?.Matchday ?? 0;
         (int Fatigue, bool Injured) CondOf(long pid)
         {
             conditions.TryGetValue(pid, out var c);
-            return (c?.Fatigue ?? 0, c?.InjuredUntilMd is int u && u >= md);
+            return (c?.Fatigue ?? 0, _bans.ContainsKey(pid) || (c?.InjuredUntilMd is int u && u >= md));
         }
 
         var keep = SelectedPlayer?.PlayerId ?? 0;
@@ -1413,7 +1432,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
                                         player.OverallRating ?? 0, player.PortraitPath, old.Position,
                                         _s.RoleOf(player.Id), old.Left, old.Top,
                                         player.Position, _s.LearnedPositions(player.Id), fat, inj,
-                                        AttrsOf(player.Id));
+                                        AttrsOf(player.Id)) { Suspended = _bans.ContainsKey(player.Id) };
             }
             else
             {
@@ -1429,7 +1448,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
             var (fat, inj) = CondOf(player.Id);
             Bench.Add(new BenchEntry(player.Id, slot.SquadNumber, player.Name, player.Position,
                                      player.OverallRating ?? 0, player.PortraitPath, fat, inj,
-                                     _s.LearnedPositions(player.Id)));
+                                     _s.LearnedPositions(player.Id)) { Suspended = _bans.ContainsKey(player.Id) });
         }
         _swapping = false;
         ClearPicks();
@@ -1540,14 +1559,14 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         var token = new PitchPlayer(incoming.PlayerId, incoming.Number, incoming.Name,
             incoming.Rating, incoming.PortraitPath, outgoing.Position, _s.RoleOf(incoming.PlayerId),
             outgoing.Left, outgoing.Top, incoming.Position, incoming.Learned,
-            incoming.Fatigue, incoming.Injured, AttrsOf(incoming.PlayerId));
+            incoming.Fatigue, incoming.Injured, AttrsOf(incoming.PlayerId)) { Suspended = incoming.Suspended };
         token.PropertyChanged += OnTokenChanged;
         outgoing.PropertyChanged -= OnTokenChanged;
         _swapping = true;
         Players[ix] = token;
         Bench[bx] = new BenchEntry(outgoing.PlayerId, outgoing.Number, outgoing.Name,
             outgoing.RegisteredPosition, outgoing.Rating, outgoing.PortraitPath,
-            outgoing.Fatigue, outgoing.Injured, outgoing.Learned);
+            outgoing.Fatigue, outgoing.Injured, outgoing.Learned) { Suspended = outgoing.Suspended };
         SelectedPlayer = token;
         _swapping = false;
         ClearPicks();
@@ -1926,6 +1945,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         if (order.Count == 0) return;
         var byId = _s.Squad().ToDictionary(x => x.Player.Id, x => x);
         var conditions = _s.Repo.ConditionsFor(_s.CurrentTeamId).ToDictionary(c => c.PlayerId);
+        _bans = LoadBans();
         var md = _s.NextFixture()?.Matchday ?? 0;
 
         for (var i = 0; i < Players.Count && i < order.Count; i++)
@@ -1937,7 +1957,8 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
             var token = new PitchPlayer(player.Id, slot.SquadNumber, player.Name,
                 player.OverallRating ?? 0, player.PortraitPath, old.Position, _s.RoleOf(player.Id),
                 old.Left, old.Top, player.Position, _s.LearnedPositions(player.Id),
-                c?.Fatigue ?? 0, c?.InjuredUntilMd is int u && u >= md, AttrsOf(player.Id));
+                c?.Fatigue ?? 0, _bans.ContainsKey(player.Id) || (c?.InjuredUntilMd is int u && u >= md),
+                AttrsOf(player.Id)) { Suspended = _bans.ContainsKey(player.Id) };
             token.PropertyChanged += OnTokenChanged;
             old.PropertyChanged -= OnTokenChanged;
             Players[i] = token;
@@ -1950,7 +1971,8 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
             conditions.TryGetValue(player.Id, out var c);
             Bench.Add(new BenchEntry(player.Id, slot.SquadNumber, player.Name, player.Position,
                 player.OverallRating ?? 0, player.PortraitPath, c?.Fatigue ?? 0,
-                c?.InjuredUntilMd is int u2 && u2 >= md, _s.LearnedPositions(player.Id)));
+                _bans.ContainsKey(player.Id) || (c?.InjuredUntilMd is int u2 && u2 >= md),
+                _s.LearnedPositions(player.Id)) { Suspended = _bans.ContainsKey(player.Id) });
         }
         SelectedPlayer = Players.FirstOrDefault();
         var roleNote = RevalidateInMatchRoles();   // a benched captain/taker must not keep the duty

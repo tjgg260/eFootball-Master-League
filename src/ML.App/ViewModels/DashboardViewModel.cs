@@ -1069,6 +1069,9 @@ public sealed partial class DashboardViewModel : PageViewModel
             if (scorerNote.Length > 0) scorerNote = "\n" + scorerNote;
         }
         catch { /* stats never block recording */ }
+        // Cards become bans — after the events above are in, so this match's reds count.
+        try { _s.SettleSuspensions(_fixtureId, _homeId, _awayId); }
+        catch (Exception ex) { Program.Log("Dashboard.SettleSuspensions", ex); }
         scorerNote += StoreExportForRecordedFixture(_fixtureId);
 
         // Apply fatigue/recovery, form and injuries. Cup days load only the two clubs involved;

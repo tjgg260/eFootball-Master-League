@@ -349,6 +349,7 @@ public sealed partial class Session
         try { EvaluateObjectives(myPos); } catch { /* the verdict never blocks rollover */ }
 
         try { ReturnAllLoans(); } catch { /* loans never block rollover */ }
+        try { ClearSuspensionsForNewSeason(); } catch { /* a clean sheet never blocks rollover */ }
         AgeAndDevelopSquads();
         AgeWorldEdge();
         try { RetireAndExpire(); } catch { /* the world never blocks rollover */ }
@@ -938,8 +939,11 @@ public sealed partial class Session
         foreach (var teamId in new[] { homeTeamId, awayTeamId })
         {
             var conditions = Repo.ConditionsFor(teamId).ToDictionary(c => c.PlayerId);
+            // "Out" is injured OR suspended: a ban rules a man out exactly as a hamstring does.
+            var banned = SuspensionsAt(teamId);
             bool InjuredNow(long pid) =>
-                conditions.TryGetValue(pid, out var c) && c.InjuredUntilMd is int u && u >= matchday;
+                banned.ContainsKey(pid) ||
+                (conditions.TryGetValue(pid, out var c) && c.InjuredUntilMd is int u && u >= matchday);
 
             // Your hand-picked XI is respected: the AI only steps in for players who are out.
             if (teamId == CurrentTeamId && ManualXi)

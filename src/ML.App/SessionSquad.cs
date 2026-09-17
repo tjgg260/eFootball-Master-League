@@ -454,13 +454,14 @@ public sealed partial class Session
         var conditions = Repo.ConditionsFor(CurrentTeamId).ToDictionary(c => c.PlayerId);
         var next = NextFixture();
         var md = next?.Matchday ?? 0;
+        var banned = SuspensionsAt(CurrentTeamId);
         var squad = Repo.SquadPlayers(CurrentTeamId).Select(p =>
         {
             conditions.TryGetValue(p.Id, out var c);
             return new CandidatePlayer(
                 p.Id, p.OverallRating ?? 70, Visuals.PositionCategory(p.Position),
                 c?.Fatigue ?? 0, (c?.Form ?? 6.5) + MoraleFormAdjustment(p.Id),
-                c?.InjuredUntilMd is int until && until >= md);
+                banned.ContainsKey(p.Id) || (c?.InjuredUntilMd is int until && until >= md));
         }).ToList();
         var registered = Repo.SquadPlayers(CurrentTeamId).ToDictionary(p => p.Id, p => p.Position);
         // Position-adjusted overalls drive the pick: a slot rates each candidate on ITS core

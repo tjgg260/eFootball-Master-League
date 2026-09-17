@@ -157,6 +157,64 @@ Console.WriteLine("\nA7  a full squad refuses the signing (it used to delete you
 }
 
 // ---------------------------------------------------------------------------------------------
+Console.WriteLine("\nA4  cards become bans (they used to be decoration)");
+{
+    void Card(int fixtureId, long playerId, string kind, int times = 1)
+    {
+        for (var i = 0; i < times; i++)
+        {
+            using var c = db.Connection.CreateCommand();
+            c.CommandText = "INSERT INTO match_events(fixture_id, player_id, event_type, minute) VALUES($f,$p,$k,0)";
+            c.Parameters.AddWithValue("$f", fixtureId);
+            c.Parameters.AddWithValue("$p", playerId);
+            c.Parameters.AddWithValue("$k", kind);
+            c.ExecuteNonQuery();
+        }
+    }
+    void Play(FixtureRow f) =>
+        s.Repo.RecordResult(new ResultRow { FixtureId = f.Id, HomeGoals = 1, AwayGoals = 0 });
+
+    var mine = s.Repo.Fixtures(season)
+        .Where(f => f.HomeTeamId == s.CurrentTeamId || f.AwayTeamId == s.CurrentTeamId)
+        .OrderBy(f => f.Matchday).ToList();
+    var friendly = mine.First(f => f.Kind == "friendly");
+    var league = mine.Where(f => f.Kind == "league").Take(2).ToList();
+    var starters = s.Repo.Squad(s.CurrentTeamId).Where(m => m.Slot is >= 1 and <= 10).Select(m => m.PlayerId).ToList();
+    long sentOff = starters[0], booked = starters[1], preseason = starters[2];
+
+    Play(friendly);
+    Card(friendly.Id, preseason, "red");
+    s.SettleSuspensions(friendly.Id, friendly.HomeTeamId, friendly.AwayTeamId);
+    Check("a red card in a preseason friendly bans nobody", s.SuspensionOf(preseason) is null);
+
+    Play(league[0]);
+    Card(league[0].Id, sentOff, "red");
+    Card(league[0].Id, booked, "yellow", 4);
+    s.SettleSuspensions(league[0].Id, league[0].HomeTeamId, league[0].AwayTeamId);
+    var ban = s.SuspensionOf(sentOff);
+    Check("a red card in the league is a one-match ban", ban is { Matches: 1, Reason: "red card" },
+        ban is null ? "no ban" : $"{ban.Matches} match(es), {ban.Reason}");
+    s.SettleSuspensions(league[0].Id, league[0].HomeTeamId, league[0].AwayTeamId);
+    Check("settling the same fixture twice does not double it", s.SuspensionOf(sentOff)?.Matches == 1);
+    Check("four yellows is not yet a ban", s.SuspensionOf(booked) is null);
+    Check("the manager is told", Scalar(
+        $"SELECT COUNT(*) FROM inbox WHERE subject LIKE 'Suspended:%' AND player_id={sentOff}") == 1);
+    Check("the assistant's XI leaves the banned man out", !s.SuggestXi().Take(11).Contains(sentOff));
+
+    Play(league[1]);
+    Card(league[1].Id, booked, "yellow");
+    s.SettleSuspensions(league[1].Id, league[1].HomeTeamId, league[1].AwayTeamId);
+    Check("the next match serves the ban", s.SuspensionOf(sentOff) is null);
+    var fifth = s.SuspensionOf(booked);
+    Check("the fifth yellow of the season is a one-match ban", fifth is { Matches: 1, Reason: "5 yellow cards" },
+        fifth is null ? "no ban" : $"{fifth.Matches} match(es), {fifth.Reason}");
+
+    var undone = s.UndoLastResult();
+    Check("Undo hands the served match back", s.SuspensionOf(sentOff)?.Matches == 1);
+    Check("...and takes back the ban that result earned", s.SuspensionOf(booked) is null, undone.Length > 60 ? "" : undone);
+}
+
+// ---------------------------------------------------------------------------------------------
 Console.WriteLine("\nA6  Advance Season with your own cup ties unplayed (the cup used to freeze, no winner)");
 {
     var myTies = s.Repo.Fixtures(season)
@@ -175,6 +233,9 @@ Console.WriteLine("\nA6  Advance Season with your own cup ties unplayed (the cup
         Scalar($"SELECT COUNT(*) FROM fixtures WHERE season_id={season} AND kind='cup' AND played=0") == 0);
     Check("the cup honours are on the roll",
         Scalar($"SELECT COUNT(*) FROM honours WHERE season_id={season} AND competition IN ('cup','lcup','ccup')") == 3);
+    var settled = Scalar("SELECT COUNT(*) FROM meta WHERE key LIKE 'bans_settled_%'");
+    Check("every simmed fixture settled its bans", settled > 900, $"{settled:N0} fixtures");
+    Check("the new season starts with a clean disciplinary sheet", Scalar("SELECT COUNT(*) FROM suspensions") == 0);
 }
 
 db.Dispose();
