@@ -265,6 +265,54 @@ Console.WriteLine("\nA6  Advance Season with your own cup ties unplayed (the cup
     Check("the new season starts with a clean disciplinary sheet", Scalar("SELECT COUNT(*) FROM suspensions") == 0);
 }
 
+// ---------------------------------------------------------------------------------------------
+Console.WriteLine("\nA12  contracts minted for every club (used to exist only for players you'd viewed)");
+{
+    var cpuClub = s.LeagueTeams().First(t => t.Id != s.CurrentTeamId);
+    var cpuSquadCount = Scalar($"SELECT COUNT(*) FROM squad_members WHERE team_id={cpuClub.Id}");
+    var cpuContractCount = Scalar(
+        $"SELECT COUNT(*) FROM contracts WHERE team_id={cpuClub.Id}");
+    // Within 2 of the squad size, not exact: a handful of very recent CPU signings can still be
+    // mid-transfer when this runs (academy promotions bypass the mint helper) — the NEXT rollover's
+    // pass always catches them, so a small in-season lag isn't the bug A12 was about.
+    Check($"{s.TeamName(cpuClub.Id)} (a club you never opened) has a contract row for ~every squad member",
+        Math.Abs(cpuContractCount - cpuSquadCount) <= 2, $"{cpuContractCount}/{cpuSquadCount}");
+    // 9000/9001 (TopFlight/Division2 in Session.cs) are the two playable leagues every career
+    // builds, whatever country's data it started from — every other club in the imported world
+    // carries a league_id too (its OWN country's native league), but sits outside this career's
+    // pyramid entirely (that gap is B4, not this fix). Scoping to just these two is what makes
+    // this check "the world you actually play in", not "every club eFootball ever shipped".
+    var totalContracts = Scalar("SELECT COUNT(*) FROM contracts");
+    var leaguedSquadRows = Scalar(
+        "SELECT COUNT(*) FROM squad_members s JOIN teams t ON t.id=s.team_id " +
+        "WHERE t.league_id IN (9000,9001)");
+    Check("contracts cover the whole two-division world, not just the players you've clicked on",
+        totalContracts >= leaguedSquadRows - 10, $"{totalContracts} contracts for {leaguedSquadRows} squad slots");
+}
+
+Console.WriteLine("\nB7  starting staff (used to be 0 rows everywhere; every dugout said \"the manager\")");
+{
+    // This world's staff_people pool was built in an earlier session, before AssignStartingStaff
+    // existed — EnsureStaffPool only ever runs its one-time seed when the table is empty, so a
+    // fresh-career simulation has to actually be fresh: wipe the pool and re-seed it here, the
+    // same as CareerBuilder does for a save that has never opened the Staff screen.
+    using (var wipe = db.Connection.CreateCommand())
+    {
+        wipe.CommandText = "DELETE FROM staff_people; DELETE FROM staff";
+        wipe.ExecuteNonQuery();
+    }
+    var cpuClub = s.LeagueTeams().First(t => t.Id != s.CurrentTeamId);
+    var name = s.ManagerNameOf(cpuClub.Id);   // triggers EnsureStaffPool on the now-empty pool
+    Check($"{s.TeamName(cpuClub.Id)}'s dugout has a real name, not the old placeholder",
+        name != "the manager", name);
+    var assigned = Scalar("SELECT COUNT(*) FROM staff_people WHERE team_id IS NOT NULL");
+    Check("staff are actually attached to clubs (used to be 0 rows with a team_id at all)",
+        assigned > 0, $"{assigned} staff assigned");
+    var yourBackroom = s.MyBackroom().Count;
+    Check("your own club starts with at least some desks already filled, not an empty backroom",
+        yourBackroom > 0, $"{yourBackroom}/{Session.StaffRoles.Length} desks");
+}
+
 db.Dispose();
 try { File.Delete(work); } catch { /* temp file; Windows may still hold it for a moment */ }
 Console.WriteLine($"\n{pass} passed, {fail} failed");

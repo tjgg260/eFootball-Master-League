@@ -628,6 +628,17 @@ public sealed partial class Session
         var shirt = Enumerable.Range(1, 99).FirstOrDefault(n => !used.Contains(n), 99);
         Repo.SetSquadMember(new SquadMemberRow
         { TeamId = teamId, PlayerId = playerId, SquadNumber = shirt, Slot = Repo.Squad(teamId).Count });
+        // A12: a CPU signing used to sit contract-less until the NEXT rollover's mint pass caught
+        // up with it — one season where he could be "poached" again for nothing. Mint him one now,
+        // at the club he's actually joining.
+        using var ins = Db.Connection.CreateCommand();
+        ins.CommandText =
+            "INSERT OR IGNORE INTO contracts(player_id,team_id,weekly_wage,expires_season) " +
+            "VALUES($p,$t,500,$season + 1 + ABS($p * 2654435761) % 3)";
+        ins.Parameters.AddWithValue("$p", playerId);
+        ins.Parameters.AddWithValue("$t", teamId);
+        ins.Parameters.AddWithValue("$season", SeasonId);
+        ins.ExecuteNonQuery();
     }
 
     private void RecordPaidTransfer(long playerId, int fromTeam, int toTeam, long fee)
@@ -644,6 +655,26 @@ public sealed partial class Session
     }
 
     /// <summary>
+    /// A12: every club's squad gets a real contract row, not just the players whose screen you
+    /// happened to open. Same deterministic formula <see cref="SessionSquad.ContractYear"/> uses
+    /// for yours, so a CPU club's expiries land on the same 1-3 season spread — this is what lets
+    /// <see cref="RetireAndExpire"/> below actually run frees on the other 351 clubs instead of
+    /// only ever checking <c>CurrentTeamId</c>.
+    /// </summary>
+    private void MintMissingContracts(int teamId)
+    {
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText =
+            "INSERT INTO contracts(player_id,team_id,weekly_wage,expires_season) " +
+            "SELECT s.player_id, s.team_id, 500, $season + 1 + ABS(s.player_id * 2654435761) % 3 " +
+            "FROM squad_members s WHERE s.team_id = $t " +
+            "AND NOT EXISTS (SELECT 1 FROM contracts c WHERE c.player_id = s.player_id AND c.team_id = s.team_id)";
+        cmd.Parameters.AddWithValue("$t", teamId);
+        cmd.Parameters.AddWithValue("$season", SeasonId);
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>
     /// Rollover mortality (P2): veterans hang up their boots (odds climb with age), and
     /// out-of-contract players actually LEAVE on frees — contracts stopped being theatre.
     /// Squads never drop below 18; the market pass right after re-fills the gaps.
@@ -652,9 +683,32 @@ public sealed partial class Session
     {
         var rng = new SeededRandom((SeasonId * 30011 + 13) ^ WorldSeed);
         var notable = new List<string>();
+        var freedElsewhere = new List<string>();
         var stampMd = NextFixture()?.Matchday;   // one lookup for the whole pass
         foreach (var club in Repo.Teams().Where(t => t.LeagueId is TopFlight or Division2).ToList())
         {
+            MintMissingContracts(club.Id);
+
+            // A12: every club's OUT-OF-CONTRACT players walk, not just yours — CPU expiries used
+            // to never happen at all (no contract row ever existed to check against). Yours keeps
+            // its own inbox-worded pass just below; this one is the silent CPU side of the same rule.
+            if (club.Id != CurrentTeamId)
+            {
+                foreach (var m in Repo.Squad(club.Id).ToList())
+                {
+                    if (Repo.Squad(club.Id).Count <= 18) break;
+                    using var q = Db.Connection.CreateCommand();
+                    q.CommandText = "SELECT expires_season FROM contracts WHERE player_id=$p AND team_id=$t";
+                    q.Parameters.AddWithValue("$p", m.PlayerId);
+                    q.Parameters.AddWithValue("$t", club.Id);
+                    if (q.ExecuteScalar() is not long v || v > SeasonId) continue;
+                    var freedName = Repo.SquadPlayers(club.Id).FirstOrDefault(p => p.Id == m.PlayerId);
+                    Repo.RemoveSquadMember(club.Id, m.PlayerId);   // also drops the contract row
+                    if (freedName is { OverallRating: >= 78 })
+                        freedElsewhere.Add($"{freedName.Name} ({club.Name})");
+                }
+            }
+
             foreach (var p in Repo.SquadPlayers(club.Id).ToList())
             {
                 if (Repo.Squad(club.Id).Count <= 18) break;
@@ -685,6 +739,12 @@ public sealed partial class Session
                 "Calling time on their careers this summer: " + string.Join(", ", notable.Take(6)) + ".",
                 stampMd);
         }
+        if (freedElsewhere.Count > 0)
+        {
+            PostInbox("Media", "Out of contract elsewhere",
+                "Released as free agents this summer: " + string.Join(", ", freedElsewhere.Take(6)) + ".",
+                stampMd);
+        }
 
         // YOUR out-of-contract players walk (the mails warned you from matchday 30).
         var gone = new List<string>();
@@ -698,12 +758,7 @@ public sealed partial class Session
             if (q.ExecuteScalar() is long v and > 0 && v <= SeasonId)
             {
                 var name = Repo.SquadPlayers(CurrentTeamId).FirstOrDefault(p => p.Id == m.PlayerId)?.Name ?? "A player";
-                Repo.RemoveSquadMember(CurrentTeamId, m.PlayerId);
-                using var del = Db.Connection.CreateCommand();
-                del.CommandText = "DELETE FROM contracts WHERE player_id=$p AND team_id=$t";
-                del.Parameters.AddWithValue("$p", m.PlayerId);
-                del.Parameters.AddWithValue("$t", CurrentTeamId);
-                del.ExecuteNonQuery();
+                Repo.RemoveSquadMember(CurrentTeamId, m.PlayerId);   // also drops the contract row
                 gone.Add(name);
             }
         }

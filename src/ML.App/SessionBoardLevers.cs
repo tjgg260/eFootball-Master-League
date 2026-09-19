@@ -59,14 +59,27 @@ public sealed partial class Session
 
     // ------------------------------------------------------------------ AI manager names
 
-    /// <summary>Deterministic real coach name for any club's dugout; yours is your own.</summary>
+    /// <summary>Real coach name for any club's dugout; yours is your own.</summary>
     public string ManagerNameOf(int teamId)
     {
         if (teamId == CurrentTeamId) return ManagerName;
+        // B7: the club's own assigned Assistant Manager (AssignStartingStaff) beats the old
+        // coach_names guess — coach_names is a table the MVP world builder never fills, so this
+        // fallback used to print "the manager" for all 351 other dugouts, every time.
+        if (AssistantManagerNameOf(teamId) is { Length: > 0 } real) return real;
         if (GetMeta($"mgrname_{teamId}") is { Length: > 0 } stored) return stored;
         var name = PickCoachName(teamId);
         SetMeta($"mgrname_{teamId}", name);
         return name;
+    }
+
+    private string? AssistantManagerNameOf(int teamId)
+    {
+        EnsureStaffPool();
+        using var cmd = Db.Connection.CreateCommand();
+        cmd.CommandText = "SELECT name FROM staff_people WHERE team_id=$t AND role='Assistant Manager' LIMIT 1";
+        cmd.Parameters.AddWithValue("$t", teamId);
+        return cmd.ExecuteScalar() as string;
     }
 
     private string PickCoachName(int teamId)

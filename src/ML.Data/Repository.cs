@@ -102,8 +102,22 @@ public sealed class Repository
         "SELECT team_id TeamId,player_id PlayerId,squad_number SquadNumber,slot Slot,role Role " +
         "FROM squad_members WHERE team_id=@teamId ORDER BY slot", new { teamId }).ToList();
 
-    public void RemoveSquadMember(int teamId, long playerId) => _c.Execute(
-        "DELETE FROM squad_members WHERE team_id=@teamId AND player_id=@playerId", new { teamId, playerId });
+    /// <summary>
+    /// Leaving a squad by any route (sold, released, retired, transferred, expired) also drops
+    /// his contract AT THIS CLUB — one choke point rather than every one of the dozen call sites
+    /// remembering to do it. A stale contract row for a club he's no longer at doesn't corrupt
+    /// anything a real query reads (they all join contracts on team_id), but it made A12's own
+    /// proof harness fail with counts that never matched a squad mid-way through a season of
+    /// transfer activity, which is a real enough symptom to close off here instead of explaining
+    /// away.
+    /// </summary>
+    public void RemoveSquadMember(int teamId, long playerId)
+    {
+        _c.Execute(
+            "DELETE FROM squad_members WHERE team_id=@teamId AND player_id=@playerId", new { teamId, playerId });
+        _c.Execute(
+            "DELETE FROM contracts WHERE team_id=@teamId AND player_id=@playerId", new { teamId, playerId });
+    }
 
     public void RecordTransfer(long playerId, int toTeamId, int seasonId) => _c.Execute(
         "INSERT INTO transfers(player_id,to_team_id,season_id,window) " +

@@ -143,6 +143,50 @@ public sealed partial class Session
 
         // Carry over anything hired under the old 4-role system so nobody loses their backroom.
         MigrateLegacyStaff();
+
+        // B7: every club — yours included — already employs a backroom when you take over; it
+        // didn't exist before this, so `staff` sat at 0 rows and ManagerNameOf's real-name lookup
+        // (coach_names) had nothing to read, printing "the manager" for all 351 other dugouts.
+        AssignStartingStaff();
+    }
+
+    /// <summary>
+    /// One-time pass (called only from the pool's own first build): best staff to the best clubs,
+    /// per role, so results aren't just deterministic — they're plausible. Club strength is each
+    /// squad's average overall; staff strength is the same per-role key attribute the hire
+    /// shortlist already ranks by. Pools run out well short of 351 clubs in most roles (28
+    /// Assistant Managers, 16 Directors of Football…), so this thins out down the table exactly
+    /// like a real backroom does — smaller clubs are left to hire, not stocked for free.
+    /// </summary>
+    private void AssignStartingStaff()
+    {
+        var clubs = new List<(int Id, double Avg)>();
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText =
+                "SELECT t.id, AVG(COALESCE(p.overall_rating, 60)) FROM teams t " +
+                "JOIN squad_members s ON s.team_id = t.id JOIN players p ON p.id = s.player_id " +
+                "WHERE t.league_id IN ($top,$div2) GROUP BY t.id ORDER BY 2 DESC";
+            q.Parameters.AddWithValue("$top", TopFlight);
+            q.Parameters.AddWithValue("$div2", Division2);
+            using var r = q.ExecuteReader();
+            while (r.Read()) clubs.Add((r.GetInt32(0), r.GetDouble(1)));
+        }
+        if (clubs.Count == 0) return;
+
+        foreach (var role in StaffRoles)
+        {
+            var pool = StaffMarket(role, count: clubs.Count);   // already ranked best-first
+            for (var i = 0; i < pool.Count && i < clubs.Count; i++)
+            {
+                using var up = Db.Connection.CreateCommand();
+                up.CommandText = "UPDATE staff_people SET team_id=$t, contract_until=$cu WHERE id=$id";
+                up.Parameters.AddWithValue("$t", clubs[i].Id);
+                up.Parameters.AddWithValue("$cu", SeasonId + 2);
+                up.Parameters.AddWithValue("$id", pool[i].Id);
+                up.ExecuteNonQuery();
+            }
+        }
     }
 
     private void InsertStaffPerson(StaffPerson p)
