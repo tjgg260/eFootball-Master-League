@@ -1,0 +1,2403 @@
+{
+ "note": "bit offsets are little-endian within the record: bit b = byte b//8, bit b%8",
+ "generated_by": "tools/pesdb_schema_bootstrap.py",
+ "tables": {
+  "Player.bin/400": {
+   "stride": 400,
+   "fields": [
+    {
+     "name": "youth_club",
+     "bit": 0,
+     "width": 32,
+     "type": "u32",
+     "source": "efootball_core (Player Editor); re-verified both layouts 2026-09-19",
+     "note": "Sider's doc reads bytes 0-7 as one u64 'native PID'; the Player Editor reads two u32 club fields here and the loan data agrees with the editor"
+    },
+    {
+     "name": "loan_parent_club",
+     "bit": 32,
+     "width": 32,
+     "type": "u32",
+     "source": "efootball_core (Player Editor); re-verified both layouts 2026-09-19",
+     "note": "Sider's doc reads bytes 0-7 as one u64 'native PID'; the Player Editor reads two u32 club fields here and the loan data agrees with the editor"
+    },
+    {
+     "name": "external_pid",
+     "bit": 64,
+     "width": 64,
+     "type": "u64",
+     "source": "sider",
+     "note": "the key every other table references"
+    },
+    {
+     "name": "club",
+     "bit": 128,
+     "width": 32,
+     "type": "u32",
+     "source": "efootball_core (Player Editor); re-verified both layouts 2026-09-19",
+     "note": "team id; matches the player's squad team ~95% of the time"
+    },
+    {
+     "name": "contract_end",
+     "bit": 160,
+     "width": 25,
+     "type": "date_yyyymmdd",
+     "source": "tools/pesdb_census.py date sweep 2026-09-19",
+     "note": "4,710 players in dt200 / 12,166 in dt870; values cluster on 30 June"
+    },
+    {
+     "name": "loan_end",
+     "bit": 192,
+     "width": 25,
+     "type": "date_yyyymmdd",
+     "source": "efootball_core (Player Editor); re-verified both layouts 2026-09-19",
+     "note": "non-zero for exactly the players with loan_parent_club set"
+    },
+    {
+     "name": "skill.GK High Punt",
+     "bit": 223,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "height_cm",
+     "bit": 248,
+     "width": 8,
+     "type": "uint",
+     "source": "player_layouts.json",
+     "note": "stored value + 100"
+    },
+    {
+     "name": "weight_kg",
+     "bit": 280,
+     "width": 7,
+     "type": "uint",
+     "source": "player_layouts.json",
+     "note": "stored value + 30"
+    },
+    {
+     "name": "skill.Chop Turn",
+     "bit": 287,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "aptitude.LB",
+     "bit": 318,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "_flag_bit328",
+     "bit": 328,
+     "width": 1,
+     "type": "flag",
+     "source": "tools/pesdb_census.py 2026-09-19",
+     "note": "set on 69 of 23,519 players; meaning unknown. Sider's 10-bit read swallows it"
+    },
+    {
+     "name": "nationality",
+     "bit": 329,
+     "width": 9,
+     "type": "enum",
+     "source": "verified against Country.bin ids 2026-09-19",
+     "note": "9 bits, NOT the 10-bit `u16@41 & 0x3FF` in vendored pesdb.py; joins Country.bin"
+    },
+    {
+     "name": "skill.Long-reach Tackle",
+     "bit": 351,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "ability.set_piece_taking",
+     "bit": 368,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "style.in_possession",
+     "bit": 374,
+     "width": 6,
+     "type": "enum",
+     "source": "player_layouts.json",
+     "note": "layout file reads 8 bits at 372 then //4; the low 2 bits belong to ability.set_piece_taking"
+    },
+    {
+     "name": "ability.kicking_power",
+     "bit": 384,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.defensive_awareness",
+     "bit": 390,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.ball_control",
+     "bit": 396,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.heading",
+     "bit": 402,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.jumping",
+     "bit": 408,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "aptitude.GK",
+     "bit": 414,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "ability.gk_catching",
+     "bit": 416,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.gk_reach",
+     "bit": 422,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.curl",
+     "bit": 428,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.speed",
+     "bit": 434,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "style.out_of_possession",
+     "bit": 440,
+     "width": 6,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "ability.lofted_pass",
+     "bit": 448,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.tackling",
+     "bit": 454,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.gk_reflexes",
+     "bit": 460,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.gk_parrying",
+     "bit": 466,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.gk_awareness",
+     "bit": 472,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "weak_foot_usage",
+     "bit": 478,
+     "width": 2,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "ability.stamina",
+     "bit": 480,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.acceleration",
+     "bit": 486,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.dribbling",
+     "bit": 492,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.offensive_awareness",
+     "bit": 498,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.balance",
+     "bit": 504,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "aptitude.CMF",
+     "bit": 510,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "ability.aggression",
+     "bit": 512,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.physical_contact",
+     "bit": 518,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.low_pass",
+     "bit": 524,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.finishing",
+     "bit": 530,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "age",
+     "bit": 536,
+     "width": 6,
+     "type": "uint",
+     "source": "player_layouts.json",
+     "note": "stored value + 10"
+    },
+    {
+     "name": "injury_resistance",
+     "bit": 542,
+     "width": 2,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "ability.defensive_engagement",
+     "bit": 544,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.tight_possession",
+     "bit": 550,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "position",
+     "bit": 556,
+     "width": 4,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.GK Directing Defence",
+     "bit": 575,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "aptitude.RMF",
+     "bit": 576,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "weak_foot_accuracy",
+     "bit": 578,
+     "width": 2,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "aptitude.AMF",
+     "bit": 580,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "form",
+     "bit": 582,
+     "width": 2,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "aptitude.CB",
+     "bit": 584,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.CF",
+     "bit": 586,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.LMF",
+     "bit": 588,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.LWF",
+     "bit": 590,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.RB",
+     "bit": 592,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.DMF",
+     "bit": 594,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.RWF",
+     "bit": 596,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.SS",
+     "bit": 598,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "skill.Sombrero",
+     "bit": 603,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Bullet Header",
+     "bit": 604,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Pinpoint Crossing",
+     "bit": 605,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Aerial Superiority",
+     "bit": 606,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Magnetic Feet",
+     "bit": 608,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Aerial Fort",
+     "bit": 609,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Weighted Pass",
+     "bit": 610,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Flip Flap",
+     "bit": 611,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Fighting Spirit",
+     "bit": 612,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Through Passing",
+     "bit": 613,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "ai_style.Early Cross",
+     "bit": 614,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Low Lofted Pass",
+     "bit": 615,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "ai_style.Trickster",
+     "bit": 616,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.GK Low Punt",
+     "bit": 617,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Gamesmanship",
+     "bit": 619,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Captaincy",
+     "bit": 620,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Marseille Turn",
+     "bit": 621,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Phenomenal Finishing",
+     "bit": 622,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Outside Curler",
+     "bit": 623,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Attack Trigger",
+     "bit": 624,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Heading",
+     "bit": 625,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Low Screamer",
+     "bit": 626,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Willpower",
+     "bit": 627,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Tap Trick",
+     "bit": 628,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Rising Shot",
+     "bit": 630,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.GK Spirit Roar",
+     "bit": 631,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Acceleration Burst",
+     "bit": 632,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.GK Penalty Saver",
+     "bit": 633,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Attacking Surge",
+     "bit": 634,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Sliding Tackle",
+     "bit": 635,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Interception",
+     "bit": 636,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Phenomenal Pass",
+     "bit": 637,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Man Marking",
+     "bit": 638,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Snap Strike",
+     "bit": 639,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "editor"
+    },
+    {
+     "name": "skill.Heel Trick",
+     "bit": 640,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Chip Shot Control",
+     "bit": 641,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Game-changing Pass",
+     "bit": 642,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.One-touch Pass",
+     "bit": 644,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Momentum Dribbling",
+     "bit": 646,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "ai_style.Long Ranger",
+     "bit": 647,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "ai_style.Incisive Run",
+     "bit": 649,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.First-time Shot",
+     "bit": 650,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.No Look Pass",
+     "bit": 651,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Knuckle Shot",
+     "bit": 652,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "foot",
+     "bit": 654,
+     "width": 1,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Dipping Shot",
+     "bit": 655,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Shadow Hunt",
+     "bit": 656,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Rabona",
+     "bit": 657,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Edged Crossing",
+     "bit": 658,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Blitz Curler",
+     "bit": 659,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Super-sub",
+     "bit": 660,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Track Back",
+     "bit": 661,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Long Range Shooting",
+     "bit": 662,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Scissors Feint",
+     "bit": 663,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Visionary Pass",
+     "bit": 664,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Penalty Specialist",
+     "bit": 665,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Long Throw",
+     "bit": 666,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.GK Long Throw",
+     "bit": 667,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Double Touch",
+     "bit": 668,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Acrobatic Finishing",
+     "bit": 669,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Fortress",
+     "bit": 670,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Scotch Move",
+     "bit": 671,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Blocker",
+     "bit": 673,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "ai_style.Speeding Bullet",
+     "bit": 674,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Sole Control",
+     "bit": 675,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Long-Range Curler",
+     "bit": 676,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "skill.Cut Behind & Turn",
+     "bit": 677,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "ai_style.Long Ball Expert",
+     "bit": 678,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Acrobatic Clearance",
+     "bit": 679,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "export-verified"
+    },
+    {
+     "name": "ai_style.Mazing Run",
+     "bit": 680,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "name0",
+     "bit": 704,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    },
+    {
+     "name": "name1",
+     "bit": 1192,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    },
+    {
+     "name": "name2.shirt",
+     "bit": 1680,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    },
+    {
+     "name": "name3.full",
+     "bit": 2168,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    },
+    {
+     "name": "name4",
+     "bit": 2656,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    }
+   ]
+  },
+  "Player.bin/392": {
+   "stride": 392,
+   "fields": [
+    {
+     "name": "youth_club",
+     "bit": 0,
+     "width": 32,
+     "type": "u32",
+     "source": "efootball_core (Player Editor); re-verified both layouts 2026-09-19",
+     "note": "Sider's doc reads bytes 0-7 as one u64 'native PID'; the Player Editor reads two u32 club fields here and the loan data agrees with the editor"
+    },
+    {
+     "name": "loan_parent_club",
+     "bit": 32,
+     "width": 32,
+     "type": "u32",
+     "source": "efootball_core (Player Editor); re-verified both layouts 2026-09-19",
+     "note": "Sider's doc reads bytes 0-7 as one u64 'native PID'; the Player Editor reads two u32 club fields here and the loan data agrees with the editor"
+    },
+    {
+     "name": "external_pid",
+     "bit": 64,
+     "width": 64,
+     "type": "u64",
+     "source": "sider",
+     "note": "the key every other table references"
+    },
+    {
+     "name": "club",
+     "bit": 128,
+     "width": 32,
+     "type": "u32",
+     "source": "efootball_core (Player Editor); re-verified both layouts 2026-09-19",
+     "note": "team id; matches the player's squad team ~95% of the time"
+    },
+    {
+     "name": "contract_end",
+     "bit": 160,
+     "width": 25,
+     "type": "date_yyyymmdd",
+     "source": "tools/pesdb_census.py date sweep 2026-09-19",
+     "note": "4,710 players in dt200 / 12,166 in dt870; values cluster on 30 June"
+    },
+    {
+     "name": "loan_end",
+     "bit": 192,
+     "width": 25,
+     "type": "date_yyyymmdd",
+     "source": "efootball_core (Player Editor); re-verified both layouts 2026-09-19",
+     "note": "non-zero for exactly the players with loan_parent_club set"
+    },
+    {
+     "name": "height_cm",
+     "bit": 248,
+     "width": 8,
+     "type": "uint",
+     "source": "player_layouts.json",
+     "note": "stored value + 100"
+    },
+    {
+     "name": "weight_kg",
+     "bit": 280,
+     "width": 7,
+     "type": "uint",
+     "source": "player_layouts.json",
+     "note": "stored value + 30"
+    },
+    {
+     "name": "skill.GK High Punt",
+     "bit": 287,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "aptitude.LB",
+     "bit": 318,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "_flag_bit328",
+     "bit": 328,
+     "width": 1,
+     "type": "flag",
+     "source": "tools/pesdb_census.py 2026-09-19",
+     "note": "set on 69 of 23,519 players; meaning unknown. Sider's 10-bit read swallows it"
+    },
+    {
+     "name": "nationality",
+     "bit": 329,
+     "width": 9,
+     "type": "enum",
+     "source": "verified against Country.bin ids 2026-09-19",
+     "note": "9 bits, NOT the 10-bit `u16@41 & 0x3FF` in vendored pesdb.py; joins Country.bin"
+    },
+    {
+     "name": "skill.Chop Turn",
+     "bit": 351,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "ability.set_piece_taking",
+     "bit": 368,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.kicking_power",
+     "bit": 374,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.defensive_awareness",
+     "bit": 384,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.ball_control",
+     "bit": 390,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.heading",
+     "bit": 396,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.jumping",
+     "bit": 402,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.gk_catching",
+     "bit": 408,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "aptitude.LMF",
+     "bit": 414,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "ability.gk_reach",
+     "bit": 416,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.speed",
+     "bit": 422,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.tackling",
+     "bit": 428,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.gk_reflexes",
+     "bit": 434,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.gk_parrying",
+     "bit": 440,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "aptitude.GK",
+     "bit": 446,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "ability.gk_awareness",
+     "bit": 448,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.curl",
+     "bit": 454,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.stamina",
+     "bit": 460,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.acceleration",
+     "bit": 466,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.dribbling",
+     "bit": 472,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.offensive_awareness",
+     "bit": 480,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.balance",
+     "bit": 486,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.aggression",
+     "bit": 492,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.physical_contact",
+     "bit": 498,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.low_pass",
+     "bit": 504,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "weak_foot_usage",
+     "bit": 510,
+     "width": 2,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "ability.finishing",
+     "bit": 512,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.lofted_pass",
+     "bit": 518,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "age",
+     "bit": 524,
+     "width": 6,
+     "type": "uint",
+     "source": "player_layouts.json",
+     "note": "stored value + 11"
+    },
+    {
+     "name": "ability.defensive_engagement",
+     "bit": 530,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "ability.tight_possession",
+     "bit": 536,
+     "width": 6,
+     "type": "uint6",
+     "source": "player_layouts.json",
+     "note": "stored value + 40"
+    },
+    {
+     "name": "aptitude.CMF",
+     "bit": 542,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; reads 2 for 0.987 of players at this position, not all - LIKELY"
+    },
+    {
+     "name": "position",
+     "bit": 548,
+     "width": 4,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "injury_resistance",
+     "bit": 567,
+     "width": 2,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "aptitude.RMF",
+     "bit": 569,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "weak_foot_accuracy",
+     "bit": 571,
+     "width": 2,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "aptitude.AMF",
+     "bit": 573,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "form",
+     "bit": 576,
+     "width": 2,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "aptitude.CB",
+     "bit": 578,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; reads 2 for 0.996 of players at this position, not all - LIKELY"
+    },
+    {
+     "name": "aptitude.CF",
+     "bit": 580,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; reads 2 for 0.990 of players at this position, not all - LIKELY"
+    },
+    {
+     "name": "aptitude.LWF",
+     "bit": 582,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.RB",
+     "bit": 584,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.DMF",
+     "bit": 586,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.RWF",
+     "bit": 588,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "aptitude.SS",
+     "bit": 590,
+     "width": 2,
+     "type": "uint2",
+     "source": "tools/pesdb_census.py structural scan 2026-09-19",
+     "note": "0/1/2; always 2 for the player's own position"
+    },
+    {
+     "name": "skill.Sombrero",
+     "bit": 595,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Pinpoint Crossing",
+     "bit": 597,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Aerial Superiority",
+     "bit": 598,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Weighted Pass",
+     "bit": 601,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Fighting Spirit",
+     "bit": 603,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Through Passing",
+     "bit": 604,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "ai_style.Early Cross",
+     "bit": 605,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Low Lofted Pass",
+     "bit": 606,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "ai_style.Trickster",
+     "bit": 607,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.GK Low Punt",
+     "bit": 608,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Gamesmanship",
+     "bit": 609,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Captaincy",
+     "bit": 610,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Outside Curler",
+     "bit": 612,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Heading",
+     "bit": 614,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "ai_style.Mazing Run",
+     "bit": 615,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Marseille Turn",
+     "bit": 618,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Rising Shot",
+     "bit": 621,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.GK Penalty Saver",
+     "bit": 624,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Sliding Tackle",
+     "bit": 626,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Interception",
+     "bit": 627,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Man Marking",
+     "bit": 629,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Heel Trick",
+     "bit": 631,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Chip Shot Control",
+     "bit": 632,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.One-touch Pass",
+     "bit": 635,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "ai_style.Long Ranger",
+     "bit": 637,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "ai_style.Incisive Run",
+     "bit": 640,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.First-time Shot",
+     "bit": 641,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.No Look Pass",
+     "bit": 642,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Knuckle Shot",
+     "bit": 643,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "foot",
+     "bit": 644,
+     "width": 1,
+     "type": "enum",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Dipping Shot",
+     "bit": 645,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Rabona",
+     "bit": 647,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Super-sub",
+     "bit": 649,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Track Back",
+     "bit": 650,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Long Range Shooting",
+     "bit": 651,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Scissors Feint",
+     "bit": 652,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Penalty Specialist",
+     "bit": 654,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.GK Long Throw",
+     "bit": 656,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Double Touch",
+     "bit": 657,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Acrobatic Finishing",
+     "bit": 658,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Scotch Move",
+     "bit": 660,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Blocker",
+     "bit": 661,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "ai_style.Speeding Bullet",
+     "bit": 662,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Sole Control",
+     "bit": 663,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Long-Range Curler",
+     "bit": 664,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "skill.Cut Behind & Turn",
+     "bit": 665,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "ai_style.Long Ball Expert",
+     "bit": 666,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json"
+    },
+    {
+     "name": "skill.Acrobatic Clearance",
+     "bit": 667,
+     "width": 1,
+     "type": "flag",
+     "source": "player_layouts.json",
+     "note": "cross-layout"
+    },
+    {
+     "name": "name0",
+     "bit": 672,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    },
+    {
+     "name": "name1.shirt",
+     "bit": 1160,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    },
+    {
+     "name": "name2",
+     "bit": 1648,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    },
+    {
+     "name": "name3",
+     "bit": 2136,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    },
+    {
+     "name": "name4.full",
+     "bit": 2624,
+     "width": 488,
+     "type": "utf8z",
+     "source": "sider",
+     "note": "NUL-terminated, 61 bytes"
+    }
+   ]
+  },
+  "PlayerAssignment.bin/v1": {
+   "stride": 24,
+   "fields": [
+    {
+     "name": "record_id",
+     "bit": 0,
+     "width": 32,
+     "type": "u32",
+     "source": "sider"
+    },
+    {
+     "name": "_zero_4_7",
+     "bit": 32,
+     "width": 32,
+     "type": "pad",
+     "source": "sider"
+    },
+    {
+     "name": "player_pid",
+     "bit": 64,
+     "width": 64,
+     "type": "u64",
+     "source": "sider"
+    },
+    {
+     "name": "team_id",
+     "bit": 128,
+     "width": 32,
+     "type": "u32",
+     "source": "sider"
+    },
+    {
+     "name": "shirt_number",
+     "bit": 160,
+     "width": 8,
+     "type": "uint",
+     "note": "0-based; displayed number is +1",
+     "source": "sider"
+    },
+    {
+     "name": "sort_key",
+     "bit": 168,
+     "width": 8,
+     "type": "uint",
+     "note": "strictly increasing within a team, usually index*4",
+     "source": "sider"
+    },
+    {
+     "name": "role_mask",
+     "bit": 176,
+     "width": 6,
+     "type": "bitmask",
+     "note": "bit5 captain, bit4 penalty taker, bits0-3 set-piece takers",
+     "source": "sider"
+    },
+    {
+     "name": "_zero_22_high",
+     "bit": 182,
+     "width": 2,
+     "type": "pad",
+     "source": "sider"
+    },
+    {
+     "name": "_zero_23",
+     "bit": 184,
+     "width": 8,
+     "type": "pad",
+     "source": "sider"
+    }
+   ]
+  },
+  "PlayerAssignment.bin/v2": {
+   "stride": 24,
+   "fields": [
+    {
+     "name": "player_pid",
+     "bit": 0,
+     "width": 64,
+     "type": "u64",
+     "source": "sider"
+    },
+    {
+     "name": "team_id",
+     "bit": 64,
+     "width": 32,
+     "type": "u32",
+     "source": "sider"
+    },
+    {
+     "name": "record_id",
+     "bit": 96,
+     "width": 32,
+     "type": "u32",
+     "source": "sider"
+    },
+    {
+     "name": "shirt_number",
+     "bit": 128,
+     "width": 8,
+     "type": "uint",
+     "source": "sider"
+    },
+    {
+     "name": "sort_key",
+     "bit": 136,
+     "width": 8,
+     "type": "uint",
+     "source": "sider"
+    },
+    {
+     "name": "role_flags",
+     "bit": 144,
+     "width": 16,
+     "type": "bitmask",
+     "note": "bits 4-10 one holder per team; bit 9 correlates with captain",
+     "source": "sider"
+    },
+    {
+     "name": "_zero_20_23",
+     "bit": 160,
+     "width": 32,
+     "type": "pad",
+     "source": "sider"
+    }
+   ]
+  },
+  "Team.bin": {
+   "stride": 1600,
+   "fields": [
+    {
+     "name": "is_national_team",
+     "bit": 22,
+     "width": 1,
+     "type": "flag",
+     "note": "set for exactly the 253 records carrying translations, clear for all 728 clubs",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "is_fully_licensed",
+     "bit": 23,
+     "width": 1,
+     "type": "flag",
+     "note": "LIKELY: all 191 clubs with bit clear use the real crest; only 73/537 otherwise",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "confederation_afc",
+     "bit": 25,
+     "width": 1,
+     "type": "flag",
+     "note": "LIKELY",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "confederation_caf",
+     "bit": 26,
+     "width": 1,
+     "type": "flag",
+     "note": "LIKELY: 24 records, all national, ids >= 81952 - the known 24 African teams",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "team_id",
+     "bit": 96,
+     "width": 17,
+     "type": "uint",
+     "note": "17 bits at byte 12, strictly ascending",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "related_club_1",
+     "bit": 128,
+     "width": 13,
+     "type": "ref",
+     "note": "LIKELY",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "related_club_2",
+     "bit": 160,
+     "width": 13,
+     "type": "ref",
+     "note": "LIKELY",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "rival_ref_0",
+     "bit": 352,
+     "width": 13,
+     "type": "ref",
+     "note": "LIKELY: 103/137 symmetric, 88% resolve to valid team ids",
+     "source": "tools/pesdb_census.py 2026-09-19"
+    },
+    {
+     "name": "rival_ref_1",
+     "bit": 384,
+     "width": 13,
+     "type": "ref",
+     "note": "LIKELY: 103/137 symmetric, 88% resolve to valid team ids",
+     "source": "tools/pesdb_census.py 2026-09-19"
+    },
+    {
+     "name": "rival_ref_2",
+     "bit": 416,
+     "width": 13,
+     "type": "ref",
+     "note": "LIKELY: 103/137 symmetric, 88% resolve to valid team ids",
+     "source": "tools/pesdb_census.py 2026-09-19"
+    },
+    {
+     "name": "rival_ref_3",
+     "bit": 448,
+     "width": 13,
+     "type": "ref",
+     "note": "LIKELY: 103/137 symmetric, 88% resolve to valid team ids",
+     "source": "tools/pesdb_census.py 2026-09-19"
+    },
+    {
+     "name": "rival_ref_4",
+     "bit": 480,
+     "width": 13,
+     "type": "ref",
+     "note": "LIKELY: 103/137 symmetric, 88% resolve to valid team ids",
+     "source": "tools/pesdb_census.py 2026-09-19"
+    },
+    {
+     "name": "squad_pct_young",
+     "bit": 664,
+     "width": 7,
+     "type": "uint",
+     "note": "percent of squad in the young age band; r=0.9998, 787/787 within 1",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "club_stature",
+     "bit": 672,
+     "width": 21,
+     "type": "uint",
+     "note": "LIKELY: ladder 10000..1200000; 0 for national teams",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "country_id",
+     "bit": 840,
+     "width": 10,
+     "type": "enum",
+     "note": "159/159 national teams equal their squad's dominant nationality",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "squad_pct_own_nationality",
+     "bit": 850,
+     "width": 7,
+     "type": "uint",
+     "note": "r=0.958; every national team reads 100",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "squad_pct_old",
+     "bit": 864,
+     "width": 7,
+     "type": "uint",
+     "note": "r=0.9998",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "squad_pct_mid",
+     "bit": 871,
+     "width": 7,
+     "type": "uint",
+     "note": "r=0.9996",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "crest_flags",
+     "bit": 920,
+     "width": 3,
+     "type": "bitmask",
+     "note": "crest real/fake, from prior work",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.ja",
+     "bit": 928,
+     "width": 560,
+     "type": "utf8z",
+     "note": "only ja/en/zh_Hans and the abbreviation are filled for clubs; the other 17 slots carry the 253 national teams only",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.es",
+     "bit": 1488,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.sv",
+     "bit": 2048,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.el",
+     "bit": 2608,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.en",
+     "bit": 3168,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.tr",
+     "bit": 3728,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.fr",
+     "bit": 4288,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.th",
+     "bit": 4848,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.ko",
+     "bit": 5408,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.pt",
+     "bit": 5968,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.de",
+     "bit": 6528,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "abbreviation",
+     "bit": 7088,
+     "width": 80,
+     "type": "utf8z",
+     "note": "2-3 chars, e.g. ARS / ENG; byte 895 always zero",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.es_419",
+     "bit": 7168,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.pt_BR",
+     "bit": 7728,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.zh_Hans",
+     "bit": 8288,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.nl",
+     "bit": 8848,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.zh_Hant",
+     "bit": 9408,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.it",
+     "bit": 9968,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.id",
+     "bit": 10528,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.ru",
+     "bit": 11088,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.ar",
+     "bit": 11648,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "name.en_2",
+     "bit": 12208,
+     "width": 560,
+     "type": "utf8z",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    },
+    {
+     "name": "_zero_tail",
+     "bit": 12768,
+     "width": 32,
+     "type": "pad",
+     "source": "tools/pesdb_census.py + squad-property correlation 2026-09-19"
+    }
+   ]
+  }
+ }
+}
