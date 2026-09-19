@@ -93,6 +93,17 @@
         <!-- ══ the two squads, every counter each player ran up ═══════════════════════ -->
         <Border Classes="ml-panel" IsVisible="{Binding HasExport}">
           <StackPanel Spacing="8">
+            <!-- audit C4: 33 unexplained abbreviations, no way to tell what any of them meant.
+                 Each header now carries its own tooltip; this line is the "column groups" a
+                 stock DataGrid header can't span — same five colours as every header below. -->
+            <TextBlock Classes="ml-muted" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,2">
+              <Run Text="Hover any header for what it means · " Foreground="#8A93A2"/>
+              <Run Text="Attacking" Foreground="#8BE04A" FontWeight="Bold"/><Run Text=" · " Foreground="#8A93A2"/>
+              <Run Text="Passing" Foreground="#5AA7F0" FontWeight="Bold"/><Run Text=" · " Foreground="#8A93A2"/>
+              <Run Text="Defending &amp; discipline" Foreground="#E0A526" FontWeight="Bold"/><Run Text=" · " Foreground="#8A93A2"/>
+              <Run Text="Goalkeeping" Foreground="#2EC4A6" FontWeight="Bold"/><Run Text=" · " Foreground="#8A93A2"/>
+              <Run Text="On the ball" Foreground="#8A93A2" FontWeight="Bold"/>
+            </TextBlock>
             <TextBlock Classes="ml-label" Text="{Binding HomeName, StringFormat='👥 {0}'}"/>
             <DataGrid x:Name="HomeGrid" ItemsSource="{Binding HomePlayers}" IsReadOnly="True"
                       HeadersVisibility="Column" CanUserSortColumns="False" FrozenColumnCount="1">
@@ -121,35 +132,156 @@
                 <DataGridTextColumn Header="#" Binding="{Binding Shirt}" Width="52"/>
                 <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="190"/>
                 <DataGridTextColumn Header="" Binding="{Binding Status}" Width="190"/>
-                <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="76"/>
-                <DataGridTextColumn Header="Form" Binding="{Binding Form}" Width="104"/>
-                <DataGridTextColumn Header="G" Binding="{Binding Goals}" Width="44"/>
-                <DataGridTextColumn Header="Pen" Binding="{Binding PenaltyGoals}" Width="48"/>
-                <DataGridTextColumn Header="Fin" Binding="{Binding FinesseGoals}" Width="46"/>
-                <DataGridTextColumn Header="Sh" Binding="{Binding Shots}" Width="46"/>
-                <DataGridTextColumn Header="SoT" Binding="{Binding OnTarget}" Width="50"/>
-                <DataGridTextColumn Header="Chip" Binding="{Binding ChipShots}" Width="52"/>
-                <DataGridTextColumn Header="Pas" Binding="{Binding Passes}" Width="50"/>
-                <DataGridTextColumn Header="Cmp" Binding="{Binding Completed}" Width="54"/>
-                <DataGridTextColumn Header="Pas%" Binding="{Binding PassPct}" Width="58"/>
-                <DataGridTextColumn Header="Crs" Binding="{Binding Crosses}" Width="48"/>
-                <DataGridTextColumn Header="Tkl" Binding="{Binding Tackles}" Width="48"/>
-                <DataGridTextColumn Header="Int" Binding="{Binding Interceptions}" Width="46"/>
-                <DataGridTextColumn Header="Rec" Binding="{Binding Recoveries}" Width="48"/>
-                <DataGridTextColumn Header="Fls" Binding="{Binding Fouls}" Width="46"/>
-                <DataGridTextColumn Header="YC" Binding="{Binding YellowCards}" Width="44"/>
-                <DataGridTextColumn Header="RC" Binding="{Binding RedCards}" Width="44"/>
-                <DataGridTextColumn Header="Off" Binding="{Binding Offsides}" Width="46"/>
-                <DataGridTextColumn Header="Cor" Binding="{Binding Corners}" Width="48"/>
-                <DataGridTextColumn Header="Sav" Binding="{Binding Saves}" Width="48"/>
-                <DataGridTextColumn Header="ShF" Binding="{Binding ShotsFaced}" Width="50"/>
-                <DataGridTextColumn Header="SoTF" Binding="{Binding OnTargetFaced}" Width="56"/>
-                <DataGridTextColumn Header="Rcv" Binding="{Binding Receptions}" Width="50"/>
-                <DataGridTextColumn Header="Tch" Binding="{Binding Touches}" Width="50"/>
-                <DataGridTextColumn Header="Poss" Binding="{Binding Possessions}" Width="54"/>
-                <DataGridTextColumn Header="Kept" Binding="{Binding Kept}" Width="54"/>
-                <DataGridTextColumn Header="On ball (s)" Binding="{Binding PossSeconds}" Width="86"/>
-                <DataGridTextColumn Header="Spr" Binding="{Binding Sprints}" Width="50"/>
+                <DataGridTextColumn Width="76" Binding="{Binding Rating}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Rating" ToolTip.Tip="His mark for this match, out of 10."/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="104" Binding="{Binding Form}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Form" ToolTip.Tip="How his season's form moved after this match, and by how much."/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── ATTACKING ─────────────────────────────────────────────────────────── -->
+                <DataGridTextColumn Width="44" Binding="{Binding Goals}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="G" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Goals"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="48" Binding="{Binding PenaltyGoals}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Pen" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Penalty goals"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding FinesseGoals}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Fin" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Finesse-shot goals"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding Shots}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Sh" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Shots"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="50" Binding="{Binding OnTarget}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="SoT" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Shots on target"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="52" Binding="{Binding ChipShots}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Chip" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Chip shots"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── PASSING ────────────────────────────────────────────────────────────── -->
+                <DataGridTextColumn Width="50" Binding="{Binding Passes}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Pas" Foreground="#5AA7F0" ToolTip.Tip="PASSING — Passes attempted"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="54" Binding="{Binding Completed}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Cmp" Foreground="#5AA7F0" ToolTip.Tip="PASSING — Passes completed"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="58" Binding="{Binding PassPct}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Pas%" Foreground="#5AA7F0" ToolTip.Tip="PASSING — Pass completion rate"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="48" Binding="{Binding Crosses}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Crs" Foreground="#5AA7F0" ToolTip.Tip="PASSING — Crosses"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── DEFENDING &amp; DISCIPLINE ─────────────────────────────────────────── -->
+                <DataGridTextColumn Width="48" Binding="{Binding Tackles}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Tkl" Foreground="#E0A526" ToolTip.Tip="DEFENDING — Tackles"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding Interceptions}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Int" Foreground="#E0A526" ToolTip.Tip="DEFENDING — Interceptions"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="48" Binding="{Binding Recoveries}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Rec" Foreground="#E0A526" ToolTip.Tip="DEFENDING — Ball recoveries"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding Fouls}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Fls" Foreground="#E0A526" ToolTip.Tip="DISCIPLINE — Fouls committed"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="44" Binding="{Binding YellowCards}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="YC" Foreground="#E0A526" ToolTip.Tip="DISCIPLINE — Yellow cards"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="44" Binding="{Binding RedCards}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="RC" Foreground="#E0A526" ToolTip.Tip="DISCIPLINE — Red cards"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding Offsides}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Off" Foreground="#E0A526" ToolTip.Tip="DEFENDING — Offsides given away"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="48" Binding="{Binding Corners}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Cor" Foreground="#E0A526" ToolTip.Tip="ATTACKING — Corners"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── GOALKEEPING ────────────────────────────────────────────────────────── -->
+                <DataGridTextColumn Width="48" Binding="{Binding Saves}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Sav" Foreground="#2EC4A6" ToolTip.Tip="GOALKEEPING — Saves"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="50" Binding="{Binding ShotsFaced}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="ShF" Foreground="#2EC4A6" ToolTip.Tip="GOALKEEPING — Shots faced"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="56" Binding="{Binding OnTargetFaced}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="SoTF" Foreground="#2EC4A6" ToolTip.Tip="GOALKEEPING — On-target shots faced"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── ON THE BALL ────────────────────────────────────────────────────────── -->
+                <DataGridTextColumn Width="50" Binding="{Binding Receptions}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Rcv" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Times he received the ball"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="50" Binding="{Binding Touches}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Tch" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Touches"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="54" Binding="{Binding Possessions}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Poss" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Times he had the ball"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="54" Binding="{Binding Kept}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Kept" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Times he kept the ball rather than losing it straight away"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="86" Binding="{Binding PossSeconds}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="On ball (s)" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Seconds on the ball"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="50" Binding="{Binding Sprints}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Spr" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Sprints"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
               </DataGrid.Columns>
             </DataGrid>
 
@@ -179,35 +311,156 @@
                 <DataGridTextColumn Header="#" Binding="{Binding Shirt}" Width="52"/>
                 <DataGridTextColumn Header="Player" Binding="{Binding Name}" Width="190"/>
                 <DataGridTextColumn Header="" Binding="{Binding Status}" Width="190"/>
-                <DataGridTextColumn Header="Rating" Binding="{Binding Rating}" Width="76"/>
-                <DataGridTextColumn Header="Form" Binding="{Binding Form}" Width="104"/>
-                <DataGridTextColumn Header="G" Binding="{Binding Goals}" Width="44"/>
-                <DataGridTextColumn Header="Pen" Binding="{Binding PenaltyGoals}" Width="48"/>
-                <DataGridTextColumn Header="Fin" Binding="{Binding FinesseGoals}" Width="46"/>
-                <DataGridTextColumn Header="Sh" Binding="{Binding Shots}" Width="46"/>
-                <DataGridTextColumn Header="SoT" Binding="{Binding OnTarget}" Width="50"/>
-                <DataGridTextColumn Header="Chip" Binding="{Binding ChipShots}" Width="52"/>
-                <DataGridTextColumn Header="Pas" Binding="{Binding Passes}" Width="50"/>
-                <DataGridTextColumn Header="Cmp" Binding="{Binding Completed}" Width="54"/>
-                <DataGridTextColumn Header="Pas%" Binding="{Binding PassPct}" Width="58"/>
-                <DataGridTextColumn Header="Crs" Binding="{Binding Crosses}" Width="48"/>
-                <DataGridTextColumn Header="Tkl" Binding="{Binding Tackles}" Width="48"/>
-                <DataGridTextColumn Header="Int" Binding="{Binding Interceptions}" Width="46"/>
-                <DataGridTextColumn Header="Rec" Binding="{Binding Recoveries}" Width="48"/>
-                <DataGridTextColumn Header="Fls" Binding="{Binding Fouls}" Width="46"/>
-                <DataGridTextColumn Header="YC" Binding="{Binding YellowCards}" Width="44"/>
-                <DataGridTextColumn Header="RC" Binding="{Binding RedCards}" Width="44"/>
-                <DataGridTextColumn Header="Off" Binding="{Binding Offsides}" Width="46"/>
-                <DataGridTextColumn Header="Cor" Binding="{Binding Corners}" Width="48"/>
-                <DataGridTextColumn Header="Sav" Binding="{Binding Saves}" Width="48"/>
-                <DataGridTextColumn Header="ShF" Binding="{Binding ShotsFaced}" Width="50"/>
-                <DataGridTextColumn Header="SoTF" Binding="{Binding OnTargetFaced}" Width="56"/>
-                <DataGridTextColumn Header="Rcv" Binding="{Binding Receptions}" Width="50"/>
-                <DataGridTextColumn Header="Tch" Binding="{Binding Touches}" Width="50"/>
-                <DataGridTextColumn Header="Poss" Binding="{Binding Possessions}" Width="54"/>
-                <DataGridTextColumn Header="Kept" Binding="{Binding Kept}" Width="54"/>
-                <DataGridTextColumn Header="On ball (s)" Binding="{Binding PossSeconds}" Width="86"/>
-                <DataGridTextColumn Header="Spr" Binding="{Binding Sprints}" Width="50"/>
+                <DataGridTextColumn Width="76" Binding="{Binding Rating}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Rating" ToolTip.Tip="His mark for this match, out of 10."/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="104" Binding="{Binding Form}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Form" ToolTip.Tip="How his season's form moved after this match, and by how much."/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── ATTACKING ─────────────────────────────────────────────────────────── -->
+                <DataGridTextColumn Width="44" Binding="{Binding Goals}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="G" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Goals"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="48" Binding="{Binding PenaltyGoals}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Pen" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Penalty goals"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding FinesseGoals}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Fin" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Finesse-shot goals"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding Shots}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Sh" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Shots"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="50" Binding="{Binding OnTarget}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="SoT" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Shots on target"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="52" Binding="{Binding ChipShots}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Chip" Foreground="#8BE04A" ToolTip.Tip="ATTACKING — Chip shots"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── PASSING ────────────────────────────────────────────────────────────── -->
+                <DataGridTextColumn Width="50" Binding="{Binding Passes}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Pas" Foreground="#5AA7F0" ToolTip.Tip="PASSING — Passes attempted"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="54" Binding="{Binding Completed}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Cmp" Foreground="#5AA7F0" ToolTip.Tip="PASSING — Passes completed"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="58" Binding="{Binding PassPct}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Pas%" Foreground="#5AA7F0" ToolTip.Tip="PASSING — Pass completion rate"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="48" Binding="{Binding Crosses}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Crs" Foreground="#5AA7F0" ToolTip.Tip="PASSING — Crosses"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── DEFENDING &amp; DISCIPLINE ─────────────────────────────────────────── -->
+                <DataGridTextColumn Width="48" Binding="{Binding Tackles}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Tkl" Foreground="#E0A526" ToolTip.Tip="DEFENDING — Tackles"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding Interceptions}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Int" Foreground="#E0A526" ToolTip.Tip="DEFENDING — Interceptions"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="48" Binding="{Binding Recoveries}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Rec" Foreground="#E0A526" ToolTip.Tip="DEFENDING — Ball recoveries"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding Fouls}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Fls" Foreground="#E0A526" ToolTip.Tip="DISCIPLINE — Fouls committed"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="44" Binding="{Binding YellowCards}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="YC" Foreground="#E0A526" ToolTip.Tip="DISCIPLINE — Yellow cards"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="44" Binding="{Binding RedCards}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="RC" Foreground="#E0A526" ToolTip.Tip="DISCIPLINE — Red cards"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="46" Binding="{Binding Offsides}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Off" Foreground="#E0A526" ToolTip.Tip="DEFENDING — Offsides given away"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="48" Binding="{Binding Corners}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Cor" Foreground="#E0A526" ToolTip.Tip="ATTACKING — Corners"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── GOALKEEPING ────────────────────────────────────────────────────────── -->
+                <DataGridTextColumn Width="48" Binding="{Binding Saves}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Sav" Foreground="#2EC4A6" ToolTip.Tip="GOALKEEPING — Saves"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="50" Binding="{Binding ShotsFaced}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="ShF" Foreground="#2EC4A6" ToolTip.Tip="GOALKEEPING — Shots faced"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="56" Binding="{Binding OnTargetFaced}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="SoTF" Foreground="#2EC4A6" ToolTip.Tip="GOALKEEPING — On-target shots faced"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <!-- ── ON THE BALL ────────────────────────────────────────────────────────── -->
+                <DataGridTextColumn Width="50" Binding="{Binding Receptions}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Rcv" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Times he received the ball"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="50" Binding="{Binding Touches}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Tch" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Touches"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="54" Binding="{Binding Possessions}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Poss" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Times he had the ball"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="54" Binding="{Binding Kept}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Kept" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Times he kept the ball rather than losing it straight away"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="86" Binding="{Binding PossSeconds}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="On ball (s)" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Seconds on the ball"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="50" Binding="{Binding Sprints}">
+                  <DataGridTextColumn.Header>
+                    <TextBlock Text="Spr" Foreground="#8A93A2" ToolTip.Tip="ON THE BALL — Sprints"/>
+                  </DataGridTextColumn.Header>
+                </DataGridTextColumn>
               </DataGrid.Columns>
             </DataGrid>
 
