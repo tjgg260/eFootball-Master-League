@@ -385,11 +385,23 @@ def clear_career(con) -> dict[str, int]:
     for tbl in ("inbox", "scout_jobs", "honours", "loans", "negotiations"):
         run("career-only tables", f"DELETE FROM {tbl}")
 
+    # THE BUG THIS REPLACES (found 2026-09-19): staff_people is world-wide state that
+    # Session.AssignStartingStaff (ML.App, B7) hands out to EVERY club in the new career's two
+    # divisions, not just the club you manage — real world club ids (800000+ on this MVP world),
+    # never the OLD curated world's 20M-700M "career copy" band the line below was written for.
+    # `teams_band('team_id')` only ever matched that old band, so it silently matched NOTHING
+    # here: a reseed never released anyone, EnsureStaffPool's own "table already has rows,
+    # nothing to do" guard then skipped rebuilding it, and every career after the very first one
+    # ever built on this world kept the exact same frozen, unassigned pool — a fresh new career
+    # showing 0 of 9 desks filled despite AssignStartingStaff running (and working) the moment
+    # staff_people was genuinely empty. Whole-table wipe matches "a new job has to be a new
+    # life": the pool's own content is deterministic from the world seed regardless of which
+    # club you manage, so there is nothing useful to preserve — only the world's very first
+    # build, ever, should skip rebuilding it.
+    for tbl in ("staff_people", "staff"):
+        run("career-only tables", f"DELETE FROM {tbl}")
+
     # ── 7. world rows that merely POINT at the career — corrected, not deleted ─────────────────
-    # Staff are people, not career artefacts: firing them returns them to the pool, so a career
-    # ending hands every one of its employees back unemployed rather than killing them off.
-    run("pointers cleared",
-        f"UPDATE staff_people SET team_id=NULL, contract_until=NULL WHERE {teams_band('team_id')}")
     # 14 world players were marked as duplicates OF a career copy. Left pointing at a deleted id,
     # the mark still hides them from every pool that reads "WHERE superseded_by IS NULL".
     run("pointers cleared",
