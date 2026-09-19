@@ -1185,6 +1185,8 @@ public sealed partial class Session
         Finances.PayWages(weeklyWages);
         TakeGate(fixtures);
         SyncBudget();
+        try { ApplyDebtPressure(matchday); }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/ApplyDebtPressure", ex); }
         try { MidSeasonReview(matchday); }
         catch (Exception ex) { Program.Log("RunWeeklyEconomy/MidSeasonReview", ex); }
         try { RunDeadlineDay(matchday); }
