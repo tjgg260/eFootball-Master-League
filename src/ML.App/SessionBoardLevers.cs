@@ -57,6 +57,37 @@ public sealed partial class Session
         BoardSwing = target - StoredBoardConfidence;
     }
 
+    // ------------------------------------------------------------------ debt (B5)
+
+    /// <summary>
+    /// B5: running a deficit used to cost nothing — SyncBudget floored the persisted balance at
+    /// £0, so debt didn't even survive a reload, let alone matter. Now that it does survive
+    /// (SessionWorld.SyncBudget), it needs a consequence: every week you stay in the red costs a
+    /// small board-confidence hit — the same lever a bad result or a missed objective moves — and
+    /// the FIRST week you go into the red gets a named inbox warning so the drift doesn't arrive
+    /// as a mystery. This is not a bankruptcy model (no forced sales, no relegation-by-administration);
+    /// it is what actually enforces the debt: the same sack risk a struggling season already
+    /// carries just picks up an extra source of pressure.
+    /// </summary>
+    private void ApplyDebtPressure(int matchday)
+    {
+        var key = $"debt_warned_{CurrentTeamId}";
+        var wasWarned = GetMeta(key) == "1";
+        if (!Finances.InTheRed)
+        {
+            if (wasWarned) SetMeta(key, "0");
+            return;
+        }
+        MoveBoardConfidence(-1);
+        if (!wasWarned)
+        {
+            SetMeta(key, "1");
+            PostInbox("Club", "The club is in the red",
+                $"The balance has slipped to £{Finances.Balance:N0}. The board notices every week " +
+                "it stays that way — clear it before it costs you their patience.", matchday);
+        }
+    }
+
     // ------------------------------------------------------------------ AI manager names
 
     /// <summary>Real coach name for any club's dugout; yours is your own.</summary>

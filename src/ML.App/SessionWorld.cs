@@ -1040,11 +1040,17 @@ public sealed partial class Session
         cmd.ExecuteNonQuery();
     }
 
-    /// <summary>Persist the running balance (wages, gate receipts) so it survives restarts.</summary>
+    /// <summary>
+    /// Persist the running balance (wages, gate receipts) so it survives restarts. B5: this used
+    /// to floor at 0 (<c>MAX($b, 0)</c>) — a club that ran up debt in memory reloaded with a clean
+    /// £0 slate every time the app restarted, which is the literal audit complaint "the budget
+    /// just stops at £0". Debt is meant to be visible (Finances.InTheRed) and to cost you
+    /// (<see cref="ApplyDebtPressure"/>) — neither means anything if reloading erases it.
+    /// </summary>
     private void SyncBudget()
     {
         using var cmd = Db.Connection.CreateCommand();
-        cmd.CommandText = "UPDATE teams SET budget = MAX($b, 0) WHERE id=$t";
+        cmd.CommandText = "UPDATE teams SET budget = $b WHERE id=$t";
         cmd.Parameters.AddWithValue("$b", Finances.Balance);
         cmd.Parameters.AddWithValue("$t", CurrentTeamId);
         cmd.ExecuteNonQuery();

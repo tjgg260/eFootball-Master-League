@@ -347,6 +347,42 @@ Console.WriteLine("\nB6  a banned CPU player used to keep \"playing\" in every s
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+Console.WriteLine("\nB5  debt has a consequence (it used to be erased on every reload)");
+{
+    // Force the balance hard negative and persist it the same way a real bad week would.
+    using (var spend = db.Connection.CreateCommand())
+    {
+        spend.CommandText = "UPDATE teams SET budget = -500000 WHERE id=$t";
+        spend.Parameters.AddWithValue("$t", s.CurrentTeamId);
+        spend.ExecuteNonQuery();
+    }
+    var reloaded = new Session(db, s.CurrentTeamId, season);   // no cached balance
+    Check("a negative balance actually survives a reload (SyncBudget no longer floors at £0)",
+        reloaded.Finances.Balance == -500000, $"{reloaded.Finances.Balance:N0}");
+    Check("InTheRed reads it", reloaded.Finances.InTheRed);
+
+    var before = reloaded.BoardConfidenceNow;
+    var fixtures = reloaded.Repo.Fixtures(season).Where(f => f.Matchday == 1).ToList();
+    reloaded.GetType().GetMethod("ApplyDebtPressure",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+        .Invoke(reloaded, new object[] { 1 });
+    var after = reloaded.BoardConfidenceNow;
+    Check("a week spent in the red actually costs board confidence",
+        after < before, $"{before} -> {after}");
+    using (var m = db.Connection.CreateCommand())
+    {
+        m.CommandText = "SELECT value FROM meta WHERE key=$k";
+        m.Parameters.AddWithValue("$k", $"debt_warned_{reloaded.CurrentTeamId}");
+        var v = m.ExecuteScalar() as string;
+        Check("the first week in the red is actually flagged (so the warning fires once, not every week)",
+            v == "1", v ?? "(none)");
+    }
+    var warning = Scalar(
+        "SELECT COUNT(*) FROM inbox WHERE subject LIKE 'The club is in the red%'");
+    Check("a named warning actually lands in the inbox", warning > 0, $"{warning} message(s)");
+}
+
 db.Dispose();
 try { File.Delete(work); } catch { /* temp file; Windows may still hold it for a moment */ }
 Console.WriteLine($"\n{pass} passed, {fail} failed");
