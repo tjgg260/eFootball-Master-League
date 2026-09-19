@@ -856,24 +856,30 @@ public sealed partial class Session
     /// from the career world's own name pool). CPU clubs auto-promote their best prospect when
     /// their squad runs short; yours wait on the Academy screen for your decision.
     /// </summary>
+    /// <summary>First/last name pools drawn from the world's own players, so a minted prospect's
+    /// name reads like it belongs — shared by AcademyIntake and WorldEdgeYouthIntake.</summary>
+    private (List<string> First, List<string> Last) NamePool()
+    {
+        var first = new List<string>();
+        var last = new List<string>();
+        using var names = Db.Connection.CreateCommand();
+        names.CommandText = "SELECT name FROM players WHERE name LIKE '% %' LIMIT 4000";
+        using var r = names.ExecuteReader();
+        while (r.Read())
+        {
+            var parts = r.GetString(0).Split(' ');
+            if (parts.Length < 2) continue;
+            first.Add(parts[0]);
+            last.Add(parts[^1]);
+        }
+        if (first.Count == 0) { first.Add("Alex"); last.Add("Walker"); }
+        return (first, last);
+    }
+
     private void AcademyIntake()
     {
         var rng = new SeededRandom((SeasonId * 9973 + 5) ^ WorldSeed);
-        var first = new List<string>();
-        var last = new List<string>();
-        using (var names = Db.Connection.CreateCommand())
-        {
-            names.CommandText = "SELECT name FROM players WHERE name LIKE '% %' LIMIT 4000";
-            using var r = names.ExecuteReader();
-            while (r.Read())
-            {
-                var parts = r.GetString(0).Split(' ');
-                if (parts.Length < 2) continue;
-                first.Add(parts[0]);
-                last.Add(parts[^1]);
-            }
-        }
-        if (first.Count == 0) { first.Add("Alex"); last.Add("Walker"); }
+        var (first, last) = NamePool();
 
         // THE BUG THIS SHAPE EXISTS TO KILL. This line used to read
         //     "SELECT COALESCE(MAX(id), $b) + 1 FROM players WHERE id >= $b"
@@ -977,6 +983,74 @@ public sealed partial class Session
             {
                 var best = AcademyPlayers(club.Id).OrderByDescending(p => p.OverallRating ?? 0).FirstOrDefault();
                 if (best is not null) PromoteAcademy(best.Id, club.Id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// B4: the other half of the world-edge policy in <see cref="AgeWorldEdge"/> — that method
+    /// retires 39+s out of the ~700 clubs outside your two divisions every season with nobody
+    /// ever coming back, so a long career visibly emptied the wider world out (audit: "they lose
+    /// retirees each season and get no youth back, so the wider world shrinks"). Any such club
+    /// whose squad has fallen under a healthy floor gets up to three fresh 16-19-year-olds
+    /// straight onto its books — no academy holding pen, since nobody is running their youth
+    /// setup by hand and CPU clubs elsewhere already auto-promote the moment they run short.
+    /// Minted in a THIRD ten-million id band (<see cref="WorldEdgeYouthBase"/>), so this can never
+    /// collide with a real imported id or an academy prospect's. A club with an empty squad
+    /// (Bayern's unlicensed "München RW" shell and its like — B4's other open item) is left
+    /// alone: it has no football programme to feed, not a decayed one.
+    /// </summary>
+    private void WorldEdgeYouthIntake()
+    {
+        var rng = new SeededRandom((SeasonId * 6151 + 7) ^ WorldSeed);
+        var (first, last) = NamePool();
+
+        long nextId;
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText = "SELECT COALESCE(MAX(id), $b) + 1 FROM players WHERE id >= $b AND id < $c";
+            q.Parameters.AddWithValue("$b", WorldEdgeYouthBase);
+            q.Parameters.AddWithValue("$c", WorldEdgeYouthCeiling);
+            nextId = Convert.ToInt64(q.ExecuteScalar());
+        }
+        if (nextId >= WorldEdgeYouthCeiling) return;   // band exhausted; skip rather than risk a collision
+
+        string[] positions = { "GK", "CB", "RB", "LB", "DMF", "CMF", "AMF", "RWF", "LWF", "CF", "CF" };
+        var clubs = new List<(int Id, string Short)>();
+        using (var q = Db.Connection.CreateCommand())
+        {
+            q.CommandText =
+                "SELECT t.id, COALESCE(t.short_name, t.name) FROM teams t " +
+                "WHERE t.league_id NOT IN (9000,9001) " +
+                "AND (t.team_kind IS NULL OR t.team_kind NOT IN ('u21','u18')) " +
+                "AND (SELECT COUNT(*) FROM squad_members s WHERE s.team_id = t.id) BETWEEN 1 AND 19";
+            using var r = q.ExecuteReader();
+            while (r.Read()) clubs.Add((r.GetInt32(0), r.GetString(1)));
+        }
+
+        foreach (var (clubId, shortName) in clubs)
+        {
+            if (nextId >= WorldEdgeYouthCeiling) break;
+            var used = Repo.Squad(clubId).Select(m => m.SquadNumber).ToHashSet();
+            var needed = Math.Min(3, 20 - Repo.Squad(clubId).Count);
+            for (var i = 0; i < needed && nextId < WorldEdgeYouthCeiling; i++)
+            {
+                var id = nextId++;
+                var age = 16 + rng.Next(4);
+                var rating = 46 + rng.Next(14);
+                var name = $"{first[rng.Next(first.Count)]} {last[rng.Next(last.Count)]}";
+                var position = positions[rng.Next(positions.Length)];
+                Repo.UpsertPlayer(new PlayerRow
+                {
+                    Id = id, GamePid = id, IsCustom = true, Name = name, Position = position,
+                    Age = age, Nationality = shortName, OverallRating = rating,
+                });
+                var potential = Math.Clamp(rating + 6 + rng.Next(16), rating, 88);
+                SetPotential(id, potential);
+                var shirt = Enumerable.Range(1, 99).FirstOrDefault(n => !used.Contains(n), 99);
+                used.Add(shirt);
+                Repo.SetSquadMember(new SquadMemberRow
+                { TeamId = clubId, PlayerId = id, SquadNumber = shirt, Slot = Repo.Squad(clubId).Count });
             }
         }
     }

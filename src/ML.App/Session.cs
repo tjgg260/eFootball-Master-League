@@ -389,6 +389,8 @@ public sealed partial class Session
         catch (Exception ex) { Program.Log("AdvanceToNextSeason/ClearSuspensionsForNewSeason", ex); }
         AgeAndDevelopSquads();
         AgeWorldEdge();
+        try { WorldEdgeYouthIntake(); }
+        catch (Exception ex) { Program.Log("AdvanceToNextSeason/WorldEdgeYouthIntake", ex); }
         try { RetireAndExpire(); }
         catch (Exception ex) { Program.Log("AdvanceToNextSeason/RetireAndExpire", ex); }
         CpuTransferActivity();     // the market moves between seasons (and re-fills the retired)

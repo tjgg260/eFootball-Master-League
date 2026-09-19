@@ -456,6 +456,21 @@ Console.WriteLine("\nB5  debt has a consequence (it used to be erased on every r
     Check("a named warning actually lands in the inbox", warning > 0, $"{warning} message(s)");
 }
 
+// ---------------------------------------------------------------------------------------------
+Console.WriteLine("\nB4  the world outside your two divisions gets youth back, not just retirements");
+{
+    // A6's own AdvanceToNextSeason() call, above, already ran WorldEdgeYouthIntake once — this
+    // reads what it left behind rather than rolling the season again. is_custom=1 is the same
+    // flag an academy prospect gets, so this counts any minted (not imported) player now sitting
+    // in a squad outside the two divisions.
+    var mintedOutside = Scalar(
+        "SELECT COUNT(*) FROM squad_members s JOIN teams t ON t.id=s.team_id " +
+        "JOIN players p ON p.id=s.player_id " +
+        "WHERE t.league_id NOT IN (9000,9001) AND p.is_custom=1");
+    Check("clubs outside the two divisions actually received minted youth this rollover",
+        mintedOutside > 0, $"{mintedOutside} custom players in outside-world squads");
+}
+
 db.Dispose();
 try { File.Delete(work); } catch { /* temp file; Windows may still hold it for a moment */ }
 Console.WriteLine($"\n{pass} passed, {fail} failed");

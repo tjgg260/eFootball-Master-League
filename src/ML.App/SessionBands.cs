@@ -46,4 +46,15 @@ public sealed partial class Session
     /// world, exactly as before; 10M above the band's floor everywhere).</summary>
     private long AcademyIdBase => CareerPlayerBand.Lo + 10_000_000;
     private long AcademyIdCeiling => CareerPlayerBand.Lo + 20_000_000;
+
+    /// <summary>
+    /// B4: a second ten-million-id band, right after the academy's, for youth minted into clubs
+    /// OUTSIDE the two career divisions (WorldEdgeYouthIntake) — otherwise AgeWorldEdge's own
+    /// retirements shrink the ~700-club world toward nothing over a long career, with nobody ever
+    /// coming back the other way. Deliberately inside the CAREER band, not the reference-world
+    /// range WorldPlayerClause reads from: these are custom-minted fillers for a club nobody is
+    /// scouting from, the same way an academy prospect is, not new "real" signable players.
+    /// </summary>
+    private long WorldEdgeYouthBase => CareerPlayerBand.Lo + 20_000_000;
+    private long WorldEdgeYouthCeiling => CareerPlayerBand.Lo + 30_000_000;
 }
