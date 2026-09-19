@@ -1,0 +1,29 @@
+{
+ "description": "RUNS-01  MORE MEN ALLOWED TO RUN. Three inline-immediate edits in the off-ball quota builder 0x1442f9a90. No pool cell is touched; no instruction changes length.\n\nWHY THIS IS THE LEVER. Two independent passes emulated ActionSelectorChanceSpaceRun::vf5 (0x143df5950) under Unicorn on BOTH images and got the same closed form to 1e-3:\n    score = 100 + attackDirection * player.x + roleBonus\nThat is the WHOLE ranking. No space term, no distance-to-ball term, no pass-likelihood term. The dispatcher 0x143df1080 sorts descending (comparator 0x143df1060) and hands out slots top-down until min(quota, maxSlots) is reached (0x143df1651 / 0x143df165b). A separate search - a direct-call closure over 943,597 E8 edges, 6-10 levels deep, against every function carrying the LCG multiplier 0x2d22b2e3, with the kick randomiser as a positive control - found NO randomiser anywhere under the selectors. So identical geometry gives identical runs, forever. There is no second term to reweight and no jitter to add (that would need new code, and both padding runs are taken). THE ONLY THING LEFT IS HOW MANY MEN ARE AUTHORISED TO RUN. Today, in settled possession at a low attack level, the answer is one space-runner and one diagonal runner, and both are picked deterministically as 'whoever is furthest up the pitch'. That is exactly the one-dimensional feeling.\n\nWHAT CHANGES (quota by attack level 0..4, read out of the code and byte-confirmed identical in the installed exe and PRISTINE this session):\n  ChanceSpaceRun (action 0x1e)  {1,2,2,3,3} -> {2,3,3,4,4}.  maxSlots for this selector is 0x0b = 11 (ctor arg at 0x143d51a3c), so the quota is the sole cap and every extra slot is real.\n  DiagonalRun    (action 0x21)  {1,1,1,2,2} -> {1,2,2,2,2}.  DiagonalRun's own score is depth behind the opponent line, so the second slot is the SECOND-deepest man arriving from a different angle - this is the edit that adds angles rather than bodies.\n\nWHY DIAGONAL STOPS AT 2. DiagonalRun's maxSlots byte at 0x143e02781 is ALREADY 02 in your installed exe (offball-run-variety.json raised it from the stock 01 - I diffed both images and confirmed it). min(quota, maxSlots) means a quota above 2 would do nothing, and that byte belongs to an applied pack so this pack does not touch it. Two earlier write-ups had this byte backwards; it is stock 01 / installed 02, not the other way round.\n\nWHO: everyone. The selector manager update is called from exactly one site (0x143d03493) with no human/CPU test anywhere on the path, so this drives the CPU opponent AND your own ten AI team-mates identically. It is also not difficulty-gated in any useful way: the quota builder consults level-table rows 0x13/0x14/0x15/0x16 through 0x1442e4c00, and rows 0x13 and 0x16 read {0,1,1,1,1,1,1,1,1,1} in both images - only the single lowest difficulty case loses run types.\n\nEVIDENCE: a-emulated for the score formula and the quota values (two independent Unicorn passes, agreeing); b-disassembly re-verified by me this session for every byte here - I disassembled the jump table at 0x140000000+0x42f9ca4 to confirm which case each immediate belongs to (0x1e -> 0x1442f9ba2, 0x21 -> 0x1442f9c3c), and read the instruction bytes out of both images.\n\nWHAT TO WATCH FOR: two or three men breaking from different starting positions when the ball goes forward, instead of the same striker every time; a genuine second option for a ball in behind.\n\nTOO STRONG IF: your front men bunch and converge on the same patch of grass (vf6 places each run target without knowing about the other runners), offside flags go up noticeably more often, or you get caught thin on the counter because too many bodies are ahead of the ball. SOFTER: drop the ChanceSpaceRun edit to {2,2,3,3,3} (patch byte run 02 02 03 03 / [4]=03) and leave DiagonalRun alone. STRONGER: {3,3,4,4,5} - but at that point you are running a five-man front line and you will feel it defensively. Revert the DiagonalRun edit FIRST if runners bunch; it is the one whose targets converge.\n\nCONFLICT: same bytes as offball-quota-chance.json, runvar-chance-quota.json, offball-quota-diagonal.json and runvar-diagonal-quota.json - all currently pristine. Apply only one of them.\n\nREVERT: python tools/exe_patch.py remove tools/data/patches/runs-more-runners.json",
+ "patches": [
+  {
+   "name": "ChanceSpaceRun quota, attack levels 0-3: {1,2,2,3} -> {2,3,3,4}",
+   "va": "0x1442f9bae",
+   "expect": "C745F001020203",
+   "patch": "C745F002030304",
+   "kind": "code",
+   "note": "mov dword [rbp-0x10], 0x03020201 -> 0x04030302. The dword is the level 0..3 byte array; the builder indexes it with the clamped attack level at 0x1442f9bc0. Case reached only from jump-table entry 0x1e."
+  },
+  {
+   "name": "ChanceSpaceRun quota, attack level 4: 3 -> 4",
+   "va": "0x1442f9bb9",
+   "expect": "C645F403",
+   "patch": "C645F404",
+   "kind": "code",
+   "note": "mov byte [rbp-0xc], 3 -> 4. Same stack array, slot [4]."
+  },
+  {
+   "name": "DiagonalRun quota, attack levels 0-3: {1,1,1,2} -> {1,2,2,2}",
+   "va": "0x1442f9c48",
+   "expect": "C745F001010102",
+   "patch": "C745F001020202",
+   "kind": "code",
+   "note": "mov dword [rbp-0x10], 0x02010101 -> 0x02020201. Level 0 deliberately left at 1 so a settled back-pass phase does not sprout two diagonals. Level 4 (0x1442f9c53, value 2) left alone because maxSlots is already 2."
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "description": "RUN VARIETY E - LET THE MIDFIELD INTO THE CANDIDATE POOL. One further re-aim of the same depth gate offball-deep-runners.json already moved. In ActionSelectorChanceSpaceRun::vf4 (0x143df6010) the per-player filter loads xmm3 = an offset at 0x143df6f0e and calls the depth helper 0x1442f5040(x0, player.x, dir, off); 0x143df6f2a rejects the player when it returns false. A previous session EMULATED that helper on the PRISTINE image and proved it is a six-instruction branchless leaf computing d*(x1-x0) > off for d = +/-1, i.e. raising the magnitude of off is STRICTLY PERMISSIVE - over 3000 random triples there were zero cases where the wider value rejected a player the narrower one accepted. Stock off = -19 (cell 0x146b28ec8); offball-deep-runners.json re-aimed it to -25 (cell 0x146b01d94). This re-aims it to -55, the cell two slots further along the SAME pool line (0x146b01d9c, verified -55.0f in the installed exe and in the PRISTINE backup), which effectively removes the depth filter. WHY THIS IS SAFE EVEN THOUGH IT SOUNDS AGGRESSIVE: widening the pool cannot by itself put a defender on a run, because the score that ranks the pool is (EMULATED, 0x143df5950) 100 + attackDir*player.x + bonus, so the admitted deep players sort to the BOTTOM of the list every time. They only ever take a slot if the quota is larger than the number of forwards - which is exactly what runvar-chance-quota.json is for. Apply this one WITH the quota raise; on its own it should do almost nothing, and that is the test: if it changes the game visibly on its own, one of the two claims above is wrong and it should be reverted. Requires offball-deep-runners.json to be applied first (the PRISTINE image has a different disp32 here). Affects BOTH teams. Revert: python tools/exe_patch.py remove tools/data/patches/runvar-deep-pool-wide.json",
+ "patches": [
+  {
+   "name": "ChanceSpaceRun depth gate -25 -> -55 (re-aim 0x146b01d94 -> 0x146b01d9c)",
+   "va": "0x143df6f0e",
+   "expect": "F3 0F 10 1D 7E AE D0 02",
+   "patch": "F3 0F 10 1D 86 AE D0 02",
+   "kind": "code"
+  }
+ ]
+}

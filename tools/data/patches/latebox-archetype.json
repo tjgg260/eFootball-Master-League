@@ -1,0 +1,12 @@
+{
+ "description": "LATE BOX ARRIVALS 3 - ARCHETYPE GATE. Once the ball is more than 7.5 m into the opponent half (flag from 0x143d1dc10, cell 0x14624545c) vf4 requires the candidate to hold playing-style bit 1 OR to match a packed role id 0x20dc4. Table 0x146c00990 shows bit 1 exists only in row 9 (CF), and vf4 separately restricts the candidate to position classes 4-6 (CMF / LMF-RMF / AMF), so the style test can never pass and the 0x20dc4 equality is the only route through - which is why late runs stop exactly when the attack reaches the final third. Turns the conditional skip into an unconditional one (jne -> jmp, same length, same target 0x143dff3ef). This removes archetype differentiation for this run; apply latebox-reach first and only add this if runs are still too rare. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-archetype.json",
+ "patches": [
+  {
+   "name": "archetype gate always-skip (jne -> jmp)",
+   "va": "0x143dff3ac",
+   "expect": "75 41",
+   "patch": "EB 41",
+   "kind": "code"
+  }
+ ]
+}

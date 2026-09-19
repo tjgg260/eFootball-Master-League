@@ -1,0 +1,19 @@
+{
+ "_comment": "BOBBLE TEST - the PITCH half of bobbling (universal: it affects good and bad passers alike, like a real imperfect pitch). Read by the ball physics step 0x14408d0f0, confirmed by disassembly: when a ball meets the ground at a shallow angle (horizontal/vertical speed ratio above grounderCTan = 8) it has a 1-in-gounnderprob chance of a hop whose upward speed = forward speed x grounderBoundYAdd x (0.4..1.0), with some pace lost. The 'chance' is a modulus on a ball-state value, not an RNG call, so gounnderprob is an integer DIVISOR: LOWER = MORE hops, and it must NEVER be 0 (integer divide by zero would crash the game) - keep every entry >= 2. Stock: 1-in-5 (1-in-9 on the two wet/heavy pitch conditions, where the ball stays on the deck) and 0.09, which works out to a hop of about 5 cm at 40 km/h - essentially invisible. This pack: 1-in-3 (1-in-6 wet/heavy) and 0.14, roughly 14 cm at 40 km/h - a visible bobble, growing with pace. natualBoundA (the variable part of a natural bounce: coefficient = A*x + natualBoundB) and rollToBoundAdd (a fast-rolling ball picks up bounce) are raised ~30% / ~40% so bounces are less uniform; their exact inputs are inferred from names and code shape, not fully traced. All four fields are proven READ by the exe (tools/dt270_liveness.py). Untouched: magnusRate and everything spin/lift related. Apply: python tools/gameplay_tune.py apply tools/data/tunings/bobble-pitch.json --stack   Revert everything: python tools/gameplay_tune.py restore",
+ "edits": [
+  {"object": "ball", "path": "gounnderprob[0]", "value": 3, "_note": "5 -> 3: hop on 1 in 3 shallow ground contacts (was 1 in 5)"},
+  {"object": "ball", "path": "gounnderprob[1]", "value": 3, "_note": "5 -> 3"},
+  {"object": "ball", "path": "gounnderprob[2]", "value": 3, "_note": "5 -> 3"},
+  {"object": "ball", "path": "gounnderprob[3]", "value": 6, "_note": "9 -> 6: wet pitch keeps fewer hops than dry"},
+  {"object": "ball", "path": "gounnderprob[4]", "value": 6, "_note": "9 -> 6: heavy pitch"},
+  {"object": "ball", "path": "gounnderprob[5]", "value": 3, "_note": "5 -> 3"},
+  {"object": "ball", "path": "grounderBoundYAdd", "value": 0.14, "_note": "0.09 -> 0.14: hop upward speed as a fraction of forward speed (~5 cm -> ~14 cm at 40 km/h)"},
+  {"object": "ball", "path": "natualBoundA[0]", "value": 0.20, "_note": "0.155 -> 0.20: more variation in a natural bounce"},
+  {"object": "ball", "path": "natualBoundA[1]", "value": 0.20, "_note": "0.155 -> 0.20"},
+  {"object": "ball", "path": "natualBoundA[2]", "value": 0.20, "_note": "0.155 -> 0.20"},
+  {"object": "ball", "path": "natualBoundA[3]", "value": 0.20, "_note": "0.155 -> 0.20"},
+  {"object": "ball", "path": "natualBoundA[4]", "value": 0.07, "_note": "0.055 -> 0.07"},
+  {"object": "ball", "path": "natualBoundA[5]", "value": 0.07, "_note": "0.055 -> 0.07"},
+  {"object": "ball", "path": "rollToBoundAdd", "value": 0.10, "_note": "0.07 -> 0.10: extra bounce picked up by a fast-rolling ball"}
+ ]
+}

@@ -218,6 +218,22 @@ blocked, our own ReadProcessMemory works, WriteProcessMemory is untested. Patch 
 `tools/data/patches/`. A browsable index of every dt270 field and exe lever
 (current value + live/inert status): `tools/gameplay_catalog.py` → `build/gameplay-catalog.html`.
 
+## Match AI decoded (2026-09-18)
+
+Attacking off-ball movement is fully mapped: the selector job-board, the emulated score
+(`score = 100 + attackDir*player.x + roleBonus` -- whoever is furthest up the pitch), the
+attack-level quota table, and a proof that **no RNG is reachable from any selector**. Also
+covers playing styles (boolean category bits gated by formation role), the contact lockout
+(`canStart` slot 2 + `canCancel` slot 14), attribute `0x17` (the one ability-scaled defensive
+term), and the chained code-cave allocator (`tools/cave_scan.py` + `tools/cave_alloc.py`,
+97,590 `.pdata`-validated caves). Read [docs/match-ai-decoded.md](docs/match-ai-decoded.md).
+
+**Two sections of it are mandatory before proposing any off-ball or defensive-shape change:**
+*Corrections* (beliefs this project held that are wrong -- including a dt270 "inert fields" list
+that misdirected months of tuning) and *Refuted* (levers already built, emulated and killed --
+selector reordering, longer commitment windows, maxSlots caps, run-kind scan reversal, reviving
+LineBreak). Rebuilding one of those is the most likely way to waste a week here.
+
 ## Phase status
 
 - **Phase 0** — PASSED 2026-08-19. Writeback proven in-game. See [docs/phase0-checklist.md](docs/phase0-checklist.md).

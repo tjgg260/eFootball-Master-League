@@ -1,0 +1,21 @@
+{
+ "description": "TACKLE COMMITMENT 1 - REACH. match::player AI standing-tackle decide 0x1441a7fa0: an AI defender only commits when the predicted ball-carrier position is within 2.0 m and the ball itself within 1.7 m. Widens to 2.5 m / 2.0 m by re-aiming two RIP disp32s at existing pool cells. The decide is pure geometry - there is no probability roll anywhere in the chain - so a wider gate is a directly proportional increase in challenges. Affects CPU opponents, the human's AI team-mates AND the human's own cursor player (assisted tackle). A hard 3.0 m test at 0x1441a831f caps the first number, so this cannot run away. Revert: python tools/exe_patch.py remove <this file>",
+ "patches": [
+  {
+   "name": "standing-tackle reach to predicted carrier position 2.0 -> 2.5 m",
+   "va": "0x1441a82e9",
+   "expect": "0F 2F 05 A0 81 6A 03",
+   "patch": "0F 2F 05 38 5A A7 01",
+   "kind": "code",
+   "note": "loads 2.0 now, 2.5 after"
+  },
+  {
+   "name": "ball-proximity gate dist^2 2.89 -> 4.0 (1.7 -> 2.0 m)",
+   "va": "0x1441a849f",
+   "expect": "0F 2F 0D 8A 7A 97 02",
+   "patch": "0F 2F 0D A2 96 90 01",
+   "kind": "code",
+   "note": "loads 2.890000104904175 now, 4.0 after"
+  }
+ ]
+}

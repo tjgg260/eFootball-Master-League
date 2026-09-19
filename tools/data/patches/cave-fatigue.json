@@ -1,0 +1,37 @@
+{
+ "description": "SPRINT-EXERTION -> kick error on: c2 vertical (xmm12), c3 power (xmm6) (code cave). STATUS: MECHANICS PROVEN BY EMULATION (tools/emu_kickerror.py S1-S10 all pass on the pristine image; exe_patch --dry-run passes); NEVER RUN IN-GAME. NOT A FATIGUE LAYER: match-long stamina was NOT located, so the requested tiredness cause is NOT READY - this spec only delivers sprint-exertion error. WHAT THE INPUT REALLY IS (S10, the game's own updater emulated): [player+0x30f4] is a 0..100 SPRINT-EXERTION meter. It rises (40/s) only while the player is in action id 4/5/6 (very probably on-ball sprint-dribbling; the names are unproven) above the speed gate (17.5 km/h stock), fills in 2.5 s, is back to 0 within 0.5 s of slowing down, never rises in any other action, and is the same in minute 1 and minute 90. It is NOT tiredness. WHAT THE STOCK GAME ALREADY DOES WITH IT (S9): factor function 0x14401bdb0 (0x14401c143) multiplies the HORIZONTAL c by 1 - clamp(0.1+0.6(1-f))*ramp, i.e. a full meter already gives a 14.4 deg (f=0.1) / 6.3 deg (f=0.7) horizontal ceiling on the stock exe; the five other readers are mishit-TYPE odds after the hook. The stock game has NO meter term on the vertical or power c - that gap is what this cave fills. MECHANISM: hooks the kick-miss builder 0x14401a900 at 0x14401b3a7 (the 8-byte 'movss xmm3,[rip->4.25f]' sigma-K load), jumps to int3 padding at 0x1438b4835, computes S = max(0, min(1, 1 - gain*t*(1-f))), t = meter/100, f = ability factor [rsp+0x40], multiplies c2 vertical (xmm12), c3 power (xmm6) by S, sets xmm3 = K from an immediate, returns to 0x14401b3af. No calls, no stack, no memory writes; clobbers only rax/xmm0/xmm2/xmm5 (dead there) - flags too in the weak-foot variant (dead). S is clamped on BOTH sides and the clamp is NaN-safe, so a corrupt meter, f<0 or gain>1 can at worst zero a c (= the game's own full ceiling), never exceed it (S4/S5 hostile-input rows). With the meter at 0 every c is BIT-identical to stock. EFFECT at the defaults (K=6.0, gain=0.5), clean kick, meter 100, on the STOCK ceilings (V 22.5 deg, power 30%) - vertical ceiling / power ceiling: f=0.1: 10.12 deg / 13.5%; f=0.5: 5.62 deg / 7.5%; f=0.7: 3.37 deg / 4.5%; f=0.9: 1.13 deg / 1.5%. The real randomiser draws about 0.17 x the ceiling on average for a clean kick (sigma stays 0.75; exertion does not widen it). INTERACTIONS - read before applying: (1) this spec OCCUPIES 0x14401b3a7 and sets K=6.0 itself for EVERY kick, so applying it INCLUDES the error-sigma.json change (4.25 -> 6) and is mutually exclusive with error-sigma.json / slices-scuffs 'E' / loose-realism gauss-sigma (exe_patch refuses the second on the expect bytes); regenerate with --k 4.25 to leave sigma stock. (2) technique-realism.json (currently APPLIED on the live exe) lowers the meter gate 17.5 -> 11 km/h: the meter then fills from jogging (13 /s at 14 km/h) and ball-carriers are near full meter most of the time, so this error lands on most moving kicks - halve the gain if that is too much. (3) scuff-wobble.json (APPLIED live) makes the vertical ceiling 30 deg, and error-spread.json makes horizontal 30 deg / power 40%: multiply the numbers above by 1.33 on those builds. (4) shots that pass the 0x14401b379-b398 checks have c3 remapped to 0.25*c3+0.75 BEFORE the hook; S is applied after that remap. (5) the horizontal c (xmm1) is never touched, so kicks the game forces horizontally exact (predicate 0x143edf000) stay exact. (6) the assisted-pass flag [player+0x362c]&1 still zeroes HORIZONTAL error in the randomiser; vertical/power are unaffected by it. MUTUALLY EXCLUSIVE with cave-fatigue-weakfoot.json (same hook and padding). NOT PROVEN: anything in-game; Denuvo's tolerance of bytes at this padding (0x1438b4835 was previously WRITTEN by the retired slice-cave-v2 / cave-axis-fix / test-spin specs per the backup metadata - those must not be present; whether they executed there is unknown; the cave has no unwind entry, which matters only if it faults, and its only faultable reads are [rdi+0x30f4], which the game reads off the same pointer, and [rsp+0x40]); that no callee writes [rsp+0x40] is shown statically plus by call-stubbed emulation of the five factor functions, not exhaustively - worst case the cave reads the same f the builder itself re-reads at 0x14401b72f. ROLLBACK: python tools/exe_patch.py remove <this file>. Authored only - not applied.",
+ "status": "not-run-in-game; NOT the fatigue layer (stamina not located)",
+ "axes": "vp",
+ "tunables": {
+  "K": {
+   "va": "0x1438b4836",
+   "bytes": 4,
+   "encoding": "float32 LE",
+   "value": 6.0,
+   "meaning": "Gaussian sigma scale in sigma = max(0.1, 0.75 + K*(1-s)^2); stock 4.25; 6.0 == error-sigma.json. Applies to EVERY kick, exertion or not."
+  },
+  "gain": {
+   "va": "0x1438b483f",
+   "bytes": 4,
+   "encoding": "float32 LE",
+   "value": 0.5,
+   "meaning": "gain: S = clamp01(1 - gain*(meter/100)*(1-f)). Useful range 0.2 (barely visible) .. 1.0 (strong); values above 1 only saturate (S is floored at 0)."
+  }
+ },
+ "patches": [
+  {
+   "name": "cave-fatigue body part 1 (86 B in 91 B int3 padding)",
+   "va": "0x1438b4835",
+   "expect": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+   "patch": "b80000c040660f6ed8b80000003f660f6ec0f30f10aff4300000f30f592de1841f02f30f59c5410f28e8f30f5c6c2440f30f59c5410f28d0f30f5cd0f3410f5dd00f57c0f30f5fd0f3440f59e2f30f59f2e9246b7600",
+   "kind": "code"
+  },
+  {
+   "name": "cave-fatigue hook (replaces 'movss xmm3,[4.25f]' with jmp 0x1438b4835 + 3-byte nop)",
+   "va": "0x14401b3a7",
+   "expect": "f30f101d011cb202",
+   "patch": "e9899489ff0f1f00",
+   "kind": "code"
+  }
+ ]
+}

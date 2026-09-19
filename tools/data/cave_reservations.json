@@ -1,0 +1,917 @@
+{
+ "version": 1,
+ "note": "Cave claims. Derived from tools/data/patches/*.json by `python tools/cave_alloc.py seed-ledger` (every entry whose expect is all 0xCC), plus whatever tools/cave_alloc.py reserve_caves() adds. Entries sharing an exclusive_group are alternative payloads for the SAME run and are mutually exclusive by hand \u2014 at most one may be applied at a time.",
+ "reservations": [
+  {
+   "cave_va": "0x14105ed1e",
+   "cave_len": 86,
+   "used": 85,
+   "at": "0x14105ed1e",
+   "spec": "linked-spin.json",
+   "exclusive_group": "run-0x14105ed1e"
+  },
+  {
+   "cave_va": "0x14105ed1e",
+   "cave_len": 86,
+   "used": 49,
+   "at": "0x14105ed20",
+   "spec": "slice-cave.json",
+   "exclusive_group": "run-0x14105ed1e"
+  },
+  {
+   "cave_va": "0x1438b4804",
+   "cave_len": 44,
+   "used": 44,
+   "at": "0x1438b4804",
+   "spec": "cave-fatigue-weakfoot.json"
+  },
+  {
+   "cave_va": "0x1438b4835",
+   "cave_len": 91,
+   "used": 70,
+   "at": "0x1438b4835",
+   "spec": "cave-ability-error.json",
+   "exclusive_group": "run-0x1438b4835"
+  },
+  {
+   "cave_va": "0x1438b4835",
+   "cave_len": 91,
+   "used": 90,
+   "at": "0x1438b4835",
+   "spec": "cave-fatigue-weakfoot.json",
+   "exclusive_group": "run-0x1438b4835"
+  },
+  {
+   "cave_va": "0x1438b4835",
+   "cave_len": 91,
+   "used": 86,
+   "at": "0x1438b4835",
+   "spec": "cave-fatigue.json",
+   "exclusive_group": "run-0x1438b4835"
+  },
+  {
+   "cave_va": "0x1438b4835",
+   "cave_len": 91,
+   "used": 53,
+   "at": "0x1438b4835",
+   "spec": "slice-cave-v2.json",
+   "exclusive_group": "run-0x1438b4835"
+  },
+  {
+   "cave_va": "0x143da3fd2",
+   "cave_len": 14,
+   "used": 14,
+   "spec": "anticipation-ability.json",
+   "chunk": 6
+  },
+  {
+   "cave_va": "0x143da53f1",
+   "cave_len": 15,
+   "used": 12,
+   "spec": "anticipation-ability.json",
+   "chunk": 2
+  },
+  {
+   "cave_va": "0x143da5f24",
+   "cave_len": 12,
+   "used": 10,
+   "spec": "anticipation-ability.json",
+   "chunk": 1
+  },
+  {
+   "cave_va": "0x143da6964",
+   "cave_len": 12,
+   "used": 8,
+   "spec": "anticipation-ability.json",
+   "chunk": 0
+  },
+  {
+   "cave_va": "0x143da7991",
+   "cave_len": 15,
+   "used": 15,
+   "spec": "anticipation-ability.json",
+   "chunk": 3
+  },
+  {
+   "cave_va": "0x143da7f82",
+   "cave_len": 14,
+   "used": 12,
+   "spec": "anticipation-ability.json",
+   "chunk": 4
+  },
+  {
+   "cave_va": "0x143da8811",
+   "cave_len": 15,
+   "used": 14,
+   "spec": "anticipation-ability.json",
+   "chunk": 5
+  },
+  {
+   "cave_va": "0x143da92b1",
+   "cave_len": 15,
+   "used": 14,
+   "spec": "anticipation-ability.json",
+   "chunk": 7
+  },
+  {
+   "cave_va": "0x143daad33",
+   "cave_len": 13,
+   "used": 11,
+   "spec": "anticipation-ability.json",
+   "chunk": 8
+  },
+  {
+   "cave_va": "0x143dab061",
+   "cave_len": 15,
+   "used": 9,
+   "spec": "anticipation-ability.json",
+   "chunk": 9
+  },
+  {
+   "cave_va": "0x143dad634",
+   "cave_len": 12,
+   "used": 5,
+   "spec": "score-heterogeneity.json",
+   "chunk": 50,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dadb94",
+   "cave_len": 12,
+   "used": 9,
+   "spec": "score-heterogeneity.json",
+   "chunk": 49,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143daec13",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "score-heterogeneity.json",
+   "chunk": 48,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143db2164",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 43,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143db2571",
+   "cave_len": 15,
+   "used": 14,
+   "spec": "score-heterogeneity.json",
+   "chunk": 42,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143db27f1",
+   "cave_len": 15,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 41,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143db6bb3",
+   "cave_len": 13,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 39,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143db9b23",
+   "cave_len": 13,
+   "used": 12,
+   "spec": "score-heterogeneity.json",
+   "chunk": 34,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dbb762",
+   "cave_len": 14,
+   "used": 14,
+   "spec": "score-heterogeneity.json",
+   "chunk": 26,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dbbc92",
+   "cave_len": 14,
+   "used": 12,
+   "spec": "score-heterogeneity.json",
+   "chunk": 25,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dbc0d4",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 24,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc0851",
+   "cave_len": 15,
+   "used": 15,
+   "spec": "score-heterogeneity.json",
+   "chunk": 22,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc1c73",
+   "cave_len": 13,
+   "used": 10,
+   "spec": "score-heterogeneity.json",
+   "chunk": 20,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc29b3",
+   "cave_len": 13,
+   "used": 9,
+   "spec": "score-heterogeneity.json",
+   "chunk": 19,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc2d53",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "score-heterogeneity.json",
+   "chunk": 18,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc32f2",
+   "cave_len": 14,
+   "used": 12,
+   "spec": "score-heterogeneity.json",
+   "chunk": 16,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc57f2",
+   "cave_len": 14,
+   "used": 12,
+   "spec": "score-heterogeneity.json",
+   "chunk": 13,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc6944",
+   "cave_len": 12,
+   "used": 8,
+   "spec": "score-heterogeneity.json",
+   "chunk": 11,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc71c2",
+   "cave_len": 14,
+   "used": 12,
+   "spec": "score-heterogeneity.json",
+   "chunk": 9,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc73a4",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 8,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc7764",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 7,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143dc96b1",
+   "cave_len": 15,
+   "used": 13,
+   "spec": "linebreak-3-score.json",
+   "chunk": 21
+  },
+  {
+   "cave_va": "0x143dc97b4",
+   "cave_len": 12,
+   "used": 9,
+   "spec": "linebreak-3-score.json",
+   "chunk": 20
+  },
+  {
+   "cave_va": "0x143dca261",
+   "cave_len": 15,
+   "used": 14,
+   "spec": "linebreak-3-score.json",
+   "chunk": 19
+  },
+  {
+   "cave_va": "0x143dcacc1",
+   "cave_len": 15,
+   "used": 13,
+   "spec": "linebreak-3-score.json",
+   "chunk": 18
+  },
+  {
+   "cave_va": "0x143dcc7a1",
+   "cave_len": 15,
+   "used": 14,
+   "spec": "linebreak-3-score.json",
+   "chunk": 17
+  },
+  {
+   "cave_va": "0x143dcd0a1",
+   "cave_len": 15,
+   "used": 14,
+   "spec": "linebreak-3-score.json",
+   "chunk": 16
+  },
+  {
+   "cave_va": "0x143dcd3e1",
+   "cave_len": 15,
+   "used": 11,
+   "spec": "linebreak-3-score.json",
+   "chunk": 15
+  },
+  {
+   "cave_va": "0x143dcde31",
+   "cave_len": 15,
+   "used": 12,
+   "spec": "linebreak-3-score.json",
+   "chunk": 14
+  },
+  {
+   "cave_va": "0x143dd1b13",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "linebreak-3-score.json",
+   "chunk": 12
+  },
+  {
+   "cave_va": "0x143dd1d52",
+   "cave_len": 14,
+   "used": 12,
+   "spec": "linebreak-3-score.json",
+   "chunk": 11
+  },
+  {
+   "cave_va": "0x143dd45a1",
+   "cave_len": 15,
+   "used": 14,
+   "spec": "linebreak-3-score.json",
+   "chunk": 8
+  },
+  {
+   "cave_va": "0x143dd5be3",
+   "cave_len": 13,
+   "used": 12,
+   "spec": "linebreak-3-score.json",
+   "chunk": 7
+  },
+  {
+   "cave_va": "0x143dd7621",
+   "cave_len": 15,
+   "used": 10,
+   "spec": "linebreak-3-score.json",
+   "chunk": 5
+  },
+  {
+   "cave_va": "0x143ddb214",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "linebreak-3-score.json",
+   "chunk": 1
+  },
+  {
+   "cave_va": "0x143de2fb3",
+   "cave_len": 13,
+   "used": 11,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 24
+  },
+  {
+   "cave_va": "0x143de4214",
+   "cave_len": 12,
+   "used": 8,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 23
+  },
+  {
+   "cave_va": "0x143de6173",
+   "cave_len": 13,
+   "used": 10,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 19
+  },
+  {
+   "cave_va": "0x143de6db2",
+   "cave_len": 14,
+   "used": 11,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 16
+  },
+  {
+   "cave_va": "0x143de72e2",
+   "cave_len": 14,
+   "used": 9,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 15
+  },
+  {
+   "cave_va": "0x143de7c02",
+   "cave_len": 14,
+   "used": 12,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 14
+  },
+  {
+   "cave_va": "0x143deb3a3",
+   "cave_len": 13,
+   "used": 10,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 6
+  },
+  {
+   "cave_va": "0x143decb54",
+   "cave_len": 12,
+   "used": 10,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 4
+  },
+  {
+   "cave_va": "0x143dece94",
+   "cave_len": 12,
+   "used": 8,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 3
+  },
+  {
+   "cave_va": "0x143df0ce1",
+   "cave_len": 15,
+   "used": 12,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 0
+  },
+  {
+   "cave_va": "0x143df16f1",
+   "cave_len": 15,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 1
+  },
+  {
+   "cave_va": "0x143df46c2",
+   "cave_len": 14,
+   "used": 14,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 2
+  },
+  {
+   "cave_va": "0x143df6004",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 5
+  },
+  {
+   "cave_va": "0x143df7433",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 7
+  },
+  {
+   "cave_va": "0x143df7794",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 8
+  },
+  {
+   "cave_va": "0x143df8702",
+   "cave_len": 14,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 9
+  },
+  {
+   "cave_va": "0x143df9224",
+   "cave_len": 12,
+   "used": 10,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 10
+  },
+  {
+   "cave_va": "0x143df9513",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 11
+  },
+  {
+   "cave_va": "0x143df9723",
+   "cave_len": 13,
+   "used": 10,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 12
+  },
+  {
+   "cave_va": "0x143df9923",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 13
+  },
+  {
+   "cave_va": "0x143dfb592",
+   "cave_len": 14,
+   "used": 12,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 17
+  },
+  {
+   "cave_va": "0x143dfb6e2",
+   "cave_len": 14,
+   "used": 10,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 18
+  },
+  {
+   "cave_va": "0x143dfccd2",
+   "cave_len": 14,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 20
+  },
+  {
+   "cave_va": "0x143dfd691",
+   "cave_len": 15,
+   "used": 14,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 21
+  },
+  {
+   "cave_va": "0x143dfda54",
+   "cave_len": 12,
+   "used": 10,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 22
+  },
+  {
+   "cave_va": "0x143dfffd3",
+   "cave_len": 13,
+   "used": 12,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 25
+  },
+  {
+   "cave_va": "0x143e01c12",
+   "cave_len": 14,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 26
+  },
+  {
+   "cave_va": "0x143e02f74",
+   "cave_len": 12,
+   "used": 12,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 27
+  },
+  {
+   "cave_va": "0x143e04042",
+   "cave_len": 14,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 28
+  },
+  {
+   "cave_va": "0x143e04573",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 29
+  },
+  {
+   "cave_va": "0x143e05542",
+   "cave_len": 14,
+   "used": 3,
+   "spec": "linebreak-2-run-target.json",
+   "chunk": 30
+  },
+  {
+   "cave_va": "0x143e06c23",
+   "cave_len": 13,
+   "used": 12,
+   "spec": "linebreak-3-score.json",
+   "chunk": 0
+  },
+  {
+   "cave_va": "0x143e079a4",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "linebreak-3-score.json",
+   "chunk": 2
+  },
+  {
+   "cave_va": "0x143e0a561",
+   "cave_len": 15,
+   "used": 13,
+   "spec": "linebreak-3-score.json",
+   "chunk": 3
+  },
+  {
+   "cave_va": "0x143e0a773",
+   "cave_len": 13,
+   "used": 11,
+   "spec": "linebreak-3-score.json",
+   "chunk": 4
+  },
+  {
+   "cave_va": "0x143e0b602",
+   "cave_len": 14,
+   "used": 14,
+   "spec": "linebreak-3-score.json",
+   "chunk": 6
+  },
+  {
+   "cave_va": "0x143e0f5b2",
+   "cave_len": 14,
+   "used": 11,
+   "spec": "linebreak-3-score.json",
+   "chunk": 9
+  },
+  {
+   "cave_va": "0x143e10113",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "linebreak-3-score.json",
+   "chunk": 10
+  },
+  {
+   "cave_va": "0x143e10f93",
+   "cave_len": 13,
+   "used": 10,
+   "spec": "linebreak-3-score.json",
+   "chunk": 13
+  },
+  {
+   "cave_va": "0x143e19a33",
+   "cave_len": 13,
+   "used": 8,
+   "spec": "linebreak-3-score.json",
+   "chunk": 22
+  },
+  {
+   "cave_va": "0x143e1bfa3",
+   "cave_len": 13,
+   "used": 8,
+   "spec": "score-heterogeneity.json",
+   "chunk": 0,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e1c302",
+   "cave_len": 14,
+   "used": 13,
+   "spec": "score-heterogeneity.json",
+   "chunk": 1,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e1ed92",
+   "cave_len": 14,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 2,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e1f612",
+   "cave_len": 14,
+   "used": 14,
+   "spec": "score-heterogeneity.json",
+   "chunk": 3,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e21112",
+   "cave_len": 14,
+   "used": 9,
+   "spec": "score-heterogeneity.json",
+   "chunk": 4,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e21244",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 5,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e22871",
+   "cave_len": 15,
+   "used": 15,
+   "spec": "score-heterogeneity.json",
+   "chunk": 6,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e24944",
+   "cave_len": 12,
+   "used": 12,
+   "spec": "score-heterogeneity.json",
+   "chunk": 10,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e25444",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 12,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e268f2",
+   "cave_len": 14,
+   "used": 14,
+   "spec": "score-heterogeneity.json",
+   "chunk": 14,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e28181",
+   "cave_len": 15,
+   "used": 13,
+   "spec": "score-heterogeneity.json",
+   "chunk": 15,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e28d13",
+   "cave_len": 13,
+   "used": 13,
+   "spec": "score-heterogeneity.json",
+   "chunk": 17,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e2a672",
+   "cave_len": 14,
+   "used": 13,
+   "spec": "score-heterogeneity.json",
+   "chunk": 21,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e2b854",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 23,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e31371",
+   "cave_len": 15,
+   "used": 15,
+   "spec": "score-heterogeneity.json",
+   "chunk": 27,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e31611",
+   "cave_len": 15,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 28,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e31803",
+   "cave_len": 13,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 29,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e31914",
+   "cave_len": 12,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 30,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e31a01",
+   "cave_len": 15,
+   "used": 15,
+   "spec": "score-heterogeneity.json",
+   "chunk": 31,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e31ca3",
+   "cave_len": 13,
+   "used": 12,
+   "spec": "score-heterogeneity.json",
+   "chunk": 32,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e31e02",
+   "cave_len": 14,
+   "used": 14,
+   "spec": "score-heterogeneity.json",
+   "chunk": 33,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e323d1",
+   "cave_len": 15,
+   "used": 11,
+   "spec": "score-heterogeneity.json",
+   "chunk": 35,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e32602",
+   "cave_len": 14,
+   "used": 14,
+   "spec": "score-heterogeneity.json",
+   "chunk": 36,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e32a63",
+   "cave_len": 13,
+   "used": 12,
+   "spec": "score-heterogeneity.json",
+   "chunk": 37,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e336a3",
+   "cave_len": 13,
+   "used": 8,
+   "spec": "score-heterogeneity.json",
+   "chunk": 38,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e38702",
+   "cave_len": 14,
+   "used": 9,
+   "spec": "score-heterogeneity.json",
+   "chunk": 40,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e3b5a4",
+   "cave_len": 12,
+   "used": 10,
+   "spec": "score-heterogeneity.json",
+   "chunk": 44,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e3b951",
+   "cave_len": 15,
+   "used": 13,
+   "spec": "score-heterogeneity.json",
+   "chunk": 45,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e3b9e1",
+   "cave_len": 15,
+   "used": 13,
+   "spec": "score-heterogeneity.json",
+   "chunk": 46,
+   "exclusive_group": "chance-vf5-hook"
+  },
+  {
+   "cave_va": "0x143e3ba74",
+   "cave_len": 12,
+   "used": 9,
+   "spec": "score-heterogeneity.json",
+   "chunk": 47,
+   "exclusive_group": "chance-vf5-hook"
+  }
+ ]
+}

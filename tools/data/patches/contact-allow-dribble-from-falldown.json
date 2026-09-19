@@ -1,0 +1,19 @@
+{
+  "description": "ELIGIBILITY - Dribble::vf2 0x143f99eb0 byte table at 0x143f99f60. FallDown (0x11) and Dive (0x0f) currently map to case 3 = refuse outright: while you are on the floor there is NO route back to the ball at all, the animation simply has to finish. Case 2 is the 'ask vf14' handler (the same one Stagger uses). Emulated: Dribble canStart(cur=FallDown) and (cur=Dive) REFUSE -> GATED(vf14). Pair with contact-falldown-cancel-early.json or the gate will sit at the last keyframe anyway.",
+  "patches": [
+    {
+      "name": "Dribble::vf2 case table: currentKind FallDown -> ask the cancel gate",
+      "va": "0x143f99f6f",
+      "expect": "03",
+      "patch": "02",
+      "kind": "code"
+    },
+    {
+      "name": "Dribble::vf2 case table: currentKind Dive -> ask the cancel gate",
+      "va": "0x143f99f6d",
+      "expect": "03",
+      "patch": "02",
+      "kind": "code"
+    }
+  ]
+}

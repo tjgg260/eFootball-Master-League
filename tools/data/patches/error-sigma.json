@@ -1,0 +1,12 @@
+{
+ "description": "ERROR LAYER 2b - SPREAD SHAPE. Gaussian sigma scale 4.25 -> 6 in sigma = max(0.1, 0.75 + K*(1-c)^2): how often a miss lands near its ceiling rather than near zero. One instruction re-aimed at an existing pool constant. MUTUALLY EXCLUSIVE with cave-fatigue.json: that change hooks this same instruction (0x14401b3a7) and sets K itself, so apply ONE of the two, never both (exe_patch will refuse the second because the expected bytes will no longer match). Byte-identical to slices-scuffs.json E, which ran in-game. Revert: python tools/exe_patch.py remove tools/data/patches/error-sigma.json",
+ "patches": [
+  {
+   "name": "error spread (Gaussian sigma scale K) 4.25 -> 6",
+   "va": "0x14401b3a7",
+   "expect": "F3 0F 10 1D 01 1C B2 02",
+   "patch": "F3 0F 10 1D 9D 70 A9 01",
+   "kind": "code"
+  }
+ ]
+}

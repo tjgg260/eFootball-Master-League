@@ -1,0 +1,21 @@
+{
+ "description": "PHYSICALITY - MARKERS STOP DECELERATING EARLY. WHAT CHANGES: two arrival caps inside match::player::ActionMark, and nothing else in the game. A marker's gait is capped at 2 once his PREDICTED position is within 0.8 m of the mark, and at 3 within 1.6 m, which is why he eases off and arrives a beat after the ball. This pack tightens those to 0.6 m and 1.2 m, so he holds his speed a stride longer. WHAT WAS REMOVED FROM THIS PACK: the two approach-band boundary edits (6.5 -> 5.5 m and 3.5 -> 2.5 m at 0x1441a43b6 / 0x1441a43cc) that shipped in the first draft. Their direction turned out to be provable rather than inferred - see the note in the A/B file - but the whole band block sits behind two match-state gates that neither the first draft nor its report mentioned, and I could not establish how often those gates hold. They are now in phys-marking-bands-UNVERIFIED-AB.json. The two edits in THIS pack are not behind that gate. WHO IT AFFECTS: COM-controlled players only - CPU opponents AND your own AI team-mates. Your stick-controlled player never runs ActionMark. Both sites are inside match::player::ActionMark[vf6], which a vtable scan of build/exe_map.json shows occupies exactly one slot, so nothing outside man-marking moves. EVIDENCE: READ FROM UNAMBIGUOUS DISASSEMBLY (level b), not emulated - ActionMark needs a fully built team-AI graph, which is more state than a lazy Unicorn harness can stub. Both sites are 'movss xmm0, [threshold] / comiss vs predicted squared distance / jbe skip / cmp [rdi], N / jle skip / mov [rdi], N', with the gait pre-clamped to 1..5 at 0x1441a583c-0x1441a5855. Lowering the threshold strictly shrinks the region in which the cap applies; it cannot do anything else. The constants are squared distances, so any future value must be an exact square. WHAT TO LOOK FOR IN A MATCH: markers arriving with the pass instead of a beat late, and a receiver being contested rather than shadowed at arm's length. THE FAILURE MODE TO WATCH FOR is oscillation - a marker jittering around his man because he arrives too fast to settle. That is the same class of problem as the dt270 moveMatching ice-skater issue; if you see it, this pack is the cause. Apply it on its own and watch one full match before adding anything else defensive. NOT INCLUDED: the defensive sprint threshold at 0x143da9553 (19.0 - 0.1*stamina), which would make markers break into a sprint from much further out. It is a real lever but it lives in a gait chooser with eight callers and speeds up ALL COM defensive movement plus stamina drain, so it deserves its own test rather than a place here. REVERT: python tools/exe_patch.py remove tools/data/patches/phys-marking-tight.json",
+ "patches": [
+  {
+   "name": "arrival cap (gait <= 2) 0.8 -> 0.6 m (squared 0.64 -> 0.36)",
+   "va": "0x1441a58ba",
+   "expect": "F30F100546BF9802",
+   "patch": "F30F1005D2769902",
+   "kind": "code",
+   "note": "movss xmm0, [0x146b31808 = 0.64] re-aimed to [0x146b3cf94 = 0.36]; measured against the predicted self position, not the current one."
+  },
+  {
+   "name": "arrival cap (gait <= 3) 1.6 -> 1.2 m (squared 2.56 -> 1.44)",
+   "va": "0x1441a58d5",
+   "expect": "F30F1005133DA202",
+   "patch": "F30F1005DF5BD201",
+   "kind": "code",
+   "note": "movss xmm0, [0x146bc95f0 = 2.56, a cell private to this one instruction] re-aimed to [0x145ecb4bc = 1.44]."
+  }
+ ]
+}

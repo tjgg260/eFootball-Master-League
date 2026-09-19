@@ -1,0 +1,457 @@
+{
+ "_source": "tools/emu_attr_index.py + tools/emu_enum_names.py against eFootball.exe.PRISTINE",
+ "_accessor": {
+  "ATTR_get": "0x143ea8cb0(matchPlayer, idx)",
+  "by_entity": "0x1442dd650(_, entityIdx, idx)",
+  "array_ptr": "0x144301840(playerData) = playerData+0x394",
+  "raw_byte": "0x1441172b0(array, idx)",
+  "entity_lookup": "0x1442d6ef0(_, entityIdx) = *( *0x1486bd888 + entityIdx*0x58 + 0x55a8 ), entityIdx 0..0x1e",
+  "range": "0x1442bfae0(&min,&max,idx) field / 0x1442bfb10 level-up; reject idx 0x12,0x13 and idx>0x3c"
+ },
+ "_mapping_rule": "match byte-array index = DATA_PARAMETER enum index + 7, for match idx 0x14..0x30 (PROVEN). Outside that range the array is reordered.",
+ "entries": {
+  "0x00": {
+   "min": 0,
+   "max": 12,
+   "max_levelup": 12,
+   "guess": "registered position (0..12)",
+   "confidence": "inferred"
+  },
+  "0x01": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude CF",
+   "confidence": "inferred"
+  },
+  "0x02": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude ST",
+   "confidence": "inferred"
+  },
+  "0x03": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude LWG",
+   "confidence": "inferred"
+  },
+  "0x04": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude RWG",
+   "confidence": "inferred"
+  },
+  "0x05": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude OMF",
+   "confidence": "inferred"
+  },
+  "0x06": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude DMF",
+   "confidence": "inferred"
+  },
+  "0x07": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude CMF",
+   "confidence": "inferred"
+  },
+  "0x08": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude LMF",
+   "confidence": "inferred"
+  },
+  "0x09": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude RMF",
+   "confidence": "inferred"
+  },
+  "0x0a": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude CB",
+   "confidence": "inferred"
+  },
+  "0x0b": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude LSB",
+   "confidence": "inferred"
+  },
+  "0x0c": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude RSB",
+   "confidence": "inferred"
+  },
+  "0x0d": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "guess": "position aptitude GK",
+   "confidence": "inferred"
+  },
+  "0x0e": {
+   "min": 0,
+   "max": 19,
+   "max_levelup": 19,
+   "confidence": "unknown"
+  },
+  "0x0f": {
+   "min": 0,
+   "max": 7,
+   "max_levelup": 7,
+   "confidence": "unknown"
+  },
+  "0x10": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "confidence": "unknown"
+  },
+  "0x11": {
+   "min": 0,
+   "max": 9,
+   "max_levelup": 9,
+   "confidence": "unknown"
+  },
+  "0x12": {
+   "min": 0,
+   "max": 255,
+   "max_levelup": 255,
+   "confidence": "unknown"
+  },
+  "0x13": {
+   "min": 0,
+   "max": 255,
+   "max_levelup": 255,
+   "confidence": "unknown"
+  },
+  "0x14": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "OFFENSE_DECISION",
+   "ui_name": "Offensive Awareness",
+   "confidence": "proven"
+  },
+  "0x15": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "DEFENSE_DECISION",
+   "ui_name": "Defensive Awareness",
+   "confidence": "proven"
+  },
+  "0x16": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "GK_DECISION",
+   "ui_name": "GK Awareness",
+   "confidence": "proven"
+  },
+  "0x17": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "DRIBBLE",
+   "ui_name": "Dribbling",
+   "confidence": "proven"
+  },
+  "0x18": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "TRAP",
+   "ui_name": "Ball Control",
+   "confidence": "proven"
+  },
+  "0x19": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "BALL_TOUCH",
+   "ui_name": "Tight Possession",
+   "confidence": "proven"
+  },
+  "0x1a": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "SHOT",
+   "ui_name": "Finishing",
+   "confidence": "proven"
+  },
+  "0x1b": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "SHORT_PASS",
+   "ui_name": "Low Pass",
+   "confidence": "proven"
+  },
+  "0x1c": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "LONG_PASS",
+   "ui_name": "Lofted Pass",
+   "confidence": "proven"
+  },
+  "0x1d": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "HEADING",
+   "ui_name": "Heading",
+   "confidence": "proven"
+  },
+  "0x1e": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "INTERCEPT",
+   "ui_name": "Ball Winning",
+   "confidence": "proven"
+  },
+  "0x1f": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "AGGRESSIVENESS",
+   "ui_name": "Aggression",
+   "confidence": "proven"
+  },
+  "0x20": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "CONSCIOUS_DEFENSE",
+   "ui_name": "Defensive Engagement",
+   "confidence": "proven"
+  },
+  "0x21": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "PLACE_KICKING",
+   "ui_name": "Set Piece Taking",
+   "confidence": "proven"
+  },
+  "0x22": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "BALL_SPIN_CONTROL",
+   "ui_name": "Curl",
+   "confidence": "proven"
+  },
+  "0x23": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "CATCHING",
+   "ui_name": "GK Catching",
+   "confidence": "proven"
+  },
+  "0x24": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "CLEARANCES",
+   "ui_name": "GK Parrying",
+   "confidence": "proven"
+  },
+  "0x25": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "COLLAPSING",
+   "ui_name": "GK Reflexes",
+   "confidence": "proven"
+  },
+  "0x26": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "DEFLECTING",
+   "ui_name": "GK Reach",
+   "confidence": "proven"
+  },
+  "0x27": {
+   "min": 0,
+   "max": 3,
+   "max_levelup": 3,
+   "data_parameter": "R_FOOT_ACC",
+   "ui_name": "Weak Foot Accuracy",
+   "confidence": "proven"
+  },
+  "0x28": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "SPEED",
+   "ui_name": "Speed",
+   "confidence": "proven"
+  },
+  "0x29": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "BODY_BALANCE",
+   "ui_name": "Physical Contact",
+   "confidence": "proven"
+  },
+  "0x2a": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "BODY_CONTROL",
+   "ui_name": "Balance",
+   "confidence": "proven"
+  },
+  "0x2b": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "KICK_POWER",
+   "ui_name": "Kicking Power",
+   "confidence": "proven"
+  },
+  "0x2c": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "AGILITY",
+   "ui_name": "Acceleration",
+   "confidence": "proven"
+  },
+  "0x2d": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "JUMP",
+   "ui_name": "Jumping",
+   "confidence": "proven"
+  },
+  "0x2e": {
+   "min": 40,
+   "max": 99,
+   "max_levelup": 120,
+   "data_parameter": "STAMINA",
+   "ui_name": "Stamina",
+   "confidence": "proven"
+  },
+  "0x2f": {
+   "min": 0,
+   "max": 7,
+   "max_levelup": 7,
+   "data_parameter": "STABILITY",
+   "ui_name": "Condition / Form",
+   "confidence": "proven"
+  },
+  "0x30": {
+   "min": 0,
+   "max": 2,
+   "max_levelup": 2,
+   "data_parameter": "DURABILITY",
+   "ui_name": "Injury Resistance",
+   "confidence": "proven"
+  },
+  "0x31": {
+   "min": 10,
+   "max": 63,
+   "max_levelup": 63,
+   "guess": "AGE",
+   "confidence": "inferred(range 10..63)"
+  },
+  "0x32": {
+   "min": 132,
+   "max": 220,
+   "max_levelup": 220,
+   "guess": "HEIGHT cm",
+   "confidence": "proven(range 132..220, 75 read sites)"
+  },
+  "0x33": {
+   "min": 30,
+   "max": 129,
+   "max_levelup": 129,
+   "guess": "WEIGHT kg",
+   "confidence": "inferred(range 30..129)"
+  },
+  "0x34": {
+   "min": 0,
+   "max": 1,
+   "max_levelup": 1,
+   "guess": "STRONGER_HAND",
+   "confidence": "inferred"
+  },
+  "0x35": {
+   "min": 0,
+   "max": 1,
+   "max_levelup": 1,
+   "guess": "STRONGER_FOOT",
+   "confidence": "likely(108 read sites, compared to kicking foot at 0x143ed787a)"
+  },
+  "0x36": {
+   "min": 0,
+   "max": 3,
+   "max_levelup": 3,
+   "confidence": "unknown"
+  },
+  "0x37": {
+   "min": 0,
+   "max": 3,
+   "max_levelup": 3,
+   "confidence": "unknown"
+  },
+  "0x38": {
+   "min": 0,
+   "max": 7,
+   "max_levelup": 7,
+   "confidence": "unknown"
+  },
+  "0x39": {
+   "min": 0,
+   "max": 4,
+   "max_levelup": 4,
+   "confidence": "unknown"
+  },
+  "0x3a": {
+   "min": 0,
+   "max": 9,
+   "max_levelup": 9,
+   "confidence": "unknown"
+  },
+  "0x3b": {
+   "min": 0,
+   "max": 4,
+   "max_levelup": 4,
+   "confidence": "unknown"
+  },
+  "0x3c": {
+   "min": 0,
+   "max": 9,
+   "max_levelup": 9,
+   "confidence": "unknown"
+  }
+ }
+}

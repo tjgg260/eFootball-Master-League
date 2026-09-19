@@ -1,0 +1,13 @@
+{
+ "description": "TACKLE COMMITMENT 2 - ANGLE TOLERANCE. 0x1441a8448: for ordinary carrier actions the AI will only tackle if its heading is within 22.5 deg of the ball. 30 deg lets defenders challenge from a wider arc instead of only head-on. Same-length disp32 re-aim. NOTE 22.5 is also the kick-error constant - this is a DIFFERENT instruction; the cell 0x14676e980 itself is not touched.",
+ "patches": [
+  {
+   "name": "tackle heading tolerance 22.5 -> 30 deg",
+   "va": "0x1441a8448",
+   "expect": "0F 2F 05 31 65 5C 02",
+   "patch": "0F 2F 05 31 59 8E 01",
+   "kind": "code",
+   "note": "loads 22.5 now, 30.0 after"
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+{
+ "description": "TACKLE COMMITMENT 3 - RE-CHALLENGE RATE. Commit 0x1441a8a70 refuses a new tackle unless (currentFrame - player[+0x28e0]) >= fps*0.5. That 0.5 s lockout is why a beaten defender stands off after a failed challenge. 0.35 s lets him have a second go. The +0.5 rounding term 8 bytes later shares the same pool cell and is deliberately NOT touched.",
+ "patches": [
+  {
+   "name": "tackle re-attempt cooldown 0.5 -> 0.35 s",
+   "va": "0x1441a8c2a",
+   "expect": "F3 0F 59 05 16 76 6A 03",
+   "patch": "F3 0F 59 05 3A 60 AD 01",
+   "kind": "code",
+   "note": "loads 0.5 now, 0.3499999940395355 after"
+  }
+ ]
+}

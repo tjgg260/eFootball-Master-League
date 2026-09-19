@@ -1,0 +1,1289 @@
+{
+ "description": "OFF-BALL RUN SCORE: heterogeneity + slow noise.  Hooks match::ai::ActionSelectorChanceSpaceRun::vf5 at 0x143df5d6a (11 B stolen, resume 0x143df5d75) and adds K_ABIL*(clamp(OffensiveAwareness,40,99)-70) plus a slow-varying per-player positional ripple of amplitude K_NOISE to the finished score, clamped so the result is always >= 0.5x the stock score.  The 0.0 'not a candidate' sentinel is untouched in both directions: the 0.0 path jumps to the epilogue BEFORE the hook, and the cave's own comiss/jbe returns any score <= 0 or NaN unchanged.  Defaults K_ABIL=0.15, K_NOISE=7.0; both are 4-byte IEEE cells in the emitted bytes (see tunable_cells) so they retune without regenerating.  Built and proved by tools/emu_runscore.py.  The stolen bytes are identical in the pristine and installed images.  APPLY WITH THE GAME CLOSED.",
+ "hook": {
+  "va": "0x143df5d6a",
+  "stolen_len": 11,
+  "resume": "0x143df5d75",
+  "function": "match::ai::ActionSelectorChanceSpaceRun::vf5 0x143df5950"
+ },
+ "config": {
+  "k_abil": 0.15,
+  "k_noise": 7.0,
+  "pivot": 70,
+  "attr_idx": 20,
+  "cz": 1.7,
+  "dscale": 256.0,
+  "fbase": 4
+ },
+ "proof": "tools/emu_runscore.py (S1-S11)",
+ "cave_layout": {
+  "allocator": "cave_alloc v1",
+  "entry": "0x143e1bfa3",
+  "exits": [
+   "0x143df5d75"
+  ],
+  "externals": {},
+  "cells": {},
+  "labels": {
+   "done": "0x143dad634"
+  },
+  "policy": {
+   "anchor": "0x143df5d6a",
+   "min_cave": 12,
+   "safety": "A",
+   "source": "tools/cave_scan.py build/caves.json",
+   "gates": [
+    "length",
+    "safety-tier",
+    "int3-in-target",
+    "unclaimed",
+    "hook-guard"
+   ],
+   "free_caves": 42430,
+   "rejected": {
+    "below_min": 55096,
+    "safety": 0,
+    "not_int3_target": 0,
+    "claimed": 54
+   },
+   "order": "nearest-first"
+  },
+  "chain_len": 5,
+  "chunks": [
+   {
+    "index": 0,
+    "cave_va": "0x143e1bfa3",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 8,
+    "chain_to": "0x143e1c302",
+    "asm": [
+     "movaps   xmm0, xmm6"
+    ]
+   },
+   {
+    "index": 1,
+    "cave_va": "0x143e1c302",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143e1ed92",
+    "asm": [
+     "movaps   xmm6, xmmword ptr [rsp + 0xc0]"
+    ]
+   },
+   {
+    "index": 2,
+    "cave_va": "0x143e1ed92",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143e1f612",
+    "asm": [
+     "xorps    xmm1, xmm1",
+     "comiss   xmm0, xmm1"
+    ]
+   },
+   {
+    "index": 3,
+    "cave_va": "0x143e1f612",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143e21112",
+    "asm": [
+     "jbe      @done",
+     "movsxd   r11, ebx"
+    ]
+   },
+   {
+    "index": 4,
+    "cave_va": "0x143e21112",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 9,
+    "chain_to": "0x143e21244",
+    "asm": [
+     "cmp      r11d, 31"
+    ]
+   },
+   {
+    "index": 5,
+    "cave_va": "0x143e21244",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143e22871",
+    "asm": [
+     "jae      @done"
+    ]
+   },
+   {
+    "index": 6,
+    "cave_va": "0x143e22871",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 15,
+    "chain_to": "0x143dc7764",
+    "asm": [
+     "mov      r10, 0x1486bd888"
+    ]
+   },
+   {
+    "index": 7,
+    "cave_va": "0x143dc7764",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143dc73a4",
+    "asm": [
+     "mov      r10, qword ptr [r10]",
+     "test     r10, r10"
+    ]
+   },
+   {
+    "index": 8,
+    "cave_va": "0x143dc73a4",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143dc71c2",
+    "asm": [
+     "je       @done"
+    ]
+   },
+   {
+    "index": 9,
+    "cave_va": "0x143dc71c2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143e24944",
+    "asm": [
+     "imul     r11, r11, 0x58",
+     "add      r11, r10"
+    ]
+   },
+   {
+    "index": 10,
+    "cave_va": "0x143e24944",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143dc6944",
+    "asm": [
+     "mov      r10, qword ptr [r11 + 0x55a8]"
+    ]
+   },
+   {
+    "index": 11,
+    "cave_va": "0x143dc6944",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 8,
+    "chain_to": "0x143e25444",
+    "asm": [
+     "test     r10, r10"
+    ]
+   },
+   {
+    "index": 12,
+    "cave_va": "0x143e25444",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143dc57f2",
+    "asm": [
+     "je       @done"
+    ]
+   },
+   {
+    "index": 13,
+    "cave_va": "0x143dc57f2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143e268f2",
+    "asm": [
+     "mov      r11, qword ptr [r11 + 0x4058]"
+    ]
+   },
+   {
+    "index": 14,
+    "cave_va": "0x143e268f2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143e28181",
+    "asm": [
+     "test     r11, r11",
+     "je       @done"
+    ]
+   },
+   {
+    "index": 15,
+    "cave_va": "0x143e28181",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143dc32f2",
+    "asm": [
+     "movzx    eax, byte ptr [r10 + 0x3a8]"
+    ]
+   },
+   {
+    "index": 16,
+    "cave_va": "0x143dc32f2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143e28d13",
+    "asm": [
+     "mov      ecx, 40",
+     "cmp      eax, ecx"
+    ]
+   },
+   {
+    "index": 17,
+    "cave_va": "0x143e28d13",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143dc2d53",
+    "asm": [
+     "cmovb    eax, ecx",
+     "mov      ecx, 99"
+    ]
+   },
+   {
+    "index": 18,
+    "cave_va": "0x143dc2d53",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143dc29b3",
+    "asm": [
+     "cmp      eax, ecx",
+     "cmova    eax, ecx",
+     "sub      eax, 70"
+    ]
+   },
+   {
+    "index": 19,
+    "cave_va": "0x143dc29b3",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 9,
+    "chain_to": "0x143dc1c73",
+    "asm": [
+     "cvtsi2ss xmm1, eax"
+    ]
+   },
+   {
+    "index": 20,
+    "cave_va": "0x143dc1c73",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143e2a672",
+    "asm": [
+     "mov      ecx, 0x3e19999a"
+    ]
+   },
+   {
+    "index": 21,
+    "cave_va": "0x143e2a672",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143dc0851",
+    "asm": [
+     "movd     xmm2, ecx",
+     "mulss    xmm1, xmm2"
+    ]
+   },
+   {
+    "index": 22,
+    "cave_va": "0x143dc0851",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 15,
+    "chain_to": "0x143e2b854",
+    "asm": [
+     "mov      r10, 0x1486bd888"
+    ]
+   },
+   {
+    "index": 23,
+    "cave_va": "0x143e2b854",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143dbc0d4",
+    "asm": [
+     "mov      r10, qword ptr [r10]",
+     "test     r10, r10"
+    ]
+   },
+   {
+    "index": 24,
+    "cave_va": "0x143dbc0d4",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143dbbc92",
+    "asm": [
+     "je       @done"
+    ]
+   },
+   {
+    "index": 25,
+    "cave_va": "0x143dbbc92",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143dbb762",
+    "asm": [
+     "mov      r10, qword ptr [r10 + 0x580]"
+    ]
+   },
+   {
+    "index": 26,
+    "cave_va": "0x143dbb762",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143e31371",
+    "asm": [
+     "test     r10, r10",
+     "je       @done"
+    ]
+   },
+   {
+    "index": 27,
+    "cave_va": "0x143e31371",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 15,
+    "chain_to": "0x143e31611",
+    "asm": [
+     "mov      ecx, dword ptr [r10 + 0x3318]",
+     "lea      eax, [rbx + rbx*2]"
+    ]
+   },
+   {
+    "index": 28,
+    "cave_va": "0x143e31611",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143e31803",
+    "asm": [
+     "lea      ecx, [rcx + rax*4]",
+     "shr      ecx, 6"
+    ]
+   },
+   {
+    "index": 29,
+    "cave_va": "0x143e31803",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143e31914",
+    "asm": [
+     "lea      eax, [rbx + 0x165667b1]"
+    ]
+   },
+   {
+    "index": 30,
+    "cave_va": "0x143e31914",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143e31a01",
+    "asm": [
+     "imul     eax, eax, 0x9e3779b1"
+    ]
+   },
+   {
+    "index": 31,
+    "cave_va": "0x143e31a01",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 15,
+    "chain_to": "0x143e31ca3",
+    "asm": [
+     "imul     r10d, ecx, 0xc2b2ae35",
+     "xor      eax, r10d"
+    ]
+   },
+   {
+    "index": 32,
+    "cave_va": "0x143e31ca3",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143e31e02",
+    "asm": [
+     "mov      r10d, eax",
+     "shr      r10d, 15"
+    ]
+   },
+   {
+    "index": 33,
+    "cave_va": "0x143e31e02",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143db9b23",
+    "asm": [
+     "xor      eax, r10d",
+     "imul     eax, eax, 0x85ebca6b"
+    ]
+   },
+   {
+    "index": 34,
+    "cave_va": "0x143db9b23",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143e323d1",
+    "asm": [
+     "mov      r10d, eax",
+     "shr      r10d, 13"
+    ]
+   },
+   {
+    "index": 35,
+    "cave_va": "0x143e323d1",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143e32602",
+    "asm": [
+     "xor      eax, r10d",
+     "movzx    ecx, ax"
+    ]
+   },
+   {
+    "index": 36,
+    "cave_va": "0x143e32602",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143e32a63",
+    "asm": [
+     "sub      ecx, 32768",
+     "mov      r10d, ecx"
+    ]
+   },
+   {
+    "index": 37,
+    "cave_va": "0x143e32a63",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143e336a3",
+    "asm": [
+     "sar      r10d, 31",
+     "xor      ecx, r10d"
+    ]
+   },
+   {
+    "index": 38,
+    "cave_va": "0x143e336a3",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 8,
+    "chain_to": "0x143db6bb3",
+    "asm": [
+     "sub      ecx, r10d"
+    ]
+   },
+   {
+    "index": 39,
+    "cave_va": "0x143db6bb3",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143e38702",
+    "asm": [
+     "sub      ecx, 16384"
+    ]
+   },
+   {
+    "index": 40,
+    "cave_va": "0x143e38702",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 9,
+    "chain_to": "0x143db27f1",
+    "asm": [
+     "cvtsi2ss xmm2, ecx"
+    ]
+   },
+   {
+    "index": 41,
+    "cave_va": "0x143db27f1",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143db2571",
+    "asm": [
+     "mov      r10d, 0x38800000"
+    ]
+   },
+   {
+    "index": 42,
+    "cave_va": "0x143db2571",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143db2164",
+    "asm": [
+     "movd     xmm3, r10d",
+     "mulss    xmm2, xmm3"
+    ]
+   },
+   {
+    "index": 43,
+    "cave_va": "0x143db2164",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143e3b5a4",
+    "asm": [
+     "mov      r10d, 0x40e00000"
+    ]
+   },
+   {
+    "index": 44,
+    "cave_va": "0x143e3b5a4",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143e3b951",
+    "asm": [
+     "movd     xmm3, r10d"
+    ]
+   },
+   {
+    "index": 45,
+    "cave_va": "0x143e3b951",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143e3b9e1",
+    "asm": [
+     "mulss    xmm2, xmm3",
+     "addss    xmm1, xmm2"
+    ]
+   },
+   {
+    "index": 46,
+    "cave_va": "0x143e3b9e1",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143e3ba74",
+    "asm": [
+     "movaps   xmm3, xmm0",
+     "mov      ecx, 0xbf000000"
+    ]
+   },
+   {
+    "index": 47,
+    "cave_va": "0x143e3ba74",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 9,
+    "chain_to": "0x143daec13",
+    "asm": [
+     "movd     xmm4, ecx"
+    ]
+   },
+   {
+    "index": 48,
+    "cave_va": "0x143daec13",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143dadb94",
+    "asm": [
+     "mulss    xmm3, xmm4",
+     "maxss    xmm1, xmm3"
+    ]
+   },
+   {
+    "index": 49,
+    "cave_va": "0x143dadb94",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 9,
+    "chain_to": "0x143dad634",
+    "asm": [
+     "addss    xmm0, xmm1"
+    ]
+   },
+   {
+    "index": 50,
+    "cave_va": "0x143dad634",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 5,
+    "chain_to": null,
+    "asm": [
+     "jmp      0x143df5d75"
+    ]
+   }
+  ],
+  "total_used": 592,
+  "payload_bytes": 342,
+  "source_sha1": "b185b2bf24ee3aac2db7fc31782f12a243052d0b",
+  "target_image_sha1": "43e65b5ceb442542c133bd528cc92c68a8a71ff6",
+  "pristine_sha1": "d2b84d1c506ab09d62035b7889a57452479b73a8"
+ },
+ "patches": [
+  {
+   "name": "run-score heterogeneity cave chunk 1/51 (8 B in the 13 B int3 run at 0x143e1bfa3)",
+   "va": "0x143e1bfa3",
+   "expect": "cccccccccccccccc",
+   "patch": "0f28c6e957030000",
+   "kind": "code",
+   "chunk": 0,
+   "cave": {
+    "va": "0x143e1bfa3",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 2/51 (13 B in the 14 B int3 run at 0x143e1c302)",
+   "va": "0x143e1c302",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "0f28b424c0000000e9832a0000",
+   "kind": "code",
+   "chunk": 1,
+   "cave": {
+    "va": "0x143e1c302",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 3/51 (11 B in the 14 B int3 run at 0x143e1ed92)",
+   "va": "0x143e1ed92",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "0f57c90f2fc1e975080000",
+   "kind": "code",
+   "chunk": 2,
+   "cave": {
+    "va": "0x143e1ed92",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 4/51 (14 B in the 14 B int3 run at 0x143e1f612)",
+   "va": "0x143e1f612",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "0f861ce0f8ff4c63dbe9f21a0000",
+   "kind": "code",
+   "chunk": 3,
+   "cave": {
+    "va": "0x143e1f612",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 5/51 (9 B in the 14 B int3 run at 0x143e21112)",
+   "va": "0x143e21112",
+   "expect": "cccccccccccccccccc",
+   "patch": "4183fb1fe929010000",
+   "kind": "code",
+   "chunk": 4,
+   "cave": {
+    "va": "0x143e21112",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 6/51 (11 B in the 12 B int3 run at 0x143e21244)",
+   "va": "0x143e21244",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "0f83eac3f8ffe922160000",
+   "kind": "code",
+   "chunk": 5,
+   "cave": {
+    "va": "0x143e21244",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 7/51 (15 B in the 15 B int3 run at 0x143e22871)",
+   "va": "0x143e22871",
+   "expect": "cccccccccccccccccccccccccccccc",
+   "patch": "49ba88d86b4801000000e9e44efaff",
+   "kind": "code",
+   "chunk": 6,
+   "cave": {
+    "va": "0x143e22871",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 8/51 (11 B in the 12 B int3 run at 0x143dc7764)",
+   "va": "0x143dc7764",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "4d8b124d85d2e935fcffff",
+   "kind": "code",
+   "chunk": 7,
+   "cave": {
+    "va": "0x143dc7764",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 9/51 (11 B in the 12 B int3 run at 0x143dc73a4)",
+   "va": "0x143dc73a4",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "0f848a62feffe913feffff",
+   "kind": "code",
+   "chunk": 8,
+   "cave": {
+    "va": "0x143dc73a4",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 10/51 (12 B in the 14 B int3 run at 0x143dc71c2)",
+   "va": "0x143dc71c2",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "4d6bdb584d01d3e976d70500",
+   "kind": "code",
+   "chunk": 9,
+   "cave": {
+    "va": "0x143dc71c2",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 11/51 (12 B in the 12 B int3 run at 0x143e24944)",
+   "va": "0x143e24944",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "4d8b93a8550000e9f41ffaff",
+   "kind": "code",
+   "chunk": 10,
+   "cave": {
+    "va": "0x143e24944",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 12/51 (8 B in the 12 B int3 run at 0x143dc6944)",
+   "va": "0x143dc6944",
+   "expect": "cccccccccccccccc",
+   "patch": "4d85d2e9f8ea0500",
+   "kind": "code",
+   "chunk": 11,
+   "cave": {
+    "va": "0x143dc6944",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 13/51 (11 B in the 12 B int3 run at 0x143e25444)",
+   "va": "0x143e25444",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "0f84ea81f8ffe9a303faff",
+   "kind": "code",
+   "chunk": 12,
+   "cave": {
+    "va": "0x143e25444",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 14/51 (12 B in the 14 B int3 run at 0x143dc57f2)",
+   "va": "0x143dc57f2",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "4d8b9b58400000e9f4100600",
+   "kind": "code",
+   "chunk": 13,
+   "cave": {
+    "va": "0x143dc57f2",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 15/51 (14 B in the 14 B int3 run at 0x143e268f2)",
+   "va": "0x143e268f2",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "4d85db0f84396df8ffe981180000",
+   "kind": "code",
+   "chunk": 14,
+   "cave": {
+    "va": "0x143e268f2",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 16/51 (13 B in the 15 B int3 run at 0x143e28181)",
+   "va": "0x143e28181",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "410fb682a8030000e964b1f9ff",
+   "kind": "code",
+   "chunk": 15,
+   "cave": {
+    "va": "0x143e28181",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 17/51 (12 B in the 14 B int3 run at 0x143dc32f2)",
+   "va": "0x143dc32f2",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "b92800000039c8e9155a0600",
+   "kind": "code",
+   "chunk": 16,
+   "cave": {
+    "va": "0x143dc32f2",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 18/51 (13 B in the 13 B int3 run at 0x143e28d13)",
+   "va": "0x143e28d13",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "0f42c1b963000000e933a0f9ff",
+   "kind": "code",
+   "chunk": 17,
+   "cave": {
+    "va": "0x143e28d13",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 19/51 (13 B in the 13 B int3 run at 0x143dc2d53)",
+   "va": "0x143dc2d53",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "39c80f47c183e846e953fcffff",
+   "kind": "code",
+   "chunk": 18,
+   "cave": {
+    "va": "0x143dc2d53",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 20/51 (9 B in the 13 B int3 run at 0x143dc29b3)",
+   "va": "0x143dc29b3",
+   "expect": "cccccccccccccccccc",
+   "patch": "f30f2ac8e9b7f2ffff",
+   "kind": "code",
+   "chunk": 19,
+   "cave": {
+    "va": "0x143dc29b3",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 21/51 (10 B in the 13 B int3 run at 0x143dc1c73)",
+   "va": "0x143dc1c73",
+   "expect": "cccccccccccccccccccc",
+   "patch": "b99a99193ee9f5890600",
+   "kind": "code",
+   "chunk": 20,
+   "cave": {
+    "va": "0x143dc1c73",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 22/51 (13 B in the 14 B int3 run at 0x143e2a672)",
+   "va": "0x143e2a672",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "660f6ed1f30f59cae9d261f9ff",
+   "kind": "code",
+   "chunk": 21,
+   "cave": {
+    "va": "0x143e2a672",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 23/51 (15 B in the 15 B int3 run at 0x143dc0851)",
+   "va": "0x143dc0851",
+   "expect": "cccccccccccccccccccccccccccccc",
+   "patch": "49ba88d86b4801000000e9f4af0600",
+   "kind": "code",
+   "chunk": 22,
+   "cave": {
+    "va": "0x143dc0851",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 24/51 (11 B in the 12 B int3 run at 0x143e2b854)",
+   "va": "0x143e2b854",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "4d8b124d85d2e97508f9ff",
+   "kind": "code",
+   "chunk": 23,
+   "cave": {
+    "va": "0x143e2b854",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 25/51 (11 B in the 12 B int3 run at 0x143dbc0d4)",
+   "va": "0x143dbc0d4",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "0f845a15ffffe9b3fbffff",
+   "kind": "code",
+   "chunk": 24,
+   "cave": {
+    "va": "0x143dbc0d4",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 26/51 (12 B in the 14 B int3 run at 0x143dbbc92)",
+   "va": "0x143dbbc92",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "4d8b9280050000e9c4faffff",
+   "kind": "code",
+   "chunk": 25,
+   "cave": {
+    "va": "0x143dbbc92",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 27/51 (14 B in the 14 B int3 run at 0x143dbb762)",
+   "va": "0x143dbb762",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "4d85d20f84c91effffe9015c0700",
+   "kind": "code",
+   "chunk": 26,
+   "cave": {
+    "va": "0x143dbb762",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 28/51 (15 B in the 15 B int3 run at 0x143e31371)",
+   "va": "0x143e31371",
+   "expect": "cccccccccccccccccccccccccccccc",
+   "patch": "418b8a183300008d045be991020000",
+   "kind": "code",
+   "chunk": 27,
+   "cave": {
+    "va": "0x143e31371",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 29/51 (11 B in the 15 B int3 run at 0x143e31611)",
+   "va": "0x143e31611",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "8d0c81c1e906e9e7010000",
+   "kind": "code",
+   "chunk": 28,
+   "cave": {
+    "va": "0x143e31611",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 30/51 (11 B in the 13 B int3 run at 0x143e31803)",
+   "va": "0x143e31803",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "8d83b1675616e906010000",
+   "kind": "code",
+   "chunk": 29,
+   "cave": {
+    "va": "0x143e31803",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 31/51 (11 B in the 12 B int3 run at 0x143e31914)",
+   "va": "0x143e31914",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "69c0b179379ee9e2000000",
+   "kind": "code",
+   "chunk": 30,
+   "cave": {
+    "va": "0x143e31914",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 32/51 (15 B in the 15 B int3 run at 0x143e31a01)",
+   "va": "0x143e31a01",
+   "expect": "cccccccccccccccccccccccccccccc",
+   "patch": "4469d135aeb2c24431d0e993020000",
+   "kind": "code",
+   "chunk": 31,
+   "cave": {
+    "va": "0x143e31a01",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 33/51 (12 B in the 13 B int3 run at 0x143e31ca3)",
+   "va": "0x143e31ca3",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "4189c241c1ea0fe953010000",
+   "kind": "code",
+   "chunk": 32,
+   "cave": {
+    "va": "0x143e31ca3",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 34/51 (14 B in the 14 B int3 run at 0x143e31e02)",
+   "va": "0x143e31e02",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "4431d069c06bcaeb85e9137df8ff",
+   "kind": "code",
+   "chunk": 33,
+   "cave": {
+    "va": "0x143e31e02",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 35/51 (12 B in the 13 B int3 run at 0x143db9b23)",
+   "va": "0x143db9b23",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "4189c241c1ea0de9a2880700",
+   "kind": "code",
+   "chunk": 34,
+   "cave": {
+    "va": "0x143db9b23",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 36/51 (11 B in the 15 B int3 run at 0x143e323d1)",
+   "va": "0x143e323d1",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "4431d00fb7c8e926020000",
+   "kind": "code",
+   "chunk": 35,
+   "cave": {
+    "va": "0x143e323d1",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 37/51 (14 B in the 14 B int3 run at 0x143e32602)",
+   "va": "0x143e32602",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "81e9008000004189cae953040000",
+   "kind": "code",
+   "chunk": 36,
+   "cave": {
+    "va": "0x143e32602",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 38/51 (12 B in the 13 B int3 run at 0x143e32a63)",
+   "va": "0x143e32a63",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "41c1fa1f4431d1e9340c0000",
+   "kind": "code",
+   "chunk": 37,
+   "cave": {
+    "va": "0x143e32a63",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 39/51 (8 B in the 13 B int3 run at 0x143e336a3)",
+   "va": "0x143e336a3",
+   "expect": "cccccccccccccccc",
+   "patch": "4429d1e90835f8ff",
+   "kind": "code",
+   "chunk": 38,
+   "cave": {
+    "va": "0x143e336a3",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 40/51 (11 B in the 13 B int3 run at 0x143db6bb3)",
+   "va": "0x143db6bb3",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "81e900400000e9441b0800",
+   "kind": "code",
+   "chunk": 39,
+   "cave": {
+    "va": "0x143db6bb3",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 41/51 (9 B in the 14 B int3 run at 0x143e38702)",
+   "va": "0x143e38702",
+   "expect": "cccccccccccccccccc",
+   "patch": "f30f2ad1e9e6a0f7ff",
+   "kind": "code",
+   "chunk": 40,
+   "cave": {
+    "va": "0x143e38702",
+    "len": 14
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 42/51 (11 B in the 15 B int3 run at 0x143db27f1)",
+   "va": "0x143db27f1",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "41ba00008038e975fdffff",
+   "kind": "code",
+   "chunk": 41,
+   "cave": {
+    "va": "0x143db27f1",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 43/51 (14 B in the 15 B int3 run at 0x143db2571)",
+   "va": "0x143db2571",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "66410f6edaf30f59d3e9e5fbffff",
+   "kind": "code",
+   "chunk": 42,
+   "cave": {
+    "va": "0x143db2571",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 44/51 (11 B in the 12 B int3 run at 0x143db2164)",
+   "va": "0x143db2164",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "41ba0000e040e935940800",
+   "kind": "code",
+   "chunk": 43,
+   "cave": {
+    "va": "0x143db2164",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 45/51 (10 B in the 12 B int3 run at 0x143e3b5a4)",
+   "va": "0x143e3b5a4",
+   "expect": "cccccccccccccccccccc",
+   "patch": "66410f6edae9a3030000",
+   "kind": "code",
+   "chunk": 44,
+   "cave": {
+    "va": "0x143e3b5a4",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 46/51 (13 B in the 15 B int3 run at 0x143e3b951)",
+   "va": "0x143e3b951",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "f30f59d3f30f58cae983000000",
+   "kind": "code",
+   "chunk": 45,
+   "cave": {
+    "va": "0x143e3b951",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 47/51 (13 B in the 15 B int3 run at 0x143e3b9e1)",
+   "va": "0x143e3b9e1",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "0f28d8b9000000bfe986000000",
+   "kind": "code",
+   "chunk": 46,
+   "cave": {
+    "va": "0x143e3b9e1",
+    "len": 15
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 48/51 (9 B in the 12 B int3 run at 0x143e3ba74)",
+   "va": "0x143e3ba74",
+   "expect": "cccccccccccccccccc",
+   "patch": "660f6ee1e99631f7ff",
+   "kind": "code",
+   "chunk": 47,
+   "cave": {
+    "va": "0x143e3ba74",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 49/51 (13 B in the 13 B int3 run at 0x143daec13)",
+   "va": "0x143daec13",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "f30f59dcf30f5fcbe974efffff",
+   "kind": "code",
+   "chunk": 48,
+   "cave": {
+    "va": "0x143daec13",
+    "len": 13
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 50/51 (9 B in the 12 B int3 run at 0x143dadb94)",
+   "va": "0x143dadb94",
+   "expect": "cccccccccccccccccc",
+   "patch": "f30f58c1e997faffff",
+   "kind": "code",
+   "chunk": 49,
+   "cave": {
+    "va": "0x143dadb94",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity cave chunk 51/51 (5 B in the 12 B int3 run at 0x143dad634)",
+   "va": "0x143dad634",
+   "expect": "cccccccccc",
+   "patch": "e93c870400",
+   "kind": "code",
+   "chunk": 50,
+   "cave": {
+    "va": "0x143dad634",
+    "len": 12
+   }
+  },
+  {
+   "name": "run-score heterogeneity hook -> cave entry 0x143e1bfa3",
+   "va": "0x143df5d6a",
+   "expect": "0f28c60f28b424c0000000",
+   "patch": "e934620200909090909090",
+   "kind": "code"
+  }
+ ],
+ "tunable_cells": [
+  {
+   "name": "K_ABIL",
+   "kind": "f32",
+   "value": 0.15,
+   "note": "score points per attribute point away from PIVOT; 0.0 disables heterogeneity",
+   "va": "0x143dc1c74",
+   "chunk": 20,
+   "offset": 1,
+   "bytes": "9a99193e"
+  },
+  {
+   "name": "K_NOISE",
+   "kind": "f32",
+   "value": 7.0,
+   "note": "noise amplitude in score points (peak); 0.0 disables the noise",
+   "va": "0x143db2166",
+   "chunk": 43,
+   "offset": 2,
+   "bytes": "0000e040"
+  }
+ ]
+}

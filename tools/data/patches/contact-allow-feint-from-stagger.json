@@ -1,0 +1,12 @@
+{
+  "description": "ELIGIBILITY - Feint::vf2 0x143fabac0 byte table at 0x143fabb44. Stagger (0x10) maps to case 1 = refuse; case 0 asks the cancel gate. Lets a stumbling player throw a shoulder/body feint to protect the ball. Emulated: Feint canStart(cur=Stagger) REFUSE -> GATED(vf14).",
+  "patches": [
+    {
+      "name": "Feint::vf2 case table: currentKind Stagger -> ask the cancel gate",
+      "va": "0x143fabb52",
+      "expect": "01",
+      "patch": "00",
+      "kind": "code"
+    }
+  ]
+}

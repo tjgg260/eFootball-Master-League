@@ -1,0 +1,103 @@
+{
+ "_comment": "PROVEN-READ subset of duels-firsttouch.json: only edits to fields an instruction in eFootball.exe reads. THEME D physical first-touch & duels (STAGED, apply-and-observe: trap-struct proven-consumed via ballControlRate but these specific reaction leaves are likely-live, harmless if inert). Heavier/slower receptions on dropping & contested balls; contact can dislodge during the touch. Field names: reactionBallSpeed / reactionTime.",
+ "edits": [
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.airBall.paraMin.reactionBallSpeed",
+   "value": 42.0,
+   "_note": "50->42",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.airBall.paraMin.reactionTime",
+   "value": 0.4,
+   "_note": "0.30->0.40 visible plant before controlling",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionBoundBall.airBall.paraMin.reactionBallSpeed",
+   "value": 38.0,
+   "_note": "45->38",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionBoundBall.airBall.paraMin.reactionTime",
+   "value": 0.5,
+   "_note": "0.40->0.50",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.airBall.paraMax.reactionBallSpeed",
+   "value": 52.0,
+   "_note": "50->52",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.airBall.paraMax.reactionTime",
+   "value": 0.25,
+   "_note": "0.30->0.25",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.airBall.paraMin.reactionBallSpeed",
+   "value": 38.0,
+   "_note": "45->38",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.airBall.paraMin.reactionTime",
+   "value": 0.4,
+   "_note": "0.30->0.40",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.groundBall.paraMax.reactionBallSpeed",
+   "value": 62.0,
+   "_note": "60->62",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.groundBall.paraMax.reactionTime",
+   "value": 0.35,
+   "_note": "0.40->0.35",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.groundBall.paraMin.reactionBallSpeed",
+   "value": 44.0,
+   "_note": "50->44",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.groundBall.paraMin.reactionTime",
+   "value": 0.48,
+   "_note": "0.40->0.48",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "staggerTrapHeight",
+   "value": 0.3,
+   "_note": "0.4->0.30 easier to stagger a high touch",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "afterCollision.hitAfterFrame",
+   "value": 8,
+   "_note": "14->8 contact can dislodge during the touch (move first; leave noHit booleans)",
+   "_liveness": "read"
+  }
+ ]
+}

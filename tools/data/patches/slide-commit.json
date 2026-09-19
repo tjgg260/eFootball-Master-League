@@ -1,0 +1,21 @@
+{
+ "description": "TACKLE COMMITMENT 4 - SLIDING. Two numbers in the slide chain 0x1441a96f0 -> 0x1441aa1d0 -> 0x1441a97d0. (a) the per-player lookahead window N = 4 + trunc(4*(Aggression-40)/80): lowering the floor to 30 gives mid-aggression defenders (70-79 Aggression) one more frame of window, i.e. they start committing where only 80+ players did. EMULATED: stock {40:4,60:5,70:5,80:6,90:6,99:6} -> {40:4,60:5,70:6,80:6,90:7,99:7}. (b) the slide distance gate 4.0 + 0.8*risk metres -> 4.5 + 0.8*risk. Sliding is already gated on ball height <= 0.5 m, a 90 deg facing cone and a swept-capsule test against 11 players, so this is not a licence to lunge.",
+ "patches": [
+  {
+   "name": "slide aggression ramp floor 40 -> 30",
+   "va": "0x1441a976b",
+   "expect": "F3 0F 10 0D 55 F7 BA 01",
+   "patch": "F3 0F 10 0D 0D 46 8E 01",
+   "kind": "code",
+   "note": "loads 40.0 now, 30.0 after"
+  },
+  {
+   "name": "slide distance gate base 4.0 -> 4.5 m",
+   "va": "0x1441a9b06",
+   "expect": "F3 0F 58 05 3A 80 90 01",
+   "patch": "F3 0F 58 05 6E 4E 5C 02",
+   "kind": "code",
+   "note": "loads 4.0 now, 4.5 after"
+  }
+ ]
+}

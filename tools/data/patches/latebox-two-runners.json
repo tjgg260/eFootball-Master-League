@@ -1,0 +1,26 @@
+{
+ "description": "LATE BOX ARRIVALS 7 - TWO RUNNERS (HIGHEST RISK, ALL THREE OR NONE). The second-line run is capped at one concurrent runner in three independent places: the selector is constructed with maxSlots=1 at mgr+0x850, the per-attack-level quota table for action 0x1d is {0,1,1,1,1}, and vf4 bails outright if any of the 11 slots already holds action 0x1d. This lifts all three to allow two. The vf4 bail is neutered by comparing against an unused action id (0x7f) instead of 0x1d. Two runners may converge on the same target because vf6's placement is not aware of a second runner - expect that, and revert if it looks wrong. Do not apply a subset. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-two-runners.json",
+ "patches": [
+  {
+   "name": "selector maxSlots 1 -> 2 (mgr+0x850 ctor)",
+   "va": "0x143d51ac7",
+   "expect": "B2 01",
+   "patch": "B2 02",
+   "kind": "code"
+  },
+  {
+   "name": "quota table action 0x1d {0,1,1,1} -> {0,1,2,2}",
+   "va": "0x1442f9bfe",
+   "expect": "C7 45 F0 00 01 01 01",
+   "patch": "C7 45 F0 00 02 02 01",
+   "kind": "code"
+  },
+  {
+   "name": "vf4 already-running bail: compare 0x1d -> unused 0x7f",
+   "va": "0x143dfef64",
+   "expect": "83 3C 0F 1D",
+   "patch": "83 3C 0F 7F",
+   "kind": "code"
+  }
+ ]
+}

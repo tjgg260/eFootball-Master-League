@@ -1,0 +1,21 @@
+{
+ "description": "PHYSICALITY - THE STRONGER MAN PUSHES HARDER IN A SHOULDER BATTLE. WHAT CHANGES: two constants inside the jostle (match::anime::action::Jostle) - the locked-in shoulder-to-shoulder state, which is a different subsystem from the collision resolver in phys-duel-strength. (1) The push-speed bonus ceiling goes from 4000 to 5000, i.e. the maximum extra walking speed a strength advantage buys goes from 4.0 km/h to 5.0 km/h. (2) That bonus currently only reaches its ceiling at a 30-point Physical Contact gap; this pack saturates it at 20, so ordinary squad-mate differences produce a visible push instead of a token one. WHAT WAS REMOVED FROM THIS PACK: the heading-blend edit (0.4 -> 0.6 at 0x144046397) that shipped in the first draft. Emulating that function this pass showed its dominant effect is not a strength effect at all - it shifts the neutral, equal-strength blend by a constant 0.10 on every single jostle (0.800 -> 0.700 on one caller branch and 0.200 -> 0.300 on the other), which at realistic squad strength gaps outweighs the genuine sensitivity gain roughly 4 to 1, and which half-erases a role asymmetry the stock 0.4 deliberately encodes. It is now in phys-jostle-blend-UNVERIFIED-AB.json with the numbers, for a hand A/B - it is not part of this pack. WHO IT AFFECTS: everyone - the human's player, AI team-mates and CPU alike. The jostle state is gated on a flag on both players, so nothing fires outside an actual shoulder battle. EVIDENCE: READ FROM DISASSEMBLY (level b), not emulated, but the arithmetic is closed-form. 0x143f56e39 loads 4000 and 0x143f56e31-0x143f56e41 immediately divides it by fps*3600, so it is exactly 4.000 km/h expressed as metres per frame. 0x143f56e64 loads 30 and that single load feeds both the saturation comiss at 0x143f56e6c and the ramp divisor at 0x143f56e8e, which is why one re-aim keeps them consistent, and the ramp stays inside [0,1] either way. INFERRED ONLY (level c): the attribute naming, index 0x29 = Physical Contact. WHAT TO LOOK FOR IN A MATCH: when two players lock shoulders, the stronger one should walk the weaker one off his line a little faster instead of the pair grinding to a halt. Watch a big striker shielding against a small defender. This is a small, slow effect by design - it is a walking speed, not a shove. STRONGER VERSION: push ceiling 6000 instead of 5000 (re-aim 0x143f56e39 to cell 0x1463336d0, patch bytes F30F10358FC83D02). REVERT: python tools/exe_patch.py remove tools/data/patches/phys-jostle-push.json",
+ "patches": [
+  {
+   "name": "jostle push-speed ceiling 4.0 -> 5.0 km/h",
+   "va": "0x143f56e39",
+   "expect": "F30F10358FE3F201",
+   "patch": "F30F10353FB0C801",
+   "kind": "code",
+   "note": "movss xmm6, [0x145e851d0 = 4000.0] re-aimed to [0x145be1e80 = 5000.0]; xmm6 is immediately divided by fps*3600, giving metres per frame."
+  },
+  {
+   "name": "jostle push ramp saturates at a 20-point strength gap instead of 30",
+   "va": "0x143f56e64",
+   "expect": "F30F1005146FB301",
+   "patch": "F30F1005D83BB301",
+   "kind": "code",
+   "note": "movss xmm0, [0x145a8dd80 = 30.0] re-aimed to [0x145a8aa44 = 20.0]; one load, used both by the comiss saturation test at 0x143f56e6c and by the divss ramp divisor at 0x143f56e8e, so they stay consistent."
+  }
+ ]
+}

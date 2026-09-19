@@ -1,0 +1,47 @@
+{
+ "description": "OFF-BALL VARIETY 1 - CHANGE WHICH CRITERION GETS FIRST PICK OF THE RUNNER. NO EXTRA RUNNERS, NO ATTACK-LEVEL CHANGE. THE PROBLEM. match::ai::ActionSelectorManager::update (0x143d52470, the sole caller is 0x143d03493, no human/CPU test - it drives the CPU AND your ten AI team-mates) walks a FIXED list of ten selectors and hands each player to the FIRST selector that claims him. Eligibility is 0x1442ed7c0 = rank(newAction) < rank(currentAction) STRICTLY (two calls to 0x1442ed8d0, cmp/setl), and all eight run selectors share rank 2 - so 2 < 2 is false and whoever bids first KEEPS the player. The bidding order is therefore the real allocation mechanism, not the score. Today ChanceSpaceRun bids second, ahead of every other run selector, and its score (ChanceSpaceRun::vf5 0x143df5950) is: 100.0 + attackDir * player.x + roleBonus. No space term, no defender-distance term, no pass-likelihood term, no attribute, and NO RNG anywhere on the path. That is 'whoever is furthest up the pitch', evaluated 30 times a second, and it is why the same man makes the same run every time. This pack moves DiagonalRun to the front of the run selectors instead. DiagonalRun::vf5 (0x143e036e0) writes its return value xmm9 exactly once, at 0x143e03a0d: ([teamRecord + 20*lane + 0x44] - player.x) * attackDir = how much ground is still in front of the runner behind the opposition line. That is a DIFFERENT quantity from 'how far up he already is', so it systematically favours a different man - the one with room to run into rather than the one already highest. WHAT THE SIX BYTES DO. The registration function 0x143d520e0 is ten near-identical blocks; each carries three fields: the selector pointer as a disp32 in 'lea r8,[rbx+OFF]', the action id as an imm8 in a dedup 'cmp dword [rax], id', and the same id as an imm32 in the store 'mov [rbx+rax*8], id'. This spec swaps those three fields between the ChanceSpaceRun block (mgr+0x288, id 0x1e) and the DiagonalRun block (mgr+0xe08, id 0x21). 18 bytes, no length change, no cave, and mgr+0x1720 is read by nothing else. CRITICAL - THE APPEND ORDER IS NOT THE BIDDING ORDER. The registration function's LAST act (call at 0x143d52456) is to SORT the array with the general sort 0x143b45ce0 under comparator 0x143d520a0 = priority(a.id) - priority(b.id) via the jump-table function 0x1442ed810. It is an UNSTABLE quicksort, so a swap's outcome CANNOT be read off the source - it has to be run. EVIDENCE (a-emulated, this session, tools/emu_selector_order.py): the real registration function was executed under Unicorn on BOTH the installed exe and the PRISTINE backup, on a fully zeroed manager object with only the memset/memcpy IAT thunks (0x144f8306e / 0x144f8307a) stubbed - every other byte is the game's own. All 30 block fields were verified against the image first ('ALL 30 FIELDS MATCH', both images). STOCK, both images identical: Overlap > ChanceSpaceRun > CounterSpaceRun > SecondLineSpaceRun > LineBreak > DiagonalRun > GoalGet > PostPlay > PullAway > CenteringGet. (Note this CORRECTS the long-standing note that CenteringGet and PullAway bid before GoalGet and PostPlay - they do not.) WITH THIS SPEC, both images identical, still exactly ten entries, every selector present exactly once: Overlap > DiagonalRun > CounterSpaceRun > SecondLineSpaceRun > LineBreak > ChanceSpaceRun > GoalGet > PostPlay > PullAway > CenteringGet. So this is bigger than a straight two-way swap: ChanceSpaceRun falls from 2nd to 6th and now bids BEHIND CounterSpaceRun (whose vf5 0x143dfa680 builds its score multiplicatively with real situational multipliers at 0x143dfa80d and 0x143dfa89f) and behind SecondLineSpaceRun (whose vf5 0x143dfd440 scores from a per-slot zone table). The blunt selector goes last of the four live ones. WHY IT IS AGGRESSION-NEUTRAL. Caps are per-selector and are not touched: the effective cap is min(quota, maxSlots), tested at 0x143df1651 (quota, [r14+0x24]) and 0x143df165b (maxSlots, byte [rsi+0xe4]). The quota comes from 0x1442f9a90 driven by the attack level at [teamCtx+0xb450]; the maxSlots bytes are compile-time immediates. This spec changes neither, so the maximum number of concurrent runners is identical. HONEST TRADE-OFF. Order can move the realised count by one in either direction as a second-order effect: if DiagonalRun takes the only man ChanceSpaceRun would have had, you lose a runner; if ChanceSpaceRun still fills its quota from the remainder while DiagonalRun has also taken one, you gain one. Both are single-body effects, not a change of intent, and nothing here makes a deep block behave like a team chasing a game. WHAT YOU WILL SEE. The ball-side forward run should change shape: instead of the highest man sprinting straight down the channel, expect the man with space ahead of him to angle ACROSS the last line. If DiagonalRun cannot arm (it needs [teamAI+0x28d] to say the team is attacking plus a 75-degree cone at 0x143e04376), you will see nothing at all - and 'no visible difference in a low block' is the honest expected result there. WHAT WOULD FALSIFY IT: forward runs look exactly as they do now in settled attacking possession. EVIDENCE LEVEL: (a-emulated) the bidding order, stock and patched, on both images; (a-emulated) the rank gate that makes order decisive; (b-disassembly) the two vf5 score formulae and the cap machinery; (c-inferred) that the diagonal will read as more varied on screen - that is the thing the test is for. BYTES: all six expect strings verified byte-identical in the installed exe and the PRISTINE backup. Revert: python tools/exe_patch.py remove tools/data/patches/offball-order-diagonal-first.json",
+ "patches": [
+  {
+   "name": "ChanceSpaceRun block -> DiagonalRun selector pointer (lea r8,[rbx+0x288] -> +0xe08)",
+   "va": "0x143d5215b",
+   "expect": "4C 8D 83 88 02 00 00",
+   "patch": "4C 8D 83 08 0E 00 00",
+   "kind": "code"
+  },
+  {
+   "name": "ChanceSpaceRun block -> DiagonalRun dedup id (cmp [rax],0x1e -> 0x21)",
+   "va": "0x143d52180",
+   "expect": "83 38 1E",
+   "patch": "83 38 21",
+   "kind": "code"
+  },
+  {
+   "name": "ChanceSpaceRun block -> DiagonalRun stored id (mov [rbx+rax*8],0x1e -> 0x21)",
+   "va": "0x143d52199",
+   "expect": "C7 04 C3 1E 00 00 00",
+   "patch": "C7 04 C3 21 00 00 00",
+   "kind": "code"
+  },
+  {
+   "name": "DiagonalRun block -> ChanceSpaceRun selector pointer (lea r8,[rbx+0xe08] -> +0x288)",
+   "va": "0x143d5229b",
+   "expect": "4C 8D 83 08 0E 00 00",
+   "patch": "4C 8D 83 88 02 00 00",
+   "kind": "code"
+  },
+  {
+   "name": "DiagonalRun block -> ChanceSpaceRun dedup id (cmp [rax],0x21 -> 0x1e)",
+   "va": "0x143d522c0",
+   "expect": "83 38 21",
+   "patch": "83 38 1E",
+   "kind": "code"
+  },
+  {
+   "name": "DiagonalRun block -> ChanceSpaceRun stored id (mov [rbx+rax*8],0x21 -> 0x1e)",
+   "va": "0x143d522d9",
+   "expect": "C7 04 C3 21 00 00 00",
+   "patch": "C7 04 C3 1E 00 00 00",
+   "kind": "code"
+  }
+ ]
+}

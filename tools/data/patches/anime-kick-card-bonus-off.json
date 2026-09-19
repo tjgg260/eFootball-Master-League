@@ -1,0 +1,26 @@
+{
+ "description": "KEEP THE CARDS AS VOCABULARY, TAKE THEIR ACCURACY BONUS AWAY (the three purely card-conditioned arms). WHAT CHANGES: 0x143ed7440 is the effective-kick-ability selector; its integer result is the single number 0x143ed71d0 maps to the accuracy factor f (<60 -> 0..0.1, 60..90 -> 0.1..0.9, >90 -> 0.9..1.0), and the kick-miss builder turns f into the max angle error (1-f)*22.5 deg. Between 0x143ed7570 and 0x143ed771c the selector runs fourteen per-player card tests, pairs each with a situational condition, and folds the results into three counters that choose one of three bonus arms. This spec zeroes the three inline immediates whose arms are reached ONLY when a card is owned: 0x143ed77fb 'lea ebx,[r14+7]' -> [r14+0], 0x143ed784c 'add esi,5' -> 'add esi,0', 0x143ed7a78 'add ebx,5' -> 'add ebx,0'. Each immediate is private to its own instruction; no shared float-pool cell and no branch is touched, and instruction lengths are unchanged. WHO IT AFFECTS: everyone - both teams, human-controlled and CPU players alike; the selector takes only the kicker and the kick. DEMONSTRATED (a-emulated, this session, Unicorn on the PRISTINE image with the real 0x143ed7440 and the real 0x143ed71d0, SKILL_HAS 0x143eadbe0 forced to 0 and to 1, ATTR_get 0x143ea8cb0 pinned, every other call stubbed, 66 kick ids x 4 values of the second argument = 264 situations): (1) REACHABILITY - with cards OFF the arm at 0x143ed784c executed 0 times out of 264; with cards ON it executed 21 times. That is what makes it a card bonus and not a situational one. The +7 arm (0x143ed77fb) and the header +5 arm (0x143ed7a78) never executed in this sweep, so for those two the 'card-only' claim rests on the disassembly (b-disassembly), not on emulation - they are included because their guards are unambiguous (r8b counter = card 0x2c alone; r14b = SKILL_HAS(6)). (2) EFFECT - stock, the all-cards-minus-no-cards delta in effective ability was {+0 in 243, +5 in 21}; with this spec overlaid it is {+0 in all 264}. (3) END TO END through the real curve, restricted to the 21 situations where the arm fires: ability 55 -> effective 52 vs 57, f 0.0600 vs 0.0850, err 21.15 vs 20.59 deg; ability 65 -> 62 vs 67, f 0.1533 vs 0.2867, err 19.05 vs 16.05 deg (about 1.2 m of lateral spread on a 20 m pass); ability 75 -> 13.05 vs 10.05 deg; ability 85 -> 7.05 vs 4.05 deg; ability 95 -> 1.75 vs 0.50 deg. With this spec the all-cards column returns to the no-cards value exactly, at every ability tested. HONEST CAVEAT ON THE MAGNITUDE: an earlier pass reported the bonus firing in 936 of 936 situations; in this independent sweep it fired in 21 of 264 (8%). Both worlds are synthetic - a zeroed arena under-fires, a saturated one over-fires - so treat 'how often it fires in a real match' as unknown and 'what it is worth when it fires' as the measured 3.0 deg of max error. NOT COVERED: (a) 0x143ed780d (+6) is reached by EITHER card 0x34 OR a purely situational flag, so one immediate cannot separate them - see anime-kick-card-bonus-off-plus6.json, which is an ADD-ON to this spec, not a replacement; (b) the header branch's other +6 at 0x143ed7a69 is purely situational ('mov cl,1' at 0x143ed7a5a, from the 0x143ee25c0 predicate with the kick action in 8..0xa) and is deliberately left alone; (c) a team-level +5 at [teamCtx+0x5098] is not a player property and is left alone; (d) 22 further card tests inside the kick-miss builder 0x14401a900 and its factor functions are NOT neutralised - direction and magnitude unproven. SIDE EFFECT: this also removes the bonus from players who legitimately own those cards today, which is the intent but is a change to stock balance in its own right - elite card-holders lose up to 3 deg of the accuracy they have now. WHAT TO LOOK FOR IN ONE MATCH: pick a mid-70s passer who owns passing cards and hit twenty 25-30 m balls; they should now scatter noticeably more than before, while an elite passer's short game is unchanged (the curve is flat where he already sits). Pair with anime-unlock-all.json (or the per-player data write) and confirm the poor players' spread does NOT tighten. Bytes verified identical in the PRISTINE backup and the installed image; no relative branch anywhere in the executable sections lands inside any of the three windows. REVERT: python tools/exe_patch.py remove tools/data/patches/anime-kick-card-bonus-off.json",
+ "patches": [
+  {
+   "name": "+7 -> +0  (card 0x2c tier, main kick branch) lea ebx,[r14+7] -> lea ebx,[r14+0]",
+   "va": "0x143ed77fb",
+   "expect": "418d5e07",
+   "patch": "418d5e00",
+   "kind": "code"
+  },
+  {
+   "name": "+5 -> +0  (any card+situation pair, main kick branch) add esi,5 -> add esi,0",
+   "va": "0x143ed784c",
+   "expect": "83c605",
+   "patch": "83c600",
+   "kind": "code"
+  },
+  {
+   "name": "+5 -> +0  (card 6, header branch) add ebx,5 -> add ebx,0",
+   "va": "0x143ed7a78",
+   "expect": "83c305",
+   "patch": "83c300",
+   "kind": "code"
+  }
+ ]
+}

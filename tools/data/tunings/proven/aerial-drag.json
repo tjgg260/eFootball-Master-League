@@ -1,0 +1,19 @@
+{
+ "_comment": "PROVEN-READ subset of aerial-drag.json: only edits to fields an instruction in eFootball.exe reads. THEME B drag-window (APPLY). Ball aero integrator PROVEN-live 0x14408d0f0/0x144089620. Widens the drag-crisis window so floated crosses/long balls bleed pace and drop, while driven balls keep zip. GUARD: magnus 0.035 untouched.",
+ "edits": [
+  {
+   "object": "ball",
+   "path": "dragSpeedMin",
+   "value": 66.0,
+   "_note": "56.9956->66.0 drag-crisis window (floated balls bleed pace, drop into box)",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "dragSpeedMax",
+   "value": 106.0,
+   "_note": "96.995->106.0",
+   "_liveness": "read"
+  }
+ ]
+}

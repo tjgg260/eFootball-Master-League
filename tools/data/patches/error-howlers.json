@@ -1,0 +1,33 @@
+{
+ "description": "ERROR LAYER 2c - OCCASIONAL HOWLERS (the tail), tuned separately from the everyday core. The game keeps two populations: a normal kick with random error, and four typed mishits (over-hit, awkward body angle, closed down, ball behind the body) that carry a guaranteed minimum miss. This pack raises how often a typed mishit fires (both roll sites x1.3 - they gate different types, so both are needed), lifts the guaranteed minimum miss on the awkward-angle / behind-body types from 8 to 15 deg so a howler is visibly a howler, and removes the stock exemption that ZEROES sideways error on assisted passes (without this, pass-assist players can never pull or push a normal pass). Ability still suppresses every probability, so elite players mishit far less. All re-aims or a 6-byte branch change; no new code. Byte-identical to entries that ran in-game (slices-scuffs.json A, A2, D; loose-realism-v2.json K-keep). Revert: python tools/exe_patch.py remove tools/data/patches/error-howlers.json",
+ "patches": [
+  {
+   "name": "mishit roll x1.3 (awkward-angle + behind-body types)",
+   "va": "0x14401b7d8",
+   "expect": "F3 0F 59 05 6C F2 A6 01",
+   "patch": "F3 0F 59 05 98 D7 AF 02",
+   "kind": "code"
+  },
+  {
+   "name": "mishit roll x1.3 (over-hit + closed-down types)",
+   "va": "0x144019a50",
+   "expect": "F3 44 0F 10 15 F3 0F A7 01",
+   "patch": "F3 44 0F 10 15 1F F5 AF 02",
+   "kind": "code"
+  },
+  {
+   "name": "guaranteed minimum miss on awkward/behind-body mishits 8 -> 15 deg",
+   "va": "0x144019ec3",
+   "expect": "F3 44 0F 5F 0D F0 90 B3 01",
+   "patch": "F3 44 0F 5F 0D 34 11 BF 01",
+   "kind": "code"
+  },
+  {
+   "name": "assisted passes are no longer exempt from sideways error",
+   "va": "0x14401a175",
+   "expect": "0F84E2000000",
+   "patch": "E9E300000090",
+   "kind": "code"
+  }
+ ]
+}

@@ -1,0 +1,29 @@
+{
+ "description": "MARKING RANGE-BAND: MAKE A MARKER POINT AT HIS MAN FROM 20 m INSTEAD OF 30 m. Two paired RIP-relative re-aims inside match::player::ActionMark::vf20 (0x1441a1e50). No pool cell is written. WHAT THE CODE DOES (a-EMULATED, Unicorn, game's own bytes, read-only): vf20's tail at 0x1441a261d..0x1441a2754 is out = self + polar( rotate(bearing_to_basepoint -> bearing_to_marked_man, by at most w*CAP), R ) where R = |self - the destination the caller proposed| (xmm9, built at 0x1441a261d..0x143da..sqrt 0x140a229f0) and w = 1 when R < 8, 0 when R >= 30, (R-30)/-22 between (branch at 0x1441a264e/0x1441a2662, slope at 0x1441a2675), applied as xmm8 *= (1 - w) at 0x1441a2688..0x1441a2699. THE RADIUS R IS NEVER CHANGED - emulation shows radial closing of exactly 0.000 m in every case - so vf20 can only fix the BEARING, never the RANGE. w = 1 at short range means the marker IGNORES his man's bearing inside 8 m and walks to his zonal base point instead; full man-ward steering only arrives at 30 m. THE EDIT: move the FLOOR from 8 m to 3 m, the top from 30 m to 15 m and the slope from -22 to -12 so the ramp stays exactly 1 at R=3 and 0 at R=15 (the two constants are a PAIR - changing one alone drives the ramp above 1 and the steering goes NEGATIVE, i.e. away from the man). EMULATED RESULT, bearing error still left on the striker after vf20, base point 25 deg off the striker, CAP = the installed 90: R=4 m 25.00 deg -> 17.50, R=6 m 25.00 -> 2.50, R=8 m 25.00 -> 0.00, R=10 m 16.82 -> 0.00, R=12 m 8.64 -> 0.00; only R <= 3 m is left at 25.00. No overshoot at any R from 2 to 30. WHO: COM-driven markers on BOTH teams - the CPU opponents and your own AI team-mates. Your stick-controlled player does not run ActionMark. WHAT THIS WILL NOT FIX: the stand-off distance itself. R comes from the caller (the base-position layer, 0x144189400 and the ActionBasePosition gate chain at 0x144184490), so if the shape proposes a point 6 m away while the striker is 12 m away the marker still stops 7 m short - he will simply be facing the right way when he does. Judge this edit on whether markers stop drifting side-on, not on whether the cushion closes. BYTES: both sites are byte-identical in the INSTALLED exe and in eFootball.exe.PRISTINE; both re-aims keep the same 8-byte instruction form; destination cells 0x145a8aa44 = 20.0 (.tls$, read-only pool) and 0x146b01d90 = -12.0 (.tls$, 63 referrers, zero writers). REVERT: python tools/exe_patch.py remove tools/data/patches/mark-arc-close-strong.json",
+ "patches": [
+  {
+   "name": "steering floor 8 m -> 3 m (re-aim 0x145b52fbc -> 0x1478504e8)",
+   "va": "0x1441a2642",
+   "expect": "F30F100D72099B01",
+   "patch": "F30F100D9EDE6A03",
+   "kind": "code",
+   "note": "movss xmm1,[0x145b52fbc = 8.0] re-aimed to [0x1478504e8 = 3.0]. disp32 = 0x1478504e8 - 0x1441a264a = 0x036ADE9E. PAIRED: never apply without the 30 -> 15 and -22 -> -12 edits, or the ramp exceeds 1 and the steering inverts."
+  },
+  {
+   "name": "man-ward steering reaches full strength at 15 m instead of 30 m (re-aim 0x145a8dd80 -> 0x145c0b000)",
+   "va": "0x1441a265a",
+   "expect": "F30F10051EB78E01",
+   "patch": "F30F10059E89A601",
+   "kind": "code",
+   "note": "movss xmm0,[0x145a8dd80 = 30.0] re-aimed to [0x145c0b000 = 15.0]. disp32 = 0x145c0b000 - 0x1441a2662 = 0x01A6899E."
+  },
+  {
+   "name": "ramp slope -22 -> -12 (re-aim 0x146b6f594 -> 0x146b01d90)",
+   "va": "0x1441a2675",
+   "expect": "F30F5E1D17CF9C02",
+   "patch": "F30F5E1D13F79502",
+   "kind": "code",
+   "note": "divss xmm3,[0x146b6f594 = -22.0] re-aimed to [0x146b01d90 = -12.0]. (3-15)/-12 = 1.0 exactly."
+  }
+ ]
+}

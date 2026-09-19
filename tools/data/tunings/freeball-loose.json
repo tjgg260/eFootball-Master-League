@@ -1,0 +1,47 @@
+{
+ "_comment": "LOOSE BALL RUNS ON. Ball roll friction is applied per FRAME in the shared integrator 0x14408d0f0 (rate^60 per second), so small changes compound hard: 0.991^60 = 0.58/s, 0.9935^60 = 0.68/s. The [6] index is pitch condition; idx 0 and 2 cover most matches (see aerial-pitch-spread.json). stopSpeed is the speed below which the ball is snapped to rest. Apply LAST and alone - this one also lengthens every pass.",
+ "edits": [
+  {
+   "object": "ball",
+   "path": "frictionRollRateMax[0]",
+   "value": 0.9935,
+   "_note": "0.991 -> 0.9935"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMax[2]",
+   "value": 0.9895,
+   "_note": "0.987 -> 0.9895"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMin[0]",
+   "value": 0.9895,
+   "_note": "0.987 -> 0.9895"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMin[2]",
+   "value": 0.9855,
+   "_note": "0.983 -> 0.9855"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateStop[0]",
+   "value": 0.9865,
+   "_note": "0.983 -> 0.9865"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateStop[2]",
+   "value": 0.9825,
+   "_note": "0.979 -> 0.9825"
+  },
+  {
+   "object": "ball",
+   "path": "stopSpeed",
+   "value": 0.12,
+   "_note": "0.175 -> 0.12: the ball keeps trickling instead of dying, so it stays contestable"
+  }
+ ]
+}

@@ -1,0 +1,95 @@
+{
+ "_comment": "THE STRING. trap.ballForceDirect is consumed ONLY by match::anime::action::Trap (functions 0x144052c30, 0x144053700, 0x14405cc60, 0x14405e130 - that is the complete set of readers in the image). What it does: it picks a DISTANCE IN METRES at which the ball is planted in front of the player during a trap/touch, keyed by (fromMotion, toMotion) in {Idle, Run, Dash}; 0x14407aad0 turns that distance into a target position playerPos + heading * dist. There is NO separate stiffness/spring/rate field - the only dials are the DISTANCE and the DELAY (blendStartAfterFrame, in frames, before the blend starts). Bigger distance = the touch pushes the ball further ahead instead of killing it at the foot. STAGED: apply this AFTER freeball-firsttouch.json and test it alone - this is the pack most likely to reproduce the 'uncontrollable' failure mode if pushed too far.",
+ "edits": [
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartAfterFrame",
+   "value": 26,
+   "_note": "20 -> 26 frames (0.33 s -> 0.43 s at 60 fps). Consumer 0x144052cd5 returns fps*value/60 for the trap anime ids that use it; the ball is not corralled to the target offset until then."
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.kickBasis.offsetPos_Idle",
+   "value": 0.7,
+   "_note": "0.5 -> 0.7 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.kickBasis.offsetPos_Run",
+   "value": 1.85,
+   "_note": "1.5 -> 1.85 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.kickBasis.offsetPos_Dash",
+   "value": 2.45,
+   "_note": "2.0 -> 2.45 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Idle_Idle",
+   "value": 0.7,
+   "_note": "0.5 -> 0.7 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Run_Idle",
+   "value": 0.7,
+   "_note": "0.5 -> 0.7 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Dash_Idle",
+   "value": 0.7,
+   "_note": "0.5 -> 0.7 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Idle_Run",
+   "value": 1.85,
+   "_note": "1.5 -> 1.85 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Run_Run",
+   "value": 1.85,
+   "_note": "1.5 -> 1.85 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Dash_Run",
+   "value": 1.85,
+   "_note": "1.5 -> 1.85 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Idle_Dash",
+   "value": 2.7,
+   "_note": "2.25 -> 2.7 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Run_dash",
+   "value": 2.7,
+   "_note": "2.25 -> 2.7 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.blendStartFrame.offsetPos_Dash_Dash",
+   "value": 2.7,
+   "_note": "2.25 -> 2.7 m"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.runDashSetting.min",
+   "value": 2.7,
+   "_note": "2.25 -> 2.7. min == max is a HARD PIN: 0x14405e22c..0x14405e2ff compute clamp(offset*ratio, min, max), so with min == max the *_Run offsets are overwritten by exactly this number whenever the dash flag is set. ratio (1.2) is therefore INERT until min < max. Raise min AND max together, or the edit does nothing."
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.runDashSetting.max",
+   "value": 2.7,
+   "_note": "2.25 -> 2.7, see min"
+  }
+ ]
+}

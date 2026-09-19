@@ -1,0 +1,117 @@
+{
+ "_comment": "PROVEN-READ subset of tactical-flow.json: only edits to fields an instruction in eFootball.exe reads. TACTICAL-FLOW pack \u2014 coherent_tactical_pack from the game-feel/tactical audit (workflow w15jy8s51). All dt270 basePosition + pass fields, verified-live (proven readers) or high-confidence. Absolute targets; apply with --stack so it layers on loose-realism-v2 + rating formula. Reversible via gameplay_tune restore. Net feel: a settled team that holds zones and presses in triggers instead of swarming; deliberate, interceptable build-up instead of constant fast-forward; runs timed to the ball with patience and angle variety.",
+ "edits": [
+  {
+   "object": "basePosition",
+   "path": "spaceCoverRate",
+   "value": 0.55,
+   "_note": "0.45->0.55 zonal cover vs ball-chasing (proven, ctx+0xf0 cache read ~0x143e8608b)",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "adjustSpaceCoverRate",
+   "value": 0.3,
+   "_note": "0.23->0.30 situational compactness boost (proven +0x60)",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "minWidth",
+   "value": 7.0,
+   "_note": "9.0->7.0 lateral block compactness (proven +0x284)",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "minWidth_stratagy_defensive",
+   "value": 6.0,
+   "_note": "7.0->6.0 compactness floor when defending (proven +0x28c)",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "dfLineCloseRate",
+   "value": 0.42,
+   "_note": "0.55->0.42 calmer last-line step (proven +0x154)",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "lastLineCloseMaxRate",
+   "value": 0.62,
+   "_note": "0.8->0.62 cap on last-line closing speed (proven +0x218)",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "slowDownFw",
+   "value": true,
+   "_note": "false->true forwards hold shape; fewer bodies press (proven, gates 0x1441802b0)",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "slowDownPassFrame",
+   "value": 4,
+   "_note": "1->4 settle around passing lanes, less lunging (proven, read 0x144184579)",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "marginPredictionFrameBase",
+   "value": 12,
+   "_note": "6->12 longer anticipation horizon; intercept in position not chase (proven, read 0x143da6533)",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[0]",
+   "value": 30.0,
+   "_note": "36->30 (x0.82) deliberate, interceptable ground passing; SHARED CPU+human",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[1]",
+   "value": 28.0,
+   "_note": "34->28",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[2]",
+   "value": 26.0,
+   "_note": "32->26",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[3]",
+   "value": 26.0,
+   "_note": "32->26",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[4]",
+   "value": 28.0,
+   "_note": "34->28",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[5]",
+   "value": 28.0,
+   "_note": "34->28",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "paraMinSpeedRate",
+   "value": 0.65,
+   "_note": "0.8->0.65 widen team-quality tempo gap; weak sides build up visibly slower",
+   "_liveness": "read"
+  }
+ ]
+}

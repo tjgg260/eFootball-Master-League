@@ -1,0 +1,29 @@
+{
+ "description": "LINE-01  CLOSE THE MARKER'S DEAD ZONE. Three PAIRED RIP-relative re-aims in match::player::ActionMark::vf20 (0x1441a1e50). No pool cell is written; no byte changes length.\n\nWHAT CHANGES. vf20's tail builds R = |self - the destination the shape layer proposed| (sqrt at 0x1441a263d), then a range weight w: w=1 below 8 m, w=0 at/above 30 m, (R-30)/-22 between (0x1441a2642 / 0x1441a265a / 0x1441a2675). At 0x1441a2688..0x1441a2699 the code does xmm8 = xmm8 * (1 - w) where xmm8 is the marker's MAXIMUM steering swing toward his man (the 45-deg cap, which your installed exe already widened to 90 at 0x1441a2475). So w=1 means ZERO steering: INSIDE 8 METRES THE MARKER STOPS AIMING AT HIS MAN AND WALKS TO HIS ZONAL BASE POINT INSTEAD. This pack moves the ramp to w=1 below 3 m, w=0 at/above 15 m, so the marker is steering hard at his man from 15 m all the way in to 3 m.\n\nRESIDUAL BEARING ERROR left on the striker (base point 25 deg off him, installed 90-deg cap), from the earlier Unicorn run of these exact bytes: R=4 m 25.00 -> 17.50 deg; R=6 m 25.00 -> 2.50; R=8 m 25.00 -> 0.00; R=10 m 16.82 -> 0.00; R=12 m 8.64 -> 0.00. No overshoot (negative steering) at any R from 2 to 30 m.\n\nWHO: every COM-driven marker on BOTH teams - the CPU's defenders and your own AI team-mates. Your stick-controlled player does not run ActionMark. Not difficulty-gated on this path.\n\nEVIDENCE: b-disassembly re-verified instruction by instruction on the INSTALLED image this session (the ramp, the (1-w) application, and every pool cell value read out of both images); the residual-error table is a-emulated from an earlier Unicorn run of the same byte sequence. All three sites are byte-identical in the installed exe and in eFootball.exe.PRISTINE, and all three disp32s were recomputed by hand.\n\nWHAT THIS WILL NOT DO - READ THIS. It does not shorten the cushion. R is handed in by the caller (match::player::ActionBasePosition 0x144189400); vf20 was emulated to close exactly 0.000 m of it in every case. This pack changes which way the centre-back is FACING and how early he commits his body, not how far away he stands. Judge it on 'does he stay goal-side and square to his man instead of drifting side-on', not on 'did the gap close'. For the gap itself use the two dt270 packs line-cb-close-harder.json and line-cover-narrow.json.\n\nWHAT TO WATCH FOR: markers turning INTO the striker as he sets off, and staying attached through a check-to-the-ball; fewer defenders running parallel to a runner they never look at.\n\nTOO STRONG IF: markers visibly jitter or oscillate around the man at very close range, or a defender gets spun by a simple body feint because he is over-committed to the man's bearing. That is the known hazard of steering hard from 3 m on top of the already-installed 90-deg cap. If you see it, fall back to the SOFTER variant: tools/data/patches/mark-arc-close.json (floor stays 8 m, top moves 30 -> 20 m, same slope cell). There is no stronger variant worth shipping - below a 3 m floor the ramp stops being the binding term.\n\nCONFLICT: this pack touches the same three bytes as mark-arc-close-strong.json and two of the same bytes as mark-arc-close.json. Apply exactly ONE of the three; exe_patch will refuse the second on an expect mismatch, which is the safe failure.\n\nREVERT: python tools/exe_patch.py remove tools/data/patches/line-mark-arc-strong.json",
+ "patches": [
+  {
+   "name": "marker's no-steer dead zone: 8 m -> 3 m (re-aim 0x145b52fbc -> 0x1478504e8)",
+   "va": "0x1441a2642",
+   "expect": "F30F100D72099B01",
+   "patch": "F30F100D9EDE6A03",
+   "kind": "code",
+   "note": "movss xmm1,[0x145b52fbc = 8.0f] re-aimed to [0x1478504e8 = 3.0f]. disp32 = 0x1478504e8 - 0x1441a264a = 0x036ADE9E (recomputed by hand this session). PAIRED - all three edits or none."
+  },
+  {
+   "name": "full man-ward steering from 15 m instead of 30 m (re-aim 0x145a8dd80 -> 0x145c0b000)",
+   "va": "0x1441a265a",
+   "expect": "F30F10051EB78E01",
+   "patch": "F30F10059E89A601",
+   "kind": "code",
+   "note": "movss xmm0,[0x145a8dd80 = 30.0f] re-aimed to [0x145c0b000 = 15.0f]. disp32 = 0x145c0b000 - 0x1441a2662 = 0x01A6899E. This cell feeds BOTH the comiss gate at 0x1441a2662 and the ramp numerator at 0x1441a2671, so gate and numerator move together."
+  },
+  {
+   "name": "ramp slope -22 -> -12 so the ramp is exactly 1.0 at the new 3 m floor (re-aim 0x146b6f594 -> 0x146b01d90)",
+   "va": "0x1441a2675",
+   "expect": "F30F5E1D17CF9C02",
+   "patch": "F30F5E1D13F79502",
+   "kind": "code",
+   "note": "divss xmm3,[0x146b6f594 = -22.0f] re-aimed to [0x146b01d90 = -12.0f]. disp32 = 0x146b01d90 - 0x1441a267d = 0x0295F713. (3-15)/-12 = 1.0 exactly, so the ramp stays continuous and never exceeds 1; exceeding 1 would flip the sign of (1-w) and steer markers AWAY from their man."
+  }
+ ]
+}

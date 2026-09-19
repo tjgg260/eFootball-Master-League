@@ -1,0 +1,19 @@
+{
+ "description": "RUN VARIETY A - MORE THAN THREE PLAYERS MAY RUN. ChanceSpaceRun (action 0x1e) is the ONLY off-ball run selector that is not capped to one or two runners: its maxSlots byte is constructed as 0x0b (11 = uncapped, 0x143d51a3c 'mov dl,0xb'), so the whole limit is the per-attack-level quota table inside 0x1442f9a90. EMULATED (tools scratch, Unicorn, all calls stubbed, attack level driven directly): 0x1442f9a90(action=0x1e) returns {1,2,2,3,3} for attack levels 0..4, and {2,2,3,3,3} when the 0x1442e0c00 branch bumps the level. Full emulated quota table for every registered run type, same run: 0x1d SecondLineSpaceRun {0,1,1,1,1}, 0x1e ChanceSpaceRun {1,2,2,3,3}, 0x1f CounterSpaceRun {2,3,4,4,4}, 0x20 LineBreak {0,1,1,2,2} (selector is an EMPTY SHELL - never fires), 0x21 DiagonalRun {1,1,1,2,2}, 0x27 Overlap {0,1,2,2,2}, 0x2a PostPlay {1,1,1,1,1}, 0x2e PullAway {0,0,1,1,1} (EMPTY SHELL). The dispatcher grants min(quota, maxSlots) (quota at 0x143df1651 'cmp [r14+0x24],ecx', maxSlots at 0x143df165b 'movzx eax,[rsi+0xe4]'), so for 0x1e the quota IS the cap. This raises it to {2,3,3,4,4}. WHY IT MATTERS FOR ONE-DIMENSIONAL RUNS: the ChanceSpaceRun score (0x143df5950) is, emulated exactly, score = 100 + attackDir*player.x + (roleBonus if 0x143d37f30||0x143d32a90). There is no other term, and no randomness anywhere in the selector's whole direct-call closure. So the run slots go to the N players furthest up the pitch, every evaluation tick, forever. Raising N from 2-3 to 3-4 is the only way to get anyone other than the front line into a space run without new code. Two inline immediates in the 0x1e case of the quota switch; no pool cell is touched. Affects BOTH teams (0x143d52470 is called once per team from 0x143d03493 with no human/CPU test). Byte-identical in the installed exe and in the PRISTINE backup. Revert: python tools/exe_patch.py remove tools/data/patches/runvar-chance-quota.json",
+ "patches": [
+  {
+   "name": "ChanceSpaceRun quota levels 0..3: {1,2,2,3} -> {2,3,3,4}",
+   "va": "0x1442f9bae",
+   "expect": "C7 45 F0 01 02 02 03",
+   "patch": "C7 45 F0 02 03 03 04",
+   "kind": "code"
+  },
+  {
+   "name": "ChanceSpaceRun quota level 4: 3 -> 4",
+   "va": "0x1442f9bb9",
+   "expect": "C6 45 F4 03",
+   "patch": "C6 45 F4 04",
+   "kind": "code"
+  }
+ ]
+}

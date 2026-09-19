@@ -1,0 +1,12 @@
+{
+ "description": "LATE BOX ARRIVALS 2 - HOW MANY ARE AHEAD. vf4 per-slot loop 0x143dff8d0..0x143dff961 counts team-mates positioned ahead of the candidate and rejects him if more than 2 are. A midfielder arriving late behind a front three plus a wide man is always above that. Raises the cap to 4. One private imm8. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-runners.json",
+ "patches": [
+  {
+   "name": "mates-ahead cap 2 -> 4",
+   "va": "0x143dff95d",
+   "expect": "41 80 FC 02",
+   "patch": "41 80 FC 04",
+   "kind": "code"
+  }
+ ]
+}

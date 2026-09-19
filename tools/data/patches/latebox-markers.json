@@ -1,0 +1,12 @@
+{
+ "description": "LATE BOX ARRIVALS 8 - MARKER TOLERANCE. The strict params set allows a second-line run only if 0x1442f8c70 (opponents in a 30x30 region ahead, sampled at 0.5) returns at most 1; the permissive set allows 2. Raises the strict cap to 2 so it matches the permissive set. One private imm8 (mov cl,1 -> mov cl,2). The exact meaning of the 0x1442f8c70 return is inferred; the direction (larger byte = more permissive) is not. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-markers.json",
+ "patches": [
+  {
+   "name": "strict markers-allowed 1 -> 2 (params+0x1C)",
+   "va": "0x143e0265d",
+   "expect": "B1 01",
+   "patch": "B1 02",
+   "kind": "code"
+  }
+ ]
+}

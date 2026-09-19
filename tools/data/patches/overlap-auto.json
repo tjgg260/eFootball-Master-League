@@ -1,0 +1,33 @@
+{
+ "description": "AUTOMATIC OVERLAPS (offball). Four re-aims in match::ai::ActionSelectorOverlap::vf2 (0x143df03e0) and match::ai::CanOverlap (0x143e895e0) that let the designated full-back start an overlap run on his own instead of only on a manual trigger. Nothing here is a new instruction: each is one RIP-relative disp32 pointed at a DIFFERENT EXISTING pool cell, same instruction length. (A) the selector aborts entirely whenever the ball-carrier is in state 5 and already facing within 30 deg of the goal - 30 -> 10 deg. (B) at attack level 2 (the default) the run is allowed once the carrier is within 15 m of the opponent defensive line - 15 -> 20 m (this constant is reused as the lateral |cand.y - holder.y| cap, so that goes 15 -> 20 m too). (C)+(D) the 'someone else is already in the wide channel' veto: channel half-width 8 -> 4 m and the x-proximity window 15 -> 8 m. Affects every AI-controlled player on BOTH teams (the selector runs for whichever team is in possession). Revert: python tools/exe_patch.py remove tools/data/patches/overlap-auto.json",
+ "patches": [
+  {
+   "name": "A: selector abort when carrier faces goal, 30 deg -> 10 deg",
+   "va": "0x143df06f3",
+   "expect": "F3 0F 10 0D 85 D6 C9 01",
+   "patch": "F3 0F 10 0D 81 D6 C9 01",
+   "kind": "code"
+  },
+  {
+   "name": "B: attack-level-2 defensive-line margin 15 m -> 20 m (also lateral cap)",
+   "va": "0x143e899af",
+   "expect": "F3 44 0F 10 0D 48 16 D8 01",
+   "patch": "F3 44 0F 10 0D 8C 10 C0 01",
+   "kind": "code"
+  },
+  {
+   "name": "C: wide-channel veto band halfW-8 -> halfW-4",
+   "va": "0x143e89c88",
+   "expect": "F3 44 0F 10 3D 2B 93 CC 01",
+   "patch": "F3 44 0F 10 3D B7 7E C2 01",
+   "kind": "code"
+  },
+  {
+   "name": "D: wide-channel veto x-window 15 m -> 8 m",
+   "va": "0x143e89e17",
+   "expect": "F3 0F 10 0D E1 11 D8 01",
+   "patch": "F3 0F 10 0D 9D 91 CC 01",
+   "kind": "code"
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "description": "LATE BOX ARRIVALS 6 - ARM EARLIER. vf4's first geometric gate bails the whole selector unless dir*ball.x >= -5.5, i.e. unless the ball is within 5.5 m of the halfway line or beyond. The midfielder therefore only starts thinking about the run once possession is already advanced. Moving the threshold to -20 m lets the run be prepared during build-up so he is moving when the cross comes. One disp32 re-aim. Watch defensive shape on turnovers. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-arm-earlier.json",
+ "patches": [
+  {
+   "name": "ball-depth arming gate -5.5 -> -20",
+   "va": "0x143dfedb3",
+   "expect": "F3 0F 10 05 D5 3C D2 02",
+   "patch": "F3 0F 10 05 89 0F D0 02",
+   "kind": "code"
+  }
+ ]
+}

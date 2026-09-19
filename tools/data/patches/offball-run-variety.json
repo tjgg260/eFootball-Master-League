@@ -1,0 +1,19 @@
+{
+ "description": "OFF-BALL RUN VARIETY 1 - UNLOCK THE QUOTAS KONAMI ALREADY AUTHORED. Each off-ball run selector has TWO independent caps: a per-attack-level quota table in 0x1442f9a90, and a hard maxSlots byte written into the selector at construction (sel+0xe4, read by the dispatcher at 0x143df165b). For CounterSpaceRun the quota table says {2,3,4,4,4} and for DiagonalRun {1,1,1,2,2}, but both selectors are constructed with maxSlots=1, so min(quota, maxSlots)=1 and the extra runners never happen. This raises those two maxSlots bytes only; the quota tables are untouched, so the extra runner still only appears at the attack levels Konami already allowed. Unlike SecondLineSpaceRun (see latebox-two-runners.json) neither of these two vf4 masks bails when a run of the same type is already active - they only skip the individual player who is already running - so the maxSlots byte is the whole cap. Affects BOTH teams: the AI-team-mate manager update 0x143d52470 is called once per team from 0x143d03493 with no human/CPU test. Revert: python tools/exe_patch.py remove tools/data/patches/offball-run-variety.json",
+ "patches": [
+  {
+   "name": "CounterSpaceRun maxSlots 1 -> 2 (ctor arg, RetryWork+0x588)",
+   "va": "0x143d51a8f",
+   "expect": "B2 01",
+   "patch": "B2 02",
+   "kind": "code"
+  },
+  {
+   "name": "DiagonalRun maxSlots 1 -> 2 (own ctor, sel+0xe4)",
+   "va": "0x143e02781",
+   "expect": "C6 83 E4 00 00 00 01",
+   "patch": "C6 83 E4 00 00 00 02",
+   "kind": "code"
+  }
+ ]
+}

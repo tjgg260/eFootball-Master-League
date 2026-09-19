@@ -1,0 +1,13 @@
+{
+ "description": "TACKLE COMMITMENT 5 - PRESS ENGAGEMENT. match::player::ActionPress vf5 0x144191160 refuses to engage unless dist^2 <= 42.25 (6.5 m). 56.25 (7.5 m) starts the closing-down a metre earlier, which is what feeds the tackle decide with in-range situations. This is the upstream lever: widening it without widening the tackle reach produces more pressure but no more challenges.",
+ "patches": [
+  {
+   "name": "press engage radius^2 42.25 -> 56.25 (6.5 -> 7.5 m)",
+   "va": "0x144191585",
+   "expect": "F3 0F 10 05 BF 14 99 02",
+   "patch": "F3 0F 10 05 C7 14 99 02",
+   "kind": "code",
+   "note": "loads 42.25 now, 56.25 after"
+  }
+ ]
+}

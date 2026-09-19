@@ -1,0 +1,33 @@
+{
+ "description": "OFF-BALL RUN VARIETY 2 - COUNTER RUNS BELOW TOP DIFFICULTY. The cap builder 0x143df0080 zeroes a run type's quota outright when GetParam(level, row) is not > FLT_EPSILON. Row 0x14 gates CounterSpaceRun (0x1f) and reads {0,0,0,1,1,1,1,1,1,1} in both level tables, so counter-attacking runs simply do not exist at the three lowest settings. This opens the second and third. Both tables are edited because 0x1442e48f0 picks between them at runtime via 0x14533eb60. Data-page writes only. RE-VERIFIED 2026-09-18 after a review challenged the column arithmetic; the challenge did NOT hold up, and here is the decode so nobody has to redo it. GetParam 0x1442e48f0: rdi = row (`cmp edi,0x2b; ja` = 44 rows), row stride 0x2c = one flag byte at +0 then ten floats at +4..+0x28; the case index is e = [rbx+4] ^ [rbx], with e < 0 forced to 0 and e > 6 routed to the case-6 block. The 7-entry jump table at 0x140000000+0x42e4bd8 resolves to e=0 -> 0x1442e4b2d, e=1 -> 0x1442e4955, e=2 -> 0x1442e49b3, e=3 -> 0x1442e4a0d, e=4 -> 0x1442e4a67, e=5 -> 0x1442e4ac1, e>=6 -> 0x1442e4b80. With the row flag byte non-zero each block's `cmp byte [rcx+r8],0; jne X` tail returns: e=0 -> row+0x04 (float index 0), e=1 -> +0x08 (1), e=2 -> +0x0c (2), e=3 -> +0x10 (3), e=4 -> +0x14 (4), e=5 -> +0x18 or +0x1c by [rbx+8], e>=6 -> +0x20 / +0x24 / +0x28 by [rbx+8]. So float index 0 IS reachable (a reviewer claimed it was dead and that this spec therefore switches counter runs on everywhere - it does not). Row 0x14 dumped from BOTH tables in BOTH the installed exe and the PRISTINE image: flag = 1, floats [0,0,0,1,1,1,1,1,1,1]. The two edits are float indices 1 and 2 (module offsets +8 and +0xc from the row base 0x146c072b0 / 0x146c06b20), so after the patch e=0 still reads 0.0 and the lowest setting stays vanilla. EVIDENCE: (b) unambiguous disassembly for all of the above, plus a direct dump of the row from both images; (c) INFERRED - that the case index e corresponds one-for-one to the on-screen difficulty level. e is an XOR of two fields of the param object and I did not decode it, so 'level 1 and level 2' is a label, not a proof. What is proved is that these are the second and third of the seven directly-indexed cases and that the first is left untouched. Neither edited cell appears in build/exe_constant_census.json, i.e. no instruction references it as a RIP-relative literal; the tables are reached only through GetParam's computed `imul rcx, rdi, 0x2c` index, so this in-place data edit has no shared-literal collateral. Revert: python tools/exe_patch.py remove tools/data/patches/offball-counter-early.json",
+ "patches": [
+  {
+   "name": "level table 0x146c06f40 row 0x14 (CounterSpaceRun) level 1: 0 -> 1",
+   "module_offset": "0x6c072b8",
+   "expect": "00 00 00 00",
+   "patch": "00 00 80 3F",
+   "kind": "data"
+  },
+  {
+   "name": "level table 0x146c06f40 row 0x14 (CounterSpaceRun) level 2: 0 -> 1",
+   "module_offset": "0x6c072bc",
+   "expect": "00 00 00 00",
+   "patch": "00 00 80 3F",
+   "kind": "data"
+  },
+  {
+   "name": "level table 0x146c067b0 row 0x14 (CounterSpaceRun) level 1: 0 -> 1",
+   "module_offset": "0x6c06b28",
+   "expect": "00 00 00 00",
+   "patch": "00 00 80 3F",
+   "kind": "data"
+  },
+  {
+   "name": "level table 0x146c067b0 row 0x14 (CounterSpaceRun) level 2: 0 -> 1",
+   "module_offset": "0x6c06b2c",
+   "expect": "00 00 00 00",
+   "patch": "00 00 80 3F",
+   "kind": "data"
+  }
+ ]
+}

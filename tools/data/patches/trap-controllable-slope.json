@@ -1,0 +1,12 @@
+{
+ "description": "FIRST-TOUCH: flatten the ability slope of the 'controllable relative speed' threshold, 19 -> 10 km/h per unit of normalised Ball Control (threshold = 16 + 19f + 3g). Re-aims the 19.0 operand at the existing 10.0 cell 0x145a8dd7c. Good technicians stop being immune to fast balls; poor ones are unaffected (their f is already 0). MUTUALLY COMPATIBLE with trap-controllable-base.json but the two compound - apply one at a time. Emulated: BC75/rate0.85 at 40 km/h relative 2.45 -> 3.08 km/h. Revert: python tools/exe_patch.py remove tools/data/patches/trap-controllable-slope.json",
+ "patches": [
+  {
+   "name": "controllable relative speed ability slope 19 -> 10 km/h",
+   "va": "0x14407a165",
+   "expect": "F3 0F 59 05 93 5E 24 02",
+   "patch": "F3 0F 59 05 0F 3C A1 01",
+   "kind": "code"
+  }
+ ]
+}

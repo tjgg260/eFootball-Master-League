@@ -1,0 +1,12 @@
+{
+ "description": "FIRST-TOUCH baseline: the ability-only error floor U*(1-f)*(2 + 0.1*X) km/h, raised from 2 to 3 km/h by re-aiming the 2.0 operand at the existing 3.0 cell 0x1478504e8. This is the term that fires even on an easy, slow ball, so it is the one that makes a mediocre technician's SETTLED touches slightly untidy. Still zero for a Ball Control 99 player unless trap.ballControlRate < 1.0. Emulated: BC75/rate0.85 at 40 km/h relative 2.45 -> 2.66 km/h. Revert: python tools/exe_patch.py remove tools/data/patches/trap-error-floor.json",
+ "patches": [
+  {
+   "name": "trap error floor 2.0 -> 3.0 km/h",
+   "va": "0x14407a11b",
+   "expect": "F3 0F 58 05 6D 63 7D 03",
+   "patch": "F3 0F 58 05 C5 63 7D 03",
+   "kind": "code"
+  }
+ ]
+}

@@ -1,0 +1,13 @@
+{
+ "_comment": "Edits from duels-firsttouch.json NOT in the proven pack, with the reason. 'unread'/'unlocated' are held, not condemned - re-check after the liveness map improves.",
+ "edits": [
+  {
+   "object": "trap",
+   "path": "ballForceDirect.rateCollisionSpin",
+   "value": 0.45,
+   "_note": "0.25->0.45 contact spin (horizontal, low balloon risk)",
+   "_liveness": "unread",
+   "_why": "unread"
+  }
+ ]
+}

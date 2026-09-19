@@ -1,0 +1,12 @@
+{
+ "description": "FIRST-TOUCH difficulty scale. In the trap-error builder (root 0x144079a70, reached only via match::anime::action::Trap, so EVERY player incl. the human's), the situational difficulty term is D = max(0, relSpeed_kmh - (16 + 19f + 3g)) * 0.4, and the random error added to the ball's post-touch velocity is U1*(1-f)*(2 + 0.1*X) + U2*(1-f^2)*D km/h (U = the game's own mean-of-6-uniforms). This re-aims the 0.4 at a neighbouring pool cell holding 0.8, doubling how fast a difficult (fast/awkward) ball turns into a loose touch. NOTE: (1-f) and (1-f^2) are ZERO for a Ball Control 99 player while trap.ballControlRate is 1.0, so this does NOTHING for elite players on its own - pair it with trap.ballControlRate < 1.0 (tools/data/tunings/freeball-firsttouch.json). Emulated: BC75/rate0.85 at 70 km/h relative 6.92 -> 13.48 km/h of error. Revert: python tools/exe_patch.py remove tools/data/patches/trap-difficulty-x2.json",
+ "patches": [
+  {
+   "name": "trap difficulty scale 0.4 -> 0.8",
+   "va": "0x14407a19f",
+   "expect": "F3 44 0F 59 35 E8 04 AB 01",
+   "patch": "F3 44 0F 59 35 EC 04 AB 01",
+   "kind": "code"
+  }
+ ]
+}

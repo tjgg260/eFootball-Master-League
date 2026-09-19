@@ -1,0 +1,37 @@
+{
+ "description": "RUNS-02  THE LATE RUN FROM MIDFIELD. Four edits that lift ALL FOUR independent caps on ActionSelectorSecondLineSpaceRun (action 0x1d) - the one run shape in this build that is categorically different from a striker's run in behind, and the one your attack never gets twice.\n\nWHY FOUR EDITS. This selector is capped in four separate places, which is why every previous attempt to raise one of them did nothing:\n  1. maxSlots = 1, set by the manager ctor at 0x143d51ac7 ('mov dl,1', with r8d = esi+0x1d at 0x143d51ac3 proving it is this selector).\n  2. quota = {0,1,1,1} for attack levels 0-3, an inline dword at 0x1442f9bfe (0x01010100).\n  3. quota level 4 is NOT an immediate - the case ends with 'mov byte [rbp-0xc], dil' at 0x1442f9c09, and dil is the function-wide default 1 set at 0x1442f9abd. Every other action id writes an immediate here; 0x1d is the only one that inherits the default. That is why the existing latebox-two-runners.json produces the odd shape {0,2,2,1,1}. This pack replaces that 4-byte register store with a 4-byte immediate store, so level 4 finally follows.\n  4. vf4 bails out of the WHOLE candidate mask the moment any slot already holds action 0x1d ('cmp dword [rdi+rcx], 0x1d; je <far exit>' at 0x143dfef64). ChanceSpaceRun and DiagonalRun have no equivalent - this whole-mask bail is unique to SecondLine. Comparing against the unused id 0x7f disables it.\n\nRESULT: up to two late runners from deep at every attack level from 1 up.\n\nWHO: everyone - CPU opponent and your own AI team-mates, via the same single manager call site 0x143d03493 with no human/CPU test on the path.\n\nEVIDENCE: b-disassembly, every byte re-verified by me on the INSTALLED image this session. I disassembled the quota jump table at 0x140000000+0x42f9ca4 and confirmed action 0x1d dispatches to 0x1442f9bf2 and that NOTHING jumps into 0x1442f9c09 (I scanned every relative branch in 0x1442f9a90..0x1442f9d00 plus all 18 table entries), so rewriting that store is case-local and safe. All four sites are byte-identical in the installed exe and in eFootball.exe.PRISTINE. The 0x1d bail's meaning is carried over from the earlier latebox pass and is b-disassembly, not emulated.\n\nWHAT TO WATCH FOR: a midfielder arriving late at the edge of the box or on the penalty spot, a beat after the striker's run - the third-man run. If you never see one, the pack did nothing and you can take it straight back out.\n\nTOO STRONG IF: two midfielders arrive on the SAME spot (vf6 builds each run target with no knowledge of the other runner - this is the pack's known weakness), or your midfield empties and you get hit on the counter through the middle. SOFTER: apply the existing tools/data/patches/latebox-two-runners.json instead - same first, second and fourth edits but it leaves level 4 at 1 and level 3 at 1. STRONGER: there is none worth shipping; with maxSlots at 2 a third runner is unreachable without touching a byte an applied pack owns.\n\nCONFLICT: three of these four bytes are also in latebox-two-runners.json (currently pristine). Apply one or the other, never both.\n\nREVERT: python tools/exe_patch.py remove tools/data/patches/runs-second-line.json",
+ "patches": [
+  {
+   "name": "SecondLineSpaceRun maxSlots 1 -> 2 (manager ctor, mgr+0x850)",
+   "va": "0x143d51ac7",
+   "expect": "B201",
+   "patch": "B202",
+   "kind": "code",
+   "note": "mov dl,1 -> mov dl,2. dl is the maxSlots ctor arg, stored to sel+0xe4 at 0x143d51cb0. The preceding 'lea r8d,[rsi+0x1d]' at 0x143d51ac3 identifies this construction as action 0x1d."
+  },
+  {
+   "name": "SecondLineSpaceRun quota, attack levels 0-3: {0,1,1,1} -> {0,2,2,2}",
+   "va": "0x1442f9bfe",
+   "expect": "C745F000010101",
+   "patch": "C745F000020202",
+   "kind": "code",
+   "note": "mov dword [rbp-0x10], 0x01010100 -> 0x02020200. Level 0 stays 0 (Konami's own choice - no late runner in the deepest build-up phase)."
+  },
+  {
+   "name": "SecondLineSpaceRun quota, attack level 4: inherit-default(1) -> immediate 2",
+   "va": "0x1442f9c09",
+   "expect": "40887DF4",
+   "patch": "C645F402",
+   "kind": "code",
+   "note": "'mov byte [rbp-0xc], dil' (40 88 7D F4) -> 'mov byte [rbp-0xc], 2' (C6 45 F4 02). Identical length, same stack slot, same effective address. dil held the function default 1 from 0x1442f9abd; every other quota case writes an immediate here. Verified no branch and no jump-table entry targets 0x1442f9c09."
+  },
+  {
+   "name": "vf4 whole-mask bail when a team-mate is already making this run (0x1d -> unused 0x7f)",
+   "va": "0x143dfef64",
+   "expect": "833C0F1D",
+   "patch": "833C0F7F",
+   "kind": "code",
+   "note": "cmp dword [rdi+rcx], 0x1d -> 0x7f. The je at 0x143dfef68 jumps to 0x143dffb0c, the function's far exit, so this really does abandon the entire candidate mask rather than skipping one slot. 0x7f is not a valid action id (ids run 0x1d..0x2e), so the compare can never match and the bail is dead. Without this edit the two cap raises above are unreachable."
+  }
+ ]
+}

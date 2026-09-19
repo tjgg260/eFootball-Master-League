@@ -1,0 +1,26 @@
+{
+ "description": "LATE BOX ARRIVALS 1 - REACH. match::ai::ActionSelectorSecondLineSpaceRun, params builder 0x143e025d0 (called only from this selector's vf4 0x143dfec50 and vf6 0x143dfc670). Widens the three geometric gates that decide WHICH midfielder may start a second-line run: max straight-line distance from the ball 25->40 m, max lateral offset from the ball 20->30 m, and how far behind the ball he may be 12->20 m. Only the STRICT (first-contact) set is widened; the permissive hysteresis set (17/30/30) is untouched. Three RIP-relative disp32 re-aims onto existing read-only pool cells; no cell is edited, no instruction changes length. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-reach.json",
+ "patches": [
+  {
+   "name": "max distance from ball 25 -> 40 (params+8)",
+   "va": "0x143e02669",
+   "expect": "F3 0F 10 05 6F 57 FA 01",
+   "patch": "F3 0F 10 05 57 68 F5 01",
+   "kind": "code"
+  },
+  {
+   "name": "lateral corridor 20 -> 30 (params+4)",
+   "va": "0x143e02674",
+   "expect": "F3 0F 10 25 C8 83 C8 01",
+   "patch": "F3 0F 10 25 04 B7 C8 01",
+   "kind": "code"
+  },
+  {
+   "name": "behind-ball slack 12 -> 20 (params+0)",
+   "va": "0x143e0267c",
+   "expect": "F3 0F 10 2D B8 5F E0 01",
+   "patch": "F3 0F 10 2D C0 83 C8 01",
+   "kind": "code"
+  }
+ ]
+}

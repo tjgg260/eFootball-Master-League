@@ -1,0 +1,12 @@
+{
+ "description": "ASSISTED PASSES ARE NO LONGER EXEMPT FROM SIDEWAYS ERROR (one 6-byte branch change, no new code). In stock, the kick-error code tests the assisted-pass / locked-target flag at 0x14401a15d ('test byte [rbx+0x362c],1') and, when it is SET, falls through to 0x14401a17b 'xorps xmm7,xmm7' - the horizontal (sideways) error of an ordinary type-4 kick is ZEROED. Only manual/unlocked kicks take the branch at 0x14401a175 to the normal error path at 0x14401a25d. That is why shots (manually aimed) show error and curl while assisted lofted passes fly exactly on line. This patch turns the conditional 'je 0x14401a25d' (0f84 e2000000) into an unconditional 'jmp 0x14401a25d' + nop (e9 e3000000 90) - both encodings target the SAME address, verified by hand: je next-ip 0x14401a17b + 0xe2 = 0x14401a25d; jmp next-ip 0x14401a17a + 0xe3 = 0x14401a25d. So every kick now takes the error path regardless of the assist flag. Power and elevation error are unaffected (they are computed on both paths). WHY IT MATTERS FOR linked-spin.json: that cave scales added side spin by the horizontal miss, so with the miss forced to zero an assisted pass gets ZERO added spin and cannot slice. With this patch applied, assisted lofted passes get a real sideways miss and therefore curl. This is also the single change that lets a pass-assist player mis-hit sideways at all. EVIDENCE: the branch, the flag test and the xorps are read directly from the disassembly of the installed image and confirmed byte-for-byte; the claim that the flag means 'assisted/locked-on' comes from earlier analysis notes and is NOT independently proven here - if in play this makes MANUAL passes change too, that reading is wrong. Byte-identical to the 'K' entry that ran in-game before (loose-realism-v2.json 'K-keep', slices-scuffs-max.json 'K'). Revert: python tools/exe_patch.py remove tools/data/patches/assisted-pass-error.json",
+ "patches": [
+  {
+   "name": "assisted/locked-on kicks are no longer exempt from sideways error (je -> jmp)",
+   "va": "0x14401a175",
+   "expect": "0F84E2000000",
+   "patch": "E9E300000090",
+   "kind": "code"
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+{
+ "description": "LATE BOX ARRIVALS 10 - ADMIT THE DEEP MIDFIELDER. vf4 restricts the candidate to position classes 4..6 (CMF, LMF/RMF, AMF) via two private imm8 compares. Lowering the floor to 3 admits class 3 (DMF), giving the deep-lying midfielder the occasional late arrival. This is the change most likely to cost defensive shape on the counter - apply alone and watch. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-admit-dmf.json",
+ "patches": [
+  {
+   "name": "position band floor 4 -> 3 (admit DMF)",
+   "va": "0x143dff6b9",
+   "expect": "83 F8 04",
+   "patch": "83 F8 03",
+   "kind": "code"
+  }
+ ]
+}

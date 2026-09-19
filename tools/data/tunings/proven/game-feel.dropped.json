@@ -1,0 +1,117 @@
+{
+ "_comment": "Edits from game-feel.json NOT in the proven pack, with the reason. 'unread'/'unlocated' are held, not condemned - re-check after the liveness map improves.",
+ "edits": [
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[0].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[1].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[2].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[3].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[4].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[5].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[6].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[7].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[8].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[9].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[10].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[11].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[12].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter[13].accacc",
+   "value": 0.2,
+   "_note": "0.3->0.2 softer jerk, heavier first step (likely; all routes)",
+   "_liveness": "unread",
+   "_why": "unread"
+  }
+ ]
+}

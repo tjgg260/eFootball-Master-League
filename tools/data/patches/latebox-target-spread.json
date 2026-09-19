@@ -1,0 +1,19 @@
+{
+ "description": "LATE BOX ARRIVALS 4 - WHERE HE RUNS. vf6 0x143dfc670 places the run target at targetZ = ball.z + sign(dz) * clamp(|dz|, 6.5, 12) on the attacking line taken from the team line table (teamAI + 0x44 + 20*side). The 12 m clamp keeps the runner in a near-post corridor. Widening it to 20 m lets him attack the back post / far side of the six-yard box on a cross. Second site lowers the 6.5 m floor to 5 so a central cut-back arrival is still possible. Two disp32 re-aims onto existing pool cells. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-target-spread.json",
+ "patches": [
+  {
+   "name": "lateral spread max 12 -> 20",
+   "va": "0x143dfc892",
+   "expect": "F3 0F 10 15 A2 BD E0 01",
+   "patch": "F3 0F 10 15 AA E1 C8 01",
+   "kind": "code"
+  },
+  {
+   "name": "lateral spread min 6.5 -> 5",
+   "va": "0x143dfc886",
+   "expect": "F3 0F 10 0D A6 36 D2 02",
+   "patch": "F3 0F 10 0D EA 14 C9 01",
+   "kind": "code"
+  }
+ ]
+}

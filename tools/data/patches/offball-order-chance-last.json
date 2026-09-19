@@ -1,0 +1,47 @@
+{
+ "description": "OFF-BALL VARIETY 2 (STRONGER VERSION OF offball-order-diagonal-first) - SEND THE BLUNT SELECTOR TO THE BACK OF THE QUEUE. NO EXTRA RUNNERS, NO ATTACK-LEVEL CHANGE. DO NOT APPLY THIS AT THE SAME TIME AS offball-order-diagonal-first.json - they edit the SAME three bytes of the ChanceSpaceRun block and are two strengths of one idea. SAME MECHANISM AS PACK 1. Players are handed to the FIRST selector that claims them: the eligibility gate 0x1442ed7c0 is rank(newAction) < rank(currentAction) STRICTLY, and all eight run selectors share rank 2, so a later selector can NEVER poach a player an earlier one has taken (a-emulated: with slots 0-2 already holding action 0x1e, every later selector's mask returns only the idle slots). ChanceSpaceRun bids second and its score (vf5 0x143df5950) is 100.0 + attackDir*player.x + roleBonus - pure 'furthest man forward', no space, no defenders, no attributes, no RNG. Where pack 1 demotes it to 6th, this pack demotes it to 8th, behind GoalGet and PostPlay as well. WHAT THE SIX BYTES DO. The registration function 0x143d520e0 is ten near-identical append blocks, each carrying three fields (selector pointer as a disp32 in 'lea r8,[rbx+OFF]', action id as an imm8 in the dedup 'cmp dword [rax],id', the same id as an imm32 in the store). This spec swaps those three fields between the ChanceSpaceRun block (mgr+0x288, id 0x1e) and the PullAway block (mgr+0x1188, id 0x2e). 18 bytes, no length change, no cave. PULLAWAY IS A CONFIRMED NO-OP, WHICH IS WHY IT IS THE RIGHT BALLAST. ActionSelectorPullAway's vf4 is 0x140c837d0 ('xor eax,eax; ret' - the eligibility mask is ZERO, so no player is ever a candidate), its vf3 is 0x140c853c0 ('xor al,al; ret') and its vf5 is a zeroing stub; its executor match::player::ActionPullAway is gutted too. Promoting it switches nothing on. EVIDENCE (a-emulated, this session, tools/emu_selector_order.py): the real registration function run under Unicorn on BOTH images, zeroed manager object, only the memset/memcpy IAT thunks stubbed; all 30 block fields verified against the image first. The registration's LAST act (call 0x143d52456) is an UNSTABLE quicksort (0x143b45ce0, comparator 0x143d520a0 = priority(a)-priority(b) via 0x1442ed810), so the outcome cannot be read off the source and had to be run. STOCK, both images: Overlap > ChanceSpaceRun > CounterSpaceRun > SecondLineSpaceRun > LineBreak > DiagonalRun > GoalGet > PostPlay > PullAway > CenteringGet. WITH THIS SPEC, both images, still exactly ten entries, every selector present exactly once: Overlap > DiagonalRun > CounterSpaceRun > SecondLineSpaceRun > LineBreak > GoalGet > PostPlay > ChanceSpaceRun > PullAway > CenteringGet. Every discriminating selector now gets first refusal on every player and the blunt one mops up. WHY IT IS AGGRESSION-NEUTRAL. No cap is touched. The effective cap stays min(quota, maxSlots) - quota from 0x1442f9a90 off the attack level at [teamCtx+0xb450] (tested 0x143df1651), maxSlots from the ctor immediates (tested 0x143df165b). The SUM of caps, i.e. the maximum number of concurrent runners, is unchanged. HONEST TRADE-OFF - THIS IS THE RISKIER OF THE TWO ORDER PACKS. ChanceSpaceRun's own candidate filter is broad and its quota is {1,2,2,3,3} across attack levels, so it should still fill its quota from whatever the five earlier selectors leave; but that is c-inferred, not proven, and if the earlier selectors' narrower positional filters reject everyone the net effect could be fewer forward runs rather than different ones. It also moves GoalGet and PostPlay ahead of ChanceSpaceRun, which is a second behavioural change riding on the same 18 bytes. WHAT YOU WILL SEE. Forward movement should stop being led by the highest man: expect the run to come from the player attacking the space, from the man arriving second-line, or from a near-post/goal-get movement, with the striker holding or coming short instead of always peeling off. WHAT WOULD FALSIFY IT: the front line goes quiet - nobody runs beyond the last man at all. That is the failure mode, and if you see it, revert this and go back to pack 1. EVIDENCE LEVEL: (a-emulated) the resulting bidding order on both images; (a-emulated) the rank gate that makes order decisive and PullAway's stub vf3/vf4/vf5; (b-disassembly) the cap machinery and the vf5 score formulae; (c-inferred) that ChanceSpaceRun still fills its quota from the remainder. BYTES: all six expect strings verified byte-identical in the installed exe and the PRISTINE backup. Revert: python tools/exe_patch.py remove tools/data/patches/offball-order-chance-last.json",
+ "patches": [
+  {
+   "name": "ChanceSpaceRun block -> PullAway selector pointer (lea r8,[rbx+0x288] -> +0x1188)",
+   "va": "0x143d5215b",
+   "expect": "4C 8D 83 88 02 00 00",
+   "patch": "4C 8D 83 88 11 00 00",
+   "kind": "code"
+  },
+  {
+   "name": "ChanceSpaceRun block -> PullAway dedup id (cmp [rax],0x1e -> 0x2e)",
+   "va": "0x143d52180",
+   "expect": "83 38 1E",
+   "patch": "83 38 2E",
+   "kind": "code"
+  },
+  {
+   "name": "ChanceSpaceRun block -> PullAway stored id (mov [rbx+rax*8],0x1e -> 0x2e)",
+   "va": "0x143d52199",
+   "expect": "C7 04 C3 1E 00 00 00",
+   "patch": "C7 04 C3 2E 00 00 00",
+   "kind": "code"
+  },
+  {
+   "name": "PullAway block -> ChanceSpaceRun selector pointer (lea r8,[rbx+0x1188] -> +0x288)",
+   "va": "0x143d5233b",
+   "expect": "4C 8D 83 88 11 00 00",
+   "patch": "4C 8D 83 88 02 00 00",
+   "kind": "code"
+  },
+  {
+   "name": "PullAway block -> ChanceSpaceRun dedup id (cmp [rax],0x2e -> 0x1e)",
+   "va": "0x143d52360",
+   "expect": "83 38 2E",
+   "patch": "83 38 1E",
+   "kind": "code"
+  },
+  {
+   "name": "PullAway block -> ChanceSpaceRun stored id (mov [rbx+rax*8],0x2e -> 0x1e)",
+   "va": "0x143d52379",
+   "expect": "C7 04 C3 2E 00 00 00",
+   "patch": "C7 04 C3 1E 00 00 00",
+   "kind": "code"
+  }
+ ]
+}

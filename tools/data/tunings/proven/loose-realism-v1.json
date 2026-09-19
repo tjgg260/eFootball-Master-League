@@ -1,0 +1,1415 @@
+{
+ "_comment": "PROVEN-READ subset of loose-realism-v1.json: only edits to fields an instruction in eFootball.exe reads. ",
+ "edits": [
+  {
+   "object": "trap",
+   "path": "ballControlRate",
+   "value": 0.8,
+   "was": 1,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Bare global multiplier adjacent to ballControlWeekFootDownLimit; most likely scales the Ball Control attribute's contribution to the trap outcome (or the control success rate). Either reading: lower = worse first touch f",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.groundBall.paraMin.reactionBallSpeed",
+   "value": 58,
+   "was": 70,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Ball-speed (kph) threshold at which a team-mate's ground pass is handled as a reflex 'reaction trap' rather than a clean trap, for a low-attribute player (paraMin). Normal grounders arrive at 32-36 kph (grounderpass.rece",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.groundBall.paraMax.reactionBallSpeed",
+   "value": 68,
+   "was": 80,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "High-attribute end of the same threshold (-15%). Top players still handle harder passes than weak ones, but the whole curve shifts down so more driven passes get the awkward handling.",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.groundBall.paraMin.reactionTime",
+   "value": 0.2,
+   "was": 0.15,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Reaction time (s) for a low-attribute player on a fast team-mate ground pass. +33% = slower settle, ball bobbles/sits off the foot for an extra 3 frames. Longer time = worse under any reading.",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.groundBall.paraMax.reactionTime",
+   "value": 0.13,
+   "was": 0.1,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "High-attribute end of the reaction time (+30%), preserving the min/max ordering (0.20 > 0.13).",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionBoundBall.groundBall.paraMin.reactionBallSpeed",
+   "value": 42,
+   "was": 50,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same threshold for a BOUNCING ball (deflections, clearances, blocked shots) reaching a low-attribute player; -16% means more second balls are met with a reflex touch instead of a clean gather \u2014 directly 'loose balls happ",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionBoundBall.groundBall.paraMax.reactionBallSpeed",
+   "value": 51,
+   "was": 60,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "High-attribute end of the bouncing-ball threshold (-15%), keeps the min/max gap.",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.kickBasis.offsetPos_Run",
+   "value": 1.75,
+   "was": 1.5,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "ballForceDirect (use=true) places the ball at a fixed offset ahead of the player after a trap: Idle 0.5 / Run 1.5 / Dash 2.0 (blendStartSpeed.speed_0/15/28 = 0.5/1.75/2.0 confirms these are distances growing with speed).",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.kickBasis.offsetPos_Dash",
+   "value": 2.25,
+   "was": 2,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same as above for sprint traps (+20%). Sprint first touches are where real players lose the ball most; this makes that the case here too.",
+   "_liveness": "read"
+  },
+  {
+   "object": "trap",
+   "path": "afterCollision.hitAfterFrame",
+   "value": 14,
+   "was": 10,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "After an unintended body collision, foot/leg/thigh cannot re-hit the ball for N frames (noHit.foot/reg/thigh all true). 10 -> 14 frames (+40%, ~67 ms more at 60 fps) keeps ricochets and blocked passes loose for longer be",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.0",
+   "value": 0.77,
+   "was": 0.7,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "BALL PHYSICS (separate from the trap edits): restitution per pitch condition. +10% makes every bounce livelier, so bouncing second balls are harder to gather and sit up for contests. Which of the six indices is live is c",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.1",
+   "value": 0.77,
+   "was": 0.7,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same +10% restitution, pitch-condition index 1.",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.2",
+   "value": 0.77,
+   "was": 0.7,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same +10% restitution, pitch-condition index 2.",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.3",
+   "value": 0.55,
+   "was": 0.5,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same +10% restitution for index 3, which is a distinct (heavier/wetter) surface with 0.5 base, frictionRollSpeedMax 50 and its own roll-back-spin rate; scaled proportionally so the surface stays relatively dead.",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.4",
+   "value": 0.77,
+   "was": 0.7,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same +10% restitution, pitch-condition index 4.",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate.5",
+   "value": 0.77,
+   "was": 0.7,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "Same +10% restitution, pitch-condition index 5.",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "manualBlendManualRateGageStrong.3",
+   "value": 0.2,
+   "was": 0,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "At max assist (index 3 = PA3) a long-held ground pass currently takes 0% of the stick direction. 0.2 blends a fifth of the aim into the target, so imprecise aiming produces under/over-hit or misdirected passes. Same dire",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "manualBlendManualRateGageWeak.3",
+   "value": 0.1,
+   "was": 0,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Short-press (weak gauge) ground passes at PA3 gain a small stick component; kept half the Strong value because short passes should stay mostly assisted (PA2 uses 0.3 vs 0.8).",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "manualBlendthreshold",
+   "value": 15,
+   "was": 20,
+   "area": "passing-error",
+   "confidence": "low",
+   "why": "Hypothesis: pass length (m) above which manual blending is applied (grounder 20, fly 30 fit metre ranges like manual.distForGageMin/Max 4..40). Lowering it subjects more medium-range passes to the stick blend.",
+   "_liveness": "read"
+  },
+  {
+   "object": "flypass",
+   "path": "manualBlendManualRateGageStrong.3",
+   "value": 0.2,
+   "was": 0,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Lofted equivalent of the grounder edit: PA3 strong-gauge lofted passes get 20% stick influence (PA1/PA2 already use 0.5).",
+   "_liveness": "read"
+  },
+  {
+   "object": "flypass",
+   "path": "manualBlendManualRateGageMax.3",
+   "value": 0.2,
+   "was": 0,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Full-gauge lofted passes at PA3 also receive the stick blend (PA1/PA2 = 0.6). Leaves Weak.3 at 0 so short chips stay assisted.",
+   "_liveness": "read"
+  },
+  {
+   "object": "flypass",
+   "path": "manualBlendthreshold",
+   "value": 22,
+   "was": 30,
+   "area": "passing-error",
+   "confidence": "low",
+   "why": "Same hypothesis as the grounder threshold: lofted passes above ~22 m (instead of 30) become subject to the manual blend.",
+   "_liveness": "read"
+  },
+  {
+   "object": "grounderpass",
+   "path": "paraMinSpeedRate",
+   "value": 0.8,
+   "was": 0.9,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Only lever that scales pass quality by the passer's attribute for BOTH teams: a low-attribute passer's ground pass is hit at 78% speed instead of 90% (99-rated stays 1.0). Slower balls from weak passers fall short and ar",
+   "_liveness": "read"
+  },
+  {
+   "object": "flypass",
+   "path": "height.heightForDistMaxParaMin",
+   "value": 7.5,
+   "was": 6.3,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Weak lofted passers already loft max-distance balls higher than strong ones (6.3 vs 4.8). +19% adds hang time so their long balls are easier to contest/intercept and harder to bring down. Stays below heightForDistMax_hig",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normal_dy.gageMax",
+   "value": 31,
+   "was": 28,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "Launch elevation at full gauge for normal shots (28 == loop.angleY, so degrees). +18% moves the gauge fraction at which a shot from ~12 m clears the bar from roughly 36% to ~28% of the gauge (assuming near-linear interpo",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "airRegistNormal",
+   "value": 1.12,
+   "was": 1,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "Air-resistance multiplier (1.0 = Konami default). +12% bleeds more speed in flight, so shots from outside the box arrive weaker and dip more; close-range shots are barely affected because flight time is short \u2014 a natural",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "magnusRate",
+   "value": 0.13,
+   "was": 0.035,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "Magnus (curl) strength, +29%. More curl on any side-spun shot makes the ball deviate further from the aim line, producing more wayward finishes and more shots that curl past the post; the doc already notes 0.1 is absurd, [raised to 0.07 to amplify mishit sidespin \u2014 pairs with exe P1 slice unclamp]",
+   "_liveness": "read"
+  },
+  {
+   "object": "ball",
+   "path": "nonSpinRate",
+   "value": 1.2,
+   "was": 1,
+   "area": "shooting-error",
+   "confidence": "low",
+   "why": "Magnitude of the non-spin (knuckle) effect applied to balls in the nonSpinMin..nonSpinMax 45-105 kph window, which is exactly the shot-speed band. +30% makes hard, low-spin shots wobble more unpredictably \u2014 wayward for t",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "spaceCoverRate",
+   "value": 0.35,
+   "was": 0.43,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Blend rate (0..1) of how strongly base positions are dragged toward uncovered space (paired with adjustSpaceCoverRate 0.23, coverRateZ 0.4, dfCoverEnable). Reducing by ~19% leaves more natural gaps between and inside lin",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "marginPredictionFrameAdjust",
+   "value": 100,
+   "was": 120,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Prediction horizon (frames, 60 fps => 2.0 s) the positioning AI uses to anticipate where the play will be when choosing base positions (marginPredictionFrameBase is 0, so this is the whole horizon). Cutting to 1.5 s make",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "matchUpContinueRate",
+   "value": 40,
+   "was": 30,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Percent chance/weight that a defender keeps his current match-up (man-marking assignment) instead of handing off to a teammate and snapping back to zonal shape. Raising by 10 points makes defenders follow runners further",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "matchUpContinueRate_FW_MF",
+   "value": 50,
+   "was": 40,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Same as matchUpContinueRate but for FW/MF match-ups; keep the +10 offset Konami uses between the two so the relative behaviour of front and back units is preserved.",
+   "_liveness": "read"
+  },
+  {
+   "object": "basePosition",
+   "path": "jogMfLineScore",
+   "value": 60,
+   "was": 50,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Threshold of an internal 'MF line urgency score' below which midfielders jog (walkMfLineScore 20 < jogMfLineScore 50 < run). Raising to 60 makes midfielders jog into position in more situations rather than run, slowing m",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.0",
+   "value": 68.88,
+   "was": 72.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.1",
+   "value": 71.25,
+   "was": 75.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.2",
+   "value": 73.62,
+   "was": 77.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.3",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.4",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax40.5",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.0",
+   "value": 72.04,
+   "was": 75.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.1",
+   "value": 75.21,
+   "was": 79.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.2",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.3",
+   "value": 81.54,
+   "was": 85.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.4",
+   "value": 84.71,
+   "was": 89.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMax99.5",
+   "value": 87.88,
+   "was": 92.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.0",
+   "value": 67.49,
+   "was": 71.04000091552734,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.1",
+   "value": 69.66,
+   "was": 73.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.2",
+   "value": 71.85,
+   "was": 75.62999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.3",
+   "value": 74.02,
+   "was": 77.91999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.4",
+   "value": 76.2,
+   "was": 80.20999908447266,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid40.5",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.0",
+   "value": 70.46,
+   "was": 74.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.1",
+   "value": 73.23,
+   "was": 77.08000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.2",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.3",
+   "value": 78.77,
+   "was": 82.91999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.4",
+   "value": 81.54,
+   "was": 85.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMid99.5",
+   "value": 84.31,
+   "was": 88.75,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.0",
+   "value": 63.34,
+   "was": 66.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.1",
+   "value": 64.91,
+   "was": 68.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.2",
+   "value": 66.5,
+   "was": 70.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.3",
+   "value": 68.09,
+   "was": 71.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.4",
+   "value": 69.66,
+   "was": 73.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin40.5",
+   "value": 71.25,
+   "was": 75.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.0",
+   "value": 65.71,
+   "was": 69.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.1",
+   "value": 67.29,
+   "was": 70.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.2",
+   "value": 68.88,
+   "was": 72.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.3",
+   "value": 70.46,
+   "was": 74.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.4",
+   "value": 72.04,
+   "was": 75.83000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "controlShootGageMin99.5",
+   "value": 73.62,
+   "was": 77.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.0",
+   "value": 74.41,
+   "was": 78.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.1",
+   "value": 77.59,
+   "was": 81.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.2",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.3",
+   "value": 84.55,
+   "was": 89.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.4",
+   "value": 88.35,
+   "was": 93.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax40.5",
+   "value": 90.25,
+   "was": 95.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.0",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.1",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.2",
+   "value": 85.5,
+   "was": 90.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.3",
+   "value": 94.05,
+   "was": 99.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.4",
+   "value": 102.6,
+   "was": 108.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMax99.5",
+   "value": 106.88,
+   "was": 112.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.0",
+   "value": 72.84,
+   "was": 76.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.1",
+   "value": 75.6,
+   "was": 79.58000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.2",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.3",
+   "value": 81.7,
+   "was": 86.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.4",
+   "value": 85.02,
+   "was": 89.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid40.5",
+   "value": 86.69,
+   "was": 91.25,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.0",
+   "value": 75.21,
+   "was": 79.16999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.1",
+   "value": 79.16,
+   "was": 83.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.2",
+   "value": 83.12,
+   "was": 87.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.3",
+   "value": 90.01,
+   "was": 94.75,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.4",
+   "value": 96.9,
+   "was": 102.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMid99.5",
+   "value": 100.35,
+   "was": 105.62999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.0",
+   "value": 68.09,
+   "was": 71.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.1",
+   "value": 69.66,
+   "was": 73.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.2",
+   "value": 71.25,
+   "was": 75.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.3",
+   "value": 73.15,
+   "was": 77.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.4",
+   "value": 75.05,
+   "was": 79.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin40.5",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.0",
+   "value": 72.84,
+   "was": 76.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.1",
+   "value": 74.41,
+   "was": 78.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.2",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.3",
+   "value": 77.9,
+   "was": 82.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.4",
+   "value": 79.8,
+   "was": 84.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "normalShootGageMin99.5",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.0",
+   "value": 83.91,
+   "was": 88.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.1",
+   "value": 87.09,
+   "was": 91.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.2",
+   "value": 90.25,
+   "was": 95.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.3",
+   "value": 96.19,
+   "was": 101.25,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.4",
+   "value": 102.12,
+   "was": 107.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax40.5",
+   "value": 102.12,
+   "was": 107.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.0",
+   "value": 85.5,
+   "was": 90.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.1",
+   "value": 90.25,
+   "was": 95.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.2",
+   "value": 95.0,
+   "was": 100.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.3",
+   "value": 104.5,
+   "was": 110.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.4",
+   "value": 114.0,
+   "was": 120.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMax99.5",
+   "value": 114.0,
+   "was": 120.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.0",
+   "value": 81.15,
+   "was": 85.41999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.1",
+   "value": 83.91,
+   "was": 88.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.2",
+   "value": 86.69,
+   "was": 91.25,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.3",
+   "value": 91.73,
+   "was": 96.55999755859375,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.4",
+   "value": 96.79,
+   "was": 101.87999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid40.5",
+   "value": 96.79,
+   "was": 101.87999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.0",
+   "value": 83.52,
+   "was": 87.91999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.1",
+   "value": 87.48,
+   "was": 92.08000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.2",
+   "value": 91.44,
+   "was": 96.25,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.3",
+   "value": 99.16,
+   "was": 104.37999725341797,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.4",
+   "value": 106.88,
+   "was": 112.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMid99.5",
+   "value": 106.88,
+   "was": 112.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.0",
+   "value": 72.84,
+   "was": 76.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.1",
+   "value": 74.41,
+   "was": 78.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.2",
+   "value": 76.0,
+   "was": 80.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.3",
+   "value": 78.38,
+   "was": 82.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.4",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin40.5",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.0",
+   "value": 77.59,
+   "was": 81.66999816894531,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.1",
+   "value": 79.16,
+   "was": 83.33000183105469,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.2",
+   "value": 80.75,
+   "was": 85.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.3",
+   "value": 83.12,
+   "was": 87.5,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.4",
+   "value": 85.5,
+   "was": 90.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  },
+  {
+   "object": "shoot",
+   "path": "powerfullShootGageMin99.5",
+   "value": 85.5,
+   "was": 90.0,
+   "area": "shooting-error",
+   "confidence": "medium",
+   "why": "uniform x0.95 launch speed (all 18 gauge tables scaled together to keep min<mid<max and 40<99 ordering)",
+   "_liveness": "read"
+  }
+ ]
+}

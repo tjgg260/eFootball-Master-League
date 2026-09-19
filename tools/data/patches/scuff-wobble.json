@@ -1,0 +1,27 @@
+{
+ "description": "SCUFFS INTO THE GROUND + WOBBLE - the TECHNIQUE half of bobbling, tied to passing ability. (1) Vertical strike-error ceiling 22.5 -> 30 deg: this error is (1 - cleanliness) x ceiling, so poor passers get more of it and clean strikes by good passers get none. It is its own instruction, independent of the horizontal ceiling. (2) The up/down sign of that error is biased DOWNWARD (sign scale 100 -> 50), so a bad strike is more often topped into the turf - where it skips and bounces - than ballooned. (3) The kick code strips the engine's own knuckle/wobble system off every mis-struck ball (it forces clean spin on all typed mishits); this 7-byte in-place edit leaves it on, using wobble kind 0 (wide random sideways jink, DIP-biased vertical) - never kind 2, which is pure lift. Pair with tunings/scuff-wobble-data.json so slow mishit passes qualify for wobble, and with tunings/bobble-pitch.json: a topped ball meets the ground earlier and more often, so it rolls the pitch-hop dice more - the two compound on bad passes even though the hop code cannot see who kicked. Byte-identical to entries that ran in-game (slices-scuffs.json F, loose-realism-v2.json scuff-sign-downbias, knuckle-mishit.json). Revert: python tools/exe_patch.py remove tools/data/patches/scuff-wobble.json",
+ "patches": [
+  {
+   "name": "vertical strike-error ceiling 22.5 -> 30 deg (ability-scaled)",
+   "va": "0x14401b423",
+   "expect": "F3 0F 59 05 55 35 75 02",
+   "patch": "F3 0F 59 05 55 29 A7 01",
+   "kind": "code"
+  },
+  {
+   "name": "AZIMUTH error sign bias 100 -> 50 (was labelled 'vertical' - CORRECTED 2026-09-18: 0x14401a12c is in the randomiser's FIRST block, which reads [rdi+0x10]/[rdi+0x14]/[rdi+0x48] = the slot the caller fills from kick-miss +0x00, i.e. the HORIZONTAL/azimuth ceiling - the same slot the assist flag zeroes and the one angle-wrapped into azimuth. Measured over 1200 draws through the real randomiser: azimuth sign is 24% positive / 72% negative on the patched image vs 47% / 49% on pristine, and the ELEVATION block is bit-identical on both. So this entry makes sideways error roughly 3:1 one-sided; it does not touch loft.",
+   "va": "0x14401a12c",
+   "expect": "F30F59051809A701",
+   "patch": "F30F59054CD4AC01",
+   "kind": "code"
+  },
+  {
+   "name": "keep knuckle/wobble on every mishit (flag=1, kind=0) instead of stripping it",
+   "va": "0x144017656",
+   "expect": "41c6454507eb0b",
+   "patch": "6641c745440100",
+   "kind": "code"
+  }
+ ],
+ "correction_2026_09_18": "Entry 2's original name ('bias the vertical error sign downward') was wrong about which axis it affects; see that entry's name for the re-derivation. The BYTES are unchanged and this file still reverses correctly with exe_patch remove. Found while fixing cave-ability-error.json, whose new sideways error inherits this asymmetry."
+}

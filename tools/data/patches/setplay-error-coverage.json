@@ -1,0 +1,26 @@
+{
+ "description": "SET PIECES THAT CURRENTLY CANNOT MIS-HIT AT ALL START MIS-HITTING (three one-byte jump-table index edits, no new code). BACKGROUND: set pieces do NOT use the in-play kick-error builder 0x14401a900 - nothing outside the Kick action ever reaches it (match::anime::action::Kick::vf8 0x143ed0f80 is the builder's only caller chain, and only action ids 8/9/0xa map to the Kick object; proof: tools/emu_kicktypes.py S1+S2). Set pieces run a SEPARATE model, 0x143f05730, called from Restart::vf8 0x143f05150. TWO jump tables decide who gets any error: the OUTER table at 0x143f05700 (index bytes 0x143f05708.., one per action id 0x25..0x4b) picks between the real body 0x143f051c2 and a bare epilogue 0x143f0565c, and the INNER table at 0x143f060b0 (index bytes 0x143f060c0..) picks which set of four deviation constants 0x143f05730 loads: 0 = cross/corner, 1 = free-kick shot, 2 = goal-kick long, 3 = ALL FOUR CONSTANTS ZERO. In stock, exactly three action ids reach nonzero constants: 0x25/0x2b (free-kick cross), 0x26/0x2c (direct free kick) and 0x37 (the standard corner). QuickRestartKick 0x2f, SeamlessCornerKick 0x3a and SeamlessGoalKick 0x3d all already run the body and already CALL 0x143f05730 - they just land on index 3 and come out mathematically exact. This patch changes their three index bytes to 0 (the cross/corner constants), which is the branch Konami already uses for a corner from the same function with the same ABI. EFFECT (emulated with the game's own code under Unicorn, tools/emu_kicktypes.py machinery, index byte overlaid in the emulator only, ability 40, Gaussian stubbed at its maximum, input velocity (20,5,0) m/s, spin (1,1,1) rev/s): azimuth +/-3.001 deg, elevation +2.363/-2.701 deg, speed x0.972..x1.028, spin x0.55..x1.11 - byte-identical to what the stock corner 0x37 produces on the same inputs. Ability dependence is weak by design in this model (at ability 99 the same numbers shrink to +/-2.031 deg), and the only attribute it reads is index 0x21 (ball_spin_control / Curl under the project's +0x15 rule). WHAT THIS DOES NOT TOUCH: penalties (0x41), throw-ins (0x1f-0x22), kickoffs (0x1b-0x1e), goal kicks taken as GoalKickLongPass/ShortPass (0x4b/0x4c) and gk::Throw (0x4e) are exempt for a DIFFERENT reason - their OUTER index byte is the epilogue, they fall outside the outer table's 0x25..0x4b range, or their vf8 is Base::vf8 0x140c83910 ('ret 0'). Those need a second, separate change and are deliberately not in this spec. RISK: these three bytes are pure jump-table indices; the branch they select is already exercised every corner. Every `expect` byte was read from the INSTALLED image and is identical to the PRISTINE backup (this region carries none of technique-realism / scuff-wobble / knuckle-off / linked-spin). NOT APPLIED, never run in game.",
+ "patches": [
+  {
+   "name": "QuickRestartKick 0x2f: inner set-piece error table 3 (zero) -> 0 (cross/corner constants)",
+   "va": "0x143f060ca",
+   "expect": "03",
+   "patch": "00",
+   "kind": "code"
+  },
+  {
+   "name": "SeamlessCornerKick 0x3a: inner set-piece error table 3 (zero) -> 0 (cross/corner constants)",
+   "va": "0x143f060d5",
+   "expect": "03",
+   "patch": "00",
+   "kind": "code"
+  },
+  {
+   "name": "SeamlessGoalKick 0x3d: inner set-piece error table 3 (zero) -> 0 (cross/corner constants)",
+   "va": "0x143f060d8",
+   "expect": "03",
+   "patch": "00",
+   "kind": "code"
+  }
+ ]
+}

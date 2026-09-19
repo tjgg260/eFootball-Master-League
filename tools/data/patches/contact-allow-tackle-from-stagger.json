@@ -1,0 +1,12 @@
+{
+  "description": "ELIGIBILITY - Tackle::vf2 0x143f7ca30 switches on the player's CURRENT action kind via the byte table at 0x143f7cae0. Stagger (kind 0x10) currently maps to case 3 = refuse outright, so the cancel gate is never even asked. Case 1 is the 'ask the current action's vf14' handler. One byte => a stumbling player may turn back and tackle as soon as the stagger's FIRST cancel keyframe passes (kind 0x0d takes the early path). Emulated: Tackle canStart(cur=Stagger) REFUSE -> GATED(vf14).",
+  "patches": [
+    {
+      "name": "Tackle::vf2 case table: currentKind Stagger -> ask the cancel gate",
+      "va": "0x143f7caee",
+      "expect": "03",
+      "patch": "01",
+      "kind": "code"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+ "description": "LATE BOX ARRIVALS 9 - CONGESTION BAIL. Before any candidate is scored, vf4 bails the whole selector if 5 or more team-mates are already within 7 m of the reference line. In a settled final-third attack that trips often. Raises the bail to 7. One private imm8. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-congestion.json",
+ "patches": [
+  {
+   "name": "congestion bail 5 -> 7 mates",
+   "va": "0x143dfef88",
+   "expect": "40 80 FE 05",
+   "patch": "40 80 FE 07",
+   "kind": "code"
+  }
+ ]
+}

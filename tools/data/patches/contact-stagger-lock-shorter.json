@@ -1,0 +1,13 @@
+{
+ "description": "THE DELIBERATE REVERSAL OF falls-stagger-lock-balance.json. Small effect, listed for completeness and because the opposite pack already exists in this repo and must not be applied by mistake.\n\nWHAT CHANGES. match::anime::action::Stagger::vf32 (0x143f007b0) computes the EXTRA frames a stagger is locked before the player may cancel out of it: extra = clamp(K - floor(x*x*K), 0, 5) where x = clamp((Balance-40)/60, 0, 1) and Balance is attribute 0x2a (read literally as 'mov edx,0x2a' at 0x143f00abb). K is loaded at 0x143f00af8. Stock K is 6.0. falls-stagger-lock-balance.json raises it to 8.0 to make staggers cost MORE. This pack lowers it to 4.0 instead. Only the instruction's own disp32 changes; no pool cell is written.\n\nEFFECT (the formula was a-EMULATED by the earlier pass at K=6/8/10; the K=4 row below is that same proven formula evaluated, so it is labelled c-INFERRED until someone re-runs the harness):\n    Balance:   40  50  60  70  75  80  85  88  90  92  95  97  99\n    stock 6.0:  5   5   5   5   4   4   3   3   2   2   1   1   1\n    THIS 4.0:   4   4   4   3   3   3   2   2   2   1   1   1   1\nThat is one to two frames, 17-33 ms at 60 fps. It is a garnish, not the fix. THE MAIN LOCK IS NOT HERE - it is the vf2/vf14 interrupt gate that contact-stagger-interrupt-open.json and contact-move-out-of-stagger.json address. Do not expect this pack on its own to change how the game feels.\n\nCELL CENSUS (run this pass with tools/exe_census.py cell). The stock 6.0 cell 0x145ab244c has 646 referrers across the image; the 4.0 target cell 0x145ab1b48 has 1,086. NEITHER IS WRITTEN - only this one instruction's displacement changes, so no other site in the game is affected. disp32 recomputed by hand: 0x145ab1b48 - 0x143f00b00 = 0x1bb1048.\n\nWHO IT AFFECTS: EVERYONE.\n\nEXPECTED EFFECT ON FOULS AND CARDS: NONE.\n\nCOLLISIONS: DIRECTLY CONFLICTS WITH falls-stagger-lock-balance.json - same instruction, opposite direction. Never have both. 0x143f00af8 is F30F100D4C19BB01 in both the INSTALLED image and eFootball.exe.PRISTINE (verified this pass).\n\nREVERT: python tools/exe_patch.py remove tools/data/patches/contact-stagger-lock-shorter.json",
+ "patches": [
+  {
+   "name": "stagger post-lock curve 6.0 -> 4.0 (disp32 re-aim, shared cell NOT written)",
+   "va": "0x143f00af8",
+   "expect": "F30F100D4C19BB01",
+   "patch": "F30F100D4810BB01",
+   "kind": "code",
+   "note": "movss xmm1,[rip+0x1bb194c -> 0x145ab244c = 6.0] re-aimed to [rip+0x1bb1048 -> 0x145ab1b48 = 4.0]. Both cells confirmed to hold 6.0 and 4.0 in the installed image. Exact reversal of falls-stagger-lock-balance.json; never apply both."
+  }
+ ]
+}

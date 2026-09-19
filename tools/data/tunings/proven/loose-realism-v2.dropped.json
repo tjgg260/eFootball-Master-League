@@ -1,0 +1,186 @@
+{
+ "_comment": "Edits from loose-realism-v2.json NOT in the proven pack, with the reason. 'unread'/'unlocated' are held, not condemned - re-check after the liveness map improves.",
+ "edits": [
+  {
+   "object": "trap",
+   "path": "trapLossDashOnly",
+   "value": false,
+   "was": true,
+   "area": "first-touch",
+   "confidence": "medium",
+   "why": "trapLoss=true is the master enable for heavy-touch ('loss') outcomes; trapLossDashOnly restricts them to sprint traps. Clearing the restriction lets walking/running traps also get away from the player \u2014 the most direct '",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "trap",
+   "path": "reachOut.reach",
+   "value": 0.6,
+   "why": "TOUCH ERROR: less magnetic stretch to corral a ball",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "throughpass",
+   "path": "allowAngleWidth.3",
+   "value": 120,
+   "was": 180,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "At PA3 a through ball is redirected to a runner from any angle (180). Narrowing to 120 means badly aimed through balls are no longer fully corrected and run through to nobody / the keeper \u2014 the classic 'wayward through b",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "throughpass",
+   "path": "allowAngleWidth.2",
+   "value": 22,
+   "was": 30,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "PA2 equivalent: retarget cone shrinks ~27% so the stick must point closer to the runner. Keeps ordering PA1 (15) < PA2 (22) < PA3 (120).",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "centering",
+   "path": "allowAngleWidth.3",
+   "value": 120,
+   "was": 180,
+   "area": "passing-error",
+   "confidence": "medium",
+   "why": "Crosses at PA3 are currently aimed at a box target regardless of stick direction. 120 leaves a wide cone but lets a cross aimed well away from any teammate go where it was aimed. adjustSearchAngleRate/adjustStartPointRat",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "passget",
+   "path": "defence.secMax",
+   "value": 0.3,
+   "was": 0.4,
+   "area": "passing-error",
+   "confidence": "low",
+   "why": "passget.defence maps a defensive attribute (paraMin 60 .. paraMax 90) to a timing 'sec' that is currently flat (0.4/0.4). Pattern-matching trap.reactionTrapBall.*.reactionTime suggests it is the defender's reaction delay",
+   "inert": "no reader of passget +0x38..+0x44 found",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "shoot",
+   "path": "control_dy.gageMax",
+   "value": 26.5,
+   "why": "BALLOON FIX: launch elevation back to stock",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "shoot",
+   "path": "loop.angleY",
+   "value": 28.0,
+   "why": "BALLOON FIX: loop/chip elevation back to stock",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "basePosition",
+   "path": "forceDashDistDefence",
+   "value": 12,
+   "was": 9,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Distance-to-target-position beyond which an off-ball player in the defensive phase is forced to sprint (forceWalkDist 1.2 < forceJogDist 2.4 < forceDashDist 9 is a clear walk/jog/run/dash ladder). Raising it 33% means de",
+   "inert": "dead load in 0x143da92c0 \u2014 the defence branch uses 19-0.1*attr instead; only forceDashDistOffence is live",
+   "_liveness": "dead-load",
+   "_why": "load at 0x143da9420 is overwritten by 19-0.1*attr before use"
+  },
+  {
+   "object": "basePosition",
+   "path": "moveStartDist",
+   "value": 1,
+   "was": 0.8,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Dead-zone: a player does not start moving to a new base position until it is this far from his current one. Raising 0.8 -> 1.2 m removes the constant micro-adjusting that makes AI shape look perfect and twitchy; players ",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "basePosition",
+   "path": "pressRate",
+   "value": 0.4,
+   "was": 0.5,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Rate (0..1) by which the collective base shape shifts toward the ball carrier, i.e. how much the whole unit 'presses' as a block. -20% yields a less swarming, less instant collective press while individual press decision",
+   "inert": "no reader found in the exe (docs/exe-gameplay-map.md)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "basePosition",
+   "path": "transitionSec",
+   "value": 6,
+   "was": 5,
+   "area": "ai-decisions",
+   "confidence": "low",
+   "why": "Duration (s) of the transition state after a possession change, during which shapes blend from attacking to defending (transitionSmooth 0, transitionOpenZ 1, transitionPriorityX 1 are its switches). Lengthening to 7 s ke",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "basePosition",
+   "path": "lengthDf_Retreat",
+   "value": 32,
+   "was": 35,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "Front-to-back length of the defensive block in the Retreat state. Konami ships it identical to the normal lengthDf (35) with only SuperRetreat (30) distinct, so a retreating CPU looks the same as a normal one. Setting 32",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "passget",
+   "path": "defence.secMin",
+   "value": 0.5,
+   "was": 0.4,
+   "area": "ai-decisions",
+   "confidence": "medium",
+   "why": "passget.defence maps a defending attribute (paraMin 60 .. paraMax 90, almost certainly Defensive Awareness) to an interception-reaction time (secMin .. secMax). Konami ships both ends at 0.4 s, so a 60-rated and a 90-rat",
+   "inert": "no reader of passget +0x38..+0x44 found",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "trap",
+   "path": "reachOut.ballSpeed",
+   "value": 42,
+   "why": "v2: reach-out only on genuinely trappable balls",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "ballplayer",
+   "path": "touch0.0.length_ave",
+   "value": 0.15,
+   "why": "v2 de-magnetise: looser close-control carry distance",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "ballplayer",
+   "path": "touch0.0.length_max",
+   "value": 0.26,
+   "why": "v2 de-magnetise: bigger max close-control push",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "passget",
+   "path": "neutralTrapAutoFront",
+   "value": 45,
+   "why": "v2 (guess): cut auto-front vacuum on loose balls",
+   "_liveness": "unread",
+   "_why": "unread"
+  }
+ ]
+}

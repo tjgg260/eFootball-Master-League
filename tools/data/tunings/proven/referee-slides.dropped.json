@@ -1,0 +1,21 @@
+{
+ "_comment": "Edits from referee-slides.json NOT in the proven pack, with the reason. 'unread'/'unlocated' are held, not condemned - re-check after the liveness map improves.",
+ "edits": [
+  {
+   "object": "basePosition",
+   "path": "slideDistMax",
+   "value": 30.0,
+   "_note": "25->30 CPU attempts slides from further",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "basePosition",
+   "path": "slideJudgeWidthMargin",
+   "value": 12.0,
+   "_note": "10->12 wider mistime window",
+   "_liveness": "unread",
+   "_why": "unread"
+  }
+ ]
+}

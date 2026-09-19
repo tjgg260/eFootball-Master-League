@@ -1,0 +1,12 @@
+{
+ "description": "OFF-BALL RUN VARIETY 3 - STOP THE SAME PLAYER WINNING EVERY CHANCE SPACE RUN. ActionSelectorChanceSpaceRun::vf5 (0x143df5950) builds a score that starts at 100.0, adds one situational term, then adds a flat +100.0 for any player who passes 0x143d37f30 / 0x143d32a90. The dispatcher 0x143df1080 sorts those scores descending and takes the top N, with no randomness at all, so the flagged players score ~200 against ~100 and win the ChanceSpaceRun slots on every single evaluation tick. Re-aiming that one addss at an existing pool cell holding 20.0 leaves the preference intact but lets the situational term decide between similar candidates, so different players break at different moments. One instruction, same length, no pool cell is written (0x145a8aa4c has 1701 referrers and must never be edited in place). Conservative first value; 15.0 lives at 0x145c0b000 and 40.0 at 0x145d58ec8 if more or less separation is wanted. Revert: python tools/exe_patch.py remove tools/data/patches/offball-chance-bonus.json",
+ "patches": [
+  {
+   "name": "ChanceSpaceRun role bonus +100 -> +20 (re-aim to 0x145a8aa44)",
+   "va": "0x143df5d62",
+   "expect": "F3 0F 58 35 E2 4C C9 01",
+   "patch": "F3 0F 58 35 DA 4C C9 01",
+   "kind": "code"
+  }
+ ]
+}

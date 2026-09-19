@@ -1,0 +1,41 @@
+{
+ "_comment": "FASTER BALL (condition, not a downstream fudge). tactical-flow had slowed ground passes to 30/28/26/26/28/28 km/h, which made balls EASIER to control and worked against the looseness brief. This restores Konami stock 36/34/32/32/34/34 km/h: a faster arriving ball exceeds the receiver controllable-speed threshold more often, so the trap difficulty term D fires - which is where first-touch looseness should come from.",
+ "edits": [
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[0]",
+   "value": 36.0,
+   "_note": "back to stock"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[1]",
+   "value": 34.0,
+   "_note": "back to stock"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[2]",
+   "value": 32.0,
+   "_note": "back to stock"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[3]",
+   "value": 32.0,
+   "_note": "back to stock"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[4]",
+   "value": 34.0,
+   "_note": "back to stock"
+  },
+  {
+   "object": "grounderpass",
+   "path": "receiveSpeed[5]",
+   "value": 34.0,
+   "_note": "back to stock"
+  }
+ ]
+}

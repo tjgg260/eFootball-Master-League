@@ -1,0 +1,56 @@
+{
+ "description": "LineBreak stage 1 \u2014 wake the dead selector (vtable redirects only, no code). Points match::ai::ActionSelectorLineBreak's 'return false' cancel test and 'mask 0' eligibility builder at two implementations that already exist in the image and provably touch no member past LineBreak's 0x2c8-byte subobject, and un-disables three movement slots on the 0x40-byte match::player::ActionLineBreak husk. The run still has no geometry of its own: that is stage 2.",
+ "linebreak": {
+  "stage": 1,
+  "action_id": "0x20",
+  "selector": {
+   "vftable": "0x146b26b20",
+   "size": "0x2c8",
+   "placed_at": "ActionSelectorManager+0xb38",
+   "next_object": "ActionSelectorDiagonalRun at +0xe00 (zero slack)"
+  },
+  "executor": {
+   "vftable": "0x146bbeb98",
+   "size": "0x40"
+  },
+  "borrowed_not_written": true,
+  "proof": "tools/emu_linebreak.py guard  (Unicorn, guard page at sel+0x2c8 / this+0x40)"
+ },
+ "patches": [
+  {
+   "name": "selector vf3 cancel-test: 'never cancel' stub -> CounterSpaceRun::vf3 (reads no member)",
+   "va": "0x146b26b38",
+   "expect": "c053c84001000000",
+   "patch": "a0b5df4301000000",
+   "kind": "vtable"
+  },
+  {
+   "name": "selector vf4 eligibility: 'mask 0' stub -> ActionSelectorScore::vf4 (reads only this+0x128)",
+   "va": "0x146b26b40",
+   "expect": "d037c84001000000",
+   "patch": "f00cdf4301000000",
+   "kind": "vtable"
+  },
+  {
+   "name": "executor vf4 destination: zero-vec3 (the CENTRE SPOT) -> ActionMove::vf4 (own position)",
+   "va": "0x146bbebb8",
+   "expect": "d020d54301000000",
+   "patch": "f060204401000000",
+   "kind": "vtable"
+  },
+  {
+   "name": "executor vf18: 'return true' stub -> ActionMove::vf18 (reads only the vptr)",
+   "va": "0x146bbec28",
+   "expect": "1038c84001000000",
+   "patch": "3058624501000000",
+   "kind": "vtable"
+  },
+  {
+   "name": "executor vf20 steering: 'ret' stub -> ActionMove::vf20 (reads no member)",
+   "va": "0x146bbec38",
+   "expect": "1039c84001000000",
+   "patch": "d020624501000000",
+   "kind": "vtable"
+  }
+ ]
+}

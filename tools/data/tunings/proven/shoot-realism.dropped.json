@@ -1,0 +1,13 @@
+{
+ "_comment": "Edits from shoot-realism.json NOT in the proven pack, with the reason. 'unread'/'unlocated' are held, not condemned - re-check after the liveness map improves.",
+ "edits": [
+  {
+   "object": "shoot",
+   "path": "control_dy.gageMax",
+   "value": 24.0,
+   "_note": "26.5->24 loft cut",
+   "_liveness": "unread",
+   "_why": "unread"
+  }
+ ]
+}

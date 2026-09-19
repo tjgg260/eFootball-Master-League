@@ -1,0 +1,23 @@
+{
+ "_comment": "LINE-03  SHRINK THE ZONAL COVER RADIUS (A/B). dt270 data only, fully reversible. This pack takes back the second of our two 'organised defending' changes that are suspected of CAUSING the centre-back cushion, and removes a third confounder. MECHANISM, verified on the INSTALLED image this session: at 0x143e8608b the code loads spaceCoverRate from basePosition+0x318, conditionally does 'mulss xmm6,[rax+0x60]' (adjustSpaceCoverRate) and adds it, adds the constant 0.15f (cell 0x145c7ec68), then clamps at 0x143e860d7 with 'minss xmm11, xmm1' where xmm11 was set to 1.0 at 0x143e85f90 (cell 0x1478502b8). The clamped value then SCALES A DISTANCE at 0x143e8617f ('mulss xmm9, xmm11') and that product is the saturation point of a ramp with a 0.5 floor (0x143e8618c..0x143e861b3). ARITHMETIC: cover = min(1.0, spaceCoverRate + k*adjustSpaceCoverRate + 0.15).\n    stock      0.43 / 0.23  ->  0.58 .. 0.81\n    INSTALLED  0.55 / 0.30  ->  0.70 .. 1.00   <- PINNED ON THE CLAMP\n    this pack  0.34 / 0.17  ->  0.49 .. 0.66\nWe did not just raise it, we pushed it onto the ceiling, so at k=1 the term stopped responding at all. If this score is a defender's 'how much of this space do I already cover', a bigger radius is exactly a defender who does not feel he needs to step across his striker. ALSO IN THIS PACK: marginPredictionFrameBase 12 -> 0. Its stock value is 0, NOT 6 - 'gameplay_tune diff' reports '0 -> 12'. Its only reader is 0x143da6533, inside 0x143da63b0, where it is added to a frames-until-ball-arrives estimate to form the acceptance budget of a candidate search. We handed every shape-runner 0.2 s of free imaginary slack. It is not a marking radius and it is not why the CB sits off, but it is a confounder in any A/B you run here, so it goes back to Konami's 0. WHO: everyone, at every difficulty - one shared basePosition object per team, and no GetParam call site anywhere in the shape code. EVIDENCE: b-disassembly for the cover arithmetic (I read every instruction and every pool cell myself); c-inferred for the claim that this is the CB cushion. HONEST WARNING: WHICH SIDE OF THE BALL CONSUMES THE COVER SCORE IS NOT ESTABLISHED. The containing function 0x143e85de0 returns a SCORE, not a position, and its call chain (0x143e85de0 <- 0x143e84d90 <- 0x143ddb8f0) may sit in the attacking-decision cluster - in which case our change made the CPU's ATTACKERS see less space rather than its defenders sit deeper. Either way, going back below stock is the right move and the right experiment. Run this pack ON ITS OWN, one match, with line-cb-close-harder.json NOT applied, or the result tells you nothing. VALUES: 0.34 / 0.17 / 0. SOFTER: 0.43 / 0.23 / 0 (exact Konami stock). STRONGER: 0.26 / 0.13 / 0. WHAT TO WATCH FOR: defenders committing to the man instead of holding a zone; less of that 'everyone is roughly in the right area and nobody is on anybody' look. TOO STRONG IF: the block gets pulled apart by a decoy run, defenders follow runners out of position and leave a hole between the lines, or two defenders chase the same man. Then go to 0.43 / 0.23. REVERT: python tools/gameplay_tune.py set basePosition.spaceCoverRate=0.55 basePosition.adjustSpaceCoverRate=0.30 basePosition.marginPredictionFrameBase=12",
+ "edits": [
+  {
+   "object": "basePosition",
+   "path": "spaceCoverRate",
+   "value": 0.34,
+   "_note": "0.55 -> 0.34 (stock 0.43). Read at 0x143e86092 and 0x143e85559."
+  },
+  {
+   "object": "basePosition",
+   "path": "adjustSpaceCoverRate",
+   "value": 0.17,
+   "_note": "0.30 -> 0.17 (stock 0.23). Read at 0x143e8609e and 0x143e8556b. Together these take the clamped cover value from 0.70..1.00 (saturated) to 0.49..0.66."
+  },
+  {
+   "object": "basePosition",
+   "path": "marginPredictionFrameBase",
+   "value": 0,
+   "_note": "12 -> 0 = Konami stock (gameplay_tune diff shows '0 -> 12'). Confounder removal, not a fix. Sole reader 0x143da6533."
+  }
+ ]
+}

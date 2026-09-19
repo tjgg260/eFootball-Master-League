@@ -1,0 +1,12 @@
+{
+ "description": "RUN VARIETY D - STOP THE DESIGNATED RUNNER OWNING EVERY SPACE RUN. EMULATED EXACTLY (Unicorn, ChanceSpaceRun::vf5 0x143df5950 run end-to-end with every call stubbed and the world fully controlled, both images): the score this selector returns is score = 100 + attackDir*player.x + bonus, where attackDir is the signed byte at teamAiTable+0x28c (verified: setting it to 0xFF mirrors the slope exactly), player.x is the player's own pitch x in metres read at playerObj+0x4f4, and bonus is added at 0x143df5d62 when 0x143d37f30(match,slot,0) or 0x143d32a90(match,slot) is true. Fifteen of the sixteen internal 'kind' branches leave the base at a flat 100; only kind 3 replaces it with a real situational value (0x143df5de0, a 100 +/- ~15 ramp). There is no other term and NO randomness: a depth-10 direct-call closure of vf5 (2,741 functions) contains no call into the match RNG cluster 0x144345d80..0x1443461d0, and vf5 makes zero indirect calls (positive control: the same scan finds the RNG from the kick builder 0x14401a900 at depth 4). STOCK the bonus cell is 0x145a8aa4c = 100.0f. A football pitch is ~105 m long, so a 100-point bonus is larger than any position difference that can physically exist: in the stock game the flagged players win EVERY ChanceSpaceRun slot in EVERY situation, and no deep player can ever take one. offball-chance-bonus.json already re-aimed that load to 0x145a8aa44 = 20.0f, which still means a midfielder must be 20 m further up the pitch than a flagged forward. This re-aims it to the pool's 0.0f cell at 0x1478502bc (verified 0.0f in the installed exe and in the PRISTINE backup, and sitting beside the 1.0f the engine uses everywhere), removing the preference entirely so the run slots go to whoever is actually furthest forward at that moment - which rotates as the shape moves. One instruction, same length, no pool cell is written. WHAT THIS IS NOT: it is not entropy. The selection stays perfectly deterministic; it just stops being decided by a static flag. Test it WITH runvar-chance-quota.json - on its own it changes who runs, not how many. If the front line stops running altogether, revert this one first. Affects BOTH teams. Revert: python tools/exe_patch.py remove tools/data/patches/runvar-role-bonus-off.json",
+ "patches": [
+  {
+   "name": "ChanceSpaceRun role bonus +20 -> +0 (re-aim 0x145a8aa44 -> 0x1478502bc)",
+   "va": "0x143df5d62",
+   "expect": "F3 0F 58 35 DA 4C C9 01",
+   "patch": "F3 0F 58 35 52 A5 A5 03",
+   "kind": "code"
+  }
+ ]
+}

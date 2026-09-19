@@ -1,0 +1,12 @@
+{
+  "description": "CONTACT LOCK 3/3 - FallDown::vf14 0x143f00d00 (shared by FallDown and Dive): the cancel gate is the LAST channel-5 keyframe unless the contact sub-kind byte (work+0x2bdc) == 2, in which case it is the FIRST. Killing that 'jne' makes every fall use the FIRST cancel keyframe. Emulated: cancel keys 16/32/48 -> gate 48 -> 16 for sub-kinds 0,1,3,4 (sub-kind 2 was already 16). NOTE: on its own this changes nothing you can feel, because Dribble/Move are REFUSED outright while FallDown is running - pair it with contact-allow-dribble-from-falldown.json.",
+  "patches": [
+    {
+      "name": "FallDown/Dive::vf14 always take the first cancel keyframe",
+      "va": "0x143f00d71",
+      "expect": "75 0a",
+      "patch": "66 90",
+      "kind": "code"
+    }
+  ]
+}

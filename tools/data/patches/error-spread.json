@@ -1,0 +1,19 @@
+{
+ "description": "ERROR LAYER 2a - SMALL ERRORS (the everyday core). How big an ordinary miss can be, on the normal-kick path only. Horizontal miss ceiling 22.5 -> 30 deg and weight-of-pass/shot power error 30% -> 40%. Both are re-aims of one instruction at an existing pool constant (no new code; the shared cells themselves are untouched). These only bite once error can actually happen, so apply technique-realism.json (layer 1: WHEN error happens) first - on a stock game the cleanliness factor is 1.0 in ordinary play and these ceilings multiply zero. Sigma (spread shape) is deliberately NOT here: it lives in error-sigma.json, because the fatigue cave occupies the same instruction. Entries are byte-identical to ones that already ran in-game (slices-scuffs.json B and C). Revert: python tools/exe_patch.py remove tools/data/patches/error-spread.json",
+ "patches": [
+  {
+   "name": "power error (over/under-hit weight of pass and shot) 30% -> 40%",
+   "va": "0x14401b3d6",
+   "expect": "F3 44 0F 10 2D A9 D6 B0 01",
+   "patch": "F3 44 0F 10 2D B1 F2 B0 01",
+   "kind": "code"
+  },
+  {
+   "name": "horizontal miss ceiling 22.5 -> 30 deg",
+   "va": "0x14401b3df",
+   "expect": "F3 0F 59 05 99 35 75 02",
+   "patch": "F3 0F 59 05 99 29 A7 01",
+   "kind": "code"
+  }
+ ]
+}

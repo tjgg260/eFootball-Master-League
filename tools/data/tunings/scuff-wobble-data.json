@@ -1,0 +1,6 @@
+{
+ "_comment": "Data companion to patches/scuff-wobble.json. The engine's knuckle/wobble only acts on balls faster than ball.nonSpinMin (km/h). Stock 45 means only hard-struck balls wobble, so a scuffed, under-hit pass would never qualify. Lowering it to 25 lets slow mishit passes wobble too. nonSpinMin is proven READ by the exe. On its own this does almost nothing visible - wobble is stripped from mishits until scuff-wobble.json is applied. Apply: python tools/gameplay_tune.py apply tools/data/tunings/scuff-wobble-data.json --stack",
+ "edits": [
+  {"object": "ball", "path": "nonSpinMin", "value": 25.0, "_note": "45 -> 25 km/h: slow mis-struck passes can wobble"}
+ ]
+}

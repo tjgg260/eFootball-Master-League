@@ -1,0 +1,38 @@
+{
+ "_comment": "UNDO OUR OWN CUSHION + PULL THE LINES TOGETHER. Supersedes mark-the-man.json, which was written against a WRONG stock value for marginPredictionFrameBase (it assumed stock 6; gameplay_tune diff proves stock is 0). Two halves. HALF ONE reverses five edits of ours that all push the CB-vs-striker cushion the WRONG WAY - this is the direct answer to 'the CB always has a few yards on the ST'. HALF TWO reaches the three genuine compaction fields that NOBODY HAS EVER TOUCHED, which is the answer to 'the game is not compact enough'. Every field below has a proven reader in build/dt270_liveness.json and the two marked a-emulated were run under Unicorn against the game's own bytes. Revert: python tools/gameplay_tune.py restore",
+
+ "_mechanism": {
+  "spaceCoverRate": "0x143e8608b computes cover = min(1.0, spaceCoverRate + k*adjustSpaceCoverRate + 0.15); twenty instructions later 0x143e8617f multiplies a DISTANCE by it and normalises a gap against it: t = clamp01((|d| - 0.5) / (cover*D - 0.5)). It scales a believed cover radius. STOCK 0.43 -> 0.58..0.81. OURS 0.55 -> 0.70..1.00, SATURATED ON THE CLAMP. A defender who believes he already covers a 24% larger patch does not step onto his striker. This is our own change and it is the prime suspect for the cushion.",
+  "lastLineCloseMaxRate": "0x143e872c5. The last line's close-down weight ramps 1.0 -> 0.0 as the reference distance goes 12 m -> 24 m, then is multiplied by this field - so it is the CAP on how hard the back line closes. Stock 0.80; we cut it to 0.62, i.e. we reduced the back line's maximum closing effort by 22%.",
+  "dfLineCloseRate": "companion to the above, lowered 0.55 -> 0.42 by the same pack, same wrong direction.",
+  "marginPredictionFrameBase": "single reader 0x143da63b0 (from the base-position runner 0x143da92c0), reached only when slowDownPassFrame != 0. It builds a frame budget = [round(fps*0.6) if far] + marginPredictionFrameBase + framesUntilBallArrives and walks candidate indices while cost stays under budget. We handed every shape runner 12 FREE FRAMES (0.2 s at 60 fps) of assumed spare time on top of the ball's real flight time. Stock gives them none. There is no headroom below stock that is not a negative int, so the correct move is 0, not a guess.",
+  "lengthOf": "0x143deaa33 in the defensive-line builder. At kickoff the code literally computes defensive line X = kickoffDfLineX (-18) and forward line X = kickoffDfLineX + lengthOf = +17, writing the pair into the line-target array at [+0x7248] that the midfield builder reads back. In open play the same value drives an interpolation band sweeping -lengthOf to -lengthOf/2 weighted by dfLineRate (0.2). lengthOf IS the team's front-to-back length IN METRES. It is live and it is completely stock - the one field that sets how far apart the lines are has never been touched.",
+  "adjustZCompact": "a-emulated (0x143d3bc40, player-count call stubbed). Returns a signed metre offset clamp(+/-c, c*(5.5-n)/4.5) for n players in the group: n<=1 -> +2.50, 3 -> +1.39, 5 -> +0.28, 6 -> -0.28, 8 -> -1.39, 10+ -> -2.50. The caller 0x143deb565 adds it to ([slot+0xc]-[slot+0x8])*0.5, the half-width of that player's lateral zone from the formation board. Crowded line -> zone narrows. Raising the field narrows it more. A genuine global width-compaction knob, stock.",
+  "adjustXCompactFW": "0x143de993f: targetX += -adjustXCompactFW * (n - 1) where n is the line's player count, so it drags the forward line back by 1.5-2.5 m today. Doubling it doubles that pull."
+ },
+
+ "edits": [
+  {"object": "basePosition", "path": "marginPredictionFrameBase", "value": 0,
+   "_note": "12 -> 0 = STOCK. Removes 0.2 s of free assumed time we gave every shape runner."},
+  {"object": "basePosition", "path": "spaceCoverRate", "value": 0.33,
+   "_note": "0.55 -> 0.33 (stock 0.43). cover 0.70..1.00 -> 0.48..0.66: off the clamp and below stock, so defenders stop believing they cover the gap and step onto the man."},
+  {"object": "basePosition", "path": "adjustSpaceCoverRate", "value": 0.18,
+   "_note": "0.30 -> 0.18 (stock 0.23). Keeps the situational term from pushing cover back onto the clamp."},
+  {"object": "basePosition", "path": "lastLineCloseMaxRate", "value": 0.95,
+   "_note": "0.62 -> 0.95 (stock 0.80). Back line closes at 95% of the ramp instead of 62% - above stock, deliberately."},
+  {"object": "basePosition", "path": "dfLineCloseRate", "value": 0.70,
+   "_note": "0.42 -> 0.70 (stock 0.55). Companion close-down strength, also above stock."},
+
+  {"object": "basePosition", "path": "lengthOf", "value": 28,
+   "_note": "35 -> 28 m. THE compactness lever. 35 m front-to-back is a stretched side; 28 m is a properly compact block. At kickoff the forward line moves from +17 to +9."},
+  {"object": "basePosition", "path": "adjustZCompact", "value": 4.0,
+   "_note": "2.5 -> 4.0 m. Lateral zone narrowing on a crowded line goes from -2.50 m to -4.00 m per side at 10+ players."},
+  {"object": "basePosition", "path": "adjustXCompactFW", "value": 1.0,
+   "_note": "0.5 -> 1.0. Doubles how far a populated forward line is dragged back toward the block."}
+ ],
+
+ "_not_fixed_by_this": [
+  "ONE-DIMENSIONAL RUNS. Emulated: ChanceSpaceRun's score is score = 100.0 + attackDirection*player.x + roleBonus - furthest man up the pitch wins, with NO space, ball-distance, pass-likelihood or opponent-proximity term. DiagonalRun's score is depth behind the opponent line - deepest man wins. A 943,597-edge call-graph search found NO randomiser reachable from the manager update, the dispatcher or any selector vf3/vf4/vf5/vf6. Identical geometry -> identical runs. This cannot be fixed by re-aiming a constant because there is no second term to weight; it needs a code cave in the score function.",
+  "THE MARKER CANNOT CLOSE DISTANCE. a-emulated: in ActionMark::vf20 (0x1441a1e50) the tail computes R = |self - proposed destination| and re-emits the destination at the SAME radius R, rotated toward the marked man. Radial closing is exactly 0.000 m in every case. ActionMark can only aim; whatever gap the shape layer hands it is the gap it keeps. The fields above act on that upstream shape layer, which is why they are the right place to push."
+ ]
+}

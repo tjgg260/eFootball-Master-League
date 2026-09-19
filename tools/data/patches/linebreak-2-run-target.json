@@ -1,0 +1,858 @@
+{
+ "description": "LineBreak stage 2 \u2014 give the run its own geometry. Replaces the selector's shared zero-vec3 vf6 with a cave that targets the ENGINE'S OWN offside line (0x143d24d60) with the runner's lateral offset cut toward the middle, so the run breaks the line through the central seam instead of drifting away from the ball like ChanceSpaceRun. Onside by construction. Apply on top of stage 1.",
+ "linebreak": {
+  "stage": 2,
+  "slot": "selector vf6",
+  "entry": "0x143df0ce1",
+  "signature": "vec3* vf6(sel /*rcx*/, vec3* out /*rdx*/, W /*r8*/, int pid /*r9d*/)",
+  "tunables": {
+   "Z_KEEP": {
+    "imm32": "0x3eb33333",
+    "value": 0.35,
+    "what": "fraction of the runner's own lateral offset he keeps; lower = cuts harder into the middle (0.0 = straight to the central seam, 1.0 = straight up his own channel)"
+   },
+   "HALF_W": {
+    "imm32": "0x41f00000",
+    "value": 30.0,
+    "what": "hard clamp on |target z| in metres"
+   }
+  },
+  "emulated": [
+   {
+    "px": 10.0,
+    "pz": -28.0,
+    "offside": 36.0,
+    "tx": 36.0,
+    "ty": 0.0,
+    "tz": -9.8,
+    "kind": 0,
+    "oob": 0,
+    "err": ""
+   },
+   {
+    "px": 10.0,
+    "pz": 0.0,
+    "offside": 36.0,
+    "tx": 36.0,
+    "ty": 0.0,
+    "tz": 0.0,
+    "kind": 0,
+    "oob": 0,
+    "err": ""
+   },
+   {
+    "px": 22.0,
+    "pz": 14.0,
+    "offside": 36.0,
+    "tx": 36.0,
+    "ty": 0.0,
+    "tz": 4.9,
+    "kind": 0,
+    "oob": 0,
+    "err": ""
+   },
+   {
+    "px": -5.0,
+    "pz": 31.0,
+    "offside": 20.0,
+    "tx": 20.0,
+    "ty": 0.0,
+    "tz": 10.85,
+    "kind": 0,
+    "oob": 0,
+    "err": ""
+   },
+   {
+    "px": 0.0,
+    "pz": -40.0,
+    "offside": 5.0,
+    "tx": 5.0,
+    "ty": 0.0,
+    "tz": -14.0,
+    "kind": 0,
+    "oob": 0,
+    "err": ""
+   },
+   {
+    "px": 30.0,
+    "pz": 2.0,
+    "offside": 36.0,
+    "tx": 36.0,
+    "ty": 0.0,
+    "tz": 0.7,
+    "kind": 0,
+    "oob": 0,
+    "err": ""
+   }
+  ]
+ },
+ "cave_layout": {
+  "allocator": "cave_alloc v1",
+  "entry": "0x143df0ce1",
+  "exits": [],
+  "externals": {
+   "offside": "0x143d24d60",
+   "player": "0x1442d6f60"
+  },
+  "cells": {},
+  "labels": {
+   "done": "0x143e04573",
+   "fail": "0x143dfccd7",
+   "kind": "0x143de4214"
+  },
+  "policy": {
+   "order": "ascending-va"
+  },
+  "chain_len": 5,
+  "chunks": [
+   {
+    "index": 0,
+    "cave_va": "0x143df0ce1",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143df16f1",
+    "asm": [
+     "push rbx",
+     "push rsi",
+     "push rdi",
+     "sub rsp, 0x30"
+    ]
+   },
+   {
+    "index": 1,
+    "cave_va": "0x143df16f1",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143df46c2",
+    "asm": [
+     "mov qword ptr [rsp + 0x20], rcx",
+     "mov rbx, rdx"
+    ]
+   },
+   {
+    "index": 2,
+    "cave_va": "0x143df46c2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143dece94",
+    "asm": [
+     "mov edi, r9d",
+     "mov rsi, r8",
+     "mov rcx, qword ptr [rsi]"
+    ]
+   },
+   {
+    "index": 3,
+    "cave_va": "0x143dece94",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 8,
+    "chain_to": "0x143decb54",
+    "asm": [
+     "mov edx, dword ptr [rsi + 0x18]"
+    ]
+   },
+   {
+    "index": 4,
+    "cave_va": "0x143decb54",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143df6004",
+    "asm": [
+     "call $offside"
+    ]
+   },
+   {
+    "index": 5,
+    "cave_va": "0x143df6004",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143deb3a3",
+    "asm": [
+     "movss dword ptr [rsp + 0x28], xmm0"
+    ]
+   },
+   {
+    "index": 6,
+    "cave_va": "0x143deb3a3",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143df7433",
+    "asm": [
+     "mov rcx, qword ptr [rsi]",
+     "mov edx, edi"
+    ]
+   },
+   {
+    "index": 7,
+    "cave_va": "0x143df7433",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143df7794",
+    "asm": [
+     "call $player",
+     "test rax, rax"
+    ]
+   },
+   {
+    "index": 8,
+    "cave_va": "0x143df7794",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143df8702",
+    "asm": [
+     "je @fail"
+    ]
+   },
+   {
+    "index": 9,
+    "cave_va": "0x143df8702",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143df9224",
+    "asm": [
+     "movss xmm1, dword ptr [rax + 0x4fc]"
+    ]
+   },
+   {
+    "index": 10,
+    "cave_va": "0x143df9224",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143df9513",
+    "asm": [
+     "mov ecx, 0x3eb33333"
+    ]
+   },
+   {
+    "index": 11,
+    "cave_va": "0x143df9513",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143df9723",
+    "asm": [
+     "movd xmm2, ecx",
+     "mulss xmm1, xmm2"
+    ]
+   },
+   {
+    "index": 12,
+    "cave_va": "0x143df9723",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143df9923",
+    "asm": [
+     "mov ecx, 0x41f00000"
+    ]
+   },
+   {
+    "index": 13,
+    "cave_va": "0x143df9923",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143de7c02",
+    "asm": [
+     "movd xmm2, ecx",
+     "minss xmm1, xmm2"
+    ]
+   },
+   {
+    "index": 14,
+    "cave_va": "0x143de7c02",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143de72e2",
+    "asm": [
+     "xorps xmm3, xmm3",
+     "subss xmm3, xmm2"
+    ]
+   },
+   {
+    "index": 15,
+    "cave_va": "0x143de72e2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 9,
+    "chain_to": "0x143de6db2",
+    "asm": [
+     "maxss xmm1, xmm3"
+    ]
+   },
+   {
+    "index": 16,
+    "cave_va": "0x143de6db2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143dfb592",
+    "asm": [
+     "movss xmm0, dword ptr [rsp + 0x28]"
+    ]
+   },
+   {
+    "index": 17,
+    "cave_va": "0x143dfb592",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143dfb6e2",
+    "asm": [
+     "movss dword ptr [rbx], xmm0",
+     "xorps xmm2, xmm2"
+    ]
+   },
+   {
+    "index": 18,
+    "cave_va": "0x143dfb6e2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143de6173",
+    "asm": [
+     "movss dword ptr [rbx + 4], xmm2"
+    ]
+   },
+   {
+    "index": 19,
+    "cave_va": "0x143de6173",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143dfccd2",
+    "asm": [
+     "movss dword ptr [rbx + 8], xmm1"
+    ]
+   },
+   {
+    "index": 20,
+    "cave_va": "0x143dfccd2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143dfd691",
+    "asm": [
+     "jmp @kind",
+     "xorps xmm0, xmm0"
+    ]
+   },
+   {
+    "index": 21,
+    "cave_va": "0x143dfd691",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143dfda54",
+    "asm": [
+     "movss dword ptr [rbx], xmm0",
+     "movss dword ptr [rbx + 4], xmm0"
+    ]
+   },
+   {
+    "index": 22,
+    "cave_va": "0x143dfda54",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143de4214",
+    "asm": [
+     "movss dword ptr [rbx + 8], xmm0"
+    ]
+   },
+   {
+    "index": 23,
+    "cave_va": "0x143de4214",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 8,
+    "chain_to": "0x143de2fb3",
+    "asm": [
+     "cmp edi, 0x15"
+    ]
+   },
+   {
+    "index": 24,
+    "cave_va": "0x143de2fb3",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143dfffd3",
+    "asm": [
+     "ja @done"
+    ]
+   },
+   {
+    "index": 25,
+    "cave_va": "0x143dfffd3",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143e01c12",
+    "asm": [
+     "mov eax, 0xba2e8ba3",
+     "mul edi"
+    ]
+   },
+   {
+    "index": 26,
+    "cave_va": "0x143e01c12",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143e02f74",
+    "asm": [
+     "shr edx, 3",
+     "imul eax, edx, 0xb",
+     "mov ecx, edi"
+    ]
+   },
+   {
+    "index": 27,
+    "cave_va": "0x143e02f74",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143e04042",
+    "asm": [
+     "sub ecx, eax",
+     "mov rax, qword ptr [rsp + 0x20]"
+    ]
+   },
+   {
+    "index": 28,
+    "cave_va": "0x143e04042",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143e04573",
+    "asm": [
+     "mov byte ptr [rax + rcx + 0xe5], 0"
+    ]
+   },
+   {
+    "index": 29,
+    "cave_va": "0x143e04573",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 13,
+    "chain_to": "0x143e05542",
+    "asm": [
+     "mov rax, rbx",
+     "add rsp, 0x30",
+     "pop rdi"
+    ]
+   },
+   {
+    "index": 30,
+    "cave_va": "0x143e05542",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 3,
+    "chain_to": null,
+    "asm": [
+     "pop rsi",
+     "pop rbx",
+     "ret"
+    ]
+   }
+  ],
+  "total_used": 347,
+  "payload_bytes": 197,
+  "source_sha1": "d590fc247d711803f3495aac9b84c447d3f04ffd",
+  "target_image_sha1": "43e65b5ceb442542c133bd528cc92c68a8a71ff6"
+ },
+ "patches": [
+  {
+   "name": "linebreak-vf6 cave chunk 1/31 (12 B in the 15 B int3 run at 0x143df0ce1)",
+   "va": "0x143df0ce1",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "5356574883ec30e9040a0000",
+   "kind": "code",
+   "chunk": 0,
+   "cave": {
+    "va": "0x143df0ce1",
+    "len": 15
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 2/31 (13 B in the 15 B int3 run at 0x143df16f1)",
+   "va": "0x143df16f1",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "48894c24204889d3e9c42f0000",
+   "kind": "code",
+   "chunk": 1,
+   "cave": {
+    "va": "0x143df16f1",
+    "len": 15
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 3/31 (14 B in the 14 B int3 run at 0x143df46c2)",
+   "va": "0x143df46c2",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "4489cf4c89c6488b0ee9c487ffff",
+   "kind": "code",
+   "chunk": 2,
+   "cave": {
+    "va": "0x143df46c2",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 4/31 (8 B in the 12 B int3 run at 0x143dece94)",
+   "va": "0x143dece94",
+   "expect": "cccccccccccccccc",
+   "patch": "8b5618e9b8fcffff",
+   "kind": "code",
+   "chunk": 3,
+   "cave": {
+    "va": "0x143dece94",
+    "len": 12
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 5/31 (10 B in the 12 B int3 run at 0x143decb54)",
+   "va": "0x143decb54",
+   "expect": "cccccccccccccccccccc",
+   "patch": "e80782f3ffe9a6940000",
+   "kind": "code",
+   "chunk": 4,
+   "cave": {
+    "va": "0x143decb54",
+    "len": 12
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 6/31 (11 B in the 12 B int3 run at 0x143df6004)",
+   "va": "0x143df6004",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "f30f11442428e99453ffff",
+   "kind": "code",
+   "chunk": 5,
+   "cave": {
+    "va": "0x143df6004",
+    "len": 12
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 7/31 (10 B in the 13 B int3 run at 0x143deb3a3)",
+   "va": "0x143deb3a3",
+   "expect": "cccccccccccccccccccc",
+   "patch": "488b0e89fae986c00000",
+   "kind": "code",
+   "chunk": 6,
+   "cave": {
+    "va": "0x143deb3a3",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 8/31 (13 B in the 13 B int3 run at 0x143df7433)",
+   "va": "0x143df7433",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "e828fb4d004885c0e954030000",
+   "kind": "code",
+   "chunk": 7,
+   "cave": {
+    "va": "0x143df7433",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 9/31 (11 B in the 12 B int3 run at 0x143df7794)",
+   "va": "0x143df7794",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "0f843d550000e9630f0000",
+   "kind": "code",
+   "chunk": 8,
+   "cave": {
+    "va": "0x143df7794",
+    "len": 12
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 10/31 (13 B in the 14 B int3 run at 0x143df8702)",
+   "va": "0x143df8702",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "f30f1088fc040000e9150b0000",
+   "kind": "code",
+   "chunk": 9,
+   "cave": {
+    "va": "0x143df8702",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 11/31 (10 B in the 12 B int3 run at 0x143df9224)",
+   "va": "0x143df9224",
+   "expect": "cccccccccccccccccccc",
+   "patch": "b93333b33ee9e5020000",
+   "kind": "code",
+   "chunk": 10,
+   "cave": {
+    "va": "0x143df9224",
+    "len": 12
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 12/31 (13 B in the 13 B int3 run at 0x143df9513)",
+   "va": "0x143df9513",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "660f6ed1f30f59cae903020000",
+   "kind": "code",
+   "chunk": 11,
+   "cave": {
+    "va": "0x143df9513",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 13/31 (10 B in the 13 B int3 run at 0x143df9723)",
+   "va": "0x143df9723",
+   "expect": "cccccccccccccccccccc",
+   "patch": "b90000f041e9f6010000",
+   "kind": "code",
+   "chunk": 12,
+   "cave": {
+    "va": "0x143df9723",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 14/31 (13 B in the 13 B int3 run at 0x143df9923)",
+   "va": "0x143df9923",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "660f6ed1f30f5dcae9d2e2feff",
+   "kind": "code",
+   "chunk": 13,
+   "cave": {
+    "va": "0x143df9923",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 15/31 (12 B in the 14 B int3 run at 0x143de7c02)",
+   "va": "0x143de7c02",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "0f57dbf30f5cdae9d4f6ffff",
+   "kind": "code",
+   "chunk": 14,
+   "cave": {
+    "va": "0x143de7c02",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 16/31 (9 B in the 14 B int3 run at 0x143de72e2)",
+   "va": "0x143de72e2",
+   "expect": "cccccccccccccccccc",
+   "patch": "f30f5fcbe9c7faffff",
+   "kind": "code",
+   "chunk": 15,
+   "cave": {
+    "va": "0x143de72e2",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 17/31 (11 B in the 14 B int3 run at 0x143de6db2)",
+   "va": "0x143de6db2",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "f30f10442428e9d5470100",
+   "kind": "code",
+   "chunk": 16,
+   "cave": {
+    "va": "0x143de6db2",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 18/31 (12 B in the 14 B int3 run at 0x143dfb592)",
+   "va": "0x143dfb592",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "f30f11030f57d2e944010000",
+   "kind": "code",
+   "chunk": 17,
+   "cave": {
+    "va": "0x143dfb592",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 19/31 (10 B in the 14 B int3 run at 0x143dfb6e2)",
+   "va": "0x143dfb6e2",
+   "expect": "cccccccccccccccccccc",
+   "patch": "f30f115304e987aafeff",
+   "kind": "code",
+   "chunk": 18,
+   "cave": {
+    "va": "0x143dfb6e2",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 20/31 (10 B in the 13 B int3 run at 0x143de6173)",
+   "va": "0x143de6173",
+   "expect": "cccccccccccccccccccc",
+   "patch": "f30f114b08e9556b0100",
+   "kind": "code",
+   "chunk": 19,
+   "cave": {
+    "va": "0x143de6173",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 21/31 (13 B in the 14 B int3 run at 0x143dfccd2)",
+   "va": "0x143dfccd2",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "e93d75feff0f57c0e9b2090000",
+   "kind": "code",
+   "chunk": 20,
+   "cave": {
+    "va": "0x143dfccd2",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 22/31 (14 B in the 15 B int3 run at 0x143dfd691)",
+   "va": "0x143dfd691",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "f30f1103f30f114304e9b5030000",
+   "kind": "code",
+   "chunk": 21,
+   "cave": {
+    "va": "0x143dfd691",
+    "len": 15
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 23/31 (10 B in the 12 B int3 run at 0x143dfda54)",
+   "va": "0x143dfda54",
+   "expect": "cccccccccccccccccccc",
+   "patch": "f30f114308e9b667feff",
+   "kind": "code",
+   "chunk": 22,
+   "cave": {
+    "va": "0x143dfda54",
+    "len": 12
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 24/31 (8 B in the 12 B int3 run at 0x143de4214)",
+   "va": "0x143de4214",
+   "expect": "cccccccccccccccc",
+   "patch": "83ff15e997edffff",
+   "kind": "code",
+   "chunk": 23,
+   "cave": {
+    "va": "0x143de4214",
+    "len": 12
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 25/31 (11 B in the 13 B int3 run at 0x143de2fb3)",
+   "va": "0x143de2fb3",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "0f87ba150200e915d00100",
+   "kind": "code",
+   "chunk": 24,
+   "cave": {
+    "va": "0x143de2fb3",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 26/31 (12 B in the 13 B int3 run at 0x143dfffd3)",
+   "va": "0x143dfffd3",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "b8a38b2ebaf7e7e9331c0000",
+   "kind": "code",
+   "chunk": 25,
+   "cave": {
+    "va": "0x143dfffd3",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 27/31 (13 B in the 14 B int3 run at 0x143e01c12)",
+   "va": "0x143e01c12",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "c1ea036bc20b89f9e955130000",
+   "kind": "code",
+   "chunk": 26,
+   "cave": {
+    "va": "0x143e01c12",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 28/31 (12 B in the 12 B int3 run at 0x143e02f74)",
+   "va": "0x143e02f74",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "29c1488b442420e9c2100000",
+   "kind": "code",
+   "chunk": 27,
+   "cave": {
+    "va": "0x143e02f74",
+    "len": 12
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 29/31 (13 B in the 14 B int3 run at 0x143e04042)",
+   "va": "0x143e04042",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "c68408e500000000e924050000",
+   "kind": "code",
+   "chunk": 28,
+   "cave": {
+    "va": "0x143e04042",
+    "len": 14
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 30/31 (13 B in the 13 B int3 run at 0x143e04573)",
+   "va": "0x143e04573",
+   "expect": "cccccccccccccccccccccccccc",
+   "patch": "4889d84883c4305fe9c20f0000",
+   "kind": "code",
+   "chunk": 29,
+   "cave": {
+    "va": "0x143e04573",
+    "len": 13
+   }
+  },
+  {
+   "name": "linebreak-vf6 cave chunk 31/31 (3 B in the 14 B int3 run at 0x143e05542)",
+   "va": "0x143e05542",
+   "expect": "cccccc",
+   "patch": "5e5bc3",
+   "kind": "code",
+   "chunk": 30,
+   "cave": {
+    "va": "0x143e05542",
+    "len": 14
+   }
+  },
+  {
+   "name": "selector vf6 run target: shared zero-vec3 -> cave 0x143df0ce1",
+   "va": "0x146b26b50",
+   "expect": "d020d54301000000",
+   "patch": "e10cdf4301000000",
+   "kind": "vtable"
+  }
+ ]
+}

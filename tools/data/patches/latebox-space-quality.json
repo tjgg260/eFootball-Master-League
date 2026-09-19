@@ -1,0 +1,19 @@
+{
+ "description": "LATE BOX ARRIVALS 5 - TARGET QUALITY. vf4 rejects a candidate whose grid space score (0x143c71ee0) is below 36, and (for a candidate not yet past oppline-12) whose run bearing is less than 52 deg off the reference direction. Lowering 36->30 accepts a slightly more contested arrival point; lowering 52->35 allows straighter, more central late runs rather than only diagonal channel runs. Two disp32 re-aims. The 52 deg meaning is inferred, not emulated - apply this one last. Revert: python tools/exe_patch.py remove tools/data/patches/latebox-space-quality.json",
+ "patches": [
+  {
+   "name": "space score floor 36 -> 30",
+   "va": "0x143dff29b",
+   "expect": "F3 44 0F 10 25 C4 B2 4A 02",
+   "patch": "F3 44 0F 10 25 DC EA C8 01",
+   "kind": "code"
+  },
+  {
+   "name": "run bearing floor 52 -> 35 deg",
+   "va": "0x143dffaa9",
+   "expect": "F3 0F 10 0D AB 77 52 02",
+   "patch": "F3 0F 10 0D 63 DB E8 01",
+   "kind": "code"
+  }
+ ]
+}

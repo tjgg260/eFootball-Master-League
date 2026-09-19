@@ -1,0 +1,12 @@
+{
+ "description": "REVERT OUR OWN DEFENSIVE-GAIT REGRESSION (reverses ONE of marking-tight.json's three entries; the other two stay). WHY: at 0x143da9553 the base-position runner computes the out-of-possession sprint threshold as C - 0.1*attribute(0x17), and at 0x143da95a3 'comiss xmm9,xmm7 / jbe skip' a defender sprints only when his distance to the commanded point EXCEEDS that threshold. marking-tight.json re-aimed the C literal from the stock 19.0f (cell at +0x02516aa5) to 15.0f (+0x01e61aa5), intending tighter marking. It does the opposite: it LOWERS the threshold, so a defender now jogs whenever he is inside 11.0 m (attr 40) to 5.1 m (attr 99) of his commanded point instead of 15.0 m to 9.1 m. Every defender on the build reacts ~4 m later than Konami intended, at EVERY ability level - a flat laziness shift that does not widen the good/bad gap and that directly worsens the CB-vs-striker cushion. Two independent emulation passes agreed on this. NOTE the same instruction is the ONE ability-scaled term in the whole defensive-positioning path (sprint trigger 15.0 m at attr 40 down to 7.26 m at attr 99 in the companion rules at 0x143da9401), so getting C right matters more than any other constant here. KEPT from marking-tight.json: 0x1441a2475 (man-ward steering cap 45 -> 90 deg, which halves the residual bearing error at 12 m from 8.64 to 1.81 deg - emulated, genuinely helps) and 0x1441a29f9 (mark-priority radius 18 -> 25 m). Bytes are the exact inverse of marking-tight.json entry 1, verified against the installed image. Re-apply the 15.0f by removing this spec: python tools/exe_patch.py remove tools/data/patches/gait-revert.json",
+ "patches": [
+  {
+   "name": "defensive sprint threshold back to stock 19.0 (undo our 15.0)",
+   "va": "0x143da9553",
+   "expect": "F30F103DA51AE601",
+   "patch": "F30F103DA56A5102",
+   "kind": "code"
+  }
+ ]
+}

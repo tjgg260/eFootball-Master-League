@@ -1,0 +1,4 @@
+{
+ "_comment": "PROVEN-READ subset of referee-slides.json: only edits to fields an instruction in eFootball.exe reads. REFEREE slide commitment (STAGED, low confidence: liveness UNCONFIRMED \u2014 sibling basePosition.pressRate/forceDashDistDefence are DEAD loads. diff-test and observe slide/foul frequency before trusting). Makes the CPU commit more mistimed slides -> more conceded free kicks.",
+ "edits": []
+}

@@ -12,15 +12,24 @@ Same spec format as tools/live_patch.py (patch specs in tools/data/patches/*.jso
     python tools/exe_patch.py remove tools/data/patches/kick-error-x2.json    # reverse that spec
     python tools/exe_patch.py restore                      # byte-exact pristine exe back
     python tools/exe_patch.py diff                         # every byte that differs from pristine
+    python tools/exe_patch.py caves --near 0x143da6529     # free int3 caves for a chained payload
+    python tools/exe_patch.py caves --audit                # who claims which cave
 
 Rules baked in:
   * First apply copies the untouched exe to ~/Backups/eFootball/eFootball.exe.PRISTINE (352 MB)
-    and records its sha1; `restore` copies it back. A timestamped backup is taken before
-    every write as well.
+    and records its sha1; `restore` copies it back. Every write also drops a JOURNAL next to it
+    (eFootball.exe.<stamp>.bak-meta.json: the changed offsets and their old bytes) — that is a
+    record of the edit, NOT a second copy of the exe. The single PRISTINE image is the only
+    full backup, so `restore` is all-or-nothing.
   * A patch is written only if every `expect` byte matches the file right now (so a spec built
     for another game version, or already applied, cannot corrupt anything). `remove` requires
-    the `patch` bytes to be present and writes `expect` back.
+    the `patch` bytes to be present and writes `expect` back. Entries within one spec may not
+    overlap, and a write that fails part-way is rolled back.
+  * `apply` writes entries in spec order and `remove` in reverse, so a code cave's chunks are
+    laid down before the hook that jumps into them and removed after it.
   * VA -> file offset goes through the PE section table (no hard-coded section maths).
+  * A payload too big for one int3 run is split across many by tools/cave_alloc.py; each chunk is
+    an ordinary entry whose `expect` is the original 0xCC bytes, so `remove` restores the padding.
 
 Denuvo Anti-Tamper: the exe's protected code validates itself; a modified image MAY refuse to
 start or crash (offline single-player: no ban). If it does, `restore`. Steam's "verify integrity
@@ -97,6 +106,11 @@ def load_spec(path: Path):
         if len(e) != len(p):
             sys.exit(f"spec '{s['name']}': expect/patch length differ")
         out.append(dict(name=s["name"], rva=rva, expect=e, patch=p, kind=s.get("kind", "code")))
+    rs = sorted((o["rva"], o["rva"] + len(o["patch"]), o["name"]) for o in out)
+    for a, b in zip(rs, rs[1:]):
+        if b[0] < a[1]:
+            sys.exit(f"spec {path.name}: entries overlap — '{a[2]}' ({a[0]:#x}..{a[1]:#x}) and "
+                     f"'{b[2]}' ({b[0]:#x}..{b[1]:#x})")
     return desc, out
 
 
@@ -146,6 +160,11 @@ def write_patches(exe: Path, specs, reverse: bool, dry: bool, label: str) -> int
     if not plan:
         print("nothing to do")
         return 0
+    if reverse:
+        # Revert in REVERSE spec order.  A cave spec lists its chunks first and the hook last, so
+        # applying forwards lays the payload before the hook can reach it; reverting backwards
+        # removes the hook before the payload it points at.  Never leave a live jmp into int3.
+        plan.reverse()
     for off, new, s in plan:
         print(f"  {'REVERT' if reverse else 'PATCH '} {s['name']}  @file {off:#x} (va {base + s['rva']:#x}) {s['kind']}: {s['expect'].hex() if reverse else s['patch'].hex()}")
     if dry:
@@ -156,9 +175,21 @@ def write_patches(exe: Path, specs, reverse: bool, dry: bool, label: str) -> int
     stamp.write_text(json.dumps([dict(off=o, old=s["patch"].hex() if reverse else s["expect"].hex(), new=n.hex(), name=s["name"]) for o, n, s in plan], indent=1))
     try:
         with open(exe, "r+b") as f:
-            for off, new, s in plan:
-                f.seek(off)
-                f.write(new)
+            done = []
+            try:
+                for off, new, s in plan:
+                    f.seek(off)
+                    f.write(new)
+                    done.append((off, s["patch"] if reverse else s["expect"]))
+            except Exception:
+                # A multi-chunk cave spec is N+1 entries; a half-written payload with a live hook
+                # jumping into it is the one state that must never survive a failure.
+                for off, old in reversed(done):
+                    f.seek(off)
+                    f.write(old)
+                f.flush()
+                print(f"  write failed after {len(done)} entr(ies) — rolled them back")
+                raise
     except PermissionError:
         sys.exit("eFootball.exe is locked — close the game (and Steam's overlay) and retry")
     st = load_state()
@@ -240,6 +271,18 @@ def cmd_diff(a):
     return 0
 
 
+def cmd_caves(a):
+    """Free code-cave pool / reservation audit (tools/cave_alloc.py — needs numpy+capstone)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import cave_alloc
+    try:
+        if a.audit:
+            return cave_alloc.cmd_audit(a)
+        return cave_alloc.cmd_pool(a)
+    except cave_alloc.Refuse as ex:
+        sys.exit(f"REFUSED: {ex}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exe", default=str(EXE))
@@ -249,8 +292,13 @@ def main():
     p = sub.add_parser("remove"); p.add_argument("spec"); p.add_argument("--dry-run", action="store_true")
     sub.add_parser("restore")
     sub.add_parser("diff")
+    p = sub.add_parser("caves", help="free int3 cave pool for the chained allocator")
+    p.add_argument("--min", type=int, default=12); p.add_argument("--safety", default="A")
+    p.add_argument("--near"); p.add_argument("--limit", type=int, default=20)
+    p.add_argument("--audit", action="store_true")
     a = ap.parse_args()
-    return {"status": cmd_status, "apply": cmd_apply, "remove": cmd_remove, "restore": cmd_restore, "diff": cmd_diff}[a.cmd](a)
+    return {"status": cmd_status, "apply": cmd_apply, "remove": cmd_remove, "restore": cmd_restore,
+            "diff": cmd_diff, "caves": cmd_caves}[a.cmd](a)
 
 
 if __name__ == "__main__":

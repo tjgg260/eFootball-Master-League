@@ -1,0 +1,13 @@
+{
+ "description": "TACKLE COMMITMENT 6 - UNLOCK THE PHYSICAL CHALLENGE BELOW LEGEND. The second AI tackle path, match::player 0x1441a63a0 (a shoulder-to-shoulder physical challenge that commits through 0x1441a8a70 with r8b=1 -> act+0x1018 = 2, gated on PhysContact attr 0x29 mine >= theirs-5), is unreachable on PC unless the tackling team's difficulty level is exactly 6 = LEGEND. The gate is 0x1441a65d0 `mov edx,6` feeding 0x1442e4870(unit,n) which returns (level != n); when it fails the code falls to 0x1442e2be0(ctx,side,4) (false, because the path already bailed at 0x1441a6505 if the team were human-controlled) and then to 0x14533eb60() which is TRUE on PC (platform class 3) -> bail. Setting the immediate to the level index you actually play at unlocks the behaviour there. Level index: 0 BEGINNER, 1 AMATEUR, 2 REGULAR, 3 PROFESSIONAL, 4 TOP PLAYER, 5 SUPERSTAR, 6 LEGEND. THIS SPEC IS WRITTEN FOR 5 = SUPERSTAR - change the 3rd byte if you play at another level. Scope: CPU opponents only. The path bails for any team that has a human on the pad, so it can never fire for your own AI team-mates. This is the single biggest behavioural change in this set and the least reversible in feel - try it on its own first.",
+ "patches": [
+  {
+   "name": "physical-challenge tackle level gate LEGEND(6) -> SUPERSTAR(5)",
+   "va": "0x1441a65d0",
+   "expect": "BA 06 00 00 00",
+   "patch": "BA 05 00 00 00",
+   "kind": "code",
+   "note": "mov edx,6 -> mov edx,5 ; private imm32, no pool cell involved"
+  }
+ ]
+}

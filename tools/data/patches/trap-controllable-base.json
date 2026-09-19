@@ -1,0 +1,12 @@
+{
+ "description": "FIRST-TOUCH: lower the 'controllable relative speed' base from 16 to 10 km/h. Threshold = 16 + 19f + 3g km/h (f = normalised Ball Control x trap.ballControlRate); below it the situational difficulty D is exactly 0 and a touch is perfect. Re-aims the 16.0 operand at the existing 10.0 cell 0x145a8dd7c, so every player's touch starts going loose 6 km/h earlier. Same zero-for-elites caveat as trap-difficulty-x2.json. Emulated: BC75/rate0.85 at 40 km/h relative 2.45 -> 3.30 km/h. Revert: python tools/exe_patch.py remove tools/data/patches/trap-controllable-base.json",
+ "patches": [
+  {
+   "name": "controllable relative speed base 16 -> 10 km/h",
+   "va": "0x14407a176",
+   "expect": "F3 0F 58 05 AA CC AD 01",
+   "patch": "F3 0F 58 05 FE 3B A1 01",
+   "kind": "code"
+  }
+ ]
+}

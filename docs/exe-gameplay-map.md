@@ -44,7 +44,7 @@ The kick error model is fully in the exe (no dt270 field). A single kick-executi
 | proven | function | `0x14401a900` | Kick miss parameter builder (the accuracy model) | Output struct rsi (0x3c bytes): +0 angleXZ errMax = (1-combinedXZ)*22.5f (0x14401b3df mulss [0x14676e980]); +4 signProb (from 0x144020d00 via rbp+0x120, default 0.5); +8 sigma = max(0.1, 0.75 + 4.25f(@0x146b3cfb0)*signProb*(1-..)); +0x10 angleY errMax = (..)*22.5f (0x14401b423); +0x14/+0x18 prob/sigma; +0x20 speed errRate = (..)*0.3f (0x14401b474, const 0x145b28a88); +0x24/+0x28; +0x30 =1.0; +0x34 type (r15: 0..4, 0x14401e5b0/0x14401fc80/0x144020450 checks pick special miss types 0/1/2, 0x14401b7be sets 3 if speed factor > threshold, then 0x143eafd30(player, int(x*100)) gates it). Ability factor from 0x143ed71d0(player,1) stored at rsp+0x40 and passed as r8 to the five factor sub-functions and used at 0x14401b72f. Distance/kick-speed factor switch at 0x14401acea (65..85, 60..75, 50..60 ranges *0.9). Five factor sources: 0x144020d00 (sign bias), 0x14401eb40 (body balance [player+0x34ac], ball height, body part [player+0x2bdc]), 0x14401bdb0 (kick type table, facing-angle diff [r8+0x40], skill 0x35), 0x14401ca10, 0x14401f770 (skills, abilities 0x1e/0x2d/0x32 at 0x144020a38..). Combined per component by 0x144021780 (sort-and-fold of 4 factors with 0x143b45ce0 sort). | Runtime patch: at 0x14401b3df bytes F3 0F 59 05 99 35 75 02 (mulss xmm0,[rip+0x2753599]=22.5f). Replace disp32 with 0x1B02529 to read 45.0f @0x145b1d910 (double angular error) or 0x1BEFC19 to read 15.0f @0x145c0b000 (less error). Same for 0x14401b423 (disp 0x1B024E5 -> 45f). Do NOT edit 0x14676e980 itself: 22.5f there has dozens of xrefs. |
 | proven | function | `0x143ed71d0` | Player ability -> 0..1 kick accuracy factor | Calls 0x143ed7440(player, kickInfo, flag=1, abilityId=0x71(auto), 0x14(auto)) returning int ability; piecewise: <60: (ab-40)*0.1/20; 60..90: 0.1+(ab-60)*0.8/30; >90: 0.9+(ab-90)*0.1/9; clamped >=0. Constants 40/60/90/0.1/0.8/0.9 are shared .tls$ cells (0x145d58ec8, 0x145a8dd84, 0x145b52b90, 0x145a8dd68, 0x145b2a694, 0x145b56e08). | Patch the code (not the shared constants): e.g. replace 'maxss xmm1,xmm0' tail to return a constant (movss xmm0,[1.0f cell]) to make every player a perfect kicker, or change the 0x8/0x1e breakpoints via the immediates' disp32. |
 | proven | function | `0x143ed7440` | Effective kick ability selection, skill bonuses, weak-foot penalty | 0x143ed74b0: if id==0x71 use action id [player+0xad0]; jump table on action picks ability 0x1b (0x143ed74fc), 0x1c (0x143ed751b/0x143ed7540), 0x1d (0x143ed7539/0x143ed7547), header path 0x143ed79d8 uses 0x1e. 0x143ea8cb0(player,id) -> 0x1442dd650(env, playerIdx, id) -> byte[id] of per-player ability array (0x1441172b0). Skill checks 0x143eadbe0(player, skillId) for ids 0xe,7,0x21,8,0x22,0x1f,0x2a,0x2b,0xa,9,0x2c,0x34 -> counters; 0x143ed77fb/0x143ed780d: +7 or +6; 0x143ed781d: +5 if [teamCtx+0x5098]!=0. 0x143ed787a: ability 0x35 (stronger foot) vs kicking foot [player+0x2bf6]; if mismatch: range of ability 0x27 via 0x1442bfae0, penalty = 3 + 12*(1-norm) (0x143ed78fd, 12f), 3+22*(1-norm) for kick type 4 (0x143ed7907, 22f), 1+6*(1-norm) for header-like types (0x143ed79bf). Result = ability - penalty. | The 12f/22f/6f penalty scales are shared constants; patch the disp32 of the movss at 0x143ed78fd/0x143ed7907 to another cell (e.g. 0 -> no weak-foot penalty). |
-| likely | mechanism | `0x1471d0690` | Match ability array index = dt200 field order + 0x15 (shot=0x1b, short_pass=0x1c, long_pass=0x1d, heading=0x1e, r_foot_acc/weak-foot=0x27, kick_power=0x29, stronger_foot=0x35) | Header string list at 0x1471d0690: offense_decision(0) speed(1) defense_decision(2) gk_decision(3) dribble(4) trap(5) shot(6) short_pass(7) long_pass(8) heading(9) intercept(10) place_kicking(11) ball_spin_control(12) catching(13) clearances(14) collapsing(15) deflecting(16) r_foot_acc(17) body_balance(18) body_control(19) kick_power(20) agility(21) jump(22) stability(23) durability(24) r_foot_frequency(25) cool(26) star(27). Ids seen at 0x143ea8cb0 call sites span 0x15..0x37; shot/pass/header selection (0x1b/0x1c/0x1d/0x1e), weak-foot accuracy (0x27) and kick power (0x29 at 0x144016f7f vs 0x143ea8cb0(..,0x29)) all fit offset 0x15. 0x35 (=32, beyond the 28 listed) compared against kicking foot -> stronger foot. |  |
+| **WRONG — off by one, superseded 2026-09-18** | mechanism | `0x1471d0690` | ~~Match ability array index = dt200 field order + 0x15~~. The real alignment is **DATA_PARAMETER enum + 7**: offensive awareness 0x14, **defensive awareness 0x15**, GK awareness 0x16, dribbling 0x17, shot 0x1a, short_pass 0x1b, long_pass 0x1c, heading 0x1d, intercept 0x1e, r_foot_acc 0x27, speed 0x28, jump 0x2d, form 0x2f, injury-res 0x30, stronger_foot 0x35. Proven by emulating the game's own enum registrar (`0x1409f5043`) and its field-range table (`0x1442bfae0`): only +7 puts the 0..3 / 0..7 / 0..2 ranges at 0x27 / 0x2f / 0x30. See the anticipation section below and `tools/data/attr_index_map.json`. | Header string list at 0x1471d0690: offense_decision(0) speed(1) defense_decision(2) gk_decision(3) dribble(4) trap(5) shot(6) short_pass(7) long_pass(8) heading(9) intercept(10) place_kicking(11) ball_spin_control(12) catching(13) clearances(14) collapsing(15) deflecting(16) r_foot_acc(17) body_balance(18) body_control(19) kick_power(20) agility(21) jump(22) stability(23) durability(24) r_foot_frequency(25) cool(26) star(27). Ids seen at 0x143ea8cb0 call sites span 0x15..0x37; shot/pass/header selection (0x1b/0x1c/0x1d/0x1e), weak-foot accuracy (0x27) and kick power (0x29 at 0x144016f7f vs 0x143ea8cb0(..,0x29)) all fit offset 0x15. 0x35 (=32, beyond the 28 listed) compared against kicking foot -> stronger foot. |  |
 | proven | function | `0x14401a060` | Normal kick randomizer (miss type 4) | 0x14401a0e1 Gaussian sigma=[params+0x18]; dev = \|g-50\|/50 * [params+0x10]*(1-[params+0x48]) + [params+0x10]*[params+0x48]; sign by 0x143eafd30(player, [params+0x14]*100) -> angleY. 0x14401a4c0 loop (max 6 draws) for angleXZ using [params+0x0c]*[params+4] and Gaussian with [params+0x18]; 0x14401a1f4 speed with [params+0x20..0x28]; special branch 0x14401a2d1 for shots (action 0xa) using body balance [player+0x34ac] and ball speed windows 30000/3600..50000/3600. Results written to out (r9): out[0]=angleXZ (wrapped 0x144345ae0), out[4]=angleY, out[8]=speed. Second caller 0x142171d1b (outside match, likely a test/preview). |  |
 | proven | function | `0x144019e40` | Alternate kick randomizers (miss types 1/3 and 0) | 0x144019e40: angleXZ dev = max(params[0],8)*cos(90+(0.5-rand(1000)*0.5/1000)*90) with sign from prob params[4]; angleY = \|G(sigma params[0x18])-50\|*params[0x10]/50 signed by params[0x14]; speed *= 1 + sign*( \|G(params[0x28])-50\|/50 * params[0x20]*(1-params[0x38]) + params[0x20]*params[0x38] ). 0x144019320 (type 0) called at 0x144016e49 with an extra out flag at rbp+0x70; if flag stays 0 the type is forced to 4 (0x144016e54) and 0x14401a060 runs instead. |  |
 | proven | function | `0x144021870` | Sign-probability bias per kick animation/type | Adjusts params+4 / params+0x14 / params+0x24 (via rbx/r14/rsi out pointers): e.g. 0x14402192c *0.1 and set 0.5 when 0x144311e40(action) false; jump tables on anim id [player+0xae8] (0x1440219a4 range 0x822..0x1093, 0x144021afd 0x97c+0xd7); skill 0x18 with body part 8 -> 1.0 (0x144021abc); skill 9 -> 0.7 (0x144021ae6) else 0.8; [player+0x362c]&1 -> r14[0]=0. |  |
@@ -284,6 +284,9 @@ patch packs into `build/gameplay_catalog.json` and a self-contained HTML browser
 
 ## Mishit spin — slices / shanks / scuffs (2026-08-23, applied)
 
+> **CORRECTED 2026-09-17 — the spin claims in this section and in "Code caves → slice-cave" are
+> WRONG. See "Kick spin — emulated ground truth" at the end of this file before touching spin.**
+
 Why mishits looked like plain misdirections, not slices: the kick-miss code (`0x14401a900`)
 only bends **direction/power** and never touches spin. Spin is built separately in
 `0x144018c10` (called by the dispatcher `0x143ed0f80` right after the kick), which derives the
@@ -348,6 +351,10 @@ less, and spin returns so mishits curl.
 Revert everything: `exe_patch.py restore` + `gameplay_tune.py restore`.
 
 ## Code caves (2026-08-24)
+
+> **Superseded in part, 2026-09-18** — "largest single run ~91 B" was measured on PRISTINE, and
+> both big runs are occupied on the installed image. Chaining is now automatic; see
+> [Chained code-cave allocator](#chained-code-cave-allocator-2026-09-18--toolscave_allocpy) below.
 
 Assembler: keystone. On-disk caves live in `.xcode` int3 padding (executable already — NO section
 permission change / no W^X bypass); largest single run ~91 B, so >~90 B caves must chain across
@@ -434,3 +441,222 @@ formula reads `(Foul - OffSide)`. Victim rows are `0x40`/`0x41`. Set to **-8** i
 (= cancels a successful tackle). GK has no foul term; adding one needs a new term, not a weight.
 Caveat: fouls in a penalty shootout land in column 8, which mode-5 does not sum.
 
+### Is reading memory safe? (why `stats_read.py` cannot crash the game)
+
+The process is opened with `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ` only — deliberately
+**not** `VM_WRITE` / `VM_OPERATION`. No injection, no debugger attach, no thread suspend, no
+`VirtualProtectEx`. `ReadProcessMemory` has the kernel copy pages out; the target is neither
+modified nor paused and does not observe it. A failed read just returns false and is handled.
+This is the same read-only path `mem_probe.py` / `mem_scan.py` proved on this game (2026-08-20)
+and that `read_match_memory.py` (already wired into `ML.App/SessionMatchMemory.cs`) uses at the
+full-time screen. Writing is the risky class, and none of the stats path writes.
+
+The scan is vectorised with numpy (cumsum window test over stride-0x10 float phases); a
+pure-Python loop over every 16-byte candidate would take hours on a 350 MB+ process. Scan math is
+unit-tested against a synthetic planted rating array (finds the exact RecordSlot, values read
+back identical).
+
+## Kick spin — emulated ground truth (2026-09-17)
+
+Every line here is a number produced by running the game's own code in Unicorn:
+`python tools/emu_spin.py all` (read-only; `--exe <PRISTINE>` gives identical output).
+
+- **Ball physics is Y-UP** (X, Z horizontal). Air-force routine `0x144089620` writes gravity
+  `-9.80665` to component `[1]`; Magnus = `k·(ω × v)`, `k = magnusRate·π²·0.0118·0.1087·min(horizontal
+  speed, 23.6 m/s)`. Only ω about the **vertical (Y)** axis curls the ball, and to first order it gives zero
+  lift; ω horizontal and across the travel = lift/dip. If `[state+0x90] != 0` (knuckle / non-spin
+  program) the routine ignores its ω argument and uses the keyframe table (`0x1440a1460`).
+- **`0x144018c10` is NOT a spin builder.** Its `r8` is the ball **velocity** (m/frame): it splits it
+  into azimuth / elevation / speed, clamps the azimuth to ±45° of body facing (`0x144018df0`; 90/180
+  for some kick types), clamps speed, and recomposes it. `r9` is never touched. So the old P1 (45→90)
+  only widened the allowed kick direction, the old P2/P2b were **speed** edits (more `vy` =
+  ballooning), and the old slice caves (`r14+4` / `r14+8` at `0x1440192fb`) were adding numbers to the
+  **velocity** — hence passes leaving at the wrong speed and direction.
+- **The mishit master is `0x144016a70`** (`match::anime::action::Kick::vf8 0x143ed0f80` → here, then
+  `0x144018c10`). Args: `r8`=velocity (→`r14`), `r9`=**local spin vec3, rev/s** (→`r15`),
+  `rdx`=kick record (→`r13`). It calls the miss builder `0x14401a900`, then the per-type randomiser
+  (`0x144019e40` types 1/3, `0x144019320` types 0/2, `0x14401a060` type 4: input triple read-only,
+  output triple = deviated az/elev/speed), rebuilds `r14`, and — for types 0-3 only — runs a foot/ball
+  **contact model** (`0x143edad30` → `0x143edae20`) that re-solves velocity **and writes spin** to
+  `r15`. Type 4 (the ordinary random error) never touches spin: that is the real gap.
+  It then stores the miss in the kick record (`+0x148` horizontal deg, `+0x14c` vertical deg, `+0x150`
+  speed) and simulates intended vs actual flight itself via `0x14408ac90(state, 0, obj, &pos,
+  &vel·fps, &spin, 1)` + integrator `0x14408d0f0`.
+- **Local spin convention** (`0x14408ac90`, cross-checked with the solver's `0x14408c7e0`):
+  `(x = top(+)/back(−), y = SIDE, z = rifle)` in rev/s; world `ω = Ry(azimuth)·2π·(x, −y, −z)`, so
+  `ω.y = −2π·spin.y` whatever the azimuth. `spin.y < 0` curls toward increasing azimuth.
+- **Live launch path** (`emu_spin.py live`; stages emulated, glue from disassembly). Per-tick handler
+  `0x143eb2190` → finalise `0x143ea46c0`: ctx `0x14408eaa0` → solver `0x14408ed10(ctx, &vel, &spin)` →
+  `Kick::vf8` (mishit) → tail `0x143ea480e`: `record.mode[+0x8c] = 4` (`0x143eb69d0`), velocity →
+  `+0xd0..`, spin → `+0x114/+0x11c/+0x120`, valid flags `+0x110 = +0x118 = 1`. Ball side
+  `0x143c59350` (the real launch) runs the **same solver** on each kicking player's record: its first
+  act is the seed `0x144098cd0` (reads the spin back when the flags are set), mode 4 copies `+0xd0..`
+  to the out velocity — emulated: velocity and spin come back unchanged, x/y/z order kept — then
+  averages over players and calls `0x14409d710` → `0x14408ac90(state, kickinfo = record, obj, &pos,
+  &vel, &spin)` at `0x14409da15`. With record `+0x124`/`+0x140` = 0 (no first-touch deflection) the
+  init gives the same ω as with `kickinfo = NULL`. Record reset `0x143c58ea0` (mode `0xc`, flags 0)
+  runs right before the handler at 2 of its 3 call sites (`0x14410fdb1`, `0x1441116fb`); the third
+  (`0x144241b8a`, external record `[rsi+0x15a28]`) has no visible reset.
+- Ball motion state: `+0x00` **position** (y initialised to the radius 0.108686), `+0x0c` velocity m/s,
+  `+0x18` world ω rad/s, `+0x24` heading, `+0x90` non-spin flag. The stepper `0x14408d0f0` calls the
+  air-force routine on the ground too, so ground passes curl; its `dl` arg becomes the routine's
+  `r8b`, which skips Magnus — who sets it in the live update is unknown.
+- `tools/data/patches/linked-spin.json` (**authored, NOT applied, never run in game**; revised after
+  two adversarial reviews): hook `0x1440187b4` (`movss [r13+0x148], xmm6`, xmm6 = signed horizontal
+  miss) → `movaps xmm0,xmm6; jmp 0x14105ed1e; nop`; cave = 85 B of the 86-byte int3 run:
+  `spin.y' = clamp(spin.y + GAIN·miss, min(spin.y, −CAP), max(spin.y, +CAP))`, NaN miss → no change,
+  GAIN `−0.15` rev/s/deg at `0x14105ed30`, CAP `±3` at `0x14105ed43` / `0x14105ed56`. Never cuts the
+  game's own spin; re-entry saturates at CAP. Differential emulation vs stock: only `rax/xmm0/xmm1`
+  (proven dead) and `[r15+4]` change. Stepper-measured drift at GAIN 0.15: 10° miss on a 30 m pass
+  ≈ +1.1 m ground / +1.8 m lofted (miss itself 5.2 m); first-order lift 0, ≤ 1 cm apex change on
+  8 rev/s backspin. Retune only via `emu_spin.py spec --gain <positive> --cap <positive>`. With
+  scuff-wobble / knuckle-mishit installed, types 0-3 fly the knuckle program, so the cave acts on
+  type-4 kicks only.
+
+
+## Sprint-exertion meter and the "fatigue" cave — emulated ground truth (2026-09-18)
+
+Every number here comes from the game's own code under Unicorn: `python tools/emu_kickerror.py`
+(read-only, PRISTINE by default, sections S1–S10; `--exe <live>` also passes).
+
+- **`[player+0x30f4]` is sprint exertion, not tiredness** (S10, updater `0x143eb84c0`). It rises 40/s only
+  while the action id satisfies `0x144311bf0` (flag table `0x146c14e80` bit 3 → ids **4/5/6** only; names
+  unproven, very probably on-ball dribbling) *and* speed `[player+0xb38]` ≥ 17.5 km/h (25 without the
+  `[arg2+0x570] ≥ 0.9` flag). Full in 2.5 s, back to 0 within 0.5 s below the gate, frozen during kick ids
+  8/9/0xa (or −500/s when `[player+0x2bdc]==0x10` and the action counter > fps/6). Identical in minute 1
+  and minute 90. `technique-realism.json` re-aims the gate to 11 km/h, so jogging fills it (13/s at 14 km/h).
+- **The stock game already spends it on the horizontal axis** (S9). Of the six readers, exactly one sits in
+  a c-factor function: `0x14401c143` in `0x14401bdb0` → slot 0 (horizontal c) `*= 1 − clamp(0.1+0.6(1−f))·ramp`.
+  Full meter: ×0.36 at f=0.1 (14.4° ceiling), ×0.72 at f=0.7 (6.3°); nothing below meter ≈ 65. The other five
+  (`0x14401d4f0`, `0x14401fc80`) are mishit-TYPE odds called after `0x14401b5d5`. **No meter term exists on
+  the vertical or power c.**
+- **"A clean kick has c == 1.0" is false for the horizontal axis**: `0x14401bdb0` first scales slot 0 by a
+  kick-class constant (class = byte 13 of the 16-byte record `0x14804e0e0[kick id]`, via `0x143eda730`):
+  class 0 ×0.90, 1 ×0.88, 2/3 ×0.86, 4 ×1.0 — 172 of 176 kick ids are class 0–3.
+- **`tools/data/patches/cave-fatigue.json` (authored, NOT applied, never run in-game)** is therefore a
+  *sprint-exertion → vertical + power error* cave, not a fatigue layer: hook `0x14401b3a7` → cave
+  `0x1438b4835` (86 B of 91), `S = max(0, min(1, 1 − gain·meter/100·(1−f)))`, `xmm12 *= S; xmm6 *= S`,
+  `xmm3 = K` immediate (K 6.0 @ `0x1438b4836`, gain 0.5 @ `0x1438b483f`). S is clamped both ways and
+  NaN-safe; horizontal (`xmm1`) is untouched. It occupies the sigma-K site, so it *includes* and excludes
+  `error-sigma.json`. `cave-fatigue-weakfoot.json` is the optional two-part variant (weak-foot floor).
+- **Match-long stamina is still NOT located.** `0x145614eb0` is the gauge's world anchor (vec3), the HUD
+  byte `uiData+slot·0x1c+0x14c` arrives by struct copy (the only indexed byte stores at `+0x14c` in `.xcode`
+  are zero-stores in the unrelated `0x143c60dd0`), and no `match::` RTTI class names stamina. A real fatigue cause stays blocked on that.
+
+## Chained code-cave allocator (2026-09-18) — `tools/cave_alloc.py`
+
+Supersedes the chaining note in **Code caves (2026-08-24)**. A payload no longer needs one
+contiguous int3 run: it is split across many small runs, each chunk ending in a 5-byte `jmp rel32`
+to the next. `.xcode` spans 0x140001000–0x1459fc000 (94 MB), worst-case displacement 0x59faffa
+against a ±2^31 range — **reach is a non-issue** (b-disassembly).
+
+**The pool and its safety oracle.** `tools/cave_scan.py scan` → `build/caves.json`. The EXCEPTION
+data directory is RVA `0x154ac000` size `0x4b180c`, i.e. the whole `.trace` section — so `.pdata`
+*is* `.trace`, 410,113 `RUNTIME_FUNCTION` entries merging to 253,886 ranges over 84.3% of `.xcode`
+(b-disassembly). Of 547,254 int3 runs, 106,874 fall **inside** a function body and are permanently
+rejected. **Tier A** = a run that starts exactly at one function's `EndAddress` and ends exactly at
+the next function's `BeginAddress`, 16-aligned, with no `.pdata` overlap, no absolute 8-byte pointer
+into it, and no rel32/rel8 branch target in it that a `.pdata`-anchored linear sweep proves to be a
+real instruction start. Corroboration: of 97,074 sweepable candidates, 96,926 (99.85%) end on a
+function terminator — ret x75,981, jmp x20,647, nop x271, ud2 x26. A bare "some u32 equals this RVA"
+test is worthless here (514,886 hits, vetoes the whole pool); it must be jump-table-aware.
+
+Pool at `--min 12`: **42,494 caves / 362,214 B of payload capacity**, mean length 13.5.
+**The largest tier-A cave in the whole image is 21 B** (MSVC 16-aligns function entries, so genuine
+inter-function padding caps at 15), so no instruction longer than 16 B can ever be placed and ~40%
+of a payload's written bytes are chain jumps. The pool is edit-invariant — scanning PRISTINE and
+INSTALLED yields the identical 97,590-cave tier-A list.
+
+**Mechanism.** One instruction per source line, never joined, so a chunk is a run of whole
+instructions by construction. Sizing is **address-independent**: every label is sized against a far
+dummy (forcing rel32, the maximum form) and every rip-relative operand against a disp32, so one pass
+suffices — no fixpoint. Emit re-assembles each line at its final VA and nop-pads a shorter encoding;
+growth past the reservation is a refusal, not a resize. `jmp rel32` writes no flags, so a chunk
+boundary between a `cmp` and its `jcc` is safe (a-emulated). Each chunk is an ordinary `exe_patch`
+entry whose `expect` is `cc`×n, so `remove` restores the padding byte for byte; a `cave_layout`
+block carries the provenance.
+
+Occupancy comes from three sources, because none alone is right: the target image's bytes, the
+ledger `tools/data/cave_reservations.json`, and a **byte-range** scan of every spec in
+`tools/data/patches/`. (`0x1438b4804` reads all-int3 yet is claimed by `cave-fatigue-weakfoot`;
+`linked-spin` and the retired `slice-cave` overlap *inside* one run at different start VAs, so a
+VA-equality check misses it.) Inspect with `exe_patch.py caves [--near VA] [--audit]`. The allocator
+refuses against an image whose sha1 does not match the pool it was built from. **Re-run
+`cave_scan.py scan` after every Konami patch** and regenerate every cave spec — chunk addresses move.
+
+`exe_patch.py` changes shipped with it: `remove` now reverts in **reverse** spec order (hook first —
+the old order briefly left a live jmp into int3), specs with internally overlapping entries are
+rejected at load, and a part-way write failure rolls back.
+
+**NOT PROVEN (d):** Denuvo's tolerance of written int3 padding. The `.pdata` and reference gates
+argue only that stock code never executes or points at those bytes. Chaining writes into N sites
+instead of one, so it multiplies whatever that exposure is. Prefer the fewest chunks that fit.
+
+## Defensive anticipation by ability (2026-09-18) — the first chained cave
+
+`tools/emu_anticipation.py` (design + 10 Unicorn proofs) → `tools/data/patches/anticipation-ability.json`
+(authored, **NOT applied**). `tools/anticipation_spec_check.py` re-proves the written file at its
+final addresses. Both are read-only against the game.
+
+**The site is not what it looks like.** `0x143da63b0` (682 B, one caller `0x143daa3bf` inside
+`0x143da92c0`) is the AI **gait / movement-urgency chooser's "ease off while the ball is in flight"
+rule**, not a prediction horizon. `0x143da92c0` has 8 call sites, all `match::player::Action*::vf13`
+of move-type actions plus the `ActionBasePosition` cascade — so it runs **per player per tick for
+both teams**, attacking and defending (b-disassembly).
+
+```
+edi  = basePosition.marginPredictionFrameBase [r12+0x240]       (dt270, currently 0)
+       - (int)(marginPredictionFrameAdjust [r12+0x23c] * -0.0f) (DEAD: always 0)
+       + ebx                                                    (ball flight frames, 1/0.6 inflated)
+loop:  accept gait-1 while arrival < margin + edi                (0x143da65fe..0x143da6603)
+```
+
+`edi` is a **time budget**, and `sub edi,eax` means a **positive** delta *shrinks* it — so a positive
+delta makes a player refuse to downshift. **The obvious sign is backwards**: elite ⇒ positive delta ⇒
+keeps sprinting; poor ⇒ negative ⇒ coasts while the pass travels. The literal at `0x147850538` is
+`-0.0f` in **both** images (stock, not a build accident) and `eax` comes out 0 for every int32 input
+including ±INT_MAX (a-emulated) — 12 dead bytes inside a live function.
+
+**The patch.** Hook = 16 B at `0x143da6545` (`mulss` 8 + `cvttss2si` 4 + `sub edi,eax` 2 +
+`add edi,ebx` 2), ending exactly on the stock call `0x143da6555`. Nothing rip-relative is relocated:
+the dead multiply is discarded, not copied. Payload = 74 B across **10 tier-A caves**
+(`0x143da6964` … `0x143dab061`, entry `0x143da6964`), 119 B written. It reads Defensive Awareness
+via the same pure leaf `0x1442d6ef0` the stock code calls six bytes later, then
+`delta = floor((min(attr,120) − PIVOT) × GAIN)`, `edi = base − delta + ballFrames`, banded ±4,000,000.
+
+**Attribute = match index `0x15` = `DATA_PARAMETER_DEFENSE_DECISION`** (a-emulated: enum registrar
+`0x1409f5043` + range table `0x1442bfae0`; the +7 alignment is forced by the 0..3 / 0..7 / 0..2
+ranges at 0x27 / 0x2f / 0x30). **Not** `0x17`, which is DRIBBLE — see the corrected row above.
+
+| Def. Awareness | 40 | 50 | 60 | **70** | 80 | 90 | 99 |
+|---|---|---|---|---|---|---|---|
+| delta (frames) | −45 | −30 | −15 | **0** | +15 | +30 | +43 |
+| budget vs stock | +45 (0.75 s more slack) | +30 | +15 | **identical to stock** | −15 | −30 | −43 (0.72 s less) |
+
+Tunables are int32 immediates inside the payload: **PIVOT `0x143da7f83`** (70) and **GAIN_Q8
+`0x143da8813`** (384 = 1.5 frames/point ×256). Retune by **regenerating**
+(`emu_anticipation.py --gain <g> --pivot <p> --write-spec`) — a hand-edit makes `remove` refuse.
+GAIN 1.5 is the largest value that still keeps neighbouring ratings within one gait step; the loop's
+own hysteresis term is `(int)(fps*0.6+0.5)` = 36 frames, measured at the compare on every run.
+
+Proven (a-emulated, on the real bytes): deadness; the attribute identity; the callee is a
+7-instruction xmm-free pure leaf with rcx dead; the cave changes only rax/rcx/rdx/rdi/flags, uses no
+stack and makes zero non-stack writes; **at attr == PIVOT every live register is bit-identical to
+stock**; hostile inputs stay in band so `lea ecx,[rbx+rdi]` cannot overflow (a hazard the stock code
+*does* have); and the game's own decision loop `0x143da6562..0x143da6618`, stock vs patched, across
+40..99 in three chase geometries.
+
+**NOT PROVEN:** (a) nothing has been observed in a running match; (b) the gait → km/h map is
+undecoded, so the felt size of one gait step is unknown — the speed ladder behind the behaviour
+table is an assumption (c-inferred), only the decision arithmetic is emulated; (c) it applies to
+**both teams**, so an attacker's run is paced by his own Defensive Awareness too — a defence gate
+exists (`0x1442d7090(ctx)` → `[rax+0x28d]==0`) but its meaning is unproven, so it is deliberately not
+used; (d) the budget is dominated by `ebx`, which is 10000 when the ball is still, so a ±45-frame
+term only bites while a pass is actually travelling; (e) Konami neutered this path deliberately and
+we do not know why.
+
+**Follow-up, not done:** the applied `marking-tight.json` sets the defensive recovery-dash threshold
+at `0x143da9553` to `15.0 − 0.1×attr(0x17)` — under the corrected mapping that is **Dribbling**, not
+Defensive Awareness. Retargeting it means four immediates (`0x143da9433`, `0x143da9449`,
+`0x143da9462`, `0x143da947c`), one of them feeding the undecoded `0x1442e2580`. Needs its own
+emulation pass before anyone touches it.

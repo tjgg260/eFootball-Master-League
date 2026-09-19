@@ -1,0 +1,19 @@
+{
+ "description": "PLAYING-STYLE REACH FOR OVERLAPS (offball). Two re-aims that widen the two constants a full-back's playing style already keys off, so the DATA lever (giving a full-back the Offensive Full-back style, bit 16 of player+0xCC) buys more. (A) at attack level 2 an Offensive Full-back may overlap from x >= -10 m instead of the halfway line that everyone else gets; -10 -> -20 m. (B) for a candidate WIDER than the carrier the carrier's facing cone is 120 deg (180 deg for Offensive Full-backs); 120 -> 150 deg so plain full-backs benefit too. Affects every AI-controlled player on both teams. Revert: python tools/exe_patch.py remove tools/data/patches/overlap-style-reach.json",
+ "patches": [
+  {
+   "name": "A: Offensive Full-back level-2 x gate -10 m -> -20 m",
+   "va": "0x143e89a15",
+   "expect": "F3 0F 10 05 1B D4 CC 01",
+   "patch": "F3 0F 10 05 27 63 C7 02",
+   "kind": "code"
+  },
+  {
+   "name": "B: carrier facing cone for a wider candidate 120 deg -> 150 deg",
+   "va": "0x143df08a1",
+   "expect": "F3 0F 10 3D 07 28 D6 01",
+   "patch": "F3 0F 10 3D 33 0D 0A 02",
+   "kind": "code"
+  }
+ ]
+}

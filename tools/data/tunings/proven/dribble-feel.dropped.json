@@ -1,0 +1,13 @@
+{
+ "_comment": "Edits from dribble-feel.json NOT in the proven pack, with the reason. 'unread'/'unlocated' are held, not condemned - re-check after the liveness map improves.",
+ "edits": [
+  {
+   "object": "trap",
+   "path": "reachOut.reach",
+   "value": 0.42,
+   "_note": "0.6->0.42 heavier touch on hard receptions",
+   "_liveness": "unread",
+   "_why": "unread"
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+{
+ "description": "UNVERIFIED FIRING CONDITION - HAND A/B ONLY. WHAT IT DOES: moves the two approach-band boundaries in match::player::ActionMark[vf6] from 6.5 m and 3.5 m to 5.5 m and 2.5 m, so a marker keeps running in a faster band for a stride or two longer before dropping into the close shuffle. This was edits 1 and 2 of the first draft of phys-marking-tight. THE DIRECTION IS NOW PROVEN, AND THIS IS AN UPGRADE ON THE FIRST DRAFT. That draft flagged as its 'weak link' the assumption that the far band's gait (esi = edx + 2) is faster than the middle band's (esi = 2), which it said 'holds if the incoming gait parameter is the low/walk value'. It is not an assumption: 0x1441a432f is literally 'mov edx, 1', an immediate, and nothing writes edx between there and 'mov esi, edx' at 0x1441a438c. (An earlier read of 'mov edx, [rdi+4]' at 0x1441a42e6 missed that the later immediate overwrites it.) The bands are therefore provably gait 3 at >= 42.25, gait 2 from 12.25 to 42.25, and gait 1 below 12.25, with the far and middle bands writing move-mode 2 and the near band leaving move-mode 3. Lowering either boundary strictly moves the marker into a faster band. No inversion is possible. Evidence level b, read from disassembly. WHY IT IS STILL IN AN UNVERIFIED FILE: the whole band block is reached only through two gates that neither the first draft nor its report mentioned - 0x1441a4378 'cmp [rsp+0x78], edx(1) / je 0x1441a43e2' and 0x1441a437e 'cmp [rbp-0x2c], 4 / jne 0x1441a43e2'. Both values are read from the match-global object returned by 0x1442d6de0 ([0x1486bd888] + 0x580), at +0x3308 and +0x34a0. I could not establish how often the pair holds: +0x34a0 is touched near 279 separate call sites of that getter and is almost always compared against a register rather than a literal, so a static survey gives nothing. If the gate is rare, this pack does nothing at all; if the gate holds in ordinary open play, it does what it says. That is the question the A/B answers. WHO IT AFFECTS: COM-controlled players only - CPU opponents AND your own AI team-mates. Your stick-controlled player never runs ActionMark. A vtable scan of build/exe_map.json shows 0x1441a4280 occupies exactly one slot, match::player::ActionMark[vf6], and both sites lie inside its 8262-byte extent. RISK: low. Worst case is no effect. Second-worst case is the oscillation failure mode described in phys-marking-tight. Nothing here can crash or corrupt. HOW TO A/B IT: apply it alone, with phys-marking-tight NOT applied, and watch whether markers close differently at all. If nothing changes, the gate is the reason and the pack should be dropped rather than pushed harder. STRONGER VALUES if it does fire: 4.5 m = 20.25 at cell 0x146b22a48, and 1.5 m = 2.25 at cell 0x146709360. REVERT: python tools/exe_patch.py remove tools/data/patches/phys-marking-bands-UNVERIFIED-AB.json",
+ "patches": [
+  {
+   "name": "marker fast-band boundary 6.5 -> 5.5 m (squared 42.25 -> 30.25)",
+   "va": "0x1441a43b6",
+   "expect": "0F2F0D8FE69702",
+   "patch": "0F2F0DCBCF9702",
+   "kind": "code",
+   "note": "comiss xmm1, [0x146b22a4c = 42.25] re-aimed to [0x146b21388 = 30.25]. Gated - see the description."
+  },
+  {
+   "name": "marker close-shuffle boundary 3.5 -> 2.5 m (squared 12.25 -> 6.25)",
+   "va": "0x1441a43cc",
+   "expect": "0F2F0DADD99502",
+   "patch": "0F2F0D59C89502",
+   "kind": "code",
+   "note": "comiss xmm1, [0x146b01d80 = 12.25] re-aimed to [0x146b00c2c = 6.25]. Gated - see the description."
+  }
+ ]
+}

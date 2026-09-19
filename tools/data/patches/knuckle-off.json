@@ -1,0 +1,12 @@
+{
+ "description": "TURN THE KNUCKLE-ON-MISHIT EDIT BACK OFF (reverts ONE of scuff-wobble.json's three entries; the other two - the vertical strike-error ceiling and the downward sign bias - stay). WHY: at 0x144017650 the game does 'cmp r12d,4 / je skip' where r12d is the mishit type, so our knuckle edit at 0x144017656 fires on types 0-3 only (the four SITUATIONAL mishits: over-hit, awkward body angle, closed down, ball behind the body) and never on type 4 (ordinary random error). It sets the kick record's non-spin flag (+0x44) = 1 and kind (+0x45) = 0; the very next test 'cmp byte [r13+0x45],7 / jne' then sends the kick down the keyframed knuckle route, and the air-force routine 0x144089620 IGNORES the spin vector entirely when that flag is set (emulated: identical acceleration for omega 0 and omega (0,50,30)). Consequence: a typed mishit can wobble OR curl, never both - they are mutually exclusive on the same kick. With the edit ON, linked-spin.json can only act on type-4 kicks, which is why lofted passes played on the run (usually a typed mishit) fly straight while shots (more often type 4) slice. Reverting it restores stock 'mov byte [r13+0x45],7' (kind 7 = normal spin) so types 0-3 carry the game's OWN contact-model spin again AND receive linked-spin's added side spin - shanks and pulls curl, but they no longer wobble. Bytes are the exact inverse of knuckle-mishit.json / scuff-wobble.json entry 3, verified against the installed image. Re-enable knuckle by removing this spec (python tools/exe_patch.py remove tools/data/patches/knuckle-off.json).",
+ "patches": [
+  {
+   "name": "revert knuckle-on-mishit: restore stock normal spin (kind 7) on types 0-3",
+   "va": "0x144017656",
+   "expect": "6641c745440100",
+   "patch": "41c6454507eb0b",
+   "kind": "code"
+  }
+ ]
+}

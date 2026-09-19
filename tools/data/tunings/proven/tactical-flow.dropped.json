@@ -1,0 +1,77 @@
+{
+ "_comment": "Edits from tactical-flow.json NOT in the proven pack, with the reason. 'unread'/'unlocated' are held, not condemned - re-check after the liveness map improves.",
+ "edits": [
+  {
+   "object": "grounderpass",
+   "path": "search.searchMaxDist",
+   "value": 22.0,
+   "_note": "30->22 shorter link play; long forward outlets drop out of candidate set",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "grounderpass",
+   "path": "search.angleRate",
+   "value": 0.6,
+   "_note": "0.4->0.6 weaken straight-ahead bias -> lateral circulation (A/B confirm direction)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "throughpass",
+   "path": "adjustFrameSpaceRun",
+   "value": 8,
+   "_note": "15->8 run reacts to the ball instead of pre-empting",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "throughpass",
+   "path": "marginFrame_min",
+   "value": 18,
+   "_note": "0->18 patience floor; staggered support not everyone-at-once",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "throughpass",
+   "path": "allowAngleWidth[1]",
+   "value": 22.0,
+   "_note": "15->22 run/pass angle variety (mid assist band)",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "throughpass",
+   "path": "allowAngleWidth[2]",
+   "value": 34.0,
+   "_note": "22->34",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "throughpass",
+   "path": "searchMaxDist",
+   "value": 38.0,
+   "_note": "50->38 fewer speculative line-splitters",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "throughpass",
+   "path": "searchAngleWidth[2]",
+   "value": 60.0,
+   "_note": "80->60 narrow the standard-assist search cone",
+   "_liveness": "unread",
+   "_why": "unread"
+  },
+  {
+   "object": "passget",
+   "path": "autoFrontMove.pressure.circleDist",
+   "value": 13.0,
+   "_note": "9->13 receivers register pressure earlier and check to the ball -> short link play",
+   "_liveness": "unread",
+   "_why": "unread"
+  }
+ ]
+}

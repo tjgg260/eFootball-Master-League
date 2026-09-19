@@ -1,0 +1,37 @@
+{
+ "description": "PHYSICALITY - AI DEFENDERS ACTUALLY GO IN. WHAT CHANGES: four gates in the AI standing-tackle decision 0x1441a7fa0 / commit 0x1441a8a70. On this approach branch a defender commits only when the predicted carrier position is inside 2.0 m AND the live ball is inside 1.7 m AND his own heading is within 22.5 degrees of the ball - and once he has tried, he is locked out for half a second. This pack widens those to 2.5 m, 2.0 m and 30 degrees and shortens the lockout to about 0.4 s. There is NO probability roll anywhere in this chain (the decide, the 0x12c0-byte predicate 0x1441a7250 and the veto 0x1441a8510 contain no call to any RNG), so commitment is pure geometry and widening the gates is a directly proportional increase in challenges. SCOPE - stated properly this time. Only ONE of the three approach branches is widened. The parallel branch at 0x1441a826d already uses 4.0 m and the r12d == 0x34 path uses 3.5 m at 0x1441a82b5; both are untouched. And a separate hard test at 0x1441a831f caps the same quantity at 3.0 m, so edit 1 is self-limiting and cannot run away. WHO IT AFFECTS: CPU opponents, your own AI team-mates, and - this is the one to be aware of - your own cursor player's assisted tackle. This branch has no cursor gate, and it adjusts (rather than skips) its numbers for the controlled player. If you dislike the assist getting sharper, this is the pack to leave alone. EVIDENCE: READ FROM UNAMBIGUOUS DISASSEMBLY (level b), not emulated. All four sites are a comparison followed by a branch straight to a 'return false' path, so the direction of each is certain: 0x1441a82e9 'comiss xmm0, [2.0] / ja fail' (xmm0 = distance to the predicted carrier position); 0x1441a849f 'comiss xmm1, [2.89] / ja fail' (xmm1 = SQUARED distance to the ball, so the constant is a square - 4.0 means 2.0 m); 0x1441a8448 'comiss xmm0, [22.5] / ja 0x1441a848d -> same fail path' (xmm0 = the angle-difference helper's result in degrees; the instructions between the comiss and the ja are movss/movaps/subss/mulss, none of which touch EFLAGS); 0x1441a8c2a 'mulss fps, [0.5] / addss [0.5] / cvttss2si / cmp elapsed, N / jae continue'. INFERRED ONLY (level c): the naming - that 'action kinds other than 2/0x11/0x33/0x34' means an ordinary carrier action. THIS PACK FEEDS THE REFEREE, IN TWO WAYS, AND THAT IS NOT ALL UPSIDE. More challenges is the intended route to more fouls: every extra contact is another event fed to the referee's scorer. But the shorter lockout also means the same defender delivers more challenges inside the 45-unit repeat-offender window at 0x143d87511-0x143d8751b, whose escalation adds count/3 to the contact score at 0x143d87543 BEFORE the level is computed - and that score is the same byte the yellow (80) and red (110) lines are tested against. So this pack quietly raises foul scores as well as foul counts. DO NOT RUN THIS WITH phys-reckless-contact OR phys-whistle-threshold ON A FIRST OUTING - they compound on cards multiplicatively (more contacts reaching the scorer, each worth more, against unchanged card lines) and you will not be able to tell which pack you are feeling. WHAT TO LOOK FOR IN A MATCH: defenders stepping in from a stride further out instead of jockeying; a defender who mistimes one challenge getting a second foot in instead of visibly standing off. NOTE THE SEPARATE +0.5 rounding term at 0x1441a8c35 shares the same pool cell as the 0.5 in edit 4 and is deliberately left alone - only one instruction's operand address moves. CONFLICT: do not apply this together with the older tools/data/patches/tackle-reach.json, tools/data/patches/tackle-angle.json or tools/data/patches/tackle-cooldown.json - they touch the same four instructions and the second apply will refuse (its expect bytes will not match). This pack supersedes all three. STRONGER VERSION: cooldown to 0.35 s (re-aim 0x1441a8c2a to cell 0x145c7ec6c, patch bytes F30F59053A60AD01). REVERT: python tools/exe_patch.py remove tools/data/patches/phys-tackle-commit.json",
+ "patches": [
+  {
+   "name": "standing-tackle reach to the predicted carrier position 2.0 -> 2.5 m",
+   "va": "0x1441a82e9",
+   "expect": "0F2F05A0816A03",
+   "patch": "0F2F05385AA701",
+   "kind": "code",
+   "note": "comiss xmm0, [0x147850490 = 2.0] re-aimed to [0x145c1dd28 = 2.5]"
+  },
+  {
+   "name": "live-ball proximity gate 1.7 -> 2.0 m (squared: 2.89 -> 4.0)",
+   "va": "0x1441a849f",
+   "expect": "0F2F0D8A7A9702",
+   "patch": "0F2F0DA2969001",
+   "kind": "code",
+   "note": "comiss xmm1, [0x146b1ff30 = 2.89] re-aimed to [0x145ab1b48 = 4.0]. Squared comparison - any future value must be an exact square (6.25 = 2.5 m)"
+  },
+  {
+   "name": "heading tolerance toward the ball 22.5 -> 30 degrees",
+   "va": "0x1441a8448",
+   "expect": "0F2F0531655C02",
+   "patch": "0F2F0531598E01",
+   "kind": "code",
+   "note": "comiss xmm0, [0x14676e980 = 22.5] re-aimed to [0x145a8dd80 = 30.0]. Same numeric value as an installed kick-error constant but a different instruction; the shared cell itself is untouched, so there is no interaction"
+  },
+  {
+   "name": "tackle re-attempt lockout 0.5 s -> ~0.4 s",
+   "va": "0x1441a8c2a",
+   "expect": "F30F590516766A03",
+   "patch": "F30F59055E1A9801",
+   "kind": "code",
+   "note": "mulss xmm0, [0x147850248 = 0.5] re-aimed to [0x145b2a690 = 0.4]; N = trunc(fps*K+0.5) frames must have elapsed since the player's last kind-0xd action. The adjacent addss at 0x1441a8c35 reads the same 0.5 cell and is left alone on purpose"
+  }
+ ]
+}

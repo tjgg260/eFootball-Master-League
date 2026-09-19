@@ -1,0 +1,26 @@
+{
+ "description": "RUN VARIETY B - MORE ANGLED RUNS. DiagonalRun (action 0x21) is the only shaped run type left alive in this build (LineBreak 0x20 and PullAway 0x2e are empty shells at BOTH the selector and the executor - see the findings). It is capped twice: quota {1,1,1,2,2} per attack level (EMULATED from 0x1442f9a90) and maxSlots at sel+0xe4, which offball-run-variety.json already raised from 1 to 2 (installed exe reads 02 at 0x143e02781; the PRISTINE backup reads 01 - if you are patching a restored exe, apply offball-run-variety.json first or change that expect byte). This raises the quota to {1,2,2,3,3} and maxSlots to 3, so two angled runners are available from attack level 1 instead of level 3, and three at the top levels. Order matters: the manager evaluates selectors in a FIXED registration order (0x143d520e0: Overlap 0x27, ChanceSpaceRun 0x1e, CounterSpaceRun 0x1f, SecondLineSpaceRun 0x1d, LineBreak 0x20, DiagonalRun 0x21, CenteringGet 0x26, PullAway 0x2e, GoalGet 0x29, PostPlay 0x2a) and a player holds exactly one action id in team+0x8f4c[slot], so DiagonalRun only ever sees the players ChanceSpaceRun and CounterSpaceRun did not already take. Pair this with runvar-chance-quota.json only if you want more runners overall; use it ALONE if you want the same number of runners but more of them angled. Affects BOTH teams. Revert: python tools/exe_patch.py remove tools/data/patches/runvar-diagonal-quota.json",
+ "patches": [
+  {
+   "name": "DiagonalRun quota levels 0..3: {1,1,1,2} -> {1,2,2,3}",
+   "va": "0x1442f9c48",
+   "expect": "C7 45 F0 01 01 01 02",
+   "patch": "C7 45 F0 01 02 02 03",
+   "kind": "code"
+  },
+  {
+   "name": "DiagonalRun quota level 4: 2 -> 3",
+   "va": "0x1442f9c53",
+   "expect": "C6 45 F4 02",
+   "patch": "C6 45 F4 03",
+   "kind": "code"
+  },
+  {
+   "name": "DiagonalRun maxSlots 2 -> 3 (own ctor, sel+0xe4; PRISTINE reads 01 here)",
+   "va": "0x143e02781",
+   "expect": "C6 83 E4 00 00 00 02",
+   "patch": "C6 83 E4 00 00 00 03",
+   "kind": "code"
+  }
+ ]
+}

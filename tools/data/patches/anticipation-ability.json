@@ -1,0 +1,315 @@
+{
+ "description": "ABILITY-SCALED DEFENSIVE ANTICIPATION (chained code cave).  WHAT IT DOES: it makes \"does this player keep running while the pass is in the air, or does he coast\" depend on his Defensive Awareness.  Today it is FLAT: every player on the pitch eases off on exactly the same schedule, which is the 'men run off a bad defender the same as off Saliba' complaint.  THE SITE: 0x143da63b0 is the AI gait (movement-urgency) chooser's 'ease off while the ball is in flight' rule, called once per player per tick from the vf13 slot of every move-type Action (ActionFreeMove, ActionSpaceRun, ActionMoveOnPass, ActionPassSupportThrowIn, the ActionBasePosition cascade).  It computes a frame BUDGET edi = basePosition.marginPredictionFrameBase (dt270, currently 0) - (int)(marginPredictionFrameAdjust * -0.0f) + ballFrames, and then walks the gait DOWN one step at a time, accepting each step while the player would still arrive before the budget expires ('arrival >= margin + edi' stops it, at 0x143da65fe..0x143da6603).  Because the multiplier at 0x147850538 is -0.0f, the marginPredictionFrameAdjust term is ALWAYS 0 - proven under Unicorn for every int32 value including +-INT_MAX - so those 12 bytes are dead code inside a live function.  MECHANISM: the hook replaces the dead 'mulss xmm0,[rip->-0.0f]' + 'cvttss2si eax,xmm0' + the two tail instructions 'sub edi,eax' / 'add edi,ebx' (16 bytes at 0x143da6545, ending exactly at the call site 0x143da6555) with a jmp into a chained cave that reads the player's Defensive Awareness (match attribute array index 0x15 = DATA_PARAMETER_DEFENSE_DECISION) via the same pure leaf 0x1442d6ef0 the stock code calls six bytes later, computes delta = floor((min(attr,120) - PIVOT) * GAIN) and does edi = base - delta + ballFrames, clamped to +-4,000,000 frames.  DIRECTION - NOTE THIS, IT IS THE OPPOSITE OF THE OBVIOUS ONE: 'sub edi,eax' means a POSITIVE delta SHRINKS the budget, and a smaller budget means the player refuses to downshift.  So an elite defender gets a positive delta (he behaves as though the ball arrives ~0.7 s earlier than it does, and keeps sprinting), and a poor one a negative delta (he gives himself ~0.75 s of extra slack and coasts while the pass travels).  WHY GAIN = 1.5: not taste.  Two measured bars.  (i) The loop's OWN granularity is the hysteresis term it computes at 0x143da6590 as (int)(fps*0.6f + 0.5f) = 36 frames at 60 fps (measured in the emulator at the compare, every run: 36) - a gain whose whole 40..99 spread is under that is smaller than the step the game already applies, so 0.5 (spread 29) is below the noise floor.  (ii) Running the game's own loop for every rating 40..99 across three chase geometries (12 m / 18 m / 25 m, ball 2.3-3.3 s away): gain 0.5 moves 33% of the band, 0.75 moves 55%, 1.0 moves 67%, 1.25 moves 73%, 1.5 moves 77%, 2.0 moves 83% and 3.0 moves 88% - but 2.0 and above put TWO gait steps between neighbouring ratings, while everything up to 1.5 keeps the worst case at one.  1.5 is therefore the largest value that is still one step, and it is deliberately at the top of the sensible range rather than in the middle.  Drop to 1.0 for a gentler build; do not go below 0.75.  IDENTITY: at attr == PIVOT the delta is exactly 0 and every live register is bit-identical to stock - the patch adds no global bias.  SAFETY: no stack use beyond the one call, no memory writes, no rip-relative operand, no flag dependency (flags are dead at the hook: the stolen 'sub edi,eax' sets them and nothing reads them before 0x143da6555 overwrites them), and the only call is a 7-instruction pure leaf that is xmm-free and preserves every non-volatile.  WHAT IS NOT PROVEN: (a) nothing has been observed in a running match; (b) the gait -> km/h map is NOT decoded, so the size of the on-pitch effect of one gait step is unknown - the S9 table's speed ladder is an ASSUMPTION, only the decision arithmetic is emulated; (c) this function runs for EVERY player in a move action on BOTH teams, so an attacker's run is paced by his own Defensive Awareness too - there is a defence gate available (0x1442d7090(ctx) -> [rax+0x28d]==0) but its meaning was not proven, so it is deliberately not used; (d) Denuvo's tolerance of written int3 padding is untested, and a chained payload writes into several distinct sites instead of one.  ROLLBACK: python tools/exe_patch.py remove tools/data/patches/anticipation-ability.json.  Change GAIN or PIVOT by REGENERATING (python tools/emu_anticipation.py --gain <g> --pivot <p> --write-spec), not by editing bytes - a hand-edit makes remove refuse.  Authored only - NOT applied, never run in-game.",
+ "status": "authored, not applied, never run in-game. Proven by emulation (tools/emu_anticipation.py: S1-S10 pass).",
+ "tunables": {
+  "PIVOT": {
+   "va": "0x143da7f83",
+   "bytes": 4,
+   "encoding": "int32 LE",
+   "value": 70,
+   "meaning": "the Defensive Awareness that behaves EXACTLY like the stock game. Above it a player keeps running while the ball is in flight, below it he coasts. 70 is about a first-team average; raise it to make the whole league lazier, lower it to make everyone keener."
+  },
+  "GAIN_Q8": {
+   "va": "0x143da8813",
+   "bytes": 4,
+   "encoding": "int32 LE, fixed point x256",
+   "value": 384,
+   "meaning": "frames of anticipation per attribute point x 256 (default 1.5 -> 384). The 40..99 spread is 88 frames against the loop's own 36-frame hysteresis term; a gain whose spread is under 36 will usually change nothing."
+  }
+ },
+ "cave_layout": {
+  "allocator": "cave_alloc v1",
+  "entry": "0x143da6964",
+  "exits": [
+   "0x143da6555"
+  ],
+  "externals": {
+   "ENTITY_TO_DATA": "0x1442d6ef0",
+   "HOOK_RET": "0x143da6555"
+  },
+  "cells": {},
+  "labels": {},
+  "policy": {
+   "anchor": "0x143da6545",
+   "min_cave": 12,
+   "safety": "A",
+   "source": "tools/cave_scan.py build/caves.json",
+   "gates": [
+    "length",
+    "safety-tier",
+    "int3-in-target",
+    "unclaimed",
+    "hook-guard"
+   ],
+   "free_caves": 42494,
+   "rejected": {
+    "below_min": 55096,
+    "safety": 0,
+    "not_int3_target": 0,
+    "claimed": 0
+   },
+   "order": "nearest-first"
+  },
+  "chain_len": 5,
+  "chunks": [
+   {
+    "index": 0,
+    "cave_va": "0x143da6964",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 8,
+    "chain_to": "0x143da5f24",
+    "asm": [
+     "mov    edx, dword ptr [rbp + 4]"
+    ]
+   },
+   {
+    "index": 1,
+    "cave_va": "0x143da5f24",
+    "cave_len": 12,
+    "cave_safety": "A",
+    "used": 10,
+    "chain_to": "0x143da53f1",
+    "asm": [
+     "call   $ENTITY_TO_DATA"
+    ]
+   },
+   {
+    "index": 2,
+    "cave_va": "0x143da53f1",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143da7991",
+    "asm": [
+     "movzx  eax, byte ptr [rax + 0x3a9]"
+    ]
+   },
+   {
+    "index": 3,
+    "cave_va": "0x143da7991",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 15,
+    "chain_to": "0x143da7f82",
+    "asm": [
+     "mov    ecx, 120",
+     "cmp    eax, ecx",
+     "cmovg  eax, ecx"
+    ]
+   },
+   {
+    "index": 4,
+    "cave_va": "0x143da7f82",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 12,
+    "chain_to": "0x143da8811",
+    "asm": [
+     "mov    ecx, 70",
+     "sub    eax, ecx"
+    ]
+   },
+   {
+    "index": 5,
+    "cave_va": "0x143da8811",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143da3fd2",
+    "asm": [
+     "imul   eax, eax, 384",
+     "sar    eax, 8"
+    ]
+   },
+   {
+    "index": 6,
+    "cave_va": "0x143da3fd2",
+    "cave_len": 14,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143da92b1",
+    "asm": [
+     "sub    edi, eax",
+     "add    edi, ebx",
+     "mov    ecx, 4000000"
+    ]
+   },
+   {
+    "index": 7,
+    "cave_va": "0x143da92b1",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 14,
+    "chain_to": "0x143daad33",
+    "asm": [
+     "cmp    edi, ecx",
+     "cmovg  edi, ecx",
+     "neg    ecx",
+     "cmp    edi, ecx"
+    ]
+   },
+   {
+    "index": 8,
+    "cave_va": "0x143daad33",
+    "cave_len": 13,
+    "cave_safety": "A",
+    "used": 11,
+    "chain_to": "0x143dab061",
+    "asm": [
+     "cmovl  edi, ecx",
+     "mov    edx, dword ptr [rbp + 4]"
+    ]
+   },
+   {
+    "index": 9,
+    "cave_va": "0x143dab061",
+    "cave_len": 15,
+    "cave_safety": "A",
+    "used": 9,
+    "chain_to": null,
+    "asm": [
+     "mov    rcx, qword ptr [rbp + 0x30]",
+     "jmp    $HOOK_RET"
+    ]
+   }
+  ],
+  "total_used": 119,
+  "payload_bytes": 74,
+  "source_sha1": "a314e8c0076f5a247c744a53bbc3cb1999178ad5",
+  "target_image_sha1": "ff30ff90db7385492c54b8913724ea66bdb497cd",
+  "pristine_sha1": "d2b84d1c506ab09d62035b7889a57452479b73a8"
+ },
+ "patches": [
+  {
+   "name": "anticipation-ability cave chunk 1/10 (8 B in the 12 B int3 run at 0x143da6964)",
+   "va": "0x143da6964",
+   "expect": "cccccccccccccccc",
+   "patch": "8b5504e9b8f5ffff",
+   "kind": "code",
+   "chunk": 0,
+   "cave": {
+    "va": "0x143da6964",
+    "len": 12
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 2/10 (10 B in the 12 B int3 run at 0x143da5f24)",
+   "va": "0x143da5f24",
+   "expect": "cccccccccccccccccccc",
+   "patch": "e8c70f5300e9c3f4ffff",
+   "kind": "code",
+   "chunk": 1,
+   "cave": {
+    "va": "0x143da5f24",
+    "len": 12
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 3/10 (12 B in the 15 B int3 run at 0x143da53f1)",
+   "va": "0x143da53f1",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "0fb680a9030000e994250000",
+   "kind": "code",
+   "chunk": 2,
+   "cave": {
+    "va": "0x143da53f1",
+    "len": 15
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 4/10 (15 B in the 15 B int3 run at 0x143da7991)",
+   "va": "0x143da7991",
+   "expect": "cccccccccccccccccccccccccccccc",
+   "patch": "b97800000039c80f4fc1e9e2050000",
+   "kind": "code",
+   "chunk": 3,
+   "cave": {
+    "va": "0x143da7991",
+    "len": 15
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 5/10 (12 B in the 14 B int3 run at 0x143da7f82)",
+   "va": "0x143da7f82",
+   "expect": "cccccccccccccccccccccccc",
+   "patch": "b94600000029c8e983080000",
+   "kind": "code",
+   "chunk": 4,
+   "cave": {
+    "va": "0x143da7f82",
+    "len": 14
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 6/10 (14 B in the 15 B int3 run at 0x143da8811)",
+   "va": "0x143da8811",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "69c080010000c1f808e9b3b7ffff",
+   "kind": "code",
+   "chunk": 5,
+   "cave": {
+    "va": "0x143da8811",
+    "len": 15
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 7/10 (14 B in the 14 B int3 run at 0x143da3fd2)",
+   "va": "0x143da3fd2",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "29c701dfb900093d00e9d1520000",
+   "kind": "code",
+   "chunk": 6,
+   "cave": {
+    "va": "0x143da3fd2",
+    "len": 14
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 8/10 (14 B in the 15 B int3 run at 0x143da92b1)",
+   "va": "0x143da92b1",
+   "expect": "cccccccccccccccccccccccccccc",
+   "patch": "39cf0f4ff9f7d939cfe9741a0000",
+   "kind": "code",
+   "chunk": 7,
+   "cave": {
+    "va": "0x143da92b1",
+    "len": 15
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 9/10 (11 B in the 13 B int3 run at 0x143daad33)",
+   "va": "0x143daad33",
+   "expect": "cccccccccccccccccccccc",
+   "patch": "0f4cf98b5504e923030000",
+   "kind": "code",
+   "chunk": 8,
+   "cave": {
+    "va": "0x143daad33",
+    "len": 13
+   }
+  },
+  {
+   "name": "anticipation-ability cave chunk 10/10 (9 B in the 15 B int3 run at 0x143dab061)",
+   "va": "0x143dab061",
+   "expect": "cccccccccccccccccc",
+   "patch": "488b4d30e9ebb4ffff",
+   "kind": "code",
+   "chunk": 9,
+   "cave": {
+    "va": "0x143dab061",
+    "len": 15
+   }
+  },
+  {
+   "name": "anticipation-ability hook -> cave entry 0x143da6964",
+   "va": "0x143da6545",
+   "expect": "f30f5905eb9faa03f30f2cc02bf803fb",
+   "patch": "e91a0400009090909090909090909090",
+   "kind": "code",
+   "stolen_riprel": [
+    "0x143da6545 mulss xmm0, dword ptr [rip + 0x3aa9feb]"
+   ]
+  }
+ ]
+}

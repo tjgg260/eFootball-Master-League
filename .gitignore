@@ -127,3 +127,7 @@ assets/dvx_comps_bad*/
 # the owner's own player photos (SquadView "Set photo…" copies them here) and stray face downloads
 custom_faces/
 /face_*.webp
+# derived analysis caches (regenerate from the exe with tools/exe_funcs_chained.py etc.)
+tools/*.npz
+# ad-hoc reverse-engineering scratch (belongs in the scratchpad, not the repo)
+sk/

@@ -1,0 +1,12 @@
+{
+ "description": "RUN VARIETY C - THREE RUNNERS ON THE BREAK. CounterSpaceRun (action 0x1f) has by far the most generous quota Konami authored: EMULATED from 0x1442f9a90 it returns {2,3,4,4,4} across attack levels 0..4. It has never been able to use it, because the selector is constructed with maxSlots=1 (0x143d51a8f 'mov dl,1' in the manager ctor 0x143d519d0) and the dispatcher grants min(quota, maxSlots) at 0x143df1651/0x143df165b. offball-run-variety.json already raised that byte to 2 (the installed exe reads B2 02 here; the PRISTINE backup reads B2 01). This takes it to 3, which is still below the authored quota at every attack level from 1 upward, so no new runner appears in a phase Konami did not already allow. Counter runs are also difficulty-gated by row 0x14 of the level table (0x146c06f40/0x146c067b0, GetParam 0x1442e48f0, tested via 0x1442e4c00 = |GetParam| > FLT_EPSILON inside the cap builder 0x143df0080); offball-counter-early.json already opened columns 1 and 2, and the row now reads {0,1,1,1,1,1,1,1,1,1} in both tables in the installed exe. Note the same cap builder shows three more whole-run-type difficulty gates that were not documented before: row 0x13 gates SecondLineSpaceRun AND ChanceSpaceRun together, row 0x15 gates LineBreak AND PullAway, row 0x16 gates DiagonalRun. All four read {0,1,1,...} or {0,0,0,1,...}, so only the lowest difficulty setting loses run types. Affects BOTH teams. Requires offball-run-variety.json to be applied first (or change the expect byte to B2 01). Revert: python tools/exe_patch.py remove tools/data/patches/runvar-counter-three.json",
+ "patches": [
+  {
+   "name": "CounterSpaceRun maxSlots 2 -> 3 (ctor arg, manager+0x588; PRISTINE reads 01)",
+   "va": "0x143d51a8f",
+   "expect": "B2 02",
+   "patch": "B2 03",
+   "kind": "code"
+  }
+ ]
+}

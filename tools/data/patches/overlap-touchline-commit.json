@@ -1,0 +1,26 @@
+{
+ "description": "TOUCHLINE OVERLAP COMMIT (offball, companion to overlap-auto.json). When the ball-carrier is pinned near the touchline the selector takes a second route that sets option bit 0x10 and commits the request immediately, bypassing the final same-side / carrier-y check at 0x143df0b77. That route almost never fires today: it needs the carrier within 6 m of the line, a defender within 20 deg of his facing AND within 4 m. Three re-aims widen it to 10 m from the line, 45 deg and 8 m. NOTE: bit 0x10 itself is INERT downstream - no instruction in the image tests it, and match::player::ActionOverlapSB::vf4 (0x1441d93b0) only reads bits 0-3, so the run still goes OUTSIDE. The gain here is purely that the request commits; a true underlap would need new code. Affects every AI-controlled player on both teams. Revert: python tools/exe_patch.py remove tools/data/patches/overlap-touchline-commit.json",
+ "patches": [
+  {
+   "name": "carrier-near-touchline band 6 m -> 10 m",
+   "va": "0x143df09c9",
+   "expect": "F3 0F 5C 0D 7B 1A CC 01",
+   "patch": "F3 0F 5C 0D AB D3 C9 01",
+   "kind": "code"
+  },
+  {
+   "name": "blocking-defender cone 20 deg -> 45 deg",
+   "va": "0x143df073f",
+   "expect": "F3 44 0F 10 3D FC A2 C9 01",
+   "patch": "F3 44 0F 10 3D C8 D1 D2 01",
+   "kind": "code"
+  },
+  {
+   "name": "blocking-defender radius 4 m -> 8 m",
+   "va": "0x143df0b34",
+   "expect": "F3 0F 10 0D 0C 10 CC 01",
+   "patch": "F3 0F 10 0D 80 24 D6 01",
+   "kind": "code"
+  }
+ ]
+}
