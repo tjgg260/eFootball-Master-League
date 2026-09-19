@@ -514,7 +514,7 @@
             <Button Content="Full table →" Command="{Binding GoToTableCommand}" Classes="ml-ghost"
                     Foreground="{StaticResource MlLink}" FontSize="11" Padding="7,4"
                     HorizontalAlignment="Left" Margin="0,4,0,0"
-                    ToolTip.Tip="The whole division, with form and goal difference"/>
+                    ToolTip.Tip="The whole division, with goal difference"/>
           </StackPanel>
         </Border>
       </Grid>

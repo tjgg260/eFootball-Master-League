@@ -115,6 +115,14 @@ public sealed partial class CalendarViewModel : PageViewModel
     public void Activate(DayCell c)
     {
         if (c.FixtureId != 0 && c.FixtureId == _nextFixtureId) { Nav.Go("Office"); return; }
+        // A PAST fixture opens its report — the one it earns. THE BUG (audit C7): clicking any
+        // square that was not the next match did nothing at all, even one with a result already
+        // filed, because only the next fixture and an event day were ever handled.
+        if (c.FixtureId != 0 && _s.ResultFor(c.FixtureId) is not null)
+        {
+            Nav.Go("Match Report", new EntityRef(EntityKind.Fixture, c.FixtureId, c.OppName));
+            return;
+        }
         if (c.EventTarget is { Length: > 0 } target) Nav.Go(target);
     }
 

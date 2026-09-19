@@ -1,3 +1,9 @@
+<!-- MinWidth 1500, not 1280: Tactics alone needs ~1490px of content (320 left rail + 724
+     pitch + 185 right rail + margins) plus the 230px sidebar. A MinWidth below that let the
+     window shrink to a size where its own busiest screen clipped. This does not make every
+     fixed-pixel panel fluid (Squad's ~795px of columns, Market's 330px rail, the Match
+     Report's ~2200px grid all still assume a wide window) — it only stops the window's OWN
+     stated floor from being narrower than what it ships. -->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ML.App.ViewModels"
@@ -8,7 +14,7 @@
         mc:Ignorable="d"
         x:Class="ML.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Title="Master League" Width="1640" Height="820" MinWidth="1280" MinHeight="700"
+        Title="Master League" Width="1640" Height="820" MinWidth="1500" MinHeight="700"
         Background="{DynamicResource ThemeBgBrush}" TransparencyLevelHint="Mica">
 
   <Window.Styles>
@@ -235,6 +241,26 @@
                   Command="{Binding DiscardAndLeaveCommand}"/>
           <Button Classes="ml-ghost" Content="Stay" FontSize="12"
                   Command="{Binding DismissLeaveCommand}"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Error banner (audit C6): a page that failed to open used to leave the manager on the
+           old screen with no word said about it — the failure was already logged, just never
+           shown. This is every navigation failure's one voice, with a way to the log file. -->
+      <Border IsVisible="{Binding HasErrorBanner}" VerticalAlignment="Top" HorizontalAlignment="Center"
+              Background="{StaticResource MlSurfaceCard}" BorderBrush="{StaticResource MlDanger}"
+              BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,14,0,0"
+              BoxShadow="0 10 30 #90000000">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="⚠" Foreground="{StaticResource MlDanger}" FontSize="16" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding ErrorBanner}" VerticalAlignment="Center"
+                     Foreground="{StaticResource MlTextHeading}" FontSize="13" TextWrapping="Wrap"
+                     MaxWidth="420"/>
+          <Button Classes="ml-secondary" Content="Open the log" FontSize="12"
+                  Command="{Binding OpenCrashLogCommand}"
+                  ToolTip.Tip="ml-crash.log, next to the app"/>
+          <Button Classes="ml-ghost" Content="Dismiss" FontSize="12"
+                  Command="{Binding DismissErrorCommand}"/>
         </StackPanel>
       </Border>
     </Panel>

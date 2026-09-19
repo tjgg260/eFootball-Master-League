@@ -71,6 +71,10 @@ public partial class MainWindowViewModel : ObservableObject
         // replaces the old shell instead of stacking subscribers.
         Nav.Handler = OnNavRequest;
 
+        // A page that changed something the shell shows (the News unread pill) asks for a
+        // refresh without needing the manager to navigate away and back — see ShellRefresh.
+        ShellRefresh.Handler = RefreshShell;
+
         // Tooling hook: ML_PAGE=<nav title> opens straight onto that screen (screenshot runs).
         var startPage = Environment.GetEnvironmentVariable("ML_PAGE");
         var start = Pages.FirstOrDefault(p => p.Title == startPage) ?? Pages[0];
@@ -180,8 +184,42 @@ public partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            // A page that fails to build must not take the whole app down — log it and stay put.
+            // THE BUG (audit C6): a page that fails to build must not take the whole app down —
+            // it never did — but the manager clicked a nav item and NOTHING happened, with no
+            // way to tell "that screen is broken" from "I mis-clicked". Now it says so.
             Program.Log($"Navigate -> {item.Title}", ex);
+            ErrorBanner = $"{item.Title} couldn't open: {ex.Message}";
+        }
+    }
+
+    // ── the error banner (audit C6): every failure the app already caught and logged said
+    // nothing on screen. This is the one place that surfaces it, with a way to the log file
+    // that always existed but nothing ever pointed at.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasErrorBanner))]
+    private string? _errorBanner;
+
+    public bool HasErrorBanner => ErrorBanner is { Length: > 0 };
+
+    [RelayCommand]
+    private void DismissError() => ErrorBanner = null;
+
+    [RelayCommand]
+    private void OpenCrashLog()
+    {
+        try
+        {
+            if (!System.IO.File.Exists(Program.CrashLog))
+            {
+                ErrorBanner = "Nothing has been logged yet — the crash log is empty.";
+                return;
+            }
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Program.CrashLog)
+            { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            ErrorBanner = $"Couldn't open the log ({Program.CrashLog}): {ex.Message}";
         }
     }
 

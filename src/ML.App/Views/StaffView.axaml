@@ -186,6 +186,11 @@
                         Margin="26,0,0,0" IsVisible="{Binding !RoleFilled}"
                         Command="{Binding $parent[ItemsControl].((vm:StaffViewModel)DataContext).AimAtRoleCommand}"
                         CommandParameter="{Binding RoleNeeded}"/>
+                <!-- the one duty with a standing caveat (a hand-picked XI outranks the assistant)
+                     — built for a while, never shown here until now (audit B10). -->
+                <TextBlock Text="{Binding Note}" IsVisible="{Binding HasNote}"
+                           Classes="ml-muted" FontSize="11" FontStyle="Italic"
+                           Margin="26,1,0,0" TextWrapping="Wrap"/>
               </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

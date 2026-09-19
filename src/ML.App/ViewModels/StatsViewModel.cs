@@ -53,8 +53,9 @@ public sealed partial class StatsViewModel : PageViewModel
         TopAssists = new ObservableCollection<ScorerRow>(
             s.LeadersBy("assist").Select(x => new ScorerRow(x.Player, x.Team, x.Count, Rate(x.Count, x.Apps),
                 Face(x.PlayerId), x.PlayerId)));
+        // "type your scorers" was stale from before the result desk had pickers (audit C7).
         ScorersNote = TopScorers.Count == 0
-            ? "Goals appear here as matches are played — type your scorers when you record a result."
+            ? "Goals appear here once matches are played — pick your scorers on the Office's result desk."
             : "";
         // No games, no ranking: eight clubs on 0 GA is noise dressed as a table.
         BestDefence = new ObservableCollection<StatRow>(

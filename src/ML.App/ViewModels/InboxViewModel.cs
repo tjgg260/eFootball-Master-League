@@ -131,6 +131,7 @@ public sealed partial class InboxViewModel : PageViewModel
     {
         _s.MarkInboxRead();
         Reload();
+        ShellRefresh.Request();   // the sidebar pill used to stay lit until you left and came back
     }
 
     /// <summary>Clicking a message marks that one message read (P6).</summary>
@@ -154,6 +155,7 @@ public sealed partial class InboxViewModel : PageViewModel
         var i = Rows.IndexOf(entry);
         if (i >= 0) Rows[i] = entry with { Unread = false };
         Header = $"News — {Rows.Count(r => r.Unread)} unread";
+        ShellRefresh.Request();   // the sidebar pill used to stay lit until you left and came back
     }
 
     // --- acting on the news (P10) -------------------------------------------------

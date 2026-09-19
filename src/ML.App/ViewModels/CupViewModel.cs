@@ -61,7 +61,10 @@ public sealed partial class CupViewModel : PageViewModel
                     var blanks = new ObservableCollection<CupTie>();
                     for (var i = 0; i < size / 2; i++)
                     {
-                        blanks.Add(new CupTie("—", "—", "", false, false, Brushes.Transparent));
+                        // "—  —" alone read as broken data (audit C7) — the round header says
+                        // "to come" but each tie is a separate glance, and a bare dash on its
+                        // own says nothing about why.
+                        blanks.Add(new CupTie("Not drawn yet", "Not drawn yet", "", false, false, Brushes.Transparent));
                     }
                     rounds.Add(new CupRound($"{name} · to come", blanks));
                 }
