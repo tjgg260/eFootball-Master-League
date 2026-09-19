@@ -362,8 +362,10 @@ public sealed partial class Session
 
         // Silverware into the Roll of Honour before anything resets — then the money follows it.
         RecordHonours(top, second);
-        try { SeasonAwards(); } catch { /* the gala never blocks rollover */ }
-        try { PayPrizesAndFlagEurope(top, second); } catch { /* prizes never block rollover */ }
+        try { SeasonAwards(); }
+        catch (Exception ex) { Program.Log("AdvanceToNextSeason/SeasonAwards", ex); }
+        try { PayPrizesAndFlagEurope(top, second); }
+        catch (Exception ex) { Program.Log("AdvanceToNextSeason/PayPrizesAndFlagEurope", ex); }
 
         // Season review lands in the inbox before anything resets.
         var myTable = LeagueId == TopFlight ? top : second;
@@ -375,16 +377,20 @@ public sealed partial class Session
         {
             RollCareerAtSeasonEnd(myPos, myTable.Count, movement.Contains("PROMOTED"));
         }
-        catch { /* the career layer never blocks rollover */ }
+        catch (Exception ex) { Program.Log("AdvanceToNextSeason/RollCareerAtSeasonEnd", ex); }
 
         // The board settles its objectives (P2) — confidence, rep and backing move here.
-        try { EvaluateObjectives(myPos); } catch { /* the verdict never blocks rollover */ }
+        try { EvaluateObjectives(myPos); }
+        catch (Exception ex) { Program.Log("AdvanceToNextSeason/EvaluateObjectives", ex); }
 
-        try { ReturnAllLoans(); } catch { /* loans never block rollover */ }
-        try { ClearSuspensionsForNewSeason(); } catch { /* a clean sheet never blocks rollover */ }
+        try { ReturnAllLoans(); }
+        catch (Exception ex) { Program.Log("AdvanceToNextSeason/ReturnAllLoans", ex); }
+        try { ClearSuspensionsForNewSeason(); }
+        catch (Exception ex) { Program.Log("AdvanceToNextSeason/ClearSuspensionsForNewSeason", ex); }
         AgeAndDevelopSquads();
         AgeWorldEdge();
-        try { RetireAndExpire(); } catch { /* the world never blocks rollover */ }
+        try { RetireAndExpire(); }
+        catch (Exception ex) { Program.Log("AdvanceToNextSeason/RetireAndExpire", ex); }
         CpuTransferActivity();     // the market moves between seasons (and re-fills the retired)
         AcademyIntake();           // every club's youth setup produces new prospects
         GenerateOffers();          // CPU clubs bid for your best players
@@ -1153,9 +1159,10 @@ public sealed partial class Session
         RepayLoanInstalment();   // the bank collects every matchweek
         var trainingNotes = ApplyTraining().ToList();   // the training ground works every matchweek
         try { trainingNotes.AddRange(AdvanceSkillTraining()); }   // skill work ticks too (P1)
-        catch { /* skills never block the weekly pass */ }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/AdvanceSkillTraining", ex); }
         LastTrainingNotes = trainingNotes;
-        try { CheckScoutJobs(matchday); } catch { /* scouting is optional */ }
+        try { CheckScoutJobs(matchday); }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/CheckScoutJobs", ex); }
 
         // Morale follows the matchweek for YOUR squad (minutes, result, list status).
         try
@@ -1171,29 +1178,32 @@ public sealed partial class Session
             }
             UpdateMoraleAfterMatchday(matchday, myOutcome);
         }
-        catch { /* morale never blocks the matchday pass */ }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/UpdateMoraleAfterMatchday", ex); }
 
         // The weekly economy: wages out every matchweek, gate receipts in when you play at home.
         var (_, _, weeklyWages) = FinancialOverview();
         Finances.PayWages(weeklyWages);
         TakeGate(fixtures);
         SyncBudget();
-        try { MidSeasonReview(matchday); } catch { /* the review never blocks the pass */ }
-        try { RunDeadlineDay(matchday); } catch { /* deadline drama never blocks the pass */ }
-        try { EvaluatePlayingTime(matchday); } catch { /* playing time never blocks the pass */ }
+        try { MidSeasonReview(matchday); }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/MidSeasonReview", ex); }
+        try { RunDeadlineDay(matchday); }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/RunDeadlineDay", ex); }
+        try { EvaluatePlayingTime(matchday); }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/EvaluatePlayingTime", ex); }
 
         // Delegated staff duties (staff DB): renewals, shortlists, opposition scouting, recovery.
         try { RunStaffDelegation(matchday); }
-        catch { /* delegation never blocks the pass */ }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/RunStaffDelegation", ex); }
 
         // Weekly history snapshot (item 11): the trend charts read this series.
         try { RecordClubHistory(matchday); }
-        catch { /* history never blocks the pass */ }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/RecordClubHistory", ex); }
 
         // International breaks (item 5): after MDs 4/9/14/25 your stars fly off and come home
         // leggy. The best players in the squad pick up extra fatigue; a letter says who.
         try { ApplyInternationalBreak(matchday); }
-        catch { /* call-ups never block the pass */ }
+        catch (Exception ex) { Program.Log("RunWeeklyEconomy/ApplyInternationalBreak", ex); }
 
         // The January window: mid-season market activity + fresh offers for your players.
         if (matchday == 17 && GetMeta($"jan_{SeasonId}") is null)
