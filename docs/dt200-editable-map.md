@@ -11,7 +11,7 @@ So this is a menu of "what could the app edit," ranked by value ÷ effort.
 |---|---|---|
 | `Player.bin` | player names | `ml_author` / `playstyle_bits` |
 | `PlayerAssignment.bin` | which player occupies each club slot (transfers) | `ml_swap` (positional) |
-| `Team.bin` | team names (@396, 48-byte English field) | `dt200_rename` |
+| `Team.bin` | team names (21 language slots x 70B @116, abbreviation @886) | `dt200_rename` |
 | `CategoryTeamList.bin` | league membership + alphabetical order | `dt200_rename` |
 | `Tactics.bin` + `TacticsFormation.bin` | formation + team style (u8@8) | `play_match.write_style` |
 | `Coach.bin` | coach names | derby/coach tooling |
