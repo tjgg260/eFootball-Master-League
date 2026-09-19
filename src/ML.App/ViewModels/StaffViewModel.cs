@@ -225,10 +225,31 @@ public sealed partial class StaffViewModel : PageViewModel
 
     partial void OnSelectedRoleChanged(string? value) => ReloadMarket();
 
+    // Two-step: this can silently sack whoever holds the desk today. The warning used to live
+    // only inside the right-click menu, where a mouse-first hire from the market panel below
+    // never saw it. Now the button asks, on the desk it is actually about to empty.
+    [ObservableProperty] private string _hireLabel = "Hire selected";
+    private long _armedHireId;
+
     [RelayCommand]
     private void Hire()
     {
         if (SelectedCandidate is null) { Status = "Pick a candidate first."; return; }
+        if (_armedHireId != SelectedCandidate.Id)
+        {
+            _armedHireId = SelectedCandidate.Id;
+            HireLabel = "Confirm the hire?";
+            var role = SelectedRole ?? "";
+            var incumbent = role.Length > 0 ? _s.StaffPersonFor(role) : null;
+            Status = incumbent is null
+                ? $"Hire {SelectedCandidate.Name}{(role.Length > 0 ? $" as {role}" : "")}? " +
+                  "Press Hire again to confirm."
+                : $"Hire {SelectedCandidate.Name} — that releases {incumbent.Name}, who holds the desk " +
+                  "today. Press Hire again to confirm.";
+            return;
+        }
+        _armedHireId = 0;
+        HireLabel = "Hire selected";
         Status = _s.HireStaffPerson(SelectedCandidate.Id);
         Reload();
     }

@@ -357,10 +357,24 @@ public sealed partial class NewCareerViewModel : ObservableObject
         finally { IsBuilding = false; }
     }
 
+    // Two-step, on the Status line: SaveSlot is a plain record rendered by an ItemsControl
+    // template, so a per-row button label (as the vault's own Renew/Release buttons manage)
+    // would need per-instance mutable state. A second click on the SAME slot's Load button
+    // confirms; clicking a different slot re-arms rather than loading the wrong one.
+    private string? _armedLoadPath;
+
     [RelayCommand]
     private async Task LoadSave(SaveSlot? slot)
     {
         if (slot is null || IsBuilding) return;
+        if (_armedLoadPath != slot.Path)
+        {
+            _armedLoadPath = slot.Path;
+            Status = $"Load {slot.Club} ({slot.SavedLine})? The career you are on now goes to the " +
+                     "vault first — nothing is lost — then this save replaces it. Click Load again to confirm.";
+            return;
+        }
+        _armedLoadPath = null;
         ShowBusy($"Loading {slot.Club}…",
              "The career you were on goes to the vault first, then this save is opened.");
         Status = $"Restoring {slot.Club}…";

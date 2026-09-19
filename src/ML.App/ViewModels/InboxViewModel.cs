@@ -187,11 +187,27 @@ public sealed partial class InboxViewModel : PageViewModel
             : EntityActions.BuildMenu(_s, EntityRef.Player(_heroPlayerId, HeroName),
                 status: x => Status = x, refresh: Reload);
 
+    // Two-step, on the Status line rather than the button label: NewsEntry is a plain record
+    // rendered by an ItemsControl template, so there is no per-row mutable state to flip a
+    // label on without rebuilding the list. The story card's own Command="{Binding}" (the row
+    // itself) is the key: a second click ON THE SAME STORY confirms; clicking a different one
+    // re-arms instead of accepting the wrong player.
+    private long _armedOfferEntryId;
+
     /// <summary>Answer an offer from the story itself — no trip to the Market.</summary>
     [RelayCommand]
     private void AcceptOffer(NewsEntry? e)
     {
         if (e?.PlayerId is not { } pid) return;
+        if (_armedOfferEntryId != pid)
+        {
+            _armedOfferEntryId = pid;
+            string name;
+            try { name = _s.PlayerNameOf(pid); } catch { name = "him"; }
+            Status = $"Sell {name}? Click Accept offer again to confirm.";
+            return;
+        }
+        _armedOfferEntryId = 0;
         Status = _s.AcceptOffer(pid);
         MarkRead(e);
         Reload();
@@ -201,6 +217,7 @@ public sealed partial class InboxViewModel : PageViewModel
     private void RejectOffer(NewsEntry? e)
     {
         if (e?.PlayerId is not { } pid) return;
+        _armedOfferEntryId = 0;
         _s.RejectOffer(pid);
         Status = "Offer turned down.";
         MarkRead(e);

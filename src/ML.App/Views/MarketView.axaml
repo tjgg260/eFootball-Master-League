@@ -20,7 +20,7 @@
           </ListBox.ItemTemplate>
         </ListBox>
         <StackPanel Orientation="Horizontal" Spacing="10">
-          <Button Content="Accept — sell" Command="{Binding AcceptOfferCommand}"
+          <Button Content="{Binding AcceptOfferLabel}" Command="{Binding AcceptOfferCommand}"
                   Classes="ml-primary ml-go"/>
           <Button Content="Reject" Command="{Binding RejectOfferCommand}" Classes="ml-secondary"/>
         </StackPanel>
@@ -75,7 +75,7 @@
       <ComboBox ItemsSource="{Binding BidOptions}" SelectedItem="{Binding SelectedBid}"
                 Width="145" VerticalAlignment="Center"
                 ToolTip.Tip="Your offer vs market value — clubs want a premium, lowballs get countered"/>
-      <Button Content="＋ Bid" Command="{Binding SignCommand}" Classes="ml-primary ml-go"
+      <Button Content="{Binding BidLabel}" Command="{Binding SignCommand}" Classes="ml-primary ml-go"
               IsEnabled="{Binding !ProfileIsMine}"/>
     </WrapPanel>
     <TextBlock DockPanel.Dock="Bottom" Text="{Binding SignStatus}" Classes="ml-body"

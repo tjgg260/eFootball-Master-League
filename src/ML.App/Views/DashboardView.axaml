@@ -78,7 +78,7 @@
           </StackPanel>
           <!-- the post-match report (P3): full time is a moment -->
           <Border Background="{DynamicResource ThemePanelAltBrush}" BorderBrush="#2EC4A6" BorderThickness="1" CornerRadius="12"
-                  Padding="16" Margin="0,8,0,0" IsVisible="{Binding ReportVisible}">
+                  Padding="16" Margin="0,8,0,0" IsVisible="{Binding ReportVisible}" IsEnabled="{Binding !IsWorking}">
             <StackPanel Spacing="8">
               <TextBlock Text="{Binding ReportVerdict}" Foreground="{Binding ReportVerdictBrush}"
                          FontSize="12" FontWeight="Bold" LetterSpacing="1.5"/>
@@ -163,9 +163,11 @@
         <TextBlock Text="{Binding FtLine}" Foreground="White" FontSize="18" FontWeight="Bold"/>
       </Border>
 
-      <!-- NEXT MATCH — an OCCASION before kickoff, an entry desk only after (UX P1) -->
+      <!-- NEXT MATCH — an OCCASION before kickoff, an entry desk only after (UX P1).
+           IsEnabled disables the whole card (score boxes, shoot-out toggles, every button
+           inside) the moment a busy overlay is up, so a second click can never land mid-write. -->
       <Border CornerRadius="12" Padding="20,18" Background="#14271B" BorderBrush="#1F7A3D"
-              BorderThickness="1" IsVisible="{Binding HasNextMatch}">
+              BorderThickness="1" IsVisible="{Binding HasNextMatch}" IsEnabled="{Binding !IsWorking}">
         <StackPanel Spacing="4">
           <TextBlock Classes="cardHead" Text="NEXT MATCH" Foreground="#7FD79B" Margin="0,0,0,4"/>
           <TextBlock Text="{Binding NextMatchLabel}" Foreground="White" FontSize="22"
@@ -182,6 +184,14 @@
               <Button Content="✍  Enter result" Command="{Binding OpenResultEntryCommand}"
                       Classes="ml-ghost" VerticalAlignment="Center"
                       ToolTip.Tip="Played outside the app? Enter the score directly."/>
+            </StackPanel>
+            <!-- the compile is a real background process already (MatchLauncher runs it off the
+                 UI thread) — it just never SAID so; this is purely additive. -->
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0"
+                        IsVisible="{Binding IsCompiling}">
+              <ProgressBar IsIndeterminate="True" Height="4" Width="140"
+                           Foreground="{StaticResource MlPrimary}"/>
+              <TextBlock Text="Compiling your career into the game…" Classes="ml-muted" FontSize="12"/>
             </StackPanel>
           </StackPanel>
 
@@ -320,12 +330,12 @@
 
       <!-- Season complete: roll over to the next season -->
       <Border CornerRadius="12" Padding="20,18" Background="#2A1F3D" BorderBrush="#6B4F9E"
-              BorderThickness="1" IsVisible="{Binding SeasonOver}">
+              BorderThickness="1" IsVisible="{Binding SeasonOver}" IsEnabled="{Binding !IsWorking}">
         <StackPanel Spacing="8">
           <TextBlock Classes="cardHead" Text="SEASON COMPLETE" Foreground="#C7A6F2" Margin="0,0,0,0"/>
           <TextBlock Text="All fixtures played. Roll over: age &amp; develop squads, generate next season."
                      Foreground="White" FontSize="15" TextWrapping="Wrap"/>
-          <Button Content="⏭  ADVANCE SEASON" Command="{Binding AdvanceSeasonCommand}"
+          <Button Content="{Binding AdvanceSeasonLabel}" Command="{Binding AdvanceSeasonCommand}"
                   HorizontalAlignment="Left" Margin="0,6,0,0" FontSize="15" FontWeight="Bold"
                   Padding="24,13" Foreground="White" Background="#6B4F9E" CornerRadius="8"/>
           <TextBlock Text="{Binding MatchStatus}" Foreground="#C7A6F2" FontSize="12"
@@ -565,6 +575,21 @@
 
     </StackPanel>
   </ScrollViewer>
+
+  <!-- ── BUSY OVERLAY (audit C1): Record/Advance used to freeze the window with no word said
+       about it. WAL (Batch 1) means the wait itself is now short, but a manager still deserves
+       to be told what is happening rather than watching the click do nothing for a moment. -->
+  <Border IsVisible="{Binding IsWorking}" Background="#B0060A10">
+    <Border Classes="ml-card" MaxWidth="440" HorizontalAlignment="Center"
+            VerticalAlignment="Center" Padding="28,24">
+      <StackPanel Spacing="12" HorizontalAlignment="Center">
+        <ProgressBar IsIndeterminate="True" Height="4" Width="220"
+                     Foreground="{StaticResource MlPrimary}"/>
+        <TextBlock Text="{Binding WorkingLine}" Classes="ml-body" TextWrapping="Wrap"
+                   TextAlignment="Center" MaxWidth="380"/>
+      </StackPanel>
+    </Border>
+  </Border>
 
   <!-- ── CELEBRATION OVERLAY (UX P1): a title is a full-screen moment, never a 12px string ── -->
   <Border IsVisible="{Binding CelebrationVisible}" Background="#E6060A10">

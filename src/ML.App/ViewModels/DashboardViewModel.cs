@@ -222,6 +222,34 @@ public sealed partial class DashboardViewModel : PageViewModel
     partial void OnHomeScoreChanged(decimal value) => OnPropertyChanged(nameof(NeedsShootout));
     partial void OnAwayScoreChanged(decimal value) => OnPropertyChanged(nameof(NeedsShootout));
 
+    // ── the busy overlay (audit C1): Record/Advance/Continue used to freeze the window with
+    // no word said about it. Each still runs on THIS thread — Session holds one SQLite
+    // connection that is not safe to touch from two threads at once, so the work is not moved
+    // to a background thread — but the overlay is shown and given one real frame to paint
+    // (a Dispatcher yield at Background priority) before the blocking call starts, so the
+    // manager sees "Recording the result…" rather than a dead click. WAL (Batch 1) means the
+    // wait itself is now well under a second for a result and a couple of seconds for a
+    // rollover, not the 272s it used to be.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlayEnabled))]
+    private bool _isWorking;
+    [ObservableProperty] private string _workingLine = "";
+
+    private async Task RunBusy(string line, Action work)
+    {
+        WorkingLine = line;
+        IsWorking = true;
+        try
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            work();
+        }
+        finally
+        {
+            IsWorking = false;
+        }
+    }
+
     /// <summary>The narrative line of the pre-match card ("In the other dugout: …").</summary>
     [ObservableProperty]
     private string _dugoutLine = "";
@@ -417,7 +445,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         MatchStatus = $"🗣 {reaction}";
     }
 
-    public bool PlayEnabled => HasNextMatch && !IsCompiling;
+    public bool PlayEnabled => HasNextMatch && !IsCompiling && !IsWorking;
 
     // Sacked ≠ season over: a sacked manager has no next match either, but must see the
     // SACKED card, not "SEASON COMPLETE" with a live Advance Season button.
@@ -1007,12 +1035,29 @@ public sealed partial class DashboardViewModel : PageViewModel
         catch { /* celebration is additive — never blocks recording */ }
     }
 
+    // Two-step: this ages every squad, retires players, moves the market and can never be
+    // undone the way a result can. It went through on the first click.
+    [ObservableProperty] private string _advanceSeasonLabel = "⏭  ADVANCE SEASON";
+    private bool _advanceArmed;
+
     /// <summary>End the season: sim the rest, age squads, generate next season's fixtures.</summary>
     [RelayCommand]
-    private void AdvanceSeason()
+    private async Task AdvanceSeason()
     {
-        if (HasNextMatch) return;
-        var summary = _s.AdvanceToNextSeason();
+        if (HasNextMatch || IsWorking) return;
+        if (!_advanceArmed)
+        {
+            _advanceArmed = true;
+            AdvanceSeasonLabel = "Confirm — roll over the season?";
+            MatchStatus = "This ages every squad, retires players and moves the transfer market on. " +
+                          "It cannot be undone. Click ADVANCE SEASON again to confirm.";
+            return;
+        }
+        _advanceArmed = false;
+        AdvanceSeasonLabel = "⏭  ADVANCE SEASON";
+        string summary = "";
+        await RunBusy("Advancing to the next season — simming the rest, ageing squads, drawing " +
+                      "next season's fixtures…", () => summary = _s.AdvanceToNextSeason());
         LoadNextMatch();
         MatchStatus = summary;   // after LoadNextMatch, so the rollover summary stays visible
     }
@@ -1021,6 +1066,7 @@ public sealed partial class DashboardViewModel : PageViewModel
     [RelayCommand]
     private void UndoResult()
     {
+        if (IsWorking) return;
         try
         {
             var msg = _s.UndoLastResult();
@@ -1037,9 +1083,9 @@ public sealed partial class DashboardViewModel : PageViewModel
 
     /// <summary>Record the score you played in eFootball, then advance to the next fixture.</summary>
     [RelayCommand]
-    private void RecordResult()
+    private async Task RecordResult()
     {
-        if (!HasNextMatch) return;
+        if (!HasNextMatch || IsWorking) return;
         if (_kind == "cup" && (int)HomeScore == (int)AwayScore)
         {
             if (!ShootoutHome && !ShootoutAway)
@@ -1055,6 +1101,12 @@ public sealed partial class DashboardViewModel : PageViewModel
                 return;
             }
         }
+        await RunBusy("Recording the result — simming the rest of the matchday, updating fitness, " +
+                      "mail and the board…", RecordResultWork);
+    }
+
+    private void RecordResultWork()
+    {
         // Snapshot the gauges so the report can show what this result MOVED (P3).
         int moraleBefore = 60, boardBefore = 58, fansBefore = 55;
         try { moraleBefore = _s.SquadMoraleAverage(); } catch { }

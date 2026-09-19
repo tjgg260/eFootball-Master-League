@@ -165,7 +165,7 @@
                    TextWrapping="Wrap" IsVisible="{Binding !HasMarket}"/>
         <TextBlock Classes="ml-muted" Text="Right-click a candidate, or use the ⋯, for his full attribute profile."
                    TextWrapping="Wrap" IsVisible="{Binding HasMarket}"/>
-        <Button Classes="ml-primary ml-go" Content="Hire selected" Command="{Binding HireCommand}"/>
+        <Button Classes="ml-primary ml-go" Content="{Binding HireLabel}" Command="{Binding HireCommand}"/>
       </StackPanel>
     </Border>
 

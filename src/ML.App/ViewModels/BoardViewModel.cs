@@ -187,9 +187,24 @@ public sealed partial class BoardViewModel : PageViewModel
     /// <summary>The offers panel's own status line — engine verbs land here verbatim.</summary>
     [ObservableProperty] private string _offerStatus = "";
 
+    // Two-step, same idiom as the job offer below: these three spend real money (or the board's
+    // patience) and used to go through on the first click, the price on the label the only word
+    // said about it.
+    private bool _budgetArmed;
+    private bool _trainingArmed;
+    private bool _academyArmed;
+
     [RelayCommand]
     private void RequestBudget()
     {
+        if (!_budgetArmed)
+        {
+            _budgetArmed = true;
+            LeverStatus = "Ask the board to move money into the transfer budget? It costs a " +
+                          "little of their confidence whether they say yes or no. Click again to confirm.";
+            return;
+        }
+        _budgetArmed = false;
         LeverStatus = _s.RequestBudget();
         RefreshFacilities();
         RefreshBoard();   // a refused ask costs you confidence — the gauge says so at once
@@ -198,6 +213,15 @@ public sealed partial class BoardViewModel : PageViewModel
     [RelayCommand]
     private void UpgradeTraining()
     {
+        if (_s.TrainingLevel >= 5) { LeverStatus = _s.UpgradeTrainingGround(); return; }
+        if (!_trainingArmed)
+        {
+            _trainingArmed = true;
+            LeverStatus = $"Upgrade the training ground for £{_s.FacilityUpgradeCost(_s.TrainingLevel):N0}? " +
+                          "Click again to confirm.";
+            return;
+        }
+        _trainingArmed = false;
         LeverStatus = _s.UpgradeTrainingGround();
         RefreshFacilities();
     }
@@ -205,6 +229,15 @@ public sealed partial class BoardViewModel : PageViewModel
     [RelayCommand]
     private void UpgradeAcademy()
     {
+        if (_s.AcademyLevel >= 5) { LeverStatus = _s.UpgradeAcademy(); return; }
+        if (!_academyArmed)
+        {
+            _academyArmed = true;
+            LeverStatus = $"Upgrade the academy for £{_s.FacilityUpgradeCost(_s.AcademyLevel):N0}? " +
+                          "Click again to confirm.";
+            return;
+        }
+        _academyArmed = false;
         LeverStatus = _s.UpgradeAcademy();
         RefreshFacilities();
     }

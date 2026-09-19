@@ -869,6 +869,18 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         OnPropertyChanged(nameof(HasOffers));
     }
 
+    // Two-step, matching Finances' Borrow: the first press arms it and turns the label into the
+    // question with the fee on it, the second confirms. THE BUG this closes: a bid spends real
+    // money and sat right in the filter bar, 400px from the man it acts on, with no confirmation
+    // at all — the one big-money button in the app that didn't ask twice.
+    [ObservableProperty] private string _bidLabel = "＋ Bid";
+    private long _armedBidPlayerId;
+    private string _armedBidOption = "";
+
+    private void DisarmBid() { _armedBidPlayerId = 0; _armedBidOption = ""; BidLabel = "＋ Bid"; }
+
+    partial void OnSelectedBidChanged(string value) => DisarmBid();
+
     [RelayCommand]
     private void Sign()
     {
@@ -886,6 +898,17 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
             return;
         }
         var pct = SelectedBid.StartsWith("Lowball") ? 85 : SelectedBid.StartsWith("Premium") ? 115 : 100;
+        if (_armedBidPlayerId != p.Id || _armedBidOption != SelectedBid)
+        {
+            _armedBidPlayerId = p.Id;
+            _armedBidOption = SelectedBid;
+            var value = _s.MarketValueOf(p.Id, p.Overall, p.Age);
+            var offer = value * pct / 100;
+            BidLabel = "Confirm the bid?";
+            SignStatus = $"Bid £{offer:N0} for {p.Name} ({SelectedBid})? Press ＋ Bid again to send it.";
+            return;
+        }
+        DisarmBid();
         SignStatus = _s.BuyPlayer(p.Id, pct);
         if (SignStatus.StartsWith("Signed "))
         {
@@ -1057,10 +1080,24 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         SignStatus = "You walked away from the table.";
     }
 
+    // Two-step: selling a player is as final as releasing one, and releasing one has always
+    // asked twice. This used to go through on the first click.
+    [ObservableProperty] private string _acceptOfferLabel = "Accept — sell";
+    private long _armedOfferPlayerId;
+
     [RelayCommand]
     private void AcceptOffer()
     {
         if (SelectedOffer is null) { SignStatus = "Pick an offer first."; return; }
+        if (_armedOfferPlayerId != SelectedOffer.PlayerId)
+        {
+            _armedOfferPlayerId = SelectedOffer.PlayerId;
+            AcceptOfferLabel = "Confirm the sale?";
+            SignStatus = $"{SelectedOffer.Line} — sell him? Press Accept again to confirm.";
+            return;
+        }
+        _armedOfferPlayerId = 0;
+        AcceptOfferLabel = "Accept — sell";
         SignStatus = _s.AcceptOffer(SelectedOffer.PlayerId);
         LoadOffers();
     }
@@ -1069,6 +1106,8 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     private void RejectOffer()
     {
         if (SelectedOffer is null) { SignStatus = "Pick an offer first."; return; }
+        _armedOfferPlayerId = 0;
+        AcceptOfferLabel = "Accept — sell";
         _s.RejectOffer(SelectedOffer.PlayerId);
         SignStatus = "Offer rejected — they'll come back next summer if they're still keen.";
         LoadOffers();
