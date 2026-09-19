@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
 """
-playstyle_bits.py — read and write a player's primary playing style in Player.bin.
+playstyle_bits.py — read and write a player's primary (in-possession) playing style in Player.bin.
 
 Located empirically against eFootball's own export (primary_playing_style column, matched by PID):
 the style is a 5-bit field at bit offset 374 — byte 46 bits 6-7 + byte 47 bits 0-2. Purity 1.000
-across 23,498 players. The raw 5-bit value is scoped BY POSITION (the same value reads as different
-styles depending on the player's position), exactly as eFootball presents playstyles, so we keep a
-(position, style) -> value table built from the game's own data.
+across 23,498 players.
+
+The raw value is the GLOBAL `common/etc/pesdb/Playstyle.bin` catalog index (playstyle_catalog.py),
+not position-scoped — confirmed 2026-09-15 by pooling all positions and finding a unique raw->style
+mapping (purity ~1.0). An older version of this file paired (position, style) -> value at runtime
+against samples/editor-bundled-players.csv + build/tree_base; that dependency is gone now that the
+static catalog is proven, which also matters for the shipped app (no CSV/tree_base at runtime — see
+memory "release-external-tools"). `build_style_table()`/`value_for()` keep their old (position
+category, style) -> value shape for the existing call sites (play_match.py, ml_author.py,
+validate_db.py) but the value no longer depends on position at all.
 """
 from __future__ import annotations
 
-import csv
-import io
-import struct
-import sys
-from collections import Counter, defaultdict
-from pathlib import Path
-
-REPO = Path(__file__).resolve().parent.parent
-EF_CSV = REPO / "samples" / "editor-bundled-players.csv"
+from playstyle_catalog import PRIMARY
 
 STYLE_BIT = 374   # little-endian bit offset within the 400-byte record
+
+_POS_CATS = ("GK", "DEF", "MID", "FWD")
 
 
 def read_playstyle(rec: bytes) -> int:
@@ -46,30 +47,17 @@ def _pos_cat(pos: str) -> str:
     return "FWD"
 
 
-def build_style_table():
-    """(position category, style name) -> value  and  (category, value) -> style, from the export."""
-    rows = list(csv.DictReader(io.StringIO(EF_CSV.read_bytes().decode("utf-8-sig"))))
-    # We only have the CSV's style + position; the value comes from Player.bin, so pair them by PID.
-    sys.path.insert(0, str(REPO / "tools" / "vendor" / "sider"))
-    import wesys  # noqa: E402
-    pb = wesys.unpack_wesys_payload((REPO / "build" / "tree_base" / "common/etc/pesdb/Player.bin").read_bytes())
-    pid_value = {}
-    for k in range(len(pb) // 400):
-        pid = struct.unpack_from("<Q", pb, k * 400 + 8)[0]
-        pid_value[pid] = read_playstyle(pb[k * 400:k * 400 + 400])
-
-    votes = defaultdict(Counter)     # (cat, style) -> Counter(value)
-    for r in rows:
-        style = r.get("primary_playing_style", "").strip()
-        pos = r.get("position", "").strip()
-        if not style or not r.get("player_id", "").isdigit():
-            continue
-        pid = int(r["player_id"])
-        if pid in pid_value:
-            votes[(_pos_cat(pos), style)][pid_value[pid]] += 1
-
-    to_value = {key: c.most_common(1)[0][0] for key, c in votes.items()}
-    return to_value
+def build_style_table() -> dict[tuple[str, str], int]:
+    """(position category, style name) -> raw catalog index. Position-independent (kept as a
+    dict keyed by category for API compatibility with existing call sites); GK carries no primary
+    entries because indices 9/16/17 render as Basic when written to the primary field — a
+    goalkeeper's real style lives in the secondary field (playstyle_secondary.py)."""
+    return {
+        (cat, name): idx
+        for cat in _POS_CATS
+        for name, idx in PRIMARY.items()
+        if not (cat == "GK" and name != "Basic")
+    }
 
 
 def value_for(to_value: dict, position: str, style: str) -> int | None:
@@ -78,10 +66,13 @@ def value_for(to_value: dict, position: str, style: str) -> int | None:
 
 
 def _prove() -> int:
-    sys.path.insert(0, str(REPO / "tools" / "vendor" / "sider"))
+    import sys
+    from pathlib import Path
+    repo = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(repo / "tools" / "vendor" / "sider"))
     import wesys  # noqa: E402
     pb = bytearray(wesys.unpack_wesys_payload(
-        (REPO / "build" / "tree_base" / "common/etc/pesdb/Player.bin").read_bytes()))
+        (repo / "build" / "tree_base" / "common/etc/pesdb/Player.bin").read_bytes()))
     rec = bytearray(pb[:400])
     original = bytes(rec)
     before = read_playstyle(rec)
@@ -96,10 +87,11 @@ def _prove() -> int:
     assert bytes(rec) == original, "restore failed"
     tbl = build_style_table()
     print(f"round-trip OK (same-value write byte-identical; a change touches {changed} byte(s))")
-    print(f"(position, style) -> value table: {len(tbl)} entries")
+    print(f"(position, style) -> value table: {len(tbl)} entries (static catalog, no CSV needed)")
     for key in [("MID", "Box-to-Box"), ("FWD", "Goal Poacher"), ("DEF", "Attacking Full-back"),
-                ("MID", "Creative Playmaker"), ("FWD", "Target Man")]:
+                ("MID", "Creative Playmaker"), ("FWD", "Target Man"), ("GK", "Basic")]:
         print(f"   {key} -> value {tbl.get(key)}")
+    assert ("GK", "Attacking GK") not in tbl, "GK primary must stay empty (inert in-game)"
     return 0
 
 

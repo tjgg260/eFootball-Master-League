@@ -34,8 +34,9 @@ public static class RoleCatalog
         new("Attacking Full-back", new[] { "RB", "LB" }, new[] { "speed", "stamina", "lofted_pass" }),
         new("Defensive Full-back", new[] { "RB", "LB" }, new[] { "defensive_awareness", "tackling", "stamina" }),
         new("Full-back Finisher", new[] { "RB", "LB" }, new[] { "speed", "finishing", "stamina" }),
-        new("Offensive Goalkeeper", new[] { "GK" }, new[] { "gk_awareness", "low_pass", "gk_reach" }),
-        new("Defensive Goalkeeper", new[] { "GK" }, new[] { "gk_reflexes", "gk_catching", "gk_parrying" }),
+        // No GK entries: the primary field's catalog indices for goalkeeper styles (9/16/17)
+        // render as "Basic" in-game when written here (confirmed against Konami's own export,
+        // 2026-09-15) — a goalkeeper's one real style pick lives entirely in Secondary below.
     };
 
     public static readonly RoleDef[] Secondary =
@@ -55,6 +56,7 @@ public static class RoleCatalog
         new("Build-up GK", new[] { "GK" }, new[] { "low_pass", "lofted_pass", "gk_reach" }),
         new("Attacking GK", new[] { "GK" }, new[] { "gk_reach", "low_pass", "gk_awareness" }),
         new("Defensive GK", new[] { "GK" }, new[] { "gk_reflexes", "gk_catching", "gk_parrying" }),
+        new("High Line GK", new[] { "GK" }, new[] { "gk_reach", "speed", "gk_awareness" }),
     };
 
     // Team style (0 Possession · 1 Quick Counter · 2 Long Ball Counter · 3 Long Ball · 4 Out Wide ·

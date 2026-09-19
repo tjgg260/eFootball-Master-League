@@ -5,47 +5,17 @@ playstyle_secondary.py — write the SECONDARY (defending / out-of-possession) p
 
 Cracked via the game's own catalog (common/etc/pesdb/Playstyle.bin — 36 entries at 168-byte
 stride, internal names PS_*): the secondary field at bit 440 (6 bits) stores the GLOBAL catalog
-INDEX directly. Confirmed exactly on every style present in the roster:
-    The Destroyer=9 (PS_ATTK_PREVENTER), Attacking GK=16 (PS_LIBERO_GK),
-    Defensive GK=17 (PS_CLASSICAL_GK), Attack Outlet=26 (PS_OUTLET_FORWARD).
-The remaining defensive/GK styles have no player in any extractable Player.bin (≈30 special-card
-players total), so their index comes from the catalog's internal name — name-exact for
-Covering Role / Sweeper GK, semantic for the rest. NOT position-scoped: a style's index is the
-same regardless of position.
+INDEX directly — see playstyle_catalog.py for the full decode + how the value was confirmed
+against every player in Konami's own export. Confirmed exactly on every style present in the
+roster: The Destroyer=9 (PS_ATTK_PREVENTER), Attacking GK=16 (PS_LIBERO_GK), Defensive GK=17
+(PS_CLASSICAL_GK), Attack Outlet=26 (PS_OUTLET_FORWARD).
 """
 from __future__ import annotations
 
+from playstyle_catalog import SECONDARY as STYLE_INDEX
+
 SEC_BIT = 440
 SEC_WIDTH = 6
-
-# display style name -> global Playstyle.bin catalog index.
-#
-# The rare defensive/GK indices (23..35) are Konami's OWN authoritative English names, read verbatim
-# from a contiguous catalog-order string array in the decrypted eng/string/all.str
-# (dt261_eng_console_win.cpk), pinned by data + name-exact anchors (Attack Outlet=26 confirmed from
-# Player.bin, Covering Role=29, Sweeper GK=33, Build-up GK=34). Order: index 23+position.
-STYLE_INDEX = {
-    # --- data-confirmed against Player.bin (bit 440) ---
-    "The Destroyer": 9,          # PS_ATTK_PREVENTER  (n=1404)
-    "Attacking GK": 16,          # PS_LIBERO_GK       (n=1255)
-    "Offensive GK": 16,          # UI alias of Attacking GK
-    "Defensive GK": 17,          # PS_CLASSICAL_GK    (n=930)
-    "Attack Outlet": 26,         # PS_OUTLET_FORWARD  (confirmed)
-    # --- from Konami's own all.str, contiguous catalog-order array (indices 23..35) ---
-    "Press Back": 23,            # PS_PRESS_BACK
-    "Front Line Pressure": 24,   # PS_FIRST_DEFENDER
-    "Front Line Poacher": 25,    # PS_COVER_SHADOW
-    "All-action Defender": 27,   # PS_HARD_WORKER
-    "Pass Disruptor": 28,        # PS_LANE_BLOCKER
-    "Covering Role": 29,         # PS_COVERING
-    "High Line Master": 30,      # PS_LINE_CONTROLLER
-    "Tough Marker": 31,          # PS_HARD_MARKER
-    "Deep Defender": 32,         # PS_DEEP_LINE_DEFENDER
-    "Sweeper GK": 33,            # PS_SWEEPER_GK
-    "Build-up GK": 34,           # PS_BUILD_UP_GK
-    "High Line GK": 35,          # PS_ADVANCED_GK
-    "Advanced GK": 35,           # alias
-}
 
 
 def read_field(rec) -> int:
@@ -86,7 +56,7 @@ def write_secondary(rec: bytearray, position: str, style: str) -> bool:
 
 
 if __name__ == "__main__":
-    print(f"{len(STYLE_INDEX)} secondary styles mapped to catalog indices (field bit {SEC_BIT} w{SEC_WIDTH})")
+    print(f"{len(STYLE_INDEX)} secondary names mapped to catalog indices (field bit {SEC_BIT} w{SEC_WIDTH})")
     for s, i in sorted(STYLE_INDEX.items(), key=lambda kv: kv[1]):
         print(f"  {i:2d}  {s}")
     # round-trip
@@ -94,3 +64,5 @@ if __name__ == "__main__":
     write_secondary(rec, "DEF", "Pass Disruptor")
     assert read_field(rec) == 28, read_field(rec)
     print("round-trip OK (Pass Disruptor -> 28)")
+    assert value_for("High Line GK") == 35
+    print("High Line GK -> 35 OK")

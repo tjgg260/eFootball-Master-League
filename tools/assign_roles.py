@@ -21,7 +21,9 @@ REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "build" / "master.db"
 
 # In-possession roles: (name, compatible positions, the 3 attributes that define fit) — mirrors
-# ML.Web Pages/Tactics.razor.cs RoleCatalog exactly.
+# ML.Web Pages/Tactics.razor.cs RoleCatalog exactly. No GK entries: indices 9/16/17 render as
+# "Basic" when written to the primary field (confirmed against Konami's own export) — a
+# goalkeeper's one real style pick is the secondary/out-of-possession catalog below.
 PRIMARY = [
     ("Goal Poacher", ["CF"], ["offensive_awareness", "finishing", "acceleration"]),
     ("Dummy Runner", ["CF", "SS", "AMF"], ["offensive_awareness", "speed", "balance"]),
@@ -42,8 +44,6 @@ PRIMARY = [
     ("Attacking Full-back", ["RB", "LB"], ["speed", "stamina", "lofted_pass"]),
     ("Defensive Full-back", ["RB", "LB"], ["defensive_awareness", "tackling", "stamina"]),
     ("Full-back Finisher", ["RB", "LB"], ["speed", "finishing", "stamina"]),
-    ("Offensive Goalkeeper", ["GK"], ["gk_awareness", "low_pass", "gk_reach"]),
-    ("Defensive Goalkeeper", ["GK"], ["gk_reflexes", "gk_catching", "gk_parrying"]),
 ]
 
 # Out-of-possession roles: ML.Web DefCatalog positions + the attributes that justify each.
@@ -63,6 +63,7 @@ SECONDARY = [
     ("Build-up GK", ["GK"], ["low_pass", "lofted_pass", "gk_reach"]),
     ("Attacking GK", ["GK"], ["gk_reach", "low_pass", "gk_awareness"]),
     ("Defensive GK", ["GK"], ["gk_reflexes", "gk_catching", "gk_parrying"]),
+    ("High Line GK", ["GK"], ["gk_reach", "speed", "gk_awareness"]),
 ]
 
 

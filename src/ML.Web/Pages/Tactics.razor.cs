@@ -545,8 +545,9 @@ public partial class Tactics : ComponentBase, IDisposable
         new("Attacking Full-back", new[]{"RB","LB"}, new[]{"speed","stamina","lofted_pass"}),
         new("Defensive Full-back", new[]{"RB","LB"}, new[]{"defensive_awareness","tackling","stamina"}),
         new("Full-back Finisher", new[]{"RB","LB"}, new[]{"speed","finishing","stamina"}),
-        new("Offensive Goalkeeper", new[]{"GK"}, new[]{"gk_awareness","low_pass","gk_reach"}),
-        new("Defensive Goalkeeper", new[]{"GK"}, new[]{"gk_reflexes","gk_catching","gk_parrying"}),
+        // No GK entries: the primary field's catalog indices for goalkeeper styles render as
+        // "Basic" in-game (confirmed against Konami's own export, 2026-09-15) — a goalkeeper's
+        // one real style pick is the out-of-possession dropdown (DefCatalog) below.
     };
 
     protected static readonly (string Name, string[] Compatible)[] DefCatalog =
@@ -564,6 +565,7 @@ public partial class Tactics : ComponentBase, IDisposable
         ("Deep Defender", new[]{"CB"}),
         ("Sweeper GK", new[]{"GK"}), ("Build-up GK", new[]{"GK"}),
         ("Attacking GK", new[]{"GK"}), ("Defensive GK", new[]{"GK"}),
+        ("High Line GK", new[]{"GK"}),
     };
 
     private readonly Dictionary<int, string> _roleOverride = new();

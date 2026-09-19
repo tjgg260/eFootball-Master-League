@@ -386,14 +386,11 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
             "An attacking full-back who enjoys joining the attack in high central areas.\n" +
             "Compatible positions: RB/LB",
             new[] { "RB", "LB" }),
-        new("Offensive Goalkeeper",
-            "A goalkeeper who stops shots and also proactively moves out of his area to sweep up " +
-            "loose balls and start attacks.\nCompatible positions: GK",
-            new[] { "GK" }),
-        new("Defensive Goalkeeper",
-            "A goalkeeper who stays back on his line and focuses purely on shot-stopping.\n" +
-            "Compatible positions: GK",
-            new[] { "GK" }),
+        // No GK entries: the primary field's catalog indices for goalkeeper styles render as
+        // "Basic" in-game (confirmed against Konami's own export, 2026-09-15) — picking one here
+        // would look selected but never reach eFootball. A goalkeeper's one real style pick is
+        // the out-of-possession dropdown below (Attacking GK / Defensive GK / Sweeper GK /
+        // Build-up GK / High Line GK), which writes into the field the game actually reads.
     };
 
     private readonly Session _s;

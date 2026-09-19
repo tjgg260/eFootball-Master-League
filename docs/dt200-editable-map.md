@@ -26,8 +26,8 @@ rest is UI + a bitfield writer — every edit shows up in-game. Fields, all bit-
 |---|---|---|
 | 26 abilities (pace, shooting, passing, defending, GK…) | bits 368–556, 6 bits each, **+40 bias** | stored 63 → shows 103 |
 | 65 player skills (1-bit flags) | bits 223–680 | e.g. Trickster, Long Ranger toggles |
-| **Playing style — attacking (in possession)** | **bit 373, 6 bits** (this session, purity 0.9997) | 20 styles, scoped by position |
-| **Playing style — defending (out of possession)** | **bit 440, id = raw×4** (this session, confirmed) | The Destroyer, GK styles, etc. |
+| **Playing style — attacking (in possession)** | **bit 374, 5 bits** (purity 1.000) | 19 styles + Basic; value is the GLOBAL `Playstyle.bin` catalog index, NOT position-scoped (corrected 2026-09-15) |
+| **Playing style — defending (out of possession)** | **bit 440, 6 bits** (confirmed) | The Destroyer, GK styles (Attacking/Defensive/Sweeper/Build-up/High Line GK), 13 v6.0.0 defensive styles — also the GLOBAL catalog index, direct (not raw×4) |
 | AI playing styles (7) | bits 614–680 | COM behaviour flags |
 | Position (14) + 12 aptitudes | bit 556 (4b); aptitudes 576–599 (+LB@318, CMF@510) | |
 | Nationality (192) | bytes 41–42, u16 & 0x3FF | |
@@ -38,6 +38,20 @@ rest is UI + a bitfield writer — every edit shows up in-game. Fields, all bit-
 **This is the answer to "in and out of possession playstyles"** — both fields are located and
 provable. A player-edit screen (attributes + both styles + skills + position) is the natural next
 build, and it reuses the write path we already trust.
+
+**All 36 catalog roles are now wired end to end (2026-09-19):** `tools/playstyle_catalog.py` is
+the single source of truth for the full `Playstyle.bin` decode; `playstyle_bits.py` (primary) and
+`playstyle_secondary.py` (secondary) both write straight from it — no runtime dependency on
+`samples/editor-bundled-players.csv` or `build/tree_base` any more. ML.Core's `RoleCatalog`, ML.App's
+`TacticsViewModel`, ML.Web's `Tactics.razor.cs` and `tools/assign_roles.py` are kept in sync by
+hand (all four lists must match). **Fixed a real bug in the same pass:** indices 9/16/17 (The
+Destroyer, Attacking GK, Defensive GK) render as "Basic" when written to the *primary* field —
+confirmed against every matching record in Konami's own export — so a goalkeeper has no meaningful
+primary style at all. The three apps used to offer "Offensive/Defensive Goalkeeper" as a primary
+pick for GKs; selecting it looked like it worked but never reached the game. Removed from all
+Primary catalogs; a goalkeeper's one real style choice is now only the secondary/out-of-possession
+picker (Attacking GK / Defensive GK / Sweeper GK / Build-up GK / High Line GK — the last of which
+was also missing from every app's role list and has been added).
 
 ## Tier 2 — new tables, structurally simple, high value
 
