@@ -75,9 +75,9 @@ public sealed partial class Session
     /// full of temperamental players is beatable on a bad day. Attack swings a touch more than
     /// defence; both move together because a team plays well or badly as a unit.
     /// </summary>
-    internal (double Attack, double Defence) MatchdayStrengthOf(int teamId, IRandomSource rng)
+    internal (double Attack, double Defence) MatchdayStrengthOf(int teamId, IRandomSource rng, int? matchday = null)
     {
-        var (atk, def) = XiStrengthOf(teamId);
+        var (atk, def) = XiStrengthOf(teamId, matchday);
         var steadiness = SquadSteadinessOf(teamId);          // 0..1
         var sigma = 3.5 + (1.0 - steadiness) * 4.5;          // ~3.5 steady .. 8.0 flaky rating points
         var swing = NextGaussian(rng) * sigma;

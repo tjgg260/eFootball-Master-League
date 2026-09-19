@@ -268,8 +268,8 @@ public sealed partial class Session
                                      && (includeOwnTies
                                          || (f.HomeTeamId != CurrentTeamId && f.AwayTeamId != CurrentTeamId))))
             {
-                var h = XiStrengthOf(f.HomeTeamId);
-                var a = XiStrengthOf(f.AwayTeamId);
+                var h = XiStrengthOf(f.HomeTeamId, matchday);
+                var a = XiStrengthOf(f.AwayTeamId, matchday);
                 var r = sim.Simulate(new TeamStrength(h.Attack + 1.5, h.Defence),
                                      new TeamStrength(a.Attack, a.Defence));
                 Repo.RecordResult(new ResultRow { FixtureId = f.Id, HomeGoals = r.HomeGoals, AwayGoals = r.AwayGoals });

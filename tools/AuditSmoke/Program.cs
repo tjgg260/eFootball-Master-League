@@ -313,6 +313,40 @@ Console.WriteLine("\nB7  starting staff (used to be 0 rows everywhere; every dug
         yourBackroom > 0, $"{yourBackroom}/{Session.StaffRoles.Length} desks");
 }
 
+// ---------------------------------------------------------------------------------------------
+Console.WriteLine("\nB6  a banned CPU player used to keep \"playing\" in every sim regardless");
+{
+    var cpuClub = s.LeagueTeams().First(t => t.Id != s.CurrentTeamId);
+    long starterId;
+    using (var q = db.Connection.CreateCommand())
+    {
+        q.CommandText =
+            "SELECT s.player_id FROM squad_members s JOIN players p ON p.id=s.player_id " +
+            "WHERE s.team_id=$t AND s.slot BETWEEN 0 AND 10 ORDER BY p.overall_rating DESC LIMIT 1";
+        q.Parameters.AddWithValue("$t", cpuClub.Id);
+        starterId = Convert.ToInt64(q.ExecuteScalar());
+    }
+    using (var ban = db.Connection.CreateCommand())
+    {
+        ban.CommandText = "INSERT INTO suspensions(player_id,matches,reason,season_id,from_fixture_id) " +
+                          "VALUES($p,3,'red card',$s,0)";
+        ban.Parameters.AddWithValue("$p", starterId);
+        ban.Parameters.AddWithValue("$s", season);
+        ban.ExecuteNonQuery();
+    }
+    var withoutBanAwareness = s.XiStrengthOf(cpuClub.Id);              // old call shape: ignores bans
+    var banAware = s.XiStrengthOf(cpuClub.Id, matchday: 1);            // new: swaps him for the bench
+    Check($"{s.TeamName(cpuClub.Id)}'s best starter, now suspended, is actually swapped out of the sim's XI",
+        banAware != withoutBanAwareness,
+        $"unaware {withoutBanAwareness}, aware {banAware}");
+    using (var clear = db.Connection.CreateCommand())
+    {
+        clear.CommandText = "DELETE FROM suspensions WHERE player_id=$p";
+        clear.Parameters.AddWithValue("$p", starterId);
+        clear.ExecuteNonQuery();
+    }
+}
+
 db.Dispose();
 try { File.Delete(work); } catch { /* temp file; Windows may still hold it for a moment */ }
 Console.WriteLine($"\n{pass} passed, {fail} failed");

@@ -208,35 +208,67 @@ public sealed partial class Session
     /// What the CPU simulator actually uses (P3): the LIKELY XI's attack and defence read
     /// separately, moved by fatigue and form. A glass-cannon squad no longer sims identically
     /// to a balanced one, and a tired, out-of-form XI actually drops points.
+    ///
+    /// B6: with a <paramref name="matchday"/>, an unavailable starter (banned, or injured through
+    /// that matchday) is swapped for the best fit bench player instead of counting at full
+    /// strength regardless — CPU clubs never re-pick <c>squad_members.slot</c> the way
+    /// <see cref="PrepareMatchday"/> does for the two clubs in YOUR fixture, so without this an
+    /// injured or suspended CPU player just kept "playing" in every sim until someone happened to
+    /// open his club's Squad screen. Callers with no fixture context (none today) can omit it and
+    /// keep the old behaviour.
     /// </summary>
-    internal (double Attack, double Defence) XiStrengthOf(int teamId)
+    public (double Attack, double Defence) XiStrengthOf(int teamId, int? matchday = null)
     {
-        double atkSum = 0, defSum = 0, atkN = 0, defN = 0, fatigue = 0, form = 0;
-        var n = 0;
-        using var cmd = Db.Connection.CreateCommand();
-        cmd.CommandText =
-            "SELECT p.position, COALESCE(p.overall_rating, 62), COALESCE(c.fatigue, 0), " +
-            "COALESCE(c.form, 6.5) FROM squad_members s " +
-            "JOIN players p ON p.id = s.player_id " +
-            "LEFT JOIN player_condition c ON c.player_id = s.player_id " +
-            "WHERE s.team_id=$t AND s.slot BETWEEN 0 AND 10";
-        cmd.Parameters.AddWithValue("$t", teamId);
-        using (var r = cmd.ExecuteReader())
+        var rows = new List<(long Id, string Cat, double Rating, int Fatigue, double Form, int Slot, bool Injured)>();
+        using (var cmd = Db.Connection.CreateCommand())
         {
+            cmd.CommandText =
+                "SELECT s.player_id, p.position, COALESCE(p.overall_rating, 62), " +
+                "COALESCE(c.fatigue, 0), COALESCE(c.form, 6.5), s.slot, c.injured_until_md " +
+                "FROM squad_members s JOIN players p ON p.id = s.player_id " +
+                "LEFT JOIN player_condition c ON c.player_id = s.player_id " +
+                "WHERE s.team_id=$t";
+            cmd.Parameters.AddWithValue("$t", teamId);
+            using var r = cmd.ExecuteReader();
             while (r.Read())
             {
-                var cat = Visuals.PositionCategory(r.GetString(0));
-                double rating = r.GetInt32(1);
-                var (aw, dw) = cat switch
-                {
-                    "FWD" => (1.0, 0.15), "MID" => (0.7, 0.55), "DEF" => (0.2, 1.0), _ => (0.0, 1.1),
-                };
-                atkSum += rating * aw; atkN += aw;
-                defSum += rating * dw; defN += dw;
-                fatigue += r.GetInt32(2);
-                form += r.GetDouble(3);
-                n++;
+                var injuredUntil = r.IsDBNull(6) ? (int?)null : r.GetInt32(6);
+                var injured = matchday is int md && injuredUntil is int u && u >= md;
+                rows.Add((r.GetInt64(0), Visuals.PositionCategory(r.GetString(1)), r.GetInt32(2),
+                    r.GetInt32(3), r.GetDouble(4), r.GetInt32(5), injured));
             }
+        }
+        var banned = matchday is null ? new HashSet<long>() : SuspensionsAt(teamId).Keys.ToHashSet();
+        bool Out(long id, bool injured) => injured || banned.Contains(id);
+
+        var starters = rows.Where(x => x.Slot is >= 0 and <= 10).ToList();
+        var bench = rows.Where(x => x.Slot is < 0 or > 10).OrderByDescending(x => x.Rating).ToList();
+        var used = new HashSet<long>(starters.Select(x => x.Id));
+        var xi = new List<(string Cat, double Rating, int Fatigue, double Form)>();
+        foreach (var st in starters)
+        {
+            if (!Out(st.Id, st.Injured)) { xi.Add((st.Cat, st.Rating, st.Fatigue, st.Form)); continue; }
+            var sub = bench.FirstOrDefault(b => !used.Contains(b.Id) && !Out(b.Id, b.Injured) && b.Cat == st.Cat);
+            if (sub.Id == 0)
+                sub = bench.FirstOrDefault(b => !used.Contains(b.Id) && !Out(b.Id, b.Injured));
+            if (sub.Id == 0) continue;   // genuinely nobody left fit to field there
+            used.Add(sub.Id);
+            xi.Add((sub.Cat, sub.Rating, sub.Fatigue, sub.Form));
+        }
+
+        double atkSum = 0, defSum = 0, atkN = 0, defN = 0, fatigue = 0, form = 0;
+        var n = 0;
+        foreach (var p in xi)
+        {
+            var (aw, dw) = p.Cat switch
+            {
+                "FWD" => (1.0, 0.15), "MID" => (0.7, 0.55), "DEF" => (0.2, 1.0), _ => (0.0, 1.1),
+            };
+            atkSum += p.Rating * aw; atkN += aw;
+            defSum += p.Rating * dw; defN += dw;
+            fatigue += p.Fatigue;
+            form += p.Form;
+            n++;
         }
         if (n < 6) { var avg = SquadStrengthOf(teamId); return (avg, avg); }
         var atk = atkSum / atkN;
@@ -282,8 +314,8 @@ public sealed partial class Session
                                  && !f.Played && f.Id != exceptFixtureId
                                  && f.HomeTeamId != CurrentTeamId && f.AwayTeamId != CurrentTeamId))
         {
-            var h = MatchdayStrengthOf(f.HomeTeamId, rng);
-            var a = MatchdayStrengthOf(f.AwayTeamId, rng);
+            var h = MatchdayStrengthOf(f.HomeTeamId, rng, matchday);
+            var a = MatchdayStrengthOf(f.AwayTeamId, rng, matchday);
             // A point and a half of home advantage on the attack — crowds matter (P3).
             var r = sim.Simulate(new TeamStrength(h.Attack + 1.5, h.Defence),
                                  new TeamStrength(a.Attack, a.Defence));
@@ -446,8 +478,8 @@ public sealed partial class Session
         var sim = new PoissonMatchSimulator(rng);
         foreach (var f in Repo.Fixtures(SeasonId).Where(f => f.Kind == "league" && !f.Played).ToList())
         {
-            var h = MatchdayStrengthOf(f.HomeTeamId, rng);
-            var a = MatchdayStrengthOf(f.AwayTeamId, rng);
+            var h = MatchdayStrengthOf(f.HomeTeamId, rng, f.Matchday);
+            var a = MatchdayStrengthOf(f.AwayTeamId, rng, f.Matchday);
             // A point and a half of home advantage on the attack — crowds matter (P3).
             var r = sim.Simulate(new TeamStrength(h.Attack + 1.5, h.Defence),
                                  new TeamStrength(a.Attack, a.Defence));
