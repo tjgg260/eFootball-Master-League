@@ -50,8 +50,19 @@
     <Panel>
       <DataGrid x:Name="AcademyGrid" ItemsSource="{Binding Rows}"
                 SelectedItem="{Binding Selected, Mode=TwoWay}" IsVisible="{Binding IsAcademyTab}"
-                IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                FrozenColumnCount="1">
         <DataGrid.Columns>
+          <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+          <DataGridTemplateColumn Header="" Width="36">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:AcademyEntry">
+                <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
+                        Click="OnRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTemplateColumn Header="" Width="46">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:AcademyEntry">
@@ -96,8 +107,19 @@
            carries the one read that varies per lad. -->
       <DataGrid x:Name="YouthGrid" ItemsSource="{Binding YouthRows}"
                 SelectedItem="{Binding SelectedYouth, Mode=TwoWay}" IsVisible="{Binding IsYouthTab}"
-                IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                FrozenColumnCount="1">
         <DataGrid.Columns>
+          <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+          <DataGridTemplateColumn Header="" Width="36">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:YouthEntry">
+                <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
+                        Click="OnYouthRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTemplateColumn Header="" Width="46">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:YouthEntry">

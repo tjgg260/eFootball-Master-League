@@ -63,4 +63,44 @@ public partial class DashboardView : UserControl
             }, RoutingStrategies.Tunnel);
         }
     }
+
+    /// <summary>The ⋯ on a schedule row: the SAME menu the right-click opens.</summary>
+    private void OnScheduleRowMenu(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not DashboardViewModel vm || sender is not Control btn) return;
+        try
+        {
+            var row = MlMenu.RowAt<ScheduleRowVm>(btn);
+            if (row is not null) MlMenu.OpenAt(vm.MenuFor(row), btn);
+        }
+        catch (Exception ex) { Program.Log("Dashboard.OnScheduleRowMenu", ex); }
+    }
+
+    /// <summary>The ⋯ on a mini-table row: the SAME menu the right-click opens.</summary>
+    private void OnMiniTableRowMenu(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not DashboardViewModel vm || sender is not Control btn) return;
+        try
+        {
+            var row = MlMenu.RowAt<MiniRowVm>(btn);
+            if (row is not null) MlMenu.OpenAt(vm.MenuFor(row), btn);
+        }
+        catch (Exception ex) { Program.Log("Dashboard.OnMiniTableRowMenu", ex); }
+    }
+
+    /// <summary>The ⋯ on the opposition card: the SAME menu the right-click on the card opens.</summary>
+    private void OnOppCardMenu(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not DashboardViewModel vm || sender is not Control btn) return;
+        try { MlMenu.OpenAt(vm.OppositionMenu(), btn); }
+        catch (Exception ex) { Program.Log("Dashboard.OnOppCardMenu", ex); }
+    }
+
+    /// <summary>The ⋯ on the key-player line: the SAME menu the right-click on it opens.</summary>
+    private void OnKeyPlayerMenu(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not DashboardViewModel vm || sender is not Control btn) return;
+        try { MlMenu.OpenAt(vm.KeyPlayerMenu(), btn); }
+        catch (Exception ex) { Program.Log("Dashboard.OnKeyPlayerMenu", ex); }
+    }
 }

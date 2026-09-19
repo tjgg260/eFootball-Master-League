@@ -34,7 +34,14 @@
                   CornerRadius="6" Margin="2" Padding="6" MinHeight="76">
             <StackPanel Spacing="2">
               <DockPanel>
-                <Image DockPanel.Dock="Right" Source="{Binding Crest}" Width="16" Height="16"/>
+                <!-- the visible half of the row-actions ruling: the SAME menu the right-click
+                     on the cell opens (see CalendarView.axaml.cs for why left-click activation
+                     is suppressed for clicks that land on this button) -->
+                <Button DockPanel.Dock="Right" Content="⋯" Classes="ml-ghost" FontSize="11"
+                        Padding="4,0" Click="OnCellMenu"
+                        ToolTip.Tip="Everything you can do about this day — right-clicking it does the same"/>
+                <Image DockPanel.Dock="Right" Source="{Binding Crest}" Width="16" Height="16"
+                       Margin="0,0,4,0"/>
                 <TextBlock Text="{Binding DayText}" Classes="ml-label"/>
               </DockPanel>
               <TextBlock Text="{Binding Line1}" Classes="ml-muted" Foreground="{Binding Fg}"

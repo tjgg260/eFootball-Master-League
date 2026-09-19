@@ -30,11 +30,33 @@ public partial class CalendarView : UserControl
             DayCell? cell = null;
             for (Visual? el = e.Source as Visual; el is not null; el = el.GetVisualParent())
             {
+                // The ⋯ button added for the row-actions ruling is its own left-click target
+                // inside the cell; this Tunnel handler runs on PointerPressed, BEFORE the
+                // button's own Click fires on release, so without this it would activate the
+                // day AND (try to) open the menu on the same click.
+                if (el is Button) return;
                 if (el is StyledElement se && se.DataContext is DayCell c) { cell = c; break; }
                 if (ReferenceEquals(el, grid)) break;
             }
             if (cell is null) return;
             vm.Activate(cell);
         }, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>The ⋯ on a day cell: the SAME menu the right-click opens.</summary>
+    private void OnCellMenu(object? sender, RoutedEventArgs e)
+    {
+        var vm = DataContext as CalendarViewModel;
+        try
+        {
+            if (vm is null || sender is not Control btn) return;
+            var cell = MlMenu.RowAt<DayCell>(btn);
+            if (cell is null) return;
+            MlMenu.OpenAt(vm.MenuFor(cell), btn);
+        }
+        catch (Exception ex)
+        {
+            Program.Log("Calendar.OnCellMenu", ex);
+        }
     }
 }

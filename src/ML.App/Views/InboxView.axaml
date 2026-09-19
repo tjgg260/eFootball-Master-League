@@ -26,7 +26,7 @@
           <ItemsControl x:Name="TickerList" ItemsSource="{Binding Ticker}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TickerEntry">
-                <Grid ColumnDefinitions="40,*" Margin="0,4">
+                <Grid ColumnDefinitions="40,*,Auto" Margin="0,4">
                   <Border Width="32" Height="32" CornerRadius="16" ClipToBounds="True"
                           Background="{StaticResource MlSurfaceControl}">
                     <Panel>
@@ -42,6 +42,10 @@
                                FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="{Binding Line}" Foreground="{StaticResource MlWarn}" FontSize="10"/>
                   </StackPanel>
+                  <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+                  <Button Grid.Column="2" Content="⋯" Classes="ml-ghost" FontSize="12" Padding="4,0"
+                          Click="OnTickerRowMenu" VerticalAlignment="Center"
+                          ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
                 </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -62,7 +66,7 @@
               <GradientStop Color="#10151D" Offset="0.7"/>
             </LinearGradientBrush>
           </Border.Background>
-          <Grid ColumnDefinitions="Auto,*,Auto">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto">
             <Border Width="76" Height="76" CornerRadius="38" ClipToBounds="True"
                     Background="{StaticResource MlSurfaceControl}"
                     BorderBrush="{StaticResource MlSuccess}" BorderThickness="2">
@@ -83,7 +87,11 @@
                          FontSize="13"/>
             </StackPanel>
             <TextBlock Grid.Column="2" Text="{Binding HeroFee}" Foreground="{StaticResource MlGold}"
-                       FontSize="22" FontWeight="Bold" VerticalAlignment="Center"/>
+                       FontSize="22" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+            <Button Grid.Column="3" Content="⋯" Classes="ml-ghost" FontSize="14" Padding="8,0"
+                    Click="OnHeroMenu" VerticalAlignment="Center"
+                    ToolTip.Tip="Everything you can do about this — right-clicking the card does the same"/>
           </Grid>
         </Border>
 
@@ -113,7 +121,7 @@
                       </Panel>
                     </Border>
                     <StackPanel Grid.Column="1">
-                      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
                         <!-- unread dot (P6): bold subject + dot; read rows go muted -->
                         <Ellipse Width="8" Height="8" Fill="{StaticResource MlPrimary}"
                                  Margin="0,0,8,0" VerticalAlignment="Center"
@@ -129,6 +137,13 @@
                                    TextTrimming="CharacterEllipsis"/>
                         <TextBlock Grid.Column="3" Text="{Binding When}" Classes="ml-muted"
                                    Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        <!-- the visible half of the row-actions ruling: the SAME menu the
+                             right-click opens. A nested Button inside the card's own
+                             mark-read Button; Click handles and stops there. -->
+                        <Button Grid.Column="4" Content="⋯" Classes="ml-ghost" FontSize="13"
+                                Padding="6,0" Margin="8,0,0,0" Click="OnFeedRowMenu"
+                                VerticalAlignment="Center"
+                                ToolTip.Tip="Everything you can do about this — right-clicking the card does the same"/>
                       </Grid>
                       <TextBlock Text="{Binding Body}" Foreground="{Binding BodyBrush}"
                                  TextWrapping="Wrap" Margin="0,5,0,0" FontSize="13"/>

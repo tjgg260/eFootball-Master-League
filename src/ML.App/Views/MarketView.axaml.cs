@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using ML.App.ViewModels;
 
 namespace ML.App.Views;
@@ -24,5 +25,26 @@ public partial class MarketView : UserControl
         MlMenu.OnDoubleClick<MarketPlayer>(
             this.FindControl<DataGrid>("MarketGrid")!,
             r => Nav.Go("Player", EntityRef.Player(r.Id, r.Name)));
+    }
+
+    /// <summary>The ⋯ on a market row: the SAME menu the right-click opens, for anyone who
+    /// never right-clicks. See SquadView.OnRowMenu for why this is guarded end to end.</summary>
+    private void OnRowMenu(object? sender, RoutedEventArgs e)
+    {
+        var vm = DataContext as MarketViewModel;
+        MarketPlayer? row = null;
+        try
+        {
+            if (vm is null || sender is not Control btn) return;
+            row = MlMenu.RowAt<MarketPlayer>(btn);
+            if (row is null) return;
+            vm.SelectedPlayer = row;
+            if (!MlMenu.OpenAt(vm.MenuFor(row), btn)) vm.SignStatus = $"Couldn't bring up {row.Name}'s options.";
+        }
+        catch (Exception ex)
+        {
+            Program.Log("Market.OnRowMenu", ex);
+            if (vm is not null) vm.SignStatus = $"Couldn't bring up {row?.Name ?? "his"} options.";
+        }
     }
 }

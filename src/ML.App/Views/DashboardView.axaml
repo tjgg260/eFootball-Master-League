@@ -339,7 +339,14 @@
         <!-- NEXT OPPOSITION — right-click anywhere for the shared club menu -->
         <Border x:Name="OppCard" Grid.Column="0" Classes="card" Margin="0,0,12,0">
           <StackPanel>
-            <TextBlock Classes="cardHead" Text="NEXT OPPOSITION"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="cardHead" Text="NEXT OPPOSITION"/>
+              <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+              <Button Grid.Column="1" Content="⋯" Classes="ml-ghost" FontSize="13" Padding="6,0"
+                      Click="OnOppCardMenu" VerticalAlignment="Center"
+                      IsVisible="{Binding HasOpposition}"
+                      ToolTip.Tip="Everything you can do about them — right-clicking the card does the same"/>
+            </Grid>
             <StackPanel Spacing="14" IsVisible="{Binding HasOpposition}">
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <Panel Width="48" Height="48" VerticalAlignment="Center">
@@ -381,9 +388,16 @@
               </StackPanel>
               <TextBlock Text="{Binding OppShapeLine}" Foreground="#C7CEDA" FontSize="13"/>
               <!-- Background="Transparent" so the key man is hit-testable: right-click is his menu -->
-              <TextBlock x:Name="KeyPlayerBlock" Text="{Binding KeyPlayerLine}" Foreground="#C7CEDA"
-                         FontSize="13" Background="Transparent" TextWrapping="Wrap"
-                         ToolTip.Tip="Right-click for scouting, enquiries and his club"/>
+              <DockPanel LastChildFill="True">
+                <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+                <Button DockPanel.Dock="Right" Content="⋯" Classes="ml-ghost" FontSize="11"
+                        Padding="6,0" Margin="6,0,0,0" Click="OnKeyPlayerMenu" VerticalAlignment="Top"
+                        IsVisible="{Binding KeyPlayerLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        ToolTip.Tip="Scouting, enquiries and his club — right-clicking him does the same"/>
+                <TextBlock x:Name="KeyPlayerBlock" Text="{Binding KeyPlayerLine}" Foreground="#C7CEDA"
+                           FontSize="13" Background="Transparent" TextWrapping="Wrap"
+                           ToolTip.Tip="Right-click for scouting, enquiries and his club"/>
+              </DockPanel>
 
               <!-- Match preview: W/D/L from ELO, as a split bar -->
               <StackPanel Spacing="6">
@@ -420,7 +434,7 @@
             <ItemsControl x:Name="ScheduleList" ItemsSource="{Binding Schedule}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ScheduleRowVm">
-                  <Grid ColumnDefinitions="46,22,*,Auto" Margin="0,3" Background="Transparent">
+                  <Grid ColumnDefinitions="46,22,*,Auto,Auto" Margin="0,3" Background="Transparent">
                     <TextBlock Text="{Binding Md}" Foreground="#8A93A2" FontSize="12"
                                VerticalAlignment="Center"/>
                     <Image Grid.Column="1" Source="{Binding Crest}" Width="16" Height="16"
@@ -433,6 +447,10 @@
                       <TextBlock Text="{Binding Chip}" Foreground="{Binding ChipFg}" FontSize="12"
                                  FontWeight="Bold" HorizontalAlignment="Center"/>
                     </Border>
+                    <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+                    <Button Grid.Column="4" Content="⋯" Classes="ml-ghost" FontSize="11" Padding="4,0"
+                            Margin="4,0,0,0" Click="OnScheduleRowMenu" VerticalAlignment="Center"
+                            ToolTip.Tip="Everything you can do about this fixture — right-clicking it does the same"/>
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -444,7 +462,7 @@
         <Border Grid.Column="2" Classes="card" Margin="12,0,0,0">
           <StackPanel>
             <TextBlock Classes="cardHead" Text="LEAGUE TABLE"/>
-            <Grid ColumnDefinitions="24,20,*,30,38,34" Margin="7,0,7,5">
+            <Grid ColumnDefinitions="24,20,*,30,38,34,20" Margin="7,0,7,5">
               <TextBlock Text="#" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"/>
               <TextBlock Grid.Column="2" Text="TEAM" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"/>
               <TextBlock Grid.Column="3" Text="P" Foreground="#8A93A2" FontSize="10" FontWeight="Bold"
@@ -458,7 +476,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:MiniRowVm">
                   <Border Background="{Binding Bg}" CornerRadius="6" Padding="7,4" Margin="0,1">
-                    <Grid ColumnDefinitions="24,20,*,30,38,34">
+                    <Grid ColumnDefinitions="24,20,*,30,38,34,20">
                       <TextBlock Text="{Binding Pos}" Foreground="{Binding Fg}" FontSize="12"
                                  VerticalAlignment="Center"/>
                       <Image Grid.Column="1" Source="{Binding Crest}" Width="14" Height="14"
@@ -474,6 +492,10 @@
                       <TextBlock Grid.Column="5" Text="{Binding Pts}" Foreground="{Binding Fg}"
                                  FontSize="12" FontWeight="{Binding Weight}"
                                  HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+                      <Button Grid.Column="6" Content="⋯" Classes="ml-ghost" FontSize="9" Padding="2,0"
+                              Click="OnMiniTableRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                              ToolTip.Tip="Everything you can do with this club — right-clicking its row does the same"/>
                     </Grid>
                   </Border>
                 </DataTemplate>

@@ -46,6 +46,12 @@
                                                Foreground="{DynamicResource MlTextHeading}"
                                                FontSize="12" FontWeight="SemiBold" Margin="3,0,0,0"
                                                TextTrimming="CharacterEllipsis"/>
+                                    <!-- the visible half of the row-actions ruling: the SAME
+                                         menu the right-click on the card opens -->
+                                    <Button Grid.Column="2" Content="⋯" Classes="ml-ghost"
+                                            FontSize="11" Padding="4,0" Click="OnTieMenu"
+                                            VerticalAlignment="Center"
+                                            ToolTip.Tip="Everything you can do about this tie — right-clicking it does the same"/>
                                   </Grid>
                                   <Grid ColumnDefinitions="18,*,Auto">
                                     <Image Source="{Binding AwayCrest}" Width="14" Height="14"

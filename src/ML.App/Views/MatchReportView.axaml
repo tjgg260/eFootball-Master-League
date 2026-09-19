@@ -95,8 +95,20 @@
           <StackPanel Spacing="8">
             <TextBlock Classes="ml-label" Text="{Binding HomeName, StringFormat='👥 {0}'}"/>
             <DataGrid x:Name="HomeGrid" ItemsSource="{Binding HomePlayers}" IsReadOnly="True"
-                      HeadersVisibility="Column" CanUserSortColumns="False">
+                      HeadersVisibility="Column" CanUserSortColumns="False" FrozenColumnCount="1">
               <DataGrid.Columns>
+                <!-- the visible half of the row-actions ruling: the SAME menu the right-click
+                     opens. First column + FrozenColumnCount so it survives this grid's own
+                     ~33-column horizontal scroll (audit: MatchReportView.axaml:109-140). -->
+                <DataGridTemplateColumn Width="30">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:ReportPlayerRow">
+                      <Button Content="⋯" Classes="ml-ghost" FontSize="13" Padding="6,0"
+                              Click="OnRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                              ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Width="36">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate x:DataType="vm:ReportPlayerRow">
@@ -143,8 +155,18 @@
 
             <TextBlock Classes="ml-label" Text="{Binding AwayName, StringFormat='👥 {0}'}" Margin="0,12,0,0"/>
             <DataGrid x:Name="AwayGrid" ItemsSource="{Binding AwayPlayers}" IsReadOnly="True"
-                      HeadersVisibility="Column" CanUserSortColumns="False">
+                      HeadersVisibility="Column" CanUserSortColumns="False" FrozenColumnCount="1">
               <DataGrid.Columns>
+                <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+                <DataGridTemplateColumn Width="30">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate x:DataType="vm:ReportPlayerRow">
+                      <Button Content="⋯" Classes="ml-ghost" FontSize="13" Padding="6,0"
+                              Click="OnRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                              ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Width="36">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate x:DataType="vm:ReportPlayerRow">

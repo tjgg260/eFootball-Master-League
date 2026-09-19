@@ -31,8 +31,18 @@
                Text="{Binding LegendText}" IsVisible="{Binding LegendVisible}"/>
     <DataGrid x:Name="StandingsGrid" ItemsSource="{Binding Rows}" IsReadOnly="True"
             SelectedItem="{Binding Selected, Mode=TwoWay}"
-            GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+            GridLinesVisibility="Horizontal" HeadersVisibility="Column" FrozenColumnCount="1">
     <DataGrid.Columns>
+      <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+      <DataGridTemplateColumn Header="" Width="36">
+        <DataGridTemplateColumn.CellTemplate>
+          <DataTemplate x:DataType="vm:TableEntry">
+            <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
+                    Click="OnRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    ToolTip.Tip="Everything you can do with this club — right-clicking its row does the same"/>
+          </DataTemplate>
+        </DataGridTemplateColumn.CellTemplate>
+      </DataGridTemplateColumn>
       <!-- zone band + position + movement vs last matchday -->
       <DataGridTemplateColumn Header="#" Width="64">
         <DataGridTemplateColumn.CellTemplate>

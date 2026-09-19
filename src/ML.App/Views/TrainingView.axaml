@@ -51,8 +51,21 @@
                FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
     <Panel>
       <DataGrid x:Name="TrainingGrid" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}"
-                IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                IsReadOnly="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                FrozenColumnCount="1">
         <DataGrid.Columns>
+          <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens.
+               First column, not last: a DataGrid clips from the right, and FrozenColumnCount
+               keeps it on screen through a horizontal scroll too (see SquadView's note). -->
+          <DataGridTemplateColumn Header="" Width="36">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:TrainingRow">
+                <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
+                        Click="OnRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
           <DataGridTemplateColumn Header="Name" Width="*">
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate x:DataType="vm:TrainingRow">

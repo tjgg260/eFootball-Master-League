@@ -18,6 +18,16 @@
                     HeadersVisibility="None"
                     Height="320" IsVisible="{Binding !!TopScorers.Count}">
             <DataGrid.Columns>
+              <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+              <DataGridTemplateColumn Width="26">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ScorerRow">
+                    <Button Content="⋯" Classes="ml-ghost" FontSize="11" Padding="3,0"
+                            Click="OnScorerRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTemplateColumn Width="36">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:ScorerRow">
@@ -40,6 +50,16 @@
                     HeadersVisibility="None"
                     Height="320" IsVisible="{Binding !!TopAssists.Count}">
             <DataGrid.Columns>
+              <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+              <DataGridTemplateColumn Width="26">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:ScorerRow">
+                    <Button Content="⋯" Classes="ml-ghost" FontSize="11" Padding="3,0"
+                            Click="OnScorerRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTemplateColumn Width="36">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:ScorerRow">
@@ -61,6 +81,16 @@
                     HeadersVisibility="None"
                     Height="320" IsVisible="{Binding !!BestDefence.Count}">
             <DataGrid.Columns>
+              <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+              <DataGridTemplateColumn Width="26">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:StatRow">
+                    <Button Content="⋯" Classes="ml-ghost" FontSize="11" Padding="3,0"
+                            Click="OnDefenceRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            ToolTip.Tip="Everything you can do with this club — right-clicking its row does the same"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTemplateColumn Width="32">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:StatRow">
@@ -78,6 +108,16 @@
           <DataGrid x:Name="CleanSheetGrid" ItemsSource="{Binding CleanSheets}" IsReadOnly="True"
                     HeadersVisibility="None" MaxHeight="240">
             <DataGrid.Columns>
+              <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+              <DataGridTemplateColumn Width="26">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:StatRow">
+                    <Button Content="⋯" Classes="ml-ghost" FontSize="11" Padding="3,0"
+                            Click="OnCleanSheetRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            ToolTip.Tip="Everything you can do with this club — right-clicking its row does the same"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTemplateColumn Width="32">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:StatRow">
@@ -93,6 +133,16 @@
           <DataGrid x:Name="DisciplineGrid" ItemsSource="{Binding Discipline}" IsReadOnly="True"
                     HeadersVisibility="None" MaxHeight="240">
             <DataGrid.Columns>
+              <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+              <DataGridTemplateColumn Width="26">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate x:DataType="vm:CardRow">
+                    <Button Content="⋯" Classes="ml-ghost" FontSize="11" Padding="3,0"
+                            Click="OnDisciplineRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
               <DataGridTemplateColumn Width="36">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate x:DataType="vm:CardRow">
@@ -127,10 +177,15 @@
                       Padding="6,3" ToolTip.Tip="Open the match report"
                       Command="{Binding $parent[ItemsControl].((vm:StatsViewModel)DataContext).OpenReportCommand}"
                       CommandParameter="{Binding}">
-                <Grid ColumnDefinitions="70,*,Auto">
+                <Grid ColumnDefinitions="70,*,Auto,Auto">
                   <TextBlock Text="{Binding When}" Classes="ml-muted"/>
                   <TextBlock Grid.Column="1" Text="{Binding Line}" Classes="ml-body"/>
                   <TextBlock Grid.Column="2" Text="{Binding Stats}" Foreground="#9FE6B4" FontSize="12"/>
+                  <!-- the visible half of the row-actions ruling: the SAME menu the
+                       right-click opens. Nested inside the row's own open-report Button. -->
+                  <Button Grid.Column="3" Content="⋯" Classes="ml-ghost" FontSize="12" Padding="4,0"
+                          Margin="8,0,0,0" Click="OnReportRowMenu" VerticalAlignment="Center"
+                          ToolTip.Tip="Everything you can do about this match — right-clicking the row does the same"/>
                 </Grid>
               </Button>
             </DataTemplate>
@@ -144,7 +199,7 @@
         <ItemsControl x:Name="HonoursList" ItemsSource="{Binding Honours}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:HonourRow">
-              <Grid ColumnDefinitions="70,*,26,*" Margin="0,3">
+              <Grid ColumnDefinitions="70,*,26,*,Auto" Margin="0,3">
                 <TextBlock Grid.Column="0" Text="{Binding Year}" Classes="ml-body"
                            Foreground="{DynamicResource MlTextMuted}"/>
                 <TextBlock Grid.Column="1" Text="{Binding Competition}" Classes="ml-body"/>
@@ -154,6 +209,10 @@
                 <TextBlock Grid.Column="3" Text="{Binding Team}" Classes="ml-body"
                            Foreground="{DynamicResource MlTextHeading}" FontWeight="SemiBold"
                            Margin="6,0,0,0"/>
+                <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+                <Button Grid.Column="4" Content="⋯" Classes="ml-ghost" FontSize="12" Padding="4,0"
+                        Margin="6,0,0,0" Click="OnHonourRowMenu" VerticalAlignment="Center"
+                        ToolTip.Tip="Everything you can do with this club — right-clicking its row does the same"/>
               </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

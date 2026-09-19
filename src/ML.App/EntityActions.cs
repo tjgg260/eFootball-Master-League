@@ -352,4 +352,21 @@ public static class MlMenu
             }
         }, RoutingStrategies.Tunnel);
     }
+
+    /// <summary>
+    /// Open a row's menu under its own ⋯ button — the visible half of the row-actions ruling,
+    /// wherever a screen adds it. False when there is nothing to open, so the caller can SAY so:
+    /// EntityActions.BuildMenu's backstop logs and hands back whatever had been built when a
+    /// Session read throws inside it, which can be nothing, and a ⋯ that silently does nothing
+    /// is exactly the symptom the visible trigger exists to kill.
+    /// Pulled out of SquadView (the one screen that had both affordances) so every other list
+    /// adding its own ⋯ column shares this instead of re-deriving it.
+    /// </summary>
+    public static bool OpenAt(ContextMenu? menu, Control at)
+    {
+        if (menu is null || menu.Items.Count == 0) return false;
+        menu.Placement = PlacementMode.BottomEdgeAlignedRight;
+        menu.Open(at);
+        return true;
+    }
 }

@@ -84,8 +84,18 @@
       <Panel Grid.Column="0">
         <DataGrid x:Name="MarketGrid"
                   ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedPlayer}" IsReadOnly="True"
-                  GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+                  GridLinesVisibility="Horizontal" HeadersVisibility="Column" FrozenColumnCount="1">
           <DataGrid.Columns>
+            <!-- the visible half of the row-actions ruling: the SAME menu the right-click opens -->
+            <DataGridTemplateColumn Header="" Width="36">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:MarketPlayer">
+                  <Button Content="⋯" Classes="ml-ghost" FontSize="15" Padding="8,0"
+                          Click="OnRowMenu" HorizontalAlignment="Center" VerticalAlignment="Center"
+                          ToolTip.Tip="Everything you can do with him — right-clicking his row does the same"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="" Width="46">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:MarketPlayer">

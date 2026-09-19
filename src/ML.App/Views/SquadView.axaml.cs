@@ -86,7 +86,7 @@ public partial class SquadView : UserControl
             row = MlMenu.RowAt<SquadEntry>(btn);
             if (row is null) return;
             vm.Selected = row;   // the card beside the grid follows the man you are acting on
-            if (!OpenAt(vm.MenuFor(row), btn)) vm.SayMenuUnavailable(row.Name);
+            if (!MlMenu.OpenAt(vm.MenuFor(row), btn)) vm.SayMenuUnavailable(row.Name);
         }
         catch (Exception ex)
         {
@@ -105,28 +105,13 @@ public partial class SquadView : UserControl
             if (vm is null || sender is not Control btn) return;
             row = MlMenu.RowAt<LoanRowVm>(btn);
             if (row is null) return;
-            if (!OpenAt(vm.MenuForLoan(row), btn)) vm.SayMenuUnavailable(row.Name, onLoan: true);
+            if (!MlMenu.OpenAt(vm.MenuForLoan(row), btn)) vm.SayMenuUnavailable(row.Name, onLoan: true);
         }
         catch (Exception ex)
         {
             Program.Log("SquadView.OnLoanMenu", ex);
             vm?.SayMenuUnavailable(row?.Name ?? "", onLoan: true);
         }
-    }
-
-    /// <summary>
-    /// Open a row's menu under its ⋯. False when there is nothing to open, so the caller can
-    /// SAY so. THE BUG: both handlers returned in silence on a null or empty menu — and empty is
-    /// reachable, because EntityActions.BuildMenu's backstop logs and hands back whatever had
-    /// been built when a Session read threw, which can be nothing. A ⋯ that does nothing at all
-    /// is precisely the symptom the visible trigger was added to kill.
-    /// </summary>
-    private static bool OpenAt(ContextMenu? menu, Control at)
-    {
-        if (menu is null || menu.Items.Count == 0) return false;
-        menu.Placement = PlacementMode.BottomEdgeAlignedRight;
-        menu.Open(at);
-        return true;
     }
 
     /// <summary>"Set photo…" — copy the owner's chosen image to custom_faces/&lt;player_id&gt;,
