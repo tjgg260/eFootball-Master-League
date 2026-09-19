@@ -108,7 +108,7 @@
             </Border>
           </StackPanel>
 
-          <!-- calibre as a LETTER, and how honestly you know it -->
+          <!-- calibre as STARS, and how honestly you know it -->
           <StackPanel Grid.Column="2" Spacing="4" Margin="20,0,0,0" MinWidth="230"
                       VerticalAlignment="Top">
             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">

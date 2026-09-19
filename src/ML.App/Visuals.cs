@@ -141,9 +141,15 @@ public static class Visuals
     private static readonly IBrush RatingMid = new SolidColorBrush(Color.Parse("#F0A030"));
     private static readonly IBrush RatingLow = new SolidColorBrush(Color.Parse("#E05545"));
 
-    /// <summary>eFootball-style rating colour: ≥80 green, 70–79 amber, below red.</summary>
+    /// <summary>
+    /// Rating colour, cut on the star tiers (ML.Core.Development.StarRating), not the old 80/70
+    /// split. That split was calibrated for a 40-99 scale where the best players sit near 99; on
+    /// the world this app actually builds (best player 85, median 68 — see StarRating's own
+    /// header) only 33 of 21,611 players ever cleared 80, so almost nothing was ever green.
+    /// 74 and 65 are the same tier floors StarRating uses for 3½★ and 2★.
+    /// </summary>
     public static IBrush RatingBrush(int rating) =>
-        rating >= 80 ? RatingHigh : rating >= 70 ? RatingMid : RatingLow;
+        rating >= 74 ? RatingHigh : rating >= 65 ? RatingMid : RatingLow;
 
     /// <summary>Registered-position code (Player.bin) → position label. Unknown codes read as CMF.</summary>
     public static string RoleCodeLabel(int code) => code switch

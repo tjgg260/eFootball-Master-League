@@ -12,7 +12,7 @@ public sealed record TrainingRow(
     long PlayerId, string Name, string Position, int Age, int Rating, IBrush RatingBrush,
     string Focus, string Progress, string Personality, int Determination, string Skills)
 {
-    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // own squad
+    public string Grade => ML.Core.Development.StarRating.Text(Rating);   // own squad — full knowledge, always
 
     /// <summary>Name-cell tooltip: the two traits that decide how fast he learns anything.</summary>
     public string Who => $"{Personality} · determination {Determination}/20";

@@ -377,7 +377,7 @@
 
             <!-- ══ 📈 FORM — what he has actually DONE ═════════════════════════════════════
                  The tiles carry DIGITS on purpose: apps, goals, assists and an average match
-                 rating are STATISTICS, and the letter-grade rule is about ability, which is a
+                 rating are STATISTICS, and the star-rating rule is about ability, which is a
                  different question. Form, minutes and mood belong to your own dressing room, so
                  for anyone else's player they are declined rather than invented — the record and
                  the analyst's line still stand, because those are public. -->
@@ -583,7 +583,7 @@
           <!-- Individual Instructions. Each slot is a PAIRING — the instruction and the man
                carrying it. Four bare combos named nobody, so there was no way to say who was
                anchoring or man-marking; the picker beside each one is your XI, by surname with
-               his position and letter grade. ✕ takes the man off without clearing the
+               his position and star rating. ✕ takes the man off without clearing the
                instruction. Both halves write through the moment they change. -->
           <StackPanel IsVisible="{Binding ShowInstructions}" Spacing="4">
             <TextBlock Text="{x:Static vm:TacticsViewModel.InstrWhoNote}" Classes="ml-muted"

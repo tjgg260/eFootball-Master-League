@@ -35,52 +35,28 @@ public sealed record MarketPlayer(
     public string AgeLabel => Age?.ToString() ?? "—";
     public string Value => $"£{ValueRaw:N0}";
 
-    // The overall is shown ONLY as a qualitative letter, and it SHARPENS with what you know:
-    // a coarse band while he is unscouted, an approximate letter once part-scouted, the true
-    // letter when he is well scouted or already yours.
+    // The overall is shown ONLY as stars, and they SHARPEN with what you know: a wide window
+    // while he is unscouted, a half-star window once part-scouted, the true tier when he is well
+    // scouted or already yours.
     //
     // THE BUG this shape fixes: FM view mode is on by default and BaselineKnowledge is 0 for
-    // anyone outside your career world — which is every player in the reference market — so
-    // GradeMasked collapsed to a bare "?" on every row of a default career and the Rating column
-    // was structurally incapable of ever showing anything else. Masking is deliberate and stays;
-    // a column that always reads "?" tells the manager nothing. The honest read a manager has
-    // WITHOUT a scout is the price — which the Value column beside this one already prints in
-    // full — so an unscouted player shows the calibre band his market price implies. Nothing is
-    // revealed here that the same row was not already shouting one column to the right.
+    // anyone outside your career world — which is every player in the reference market — so a
+    // straight masked read collapsed to a bare "?" on every row of a default career and the
+    // Rating column was structurally incapable of ever showing anything else. Masking is
+    // deliberate and stays; a column that always reads "?" tells the manager nothing. Below
+    // knowledge 45 the row falls back to StarRating.Reputation — his standing in the game, not
+    // his price (the world this app builds from eFootball carries no real transfer fees).
     public string Grade => Knowledge >= 45
-        ? ML.Core.Development.AttributeKnowledge.GradeMasked(Overall, Knowledge)
-        : ReputationBand(ValueRaw);
+        ? ML.Core.Development.StarRating.Text(ML.Core.Development.StarRating.Masked(Overall, Knowledge))
+        : ML.Core.Development.StarRating.Text(ML.Core.Development.StarRating.Reputation(Overall, Id));
 
-    /// <summary>Where this row's letter comes from — the Rating cell's tooltip.</summary>
+    /// <summary>Where this row's stars come from — the Rating cell's tooltip.</summary>
     public string GradeTip => Knowledge >= 75
         ? "Fully known — this is his real calibre."
         : Knowledge >= 45
-            ? "Part-scouted — the letter is close, the question mark is the margin."
-            : "Nobody here has watched him. This is the calibre his market price implies — " +
-              "roughly right four times in five. Send a scout for the real letter.";
-
-    /// <summary>
-    /// The public read on a player nobody at the club has watched: what the market pays for him,
-    /// as a deliberately coarse two-or-three-grade band ("B/A−" = somewhere in B…A−). It brackets
-    /// his grade without ever claiming to BE it, and because a real fee also carries age, league
-    /// and hype it stays honestly imprecise — an ageing great reads low, a hyped teenager high.
-    ///
-    /// The thresholds are MEASURED, not guessed: each band is the grade window that best covers
-    /// the players actually priced in that range across the 347k imported market values in
-    /// master.db. The true grade lands inside the band for 86% of them and within one grade of it
-    /// for 94%. Re-measure if the market import is ever rebuilt on different data.
-    /// </summary>
-    private static string ReputationBand(long value) => value switch
-    {
-        >= 120_000_000 => "A/A+",
-        >= 45_000_000 => "B+/A",
-        >= 15_000_000 => "B/A-",
-        >= 5_000_000 => "B-/B+",
-        >= 1_200_000 => "C/B-",
-        >= 400_000 => "D/C",
-        > 0 => "F/C-",
-        _ => "?",           // no price and no dossier: this one is genuinely unknown
-    };
+            ? "Part-scouted — the range is close, the gap is the margin."
+            : "Nobody here has watched him. This is roughly his standing in the game — " +
+              "send a scout for the real tier.";
 
     public Avalonia.Media.IBrush RatingBrush =>
         Knowledge >= 75 ? Visuals.RatingBrush(Overall) : Visuals.Brush("#8A93A2");
@@ -181,14 +157,14 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     [ObservableProperty] private string _searchText = "";
     [ObservableProperty] private string _positionFilter = "All";
     [ObservableProperty] private decimal _maxAge = 45;
-    // Calibre filter (UX P4): a letter floor, never a raw-number spinner. The thresholds are
-    // the same bands AttributeKnowledge grades with, so "B or better" means what the card says.
+    // Calibre filter (UX P4): a star floor, never a raw-number spinner. The thresholds are the
+    // same tier floors StarRating cuts on, so "3★ or better" means exactly what the card says.
     public IReadOnlyList<string> GradeFloors { get; } = new[]
-        { "Any calibre", "C or better", "B or better", "A or better" };
+        { "Any calibre", "2★ or better", "3★ or better", "4★ or better" };
     [ObservableProperty] private string _gradeFloor = "Any calibre";
     private decimal MinRating => GradeFloor switch
     {
-        "A or better" => 78, "B or better" => 64, "C or better" => 52, _ => 40,
+        "4★ or better" => 77, "3★ or better" => 71, "2★ or better" => 65, _ => 40,
     };
     [ObservableProperty] private bool _freeAgentsOnly;
 
@@ -576,7 +552,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
     [ObservableProperty] private string _profileName = "";
     [ObservableProperty] private string _profilePosition = "";
     [ObservableProperty] private string _profileGrade = "?";
-    /// <summary>Says which of the three reads the big letter is — scouted, part-scouted, or price.</summary>
+    /// <summary>Says which of the three reads the big star rating is — scouted, part-scouted, or reputation.</summary>
     [ObservableProperty] private string _profileGradeTip = "";
     [ObservableProperty] private Avalonia.Media.IBrush _profileRatingBrush = Visuals.Brush("#C7CEDA");
     [ObservableProperty] private Avalonia.Media.IBrush _profileFill = Visuals.Brush("#3A4759");
@@ -675,7 +651,7 @@ public sealed partial class MarketViewModel : PageViewModel, IFocusTarget
         {
             ProfileName = value.Name;
             ProfilePosition = value.Position;
-            ProfileGrade = value.Grade;                 // gated letter, never the raw number
+            ProfileGrade = value.Grade;                 // gated stars, never a letter or the raw number
             ProfileGradeTip = value.GradeTip;
             ProfileRatingBrush = value.RatingBrush;
             ProfileFill = Visuals.PositionBrush(value.Position);

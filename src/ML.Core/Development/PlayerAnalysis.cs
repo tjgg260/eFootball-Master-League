@@ -4,7 +4,10 @@ namespace ML.Core.Development;
 /// The MFL-style qualitative read of a player: six analysis panels (Attacking / Skills /
 /// Movement / Power / Mentality / Defending — goalkeeping variants for keepers), each a set of
 /// graded STATEMENTS derived from his abilities. This is the north star's core feature: the app
-/// never shows the number, it shows "A solid and consistent finishing ability  B" with a tone.
+/// never shows the number, it shows "A solid and consistent finishing ability  Good" with a tone.
+/// The star-ratings ruling (2026-09-13) is about a player's OVERALL calibre; this Grade is a
+/// narrower per-cluster read, so it stays a qualitative band (Poor/Average/Good/Elite) rather
+/// than borrowing the star scale for something the ruling was never about.
 /// Pure maths/wording; knowledge gating uses the same monotonic reveal as the attribute masking.
 /// </summary>
 public static class PlayerAnalysis
@@ -203,7 +206,7 @@ public static class PlayerAnalysis
                 var v = (int)Math.Round(vals.Average());
                 var text = v >= 78 ? s.High : v >= 64 ? s.Solid : v >= 52 ? s.Modest : s.Poor;
                 var tone = v >= 70 ? Tone.Good : v >= 58 ? Tone.Mid : Tone.Poor;
-                lines.Add(new Line(text, AttributeKnowledge.Grade(v), tone));
+                lines.Add(new Line(text, AttributeKnowledge.BandName(AttributeKnowledge.Band(v)), tone));
             }
             if (lines.Count > 0)
                 panels.Add(new Panel(name, lines));

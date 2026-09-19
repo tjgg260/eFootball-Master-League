@@ -118,7 +118,7 @@
             </Border>
           </StackPanel>
 
-          <!-- the calibre letter, the one reading of "how good is he" — never a number -->
+          <!-- the calibre stars, the one reading of "how good is he" — never a letter or a number -->
           <StackPanel Grid.Column="2" Spacing="8" Margin="24,0,0,0" MinWidth="230"
                       VerticalAlignment="Top">
             <TextBlock Text="{Binding Grade}" FontSize="46" FontWeight="Bold"

@@ -108,9 +108,9 @@ public sealed record SquadEntry
     public string Mark { get; init; } = "";
     public IBrush MarkBrush { get; init; } = CondGreen;
 
-    /// <summary>0-100 dossier level; 100 for your own club. Gates the letter grade.</summary>
+    /// <summary>0-100 dossier level; 100 for your own club. Gates the star range.</summary>
     public int Knowledge { get; init; } = 100;
-    public string Grade => ML.Core.Development.AttributeKnowledge.GradeMasked(Rating, Knowledge);
+    public string Grade => ML.Core.Development.StarRating.Text(ML.Core.Development.StarRating.Masked(Rating, Knowledge));
     public IBrush RatingBrush => Knowledge >= 75 ? Visuals.RatingBrush(Rating) : Visuals.Brush("#8A93A2");
     public IBrush ConditionBrush => Fatigue < 20 ? CondGreen : Fatigue < 40 ? CondAmber : CondRed;
 

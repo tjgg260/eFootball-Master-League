@@ -65,7 +65,7 @@ public sealed partial class BiddingViewModel : PageViewModel, IFocusTarget
     private string _club = "";
     private bool _mine;
     private bool _free;
-    /// <summary>His overall as stored (0 when nothing is on file) — only ever shown as a letter.</summary>
+    /// <summary>His overall as stored (0 when nothing is on file) — only ever shown as stars.</summary>
     private int _rating;
     private int? _age;
     /// <summary>What the engine itself would read: PlayerBasics COALESCEs the rating to 65, so
@@ -390,16 +390,16 @@ public sealed partial class BiddingViewModel : PageViewModel, IFocusTarget
         _knowledge = _mine ? 100 : Safe(() => _s.KnowledgeOf(id), 0);
         var label = Safe(() => _s.KnowledgeLabelOf(id), _mine ? "Fully known" : "Unknown");
         KnowledgeLine = _mine ? "Fully known — one of yours" : label;
-        Grade = AttributeKnowledge.GradeMasked(_rating, _knowledge);
+        Grade = StarRating.Text(StarRating.Masked(_rating, _knowledge));
         GradeBrush = _knowledge >= 75 ? Visuals.RatingBrush(_rating) : Muted;
         GradeTip = _knowledge >= 75
             ? "Fully known — this is his real calibre."
             : _knowledge >= ScoutFloor
-                ? "Part-scouted — the letter is close, the question mark is the margin."
+                ? "Part-scouted — the range is close, the gap is the margin."
                 : "Nobody at the club has watched him. Scout him before you spend on him.";
         ThinlyKnown = !_mine && _knowledge < ScoutFloor;
         ThinlyKnownLine =
-            $"{label}. Nobody at the club has watched {name} play — the letter beside his name is " +
+            $"{label}. Nobody at the club has watched {name} play — the stars beside his name are " +
             "a guess, and so is any fee you put on him. A scout costs a few weeks; this costs " +
             "millions.";
 

@@ -12,7 +12,7 @@ public sealed record AcademyEntry(
 {
     public string Mark => Visuals.PlayerMark(Name);
     public bool HasPortrait => Portrait is not null;
-    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // your academy
+    public string Grade => ML.Core.Development.StarRating.Text(Rating);   // your academy — full knowledge, always
 }
 
 /// <summary>A lad on one of the youth sides. Same read as a prospect — he's already yours,
@@ -26,7 +26,7 @@ public sealed record YouthEntry(
 {
     public string Mark => Visuals.PlayerMark(Name);
     public bool HasPortrait => Portrait is not null;
-    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // your youth side
+    public string Grade => ML.Core.Development.StarRating.Text(Rating);   // your youth side — full knowledge, always
 }
 
 /// <summary>Your youth setup: this season's prospects and the U21/U18 sides beneath the first

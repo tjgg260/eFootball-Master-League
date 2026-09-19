@@ -36,7 +36,7 @@ public sealed record BenchEntry(
     int Fatigue, bool Injured, IReadOnlyList<string> Learned)
 {
     public Avalonia.Media.IBrush RatingBrush => Visuals.RatingBrush(Rating);
-    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);   // own squad: true letter
+    public string Grade => ML.Core.Development.StarRating.Text(Rating);   // own squad: full knowledge, always
     public Avalonia.Media.IBrush CondBrush =>
         Visuals.Brush(Injured ? "#D64545" : Fatigue < 20 ? "#1F9D4D" : Fatigue < 40 ? "#E0A526" : "#D64545");
     /// <summary>Banned, not hurt. <see cref="Injured"/> is still true for him — it means "cannot be
@@ -104,10 +104,10 @@ public sealed partial class PitchPlayer : ObservableObject
     public IReadOnlyDictionary<string, int>? Abilities { get; }
 
     /// <summary>His overall AT THE SLOT he's standing in — a winger dropped in goal is scored on
-    /// his goalkeeping (an F), not his wing play. Falls back to native rating without abilities.</summary>
+    /// his goalkeeping (½★), not his wing play. Falls back to native rating without abilities.</summary>
     public int EffectiveRating => ML.Core.Selection.PositionOverall.Of(Abilities, Position) ?? Rating;
     public Avalonia.Media.IBrush RatingBrush => Visuals.RatingBrush(EffectiveRating);
-    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(EffectiveRating);
+    public string Grade => ML.Core.Development.StarRating.Text(EffectiveRating);
 
     /// <summary>Condition dot: green fresh, amber leggy, red exhausted/injured.</summary>
     public Avalonia.Media.IBrush CondBrush =>
@@ -198,7 +198,7 @@ public sealed record OppToken(double Left, double Top, string Pos, int Rating, s
     public string Mark => Visuals.PlayerMark(Surname);
     public Avalonia.Media.IBrush MarkBrush => Visuals.PositionBrush(Pos);
     // Opponent overalls are knowledge-gated: "?" until you've scouted or faced them enough.
-    public string Grade => ML.Core.Development.AttributeKnowledge.GradeMasked(Rating, Knowledge);
+    public string Grade => ML.Core.Development.StarRating.Text(ML.Core.Development.StarRating.Masked(Rating, Knowledge));
     public Avalonia.Media.IBrush RatingBrush =>
         Knowledge >= 75 ? Visuals.RatingBrush(Rating) : Visuals.Brush("#8A93A2");
 
@@ -2495,7 +2495,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         d.FormDone = true;
 
         // Appearances and goals are STATISTICS, not ability — digits are correct here. (The
-        // letter-grade rule is about how good a player is, which is a different question.)
+        // star-rating rule is about how good a player is, which is a different question.)
         var (apps, goals, assists, _, _, avg) = Safe(() => _s.PlayerSeasonStats(id), default);
         d.Apps = apps.ToString();
         d.Goals = goals.ToString();

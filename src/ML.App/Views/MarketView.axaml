@@ -104,9 +104,9 @@
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
             <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="71"/>
-            <!-- The letter sharpens with what you know: a price-implied band while he is
-                 unscouted, "B?" once part-scouted, the true grade when he is well scouted or
-                 yours. The tooltip says which of the three you are looking at. -->
+            <!-- The stars sharpen with what you know: a reputation window while he is
+                 unscouted, a half-star window once part-scouted, the true tier when he is well
+                 scouted or yours. The tooltip says which of the three you are looking at. -->
             <DataGridTemplateColumn Header="Rating" Width="78">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:MarketPlayer">

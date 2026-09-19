@@ -152,7 +152,7 @@ public sealed partial class Session
             {
                 if (!players.TryGetValue(m.PlayerId, out var p)) continue;
                 sb.AppendLine(quality >= 4
-                    ? $"  {p.Position,-4} {p.Name}  {ML.Core.Development.AttributeKnowledge.Grade(p.OverallRating ?? 0)}"
+                    ? $"  {p.Position,-4} {p.Name}  {ML.Core.Development.StarRating.Text(p.OverallRating ?? 0)}"
                     : $"  {p.Position,-4} {p.Name}");
             }
         }
@@ -170,7 +170,7 @@ public sealed partial class Session
                 var cond = quality >= 5 && c is not null
                     ? $"{legs}{(c.InjuredUntilMd is not null ? ", INJURED" : "")}"
                     : "";
-                sb.AppendLine($"  {p.Name} ({p.Position}, {ML.Core.Development.AttributeKnowledge.Grade(p.OverallRating ?? 0)}) — {goals} goals{cond}");
+                sb.AppendLine($"  {p.Name} ({p.Position}, {ML.Core.Development.StarRating.Text(p.OverallRating ?? 0)}) — {goals} goals{cond}");
             }
         }
         if (quality <= 2)
@@ -202,7 +202,7 @@ public sealed partial class Session
             }
         }
         var sb = new StringBuilder();
-        sb.AppendLine($"SCOUT REPORT — {name}  ({position}, {ML.Core.Development.AttributeKnowledge.Grade(rating)})  (scout: {new string('★', quality)})");
+        sb.AppendLine($"SCOUT REPORT — {name}  ({position}, {ML.Core.Development.StarRating.Text(rating)})  (scout: {new string('★', quality)})");
         sb.AppendLine($"Age {age?.ToString() ?? "—"}   Value £{MarketValueOf(playerId, rating, age):N0}");
 
         if (quality >= 3)
@@ -210,7 +210,7 @@ public sealed partial class Session
             var abilities = Repo.Attributes(playerId);
             var top = abilities.Where(a => !a.Key.StartsWith("gk_") || position == "GK")
                 .OrderByDescending(a => a.Value).Take(5)
-                .Select(a => $"{a.Key.Replace('_', ' ')} {ML.Core.Development.AttributeKnowledge.Grade(a.Value)}");
+                .Select(a => $"{a.Key.Replace('_', ' ')} {ML.Core.Development.AttributeKnowledge.BandName(ML.Core.Development.AttributeKnowledge.Band(a.Value))}");
             sb.AppendLine($"Standout abilities: {string.Join(", ", top)}");
         }
         // Fit verdict vs your current best in that position.

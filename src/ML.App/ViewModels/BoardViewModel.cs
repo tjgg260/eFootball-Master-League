@@ -120,7 +120,7 @@ public sealed partial class BoardViewModel : PageViewModel
 
         Offers = new ObservableCollection<JobOfferRow>(
             s.JobOffers().Select(o => new JobOfferRow(o.TeamId, o.Club,
-                $"{o.Club}  ·  {o.League}  ·  {ML.Core.Development.AttributeKnowledge.Grade(o.SquadRating)} squad",
+                $"{o.Club}  ·  {o.League}  ·  {ML.Core.Development.StarRating.Text(o.SquadRating)} squad",
                 Visuals.LoadBitmap(s.TeamLogoPath(o.TeamId)))));
         RefreshFacilities();
         RefreshOffersNote();

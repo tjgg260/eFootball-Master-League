@@ -665,7 +665,7 @@ public sealed partial class DashboardViewModel : PageViewModel
         NotifyCareerState();
     }
 
-    /// <summary>Knowledge gate for opponent players shown on the Office (letters, never numbers).</summary>
+    /// <summary>Knowledge gate for opponent players shown on the Office (stars, never numbers).</summary>
     private int OppKnowledgeOf(long playerId)
     {
         try { return _s.FmAttributeMode ? _s.KnowledgeOf(playerId) : 100; }
@@ -767,12 +767,13 @@ public sealed partial class DashboardViewModel : PageViewModel
             // The id survives the sentence: a line you can right-click must know WHO it names.
             KeyPlayerId = key?.Id ?? 0;
             KeyPlayerName = key?.Name ?? "";
-            // GradeMasked answers "?" for a man nobody has watched, and "(AMF ?)" on a card
+            // Text(Masked(...)) answers "?" for a man nobody has watched, and "(AMF ?)" on a card
             // reads as a rendering fault rather than as ignorance. When there is no grade to
             // give, the bracket carries his position alone — the card says "No dossier on them
             // yet" two lines below, which is where that fact belongs.
-            var grade = ML.Core.Development.AttributeKnowledge
-                .GradeMasked(key?.OverallRating ?? 0, key is null ? 0 : OppKnowledgeOf(key.Id));
+            var masked = ML.Core.Development.StarRating
+                .Masked(key?.OverallRating ?? 0, key is null ? 0 : OppKnowledgeOf(key.Id));
+            var grade = ML.Core.Development.StarRating.Text(masked);
             KeyPlayerLine = key is null ? ""
                 : grade == "?" ? $"Key player: {key.Name}  ({key.Position})"
                 : $"Key player: {key.Name}  ({key.Position} {grade})";

@@ -20,8 +20,8 @@ namespace ML.App.ViewModels;
 // bar docked at the top and the status line docked at the FOOT, outside every scroller.
 //
 // The rules this screen is built to keep:
-//   · ABILITY is a letter, never a number. Apps, goals, fees and wages are digits, and that
-//     is correct — they are statistics, not a judgement of how good he is.
+//   · ABILITY is stars, never a letter or a number. Apps, goals, fees and wages are digits,
+//     and that is correct — they are statistics, not a judgement of how good he is.
 //   · Traits are WORDS. The engine stores 1–20; this app has never shown that number.
 //   · Everything is knowledge-gated. An unscouted man reads as unscouted — one deliberate
 //     card that says what is missing and how to fix it — never as blank or broken.
@@ -562,15 +562,15 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
               "and the coach's read on him stay dark until somebody watches him play. Send a scout " +
               "from the actions above and this whole column fills in.";
 
-        Grade = AttributeKnowledge.GradeMasked(bio.Rating, _knowledge);
+        Grade = StarRating.Text(StarRating.Masked(bio.Rating, _knowledge));
         GradeBrush = _knowledge >= 75 ? Visuals.RatingBrush(bio.Rating) : Visuals.Brush("#8A93A2");
         GradeTip = _knowledge >= 75
             ? "Fully known — this is his real calibre."
             : _knowledge >= ScoutFloor
-                ? "Part-scouted — the letter is close, the question mark is the margin."
+                ? "Part-scouted — the range is close, the gap is the margin."
                 : _reputation >= FameFloor
-                    ? "This is his reputation, not a scouting report. Watch him for a real letter."
-                    : "Nobody at the club has watched him. Scout him for a real letter.";
+                    ? "This is his reputation, not a scouting report. Watch him for his real tier."
+                    : "Nobody at the club has watched him. Scout him for his real tier.";
 
         LoadAbility(id, bio);
         LoadDossier(id, name);
@@ -795,7 +795,7 @@ public sealed partial class PlayerViewModel : PageViewModel, IFocusTarget
 
     private void LoadSeason(long id, string name)
     {
-        // Appearances, goals and cards are STATISTICS — digits are correct here. The letter-grade
+        // Appearances, goals and cards are STATISTICS — digits are correct here. The star-rating
         // rule is about how good a player IS, which is a different question.
         var (apps, goals, assists, yellows, reds, avg) =
             Safe(() => _s.PlayerSeasonStats(id), default);

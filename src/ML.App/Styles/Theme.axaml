@@ -101,7 +101,7 @@
   <Style Selector="Border.ml-chip.ml-info"><Setter Property="Background" Value="{StaticResource MlPrimary}"/></Style>
   <Style Selector="Border.ml-chip.ml-gold"><Setter Property="Background" Value="{StaticResource MlGold}"/></Style>
 
-  <!-- ── grade badge: THE way a rating is shown (letter, never a number) ────────── -->
+  <!-- ── grade badge: THE way a rating is shown (stars, never a letter or a number) ─ -->
   <Style Selector="Border.ml-grade">
     <Setter Property="Background" Value="{StaticResource MlSurfaceControl}"/>
     <Setter Property="CornerRadius" Value="{StaticResource MlRadiusChip}"/>

@@ -38,8 +38,8 @@ public sealed class CareerTeamOption
     public bool HasSquad => SquadSize > 0;
     public string SquadLabel => Visuals.Plural(SquadSize, "player");
 
-    /// <summary>Calibre as the app shows every rating: a letter, never the number.</summary>
-    public string Grade => ML.Core.Development.AttributeKnowledge.Grade(Rating);
+    /// <summary>Calibre as the app shows every rating: stars, never a letter or the number.</summary>
+    public string Grade => ML.Core.Development.StarRating.Text(Rating);
 
     // Catalog rating is RFS raw overall; show it on eFootball's ~40-99 feel.
     private static double RawToEfootball(double raw) => raw <= 40 ? raw : Math.Min(99, 40 + (raw - 40));
