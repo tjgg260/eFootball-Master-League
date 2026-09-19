@@ -3,11 +3,15 @@ r"""
 game_emblems.py — club crests from eFootball's own paks, with installed mods (EvoMod) on top.
 
 Where the game keeps them
-    ui/Data/Symbol/Emblem/e_<Team.bin id, 6 digits>_<r|f>[_l|_ll].uasset
+    ui/Data/Symbol/Emblem/e_<Team.bin id, 6 digits>_<r|f>[_<variant letter>][_l|_ll].uasset
     BC7 Texture2D: no suffix 128px, _l 256px, _ll 512px. Vanilla ships them in pak\pc1000_console_win.
     A club has a REAL crest (_r) and/or a FAKE one (_f); Team.bin byte 115 says which the game shows:
     bit 0 or bit 2 set -> _r, otherwise _f. Checked against every club in dt200 (981 records): the
     flag and the suffixes that exist agree for all 954 that carry any crest.
+    Some clubs (e.g. Manchester United, id 100) ship ONLY variant-lettered crests — b/e/w/s seen so
+    far, presumably different kit/background colourways — never a bare e_<id>_r.uasset. The variant
+    letter is ignored: any one of them is an acceptable crest, so the size choice alone still picks
+    the biggest available regardless of which variant it came from.
 
 Mods
     PesConsole\Content\Paks\~mods\*.utoc load over the vanilla paks and replace assets by path.
@@ -63,7 +67,7 @@ BASE_CPK = REPO / "dt200_console_all.cpk"
 OUT = REPO / "build" / "game_emblems"
 REL = "build/game_emblems"
 MAX_PX = 256
-EMBLEM = re.compile(r"/ui/Data/Symbol/Emblem/e_(\d{6})_([rf])(_l{1,2})?\.uasset$")
+EMBLEM = re.compile(r"/ui/Data/Symbol/Emblem/e_(\d{6})_([rf])(?:_[a-z])?(_l{1,2})?\.uasset$")
 SIZE_RANK = {"": 0, "_l": 1, "_ll": 2}
 
 
@@ -115,7 +119,7 @@ def crest_index(found: list[tuple[str, iostore.Container]]):
         for path in c.paths:
             m = EMBLEM.search(path)
             if m:
-                idx[int(m.group(1))][m.group(2)].append((prec, label, c, SIZE_RANK[m.group(3) or ""], path))
+                idx[int(m.group(1))][m.group(2)].append((prec, label, c, SIZE_RANK[m.group(3) or ""], path))  # group(3) is now the size suffix
     return idx
 
 

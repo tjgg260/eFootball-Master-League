@@ -62,7 +62,7 @@
         <DataGridTemplateColumn.CellTemplate>
           <DataTemplate x:DataType="vm:TableEntry">
             <Panel Width="26" Height="26" Margin="4,3">
-              <Border CornerRadius="13" Background="{Binding BadgeBrush}">
+              <Border CornerRadius="13" Background="{Binding BadgeBrush}" IsVisible="{Binding !HasLogo}">
                 <TextBlock Text="{Binding Badge}" FontSize="9" Foreground="White"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
               </Border>

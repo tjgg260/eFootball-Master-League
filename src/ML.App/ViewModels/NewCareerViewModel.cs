@@ -30,6 +30,7 @@ public sealed class CareerTeamOption
     public int RfsId { get; }
     public int Rating { get; }
     public Bitmap? Logo { get; }
+    public bool HasLogo => Logo is not null;
     public string Badge { get; }
     public IBrush BadgeBrush { get; }
 

@@ -17,7 +17,10 @@ public sealed record TableEntry(
     int Pos, string Team, int P, int W, int D, int L, int GF, int GA, int GD, int Pts, bool IsMine,
     Avalonia.Media.Imaging.Bitmap? Logo, string Badge, IBrush BadgeBrush,
     IBrush? ZoneBrush, IBrush PosBrush, FontWeight Weight, string Movement, IBrush MovementBrush,
-    int TeamId = 0);
+    int TeamId = 0)
+{
+    public bool HasLogo => Logo is not null;
+}
 
 public sealed partial class TableViewModel : PageViewModel, IFocusTarget
 {

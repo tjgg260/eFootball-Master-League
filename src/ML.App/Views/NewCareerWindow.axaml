@@ -229,7 +229,7 @@
                             Background="{StaticResource MlSurfaceCard}">
                       <StackPanel Margin="8" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Panel Width="58" Height="58" HorizontalAlignment="Center">
-                          <Border CornerRadius="29" Background="{Binding BadgeBrush}">
+                          <Border CornerRadius="29" Background="{Binding BadgeBrush}" IsVisible="{Binding !HasLogo}">
                             <TextBlock Text="{Binding Badge}" Foreground="White" FontWeight="Bold"
                                        FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                           </Border>
@@ -253,7 +253,8 @@
                       IsVisible="{Binding HasTeamPreview}">
                 <StackPanel Spacing="12">
                   <Panel Width="96" Height="96" HorizontalAlignment="Center">
-                    <Border CornerRadius="48" Background="{Binding SelectedTeam.BadgeBrush}">
+                    <Border CornerRadius="48" Background="{Binding SelectedTeam.BadgeBrush}"
+                            IsVisible="{Binding !SelectedTeam.HasLogo}">
                       <TextBlock Text="{Binding SelectedTeam.Badge}" Foreground="White" FontWeight="Bold"
                                  FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
