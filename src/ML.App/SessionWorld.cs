@@ -172,7 +172,36 @@ public sealed partial class Session
     public static string CupNameFor(int leagueId) =>
         Cups.FirstOrDefault(c => c.LeagueId == leagueId)?.Name ?? CupName;
 
-    /// <summary>Draw any cup not yet drawn this season: 32 clubs each, independently shuffled.</summary>
+    /// <summary>Largest power of two that is at most <paramref name="n"/> (minimum 1).</summary>
+    private static int LargestPowerOfTwoAtMost(int n)
+    {
+        var p = 1;
+        while (p * 2 <= n) p *= 2;
+        return p;
+    }
+
+    /// <summary>
+    /// Draw any cup not yet drawn this season: 32 clubs each (Continental: 8), independently
+    /// shuffled, capped to a clean power of two.
+    ///
+    /// THE BUG THIS CAP EXISTS TO KILL: a single-division country (18 clubs, no Division 2 here)
+    /// entered exactly 18 into what the code still called a "Round of 32" — 9 ties, 9 winners, an
+    /// ODD number with no bye, so pairing the next round silently dropped the ninth winner on the
+    /// floor. Chasing that forward, the bracket eventually shrank to exactly ONE winner a round
+    /// before the Final's fixture slot, so no Final tie was ever created, the winner-set check
+    /// (which only fires when the LAST round's tie is played) never ran, and the cup froze with
+    /// no winner, no prize and no honour — forever, every season, for that country. Continental
+    /// Cup was never touched by this because its entry is already a clean 8, so it always
+    /// resolved fine, which is exactly why only National Cup and League Cup failed AuditSmoke's
+    /// A6 check.
+    ///
+    /// Capping to the largest power of two no bigger than the available clubs (or the intended
+    /// 32/8 ceiling) means every round halves cleanly with never an odd one out, all the way to a
+    /// single Final. The round LABELS still come from the fixed 5-entry (Continental: 3-entry)
+    /// `Cups[].Rounds` array — a small country's cup starts partway INTO that array (e.g. at
+    /// "Semi-final" for a 4-club bracket) rather than always at "Round of 32", so the name it
+    /// shows always matches how many ties are actually left.
+    /// </summary>
     private void EnsureCup()
     {
         var clubs = Repo.Teams().Where(t => t.LeagueId is TopFlight or Division2).Select(t => t.Id).ToList();
@@ -182,10 +211,16 @@ public sealed partial class Session
             if (Repo.Fixtures(SeasonId).Any(f => f.Kind == "cup" && f.LeagueId == cup.LeagueId)) continue;
             Repo.UpsertLeague(new LeagueRow { Id = cup.LeagueId, Name = cup.Name, Tier = 0 });
             var rng = new SeededRandom((SeasonId * cup.Salt + 11) ^ WorldSeed);
+            var cap = cup.LeagueId == ContinentalId ? 8 : 32;
+            var bracketSize = LargestPowerOfTwoAtMost(Math.Min(cap, clubs.Count));
+            if (bracketSize < 2) continue;   // not even enough clubs for one tie
+            var roundsNeeded = (int)Math.Round(Math.Log2(bracketSize));
+            var startIx = Math.Max(0, cup.Rounds.Length - roundsNeeded);
+
             List<int> entrants;
             if (cup.LeagueId == ContinentalId)
             {
-                // Elite entry: last season's qualifiers first, ELO fills the rest of the 8.
+                // Elite entry: last season's qualifiers first, ELO fills the rest of the bracket.
                 var qualified = new List<int>();
                 if (GetMeta($"continental_{SeasonId}") is { } q)
                 {
@@ -197,13 +232,13 @@ public sealed partial class Session
                 entrants = qualified
                     .Concat(clubs.Where(c => !qualified.Contains(c))
                         .OrderByDescending(EloOf))
-                    .Take(8)
+                    .Take(bracketSize)
                     .OrderBy(_ => rng.Next(1_000_000))
                     .ToList();
             }
             else
             {
-                entrants = clubs.OrderBy(_ => rng.Next(1_000_000)).Take(32).ToList();
+                entrants = clubs.OrderBy(_ => rng.Next(1_000_000)).Take(bracketSize).ToList();
             }
             var nextId = NextFixtureId();
             for (var i = 0; i + 1 < entrants.Count; i += 2)
@@ -211,7 +246,7 @@ public sealed partial class Session
                 Repo.AddFixture(new FixtureRow
                 {
                     Id = nextId++, SeasonId = SeasonId, LeagueId = cup.LeagueId,
-                    Matchday = cup.Rounds[0].Matchday,
+                    Matchday = cup.Rounds[startIx].Matchday,
                     HomeTeamId = entrants[i], AwayTeamId = entrants[i + 1], Kind = "cup", Played = false,
                 });
             }
@@ -319,6 +354,28 @@ public sealed partial class Session
             foreach (var round in cup.Rounds)
             {
                 AdvanceCup(round.Matchday, exceptFixtureId: -1, includeOwnTies: true);
+            }
+
+            // BACKSTOP, not the fix: EnsureCup now caps every fresh draw to a clean power of two,
+            // so a bracket drawn from here on always reaches a Final. This exists for a career
+            // whose cup was ALREADY drawn uneven before that fix existed — the bracket above can
+            // still shrink to one team a round short of a Final fixture, leaving no last tie to
+            // ever trigger the winner-set check. Rather than let that cup stay silently trophy-less
+            // for the rest of the career, name the best-ELO team still standing in the LATEST round
+            // it reached: never a substitute for a real Final, only a guarantee this specific
+            // failure mode (audit A6: "the cup used to freeze, no winner") cannot recur.
+            if (GetMeta($"cup_winner_{cup.LeagueId}_{SeasonId}") is null)
+            {
+                var played = Repo.Fixtures(SeasonId)
+                    .Where(f => f.Kind == "cup" && f.LeagueId == cup.LeagueId && f.Played)
+                    .ToList();
+                if (played.Count > 0)
+                {
+                    var latestRound = played.Max(f => f.Matchday);
+                    var stillIn = played.Where(f => f.Matchday == latestRound)
+                        .Select(CupWinnerOf).Distinct().OrderByDescending(EloOf).ToList();
+                    if (stillIn.Count > 0) SetMeta($"cup_winner_{cup.LeagueId}_{SeasonId}", stillIn[0].ToString());
+                }
             }
         }
     }

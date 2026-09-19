@@ -260,9 +260,82 @@ Console.WriteLine("\nA6  Advance Season with your own cup ties unplayed (the cup
         Scalar($"SELECT COUNT(*) FROM fixtures WHERE season_id={season} AND kind='cup' AND played=0") == 0);
     Check("the cup honours are on the roll",
         Scalar($"SELECT COUNT(*) FROM honours WHERE season_id={season} AND competition IN ('cup','lcup','ccup')") == 3);
+    // A fixed ">900" here was calibrated against whatever bigger multi-division world this check
+    // was first written against — it reads as a real shortfall on any smaller/single-division
+    // career (this one: 18 clubs, ~330 non-friendly fixtures a season) even though every one of
+    // THIS world's own fixtures settled fine. Compare against this world's own count instead.
     var settled = Scalar("SELECT COUNT(*) FROM meta WHERE key LIKE 'bans_settled_%'");
-    Check("every simmed fixture settled its bans", settled > 900, $"{settled:N0} fixtures");
+    var nonFriendly = Scalar($"SELECT COUNT(*) FROM fixtures WHERE season_id={season} AND kind != 'friendly'");
+    Check("every simmed fixture settled its bans",
+        settled >= nonFriendly, $"{settled:N0} settled of {nonFriendly:N0} non-friendly fixtures");
     Check("the new season starts with a clean disciplinary sheet", Scalar("SELECT COUNT(*) FROM suspensions") == 0);
+    Console.WriteLine("  (National/League Cup winners above may still fail — see the dedicated section below: " +
+                       "this world's cup was DRAWN before the bracket-sizing fix existed, and redrawing a " +
+                       "season already in progress is a separate, riskier repair from fixing new draws.)");
+}
+
+// ---------------------------------------------------------------------------------------------
+Console.WriteLine("\nA6b  the SAME country's cup, drawn fresh under the fixed bracket sizing");
+{
+    // This world's own season-9000 cup was drawn by an OLDER build (18 clubs, no Division 2 —
+    // "Round of 32" entered all 18 of them, an ODD number after the first round with no bye,
+    // which is why National/League Cup fail above: the bracket silently loses the ninth winner a
+    // round in, shrinks to exactly one finalist a round before the Final's fixture slot, and no
+    // Final tie ever gets created — nothing ever reaches the "last round played" check that sets
+    // cup_winner. That draw already happened; the fix (cap entrants to the largest power of two
+    // no bigger than the club count) can only stop it from happening to a FUTURE draw, not
+    // retroactively un-corrupt one already on disk. This is that proof, on its own isolated copy
+    // so it can't disturb the checks below that keep using `s`.
+    using (var checkpoint = db.Connection.CreateCommand())
+    {
+        checkpoint.CommandText = "PRAGMA wal_checkpoint(FULL);";   // flush WAL before copying the file
+        checkpoint.ExecuteNonQuery();
+    }
+    var work2 = Path.Combine(Path.GetTempPath(), $"ml_audit_smoke_redraw_{Environment.ProcessId}.db");
+    File.Copy(work, work2, overwrite: true);
+    var db2 = MasterDb.Open(work2);
+    void Exec(string sql, long? param = null)
+    {
+        using var cmd = db2.Connection.CreateCommand();
+        cmd.CommandText = sql;
+        if (param is { } p) cmd.Parameters.AddWithValue("$s", p);
+        cmd.ExecuteNonQuery();
+    }
+    // Every table that carries a fixture_id FK needs clearing before the fixture itself can go.
+    foreach (var table in new[]
+             {
+                 "results", "match_events", "player_match_ratings", "match_team_stats",
+                 "match_player_ratings", "match_player_stats", "match_exports",
+             })
+    {
+        Exec($"DELETE FROM {table} WHERE fixture_id IN " +
+             "(SELECT id FROM fixtures WHERE season_id=$s AND kind='cup')", season);
+    }
+    Exec("DELETE FROM fixtures WHERE season_id=$s AND kind='cup'", season);
+    // Leagues 9002-9004 are left in place deliberately: EnsureCup upserts them (ON CONFLICT DO
+    // UPDATE) so they don't need pre-deleting, and season 9001's cup — already drawn by A6's own
+    // rollover, above — still references the SAME three league rows, so removing them here would
+    // break a season this test isn't touching at all.
+    Exec("DELETE FROM meta WHERE key LIKE 'cup_winner_%' OR key LIKE 'cup_pens_%'");
+    var s2 = new Session(db2, s.CurrentTeamId, season);   // ctor calls EnsureCup — fresh draw, fixed code
+    foreach (var (leagueId, name) in new[] { (Session.CupLeague, "National Cup"), (Session.LeagueCupId, "League Cup") })
+    {
+        long Scalar2(string sql) { using var c = db2.Connection.CreateCommand(); c.CommandText = sql; var v = c.ExecuteScalar(); return v is null or DBNull ? 0 : Convert.ToInt64(v); }
+        var entrants = Scalar2($"SELECT COUNT(*) * 2 FROM fixtures WHERE season_id={season} AND league_id={leagueId} AND kind='cup'");
+        var isPowerOfTwo = entrants > 0 && (entrants & (entrants - 1)) == 0;
+        Check($"{name}'s fresh draw enters a clean power-of-two bracket, not the 18-club oddity",
+            isPowerOfTwo, $"{entrants} entrants");
+    }
+    var summary2 = s2.AdvanceToNextSeason();
+    foreach (var (leagueId, name) in new[]
+             { (Session.CupLeague, "National Cup"), (Session.LeagueCupId, "League Cup"), (Session.ContinentalId, "Continental Cup") })
+    {
+        var winner = s2.GetSetting($"cup_winner_{leagueId}_{season}");
+        Check($"{name} (redrawn fresh) has a winner", winner is not null,
+            winner is null ? "" : s2.TeamName(int.Parse(winner)));
+    }
+    db2.Dispose();
+    try { File.Delete(work2); } catch { /* temp file */ }
 }
 
 // ---------------------------------------------------------------------------------------------
