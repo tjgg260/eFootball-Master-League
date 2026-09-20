@@ -131,3 +131,10 @@ custom_faces/
 tools/*.npz
 # ad-hoc reverse-engineering scratch (belongs in the scratchpad, not the repo)
 sk/
+
+# Large local-only blobs that must never enter history.
+# scraper.7z is 106 MB - over GitHub's per-file hard limit on its own.
+# eng.traineddata is a DOWNLOADED dependency by decision (docs/decisions.md): fetch it with
+#   curl -sL -o tools/tessdata/eng.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/eng.traineddata
+scraper.7z
+tools/tessdata/
