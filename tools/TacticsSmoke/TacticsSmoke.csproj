@@ -22,6 +22,7 @@
     <Compile Include="..\..\src\ML.App\CareerLoader.cs" />
     <Compile Include="..\..\src\ML.App\CatalogData.cs" />
     <Compile Include="..\..\src\ML.App\Formations.cs" />
+    <Compile Include="..\..\src\ML.App\FormationCatalog.cs" />
     <Compile Include="..\..\src\ML.App\MatchLauncher.cs" />
     <Compile Include="..\..\src\ML.Web\Compat\Visuals.cs" />
     <Compile Include="..\..\src\ML.Web\Compat\GlobalUsings.cs" />

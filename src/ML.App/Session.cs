@@ -719,9 +719,31 @@ public sealed partial class Session
         return dict;
     }
 
-    /// <summary>Distinct, standard-looking formation shapes available in the DB, as (label, id).</summary>
-    public IReadOnlyList<(string Shape, int Id)> FormationOptions()
+    /// <summary>
+    /// A formation the Tactics screen can apply. Either built-in catalogue geometry
+    /// (<see cref="Slots"/> set, <see cref="Id"/> 0) or a shape this world's own formation_slots
+    /// carries, to be read back by id.
+    /// </summary>
+    public sealed record FormationChoice(string Shape, int Id,
+                                         IReadOnlyList<FormationCatalog.Slot>? Slots = null);
+
+    /// <summary>
+    /// The formations the Set Formation list offers: the built-in catalogue first, then any
+    /// standard-looking shape in this world that the catalogue does not already name.
+    ///
+    /// It used to be the database's shapes alone. That is fine against the curated world and
+    /// empty-handed against one built from the player's install, which carried no formation
+    /// geometry at all — dt200 has it, game_world.py never read it — leaving only the four shapes
+    /// career_seed rotates through when it has no template to copy. game_world.py loads the real
+    /// tables now, and the catalogue covers the worlds built before it did, without asking anyone
+    /// to rebuild a world that holds their careers. See tools/gen_formation_catalog.py.
+    /// </summary>
+    public IReadOnlyList<FormationChoice> FormationOptions()
     {
+        var options = FormationCatalog.All
+            .Select(t => new FormationChoice(t.Name, 0, t.Slots)).ToList();
+        var named = new HashSet<string>(options.Select(o => o.Shape));
+
         var byFormation = new Dictionary<int, List<int>>();
         using (var cmd = Db.Connection.CreateCommand())
         {
@@ -738,11 +760,12 @@ public sealed partial class Session
         foreach (var (fid, ys) in byFormation)
         {
             var shape = Formations.ShapeOf(ys);
-            if (Formations.IsStandard(shape) && !byShape.ContainsKey(shape))
+            if (Formations.IsStandard(shape) && !named.Contains(shape) && !byShape.ContainsKey(shape))
                 byShape[shape] = fid;
         }
-        return byShape.Select(kv => (kv.Key, kv.Value))
-                      .OrderByDescending(x => x.Key.Length).ThenBy(x => x.Key).ToList();
+        options.AddRange(byShape.OrderByDescending(kv => kv.Key.Length).ThenBy(kv => kv.Key)
+                                .Select(kv => new FormationChoice(kv.Key, kv.Value)));
+        return options;
     }
 
     // ------------------------------------------------------------------ tactics ownership

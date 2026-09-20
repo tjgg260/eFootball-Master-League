@@ -104,11 +104,17 @@ CARRY_OVER_CAREER: frozenset[str] = frozenset()
 WORLD_META = frozenset({"world_source", "world_scope", "world_reader_version", "world_built_at",
                         "world_archives", "career_player_band"})
 
-# Curated fallback shapes: (label, [(role_code, x, y) per slot 0..10]). Used when a club has no
-# real eFootball counterpart to copy a formation from. Game coordinate ranges: x 12-92 (centre
-# 52), y 3-43 (depth from own goal; GK = 3). Role codes: 0 GK, 1 CB, 2 LB, 3 RB, 4 DMF, 5 CMF,
-# 6 LMF, 7 RMF, 8 AMF, 9 LWF, 10 RWF, 11 SS, 12 CF.
-FALLBACK_SHAPES = [
+# Fallback shapes: (label, [(role_code, x, y) per slot 0..10]). Used when a club has no real
+# eFootball counterpart to copy a formation from — which, in a world built before game_world.py
+# started reading dt200's Tactics.bin / TacticsFormation.bin, is EVERY club. These four hard-coded
+# shapes were therefore the whole formation vocabulary of such a world, and the app's Set Formation
+# list showed exactly them.
+# tools/data/formations.json is the real catalogue — twenty shapes, each the modal layout of the
+# real eFootball formations in the curated world (tools/gen_formation_catalog.py). The four below
+# remain as the last resort if that file is missing from a checkout.
+# Game coordinate ranges: x 12-92 (centre 52), y 3-43 (depth from own goal; GK = 3). Role codes:
+# 0 GK, 1 CB, 2 LB, 3 RB, 4 DMF, 5 CMF, 6 LMF, 7 RMF, 8 AMF, 9 LWF, 10 RWF, 11 SS, 12 CF.
+BUILTIN_SHAPES = [
     ("4-4-2", [(0, 52, 3), (2, 16, 15), (1, 40, 13), (1, 64, 13), (3, 88, 15),
                (6, 16, 28), (5, 42, 26), (5, 62, 26), (7, 88, 28), (12, 42, 40), (12, 62, 40)]),
     ("4-3-3", [(0, 52, 3), (2, 16, 15), (1, 40, 13), (1, 64, 13), (3, 88, 15),
@@ -118,6 +124,25 @@ FALLBACK_SHAPES = [
     ("3-5-2", [(0, 52, 3), (1, 30, 13), (1, 52, 12), (1, 74, 13), (6, 14, 26),
                (4, 52, 22), (5, 38, 28), (5, 66, 28), (7, 90, 26), (12, 42, 40), (12, 62, 40)]),
 ]
+
+
+def load_fallback_shapes():
+    """The generated catalogue, or the four built-ins if it is not in this checkout."""
+    path = Path(__file__).resolve().parent / "data" / "formations.json"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        shapes = [(f["name"], [(s["role"], s["x"], s["y"])
+                               for s in sorted(f["slots"], key=lambda s: s["slot"])])
+                  for f in doc["formations"]]
+        shapes = [(n, sl) for n, sl in shapes if len(sl) == 11]
+        if shapes:
+            return shapes
+    except (OSError, ValueError, KeyError):
+        pass
+    return BUILTIN_SHAPES
+
+
+FALLBACK_SHAPES = load_fallback_shapes()
 
 
 def real_team_templates(con):

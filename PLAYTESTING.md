@@ -25,7 +25,8 @@ experimental**. This guide covers the easy path first, then the advanced integra
 
 **Only for the full eFootball integration (optional, advanced):**
 - eFootball on Steam (PC)
-- Python 3.11+ with `numpy` and `pycryptodome`
+- Python 3.11+ with `Pillow` (the club crests are BC7 textures and nothing else decodes them),
+  `numpy` and `pycryptodome`
 - A Rust toolchain, to build and install the stats host (for automatic result capture)
 - These are **not needed** to play a career by entering results yourself.
 

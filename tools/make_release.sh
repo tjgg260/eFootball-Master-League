@@ -7,7 +7,8 @@
 #
 # Layout of the package (a zip of the MasterLeague/ folder):
 #   app/                    published self-contained win-x64 ML.App
-#   python/                 embedded CPython 3.13 + numpy — New Career runs the seeder through
+#   python/                 embedded CPython 3.13 + numpy + Pillow (the crest decoder) — New
+#                           Career runs the seeder through
 #                           this, so a downloader installs nothing (python.org/pythonhosted
 #                           downloads, every one pinned by sha256, cached in $ML_CACHE)
 #   build/master.db         the world — copied through sqlite3's backup API, then sanitised:
@@ -102,6 +103,13 @@ PY_SBOM_URL="https://www.python.org/ftp/python/3.13.15/python-3.13.15-embed-amd6
 PY_SBOM_SHA="ba428f93acb06764f0005246f8ca48bb1c04feef64ce7db0b177fb2fd371c423"
 NUMPY_URL="https://files.pythonhosted.org/packages/f3/ec/100f2b1794ede74a9b3d7ec6b9736927f56713414c1dfe19ab6c383494bf/numpy-2.5.3-cp313-cp313-win_amd64.whl"
 NUMPY_SHA="71cad2b2a7451ab79d8f5e71b453485b6775963d5cf794179144a7463fe6e8ec"
+# Pillow decodes the club crests. WITHOUT IT THE DOWNLOAD HAS NO CRESTS AT ALL: the game keeps
+# every emblem as a BC7 Texture2D, tools/game_emblems.py decodes BC7 through Pillow's "bcn" raw
+# decoder and exits at its first line when Pillow is missing, so first_run.py reports "Crests
+# could not be read this time" and every club falls back to its two initials. game_faces.py's
+# numpy path covers DXT5 only — the variant card art needs Pillow too.
+PILLOW_URL="https://files.pythonhosted.org/packages/a6/9b/7a58e61d62be561da3a356fe2384d4059a6345fc130e23ef1c36a5b81d24/pillow-12.3.0-cp313-cp313-win_amd64.whl"
+PILLOW_SHA="1cca606cd25738df4ed873d5ad46bbdb3d83b5cbca291f6b4ff13a4df6b0bbe8"
 
 fetch() {                       # fetch <url> <sha256> -> prints the cached file's path
   local url="$1" want="$2" dst got
@@ -125,16 +133,18 @@ fetch() {                       # fetch <url> <sha256> -> prints the cached file
 PY_EMBED_ZIP="$(fetch "$PY_EMBED_URL" "$PY_EMBED_SHA")"
 PY_SBOM_JSON="$(fetch "$PY_SBOM_URL" "$PY_SBOM_SHA")"
 NUMPY_WHEEL="$(fetch "$NUMPY_URL" "$NUMPY_SHA")"
+PILLOW_WHEEL="$(fetch "$PILLOW_URL" "$PILLOW_SHA")"
 
-"$PYHOST" - "$PY_EMBED_ZIP" "$NUMPY_WHEEL" "$PY_SBOM_JSON" "$PKG/python" <<'PY'
+"$PYHOST" - "$PY_EMBED_ZIP" "$NUMPY_WHEEL" "$PILLOW_WHEEL" "$PY_SBOM_JSON" "$PKG/python" <<'PY'
 import os, shutil, sys, zipfile
-embed, wheel, sbom, dest = sys.argv[1:5]
+embed, numpy_whl, pillow_whl, sbom, dest = sys.argv[1:6]
 shutil.rmtree(dest, ignore_errors=True); os.makedirs(dest)
 with zipfile.ZipFile(embed) as z:
     z.extractall(dest)                       # keeps python/LICENSE.txt — we must ship it
 site = os.path.join(dest, "Lib", "site-packages"); os.makedirs(site, exist_ok=True)
-with zipfile.ZipFile(wheel) as z:
-    z.extractall(site)
+for wheel in (numpy_whl, pillow_whl):
+    with zipfile.ZipFile(wheel) as z:
+        z.extractall(site)
 # numpy's test suites are megabytes nothing in the app ever runs. *.dist-info is off limits:
 # it carries the licence files the wheel is distributed under.
 stripped = 0
@@ -146,7 +156,7 @@ for root, dirs, _ in os.walk(os.path.join(site, "numpy"), topdown=True):
             shutil.rmtree(os.path.join(root, d), ignore_errors=True)
             dirs.remove(d); stripped += 1
 shutil.copyfile(sbom, os.path.join(dest, os.path.basename(sbom)))
-print(f"  unpacked python + numpy ({stripped} test dirs stripped), SBOM alongside")
+print(f"  unpacked python + numpy + Pillow ({stripped} test dirs stripped), SBOM alongside")
 PY
 
 # The stock embed ._pth does NOT put the script's own directory on sys.path, and every tools/
@@ -160,7 +170,11 @@ Lib\site-packages
 
 #import site
 PTH
-"$PYBIN" -c "import sqlite3, ctypes, zlib, numpy; print('embedded python ok', numpy.__version__)"
+# The BC7 check is not decoration: Pillow without its "bcn" raw decoder ships a package that
+# imports cleanly and still leaves the download with no club crests.
+"$PYBIN" -c "import sqlite3, ctypes, zlib, numpy; from PIL import Image; \
+Image.frombytes('RGBA', (4, 4), b'\x00' * 16, 'bcn', 7); \
+print('embedded python ok - numpy', numpy.__version__, 'Pillow', Image.__version__, 'BC7 ok')"
 
 echo "== database"
 mkdir -p "$PKG/build"

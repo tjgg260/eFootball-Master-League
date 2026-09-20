@@ -1,0 +1,1707 @@
+{
+  "_generated_by": "tools/gen_formation_catalog.py",
+  "_source": "modal geometry of the real eFootball team formations in build/master.db",
+  "_coords": "x 12-92 across the pitch (52 = centre), y 3-43 from own goal; slot 0 is the GK",
+  "formations": [
+    {
+      "name": "3-4-3",
+      "derived": "3-1-2-1-2-1",
+      "clubs": 2,
+      "modal": 2,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 76,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 28,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 52,
+          "y": 19
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 72,
+          "y": 25
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 32,
+          "y": 25
+        },
+        {
+          "slot": 7,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 31
+        },
+        {
+          "slot": 8,
+          "role": 10,
+          "role_name": "RWF",
+          "x": 84,
+          "y": 39
+        },
+        {
+          "slot": 9,
+          "role": 9,
+          "role_name": "LWF",
+          "x": 20,
+          "y": 39
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "3-5-2",
+      "derived": "3-3-2-2",
+      "clubs": 22,
+      "modal": 12,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 72,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 32,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 52,
+          "y": 21
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 68,
+          "y": 23
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 36,
+          "y": 23
+        },
+        {
+          "slot": 7,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 88,
+          "y": 27
+        },
+        {
+          "slot": 8,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 16,
+          "y": 27
+        },
+        {
+          "slot": 9,
+          "role": 12,
+          "role_name": "CF",
+          "x": 64,
+          "y": 43
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 40,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "3-1-4-2",
+      "derived": "3-1-4-2",
+      "clubs": 16,
+      "modal": 6,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 72,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 32,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 52,
+          "y": 21
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 68,
+          "y": 27
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 36,
+          "y": 27
+        },
+        {
+          "slot": 7,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 88,
+          "y": 27
+        },
+        {
+          "slot": 8,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 16,
+          "y": 27
+        },
+        {
+          "slot": 9,
+          "role": 12,
+          "role_name": "CF",
+          "x": 64,
+          "y": 43
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 40,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "3-4-1-2",
+      "derived": "3-2-2-1-2",
+      "clubs": 42,
+      "modal": 6,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 72,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 32,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 64,
+          "y": 21
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 40,
+          "y": 21
+        },
+        {
+          "slot": 6,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 88,
+          "y": 25
+        },
+        {
+          "slot": 7,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 16,
+          "y": 25
+        },
+        {
+          "slot": 8,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 33
+        },
+        {
+          "slot": 9,
+          "role": 12,
+          "role_name": "CF",
+          "x": 64,
+          "y": 43
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 40,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "3-4-2-1",
+      "derived": "3-2-2-2-1",
+      "clubs": 220,
+      "modal": 40,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 72,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 32,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 64,
+          "y": 21
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 40,
+          "y": 21
+        },
+        {
+          "slot": 6,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 88,
+          "y": 25
+        },
+        {
+          "slot": 7,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 16,
+          "y": 25
+        },
+        {
+          "slot": 8,
+          "role": 11,
+          "role_name": "SS",
+          "x": 68,
+          "y": 35
+        },
+        {
+          "slot": 9,
+          "role": 11,
+          "role_name": "SS",
+          "x": 36,
+          "y": 35
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "3-5-1-1",
+      "derived": "3-3-2-1-1",
+      "clubs": 2,
+      "modal": 2,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 72,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 32,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 52,
+          "y": 21
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 68,
+          "y": 23
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 36,
+          "y": 23
+        },
+        {
+          "slot": 7,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 88,
+          "y": 27
+        },
+        {
+          "slot": 8,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 16,
+          "y": 27
+        },
+        {
+          "slot": 9,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 33
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-3-3",
+      "derived": "4-1-2-2-1",
+      "clubs": 115,
+      "modal": 68,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 52,
+          "y": 19
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 68,
+          "y": 25
+        },
+        {
+          "slot": 7,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 36,
+          "y": 25
+        },
+        {
+          "slot": 8,
+          "role": 10,
+          "role_name": "RWF",
+          "x": 84,
+          "y": 39
+        },
+        {
+          "slot": 9,
+          "role": 9,
+          "role_name": "LWF",
+          "x": 20,
+          "y": 39
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-4-2",
+      "derived": "4-4-2",
+      "clubs": 160,
+      "modal": 46,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 64,
+          "y": 25
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 40,
+          "y": 25
+        },
+        {
+          "slot": 7,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 88,
+          "y": 27
+        },
+        {
+          "slot": 8,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 16,
+          "y": 27
+        },
+        {
+          "slot": 9,
+          "role": 12,
+          "role_name": "CF",
+          "x": 64,
+          "y": 43
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 40,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-1-4-1",
+      "derived": "4-1-4-1",
+      "clubs": 34,
+      "modal": 14,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 52,
+          "y": 19
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 64,
+          "y": 27
+        },
+        {
+          "slot": 7,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 40,
+          "y": 27
+        },
+        {
+          "slot": 8,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 88,
+          "y": 29
+        },
+        {
+          "slot": 9,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 16,
+          "y": 29
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-2-1-3",
+      "derived": "4-2-1-2-1",
+      "clubs": 156,
+      "modal": 48,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 68,
+          "y": 21
+        },
+        {
+          "slot": 6,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 36,
+          "y": 21
+        },
+        {
+          "slot": 7,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 31
+        },
+        {
+          "slot": 8,
+          "role": 10,
+          "role_name": "RWF",
+          "x": 88,
+          "y": 35
+        },
+        {
+          "slot": 9,
+          "role": 9,
+          "role_name": "LWF",
+          "x": 16,
+          "y": 35
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-2-2-2",
+      "derived": "4-2-2-2",
+      "clubs": 16,
+      "modal": 4,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 64,
+          "y": 21
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 40,
+          "y": 21
+        },
+        {
+          "slot": 7,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 84,
+          "y": 31
+        },
+        {
+          "slot": 8,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 20,
+          "y": 31
+        },
+        {
+          "slot": 9,
+          "role": 12,
+          "role_name": "CF",
+          "x": 64,
+          "y": 43
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 40,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-2-3-1",
+      "derived": "4-2-3-1",
+      "clubs": 615,
+      "modal": 208,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 64,
+          "y": 19
+        },
+        {
+          "slot": 6,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 40,
+          "y": 19
+        },
+        {
+          "slot": 7,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 84,
+          "y": 31
+        },
+        {
+          "slot": 8,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 20,
+          "y": 31
+        },
+        {
+          "slot": 9,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 31
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-3-1-2",
+      "derived": "4-3-1-2",
+      "clubs": 10,
+      "modal": 10,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 52,
+          "y": 23
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 72,
+          "y": 23
+        },
+        {
+          "slot": 7,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 32,
+          "y": 23
+        },
+        {
+          "slot": 8,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 33
+        },
+        {
+          "slot": 9,
+          "role": 12,
+          "role_name": "CF",
+          "x": 64,
+          "y": 43
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 40,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-3-2-1",
+      "derived": "4-3-2-1",
+      "clubs": 38,
+      "modal": 12,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 52,
+          "y": 25
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 72,
+          "y": 25
+        },
+        {
+          "slot": 7,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 32,
+          "y": 25
+        },
+        {
+          "slot": 8,
+          "role": 10,
+          "role_name": "RWF",
+          "x": 84,
+          "y": 39
+        },
+        {
+          "slot": 9,
+          "role": 9,
+          "role_name": "LWF",
+          "x": 20,
+          "y": 39
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-4-1-1",
+      "derived": "4-4-1-1",
+      "clubs": 10,
+      "modal": 2,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 64,
+          "y": 23
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 40,
+          "y": 23
+        },
+        {
+          "slot": 7,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 88,
+          "y": 25
+        },
+        {
+          "slot": 8,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 16,
+          "y": 25
+        },
+        {
+          "slot": 9,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 33
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-1-2-1-2",
+      "derived": "4-1-2-1-2",
+      "clubs": 16,
+      "modal": 4,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 52,
+          "y": 19
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 68,
+          "y": 25
+        },
+        {
+          "slot": 7,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 36,
+          "y": 25
+        },
+        {
+          "slot": 8,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 33
+        },
+        {
+          "slot": 9,
+          "role": 12,
+          "role_name": "CF",
+          "x": 64,
+          "y": 43
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 40,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "4-2-2-1-1",
+      "derived": "4-2-2-1-1",
+      "clubs": 2,
+      "modal": 2,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 64,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 40,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 13
+        },
+        {
+          "slot": 4,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 13
+        },
+        {
+          "slot": 5,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 64,
+          "y": 19
+        },
+        {
+          "slot": 6,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 40,
+          "y": 19
+        },
+        {
+          "slot": 7,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 84,
+          "y": 25
+        },
+        {
+          "slot": 8,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 20,
+          "y": 25
+        },
+        {
+          "slot": 9,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 33
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "5-3-2",
+      "derived": "3-2-1-2-2",
+      "clubs": 78,
+      "modal": 38,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 72,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 32,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 15
+        },
+        {
+          "slot": 5,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 15
+        },
+        {
+          "slot": 6,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 52,
+          "y": 21
+        },
+        {
+          "slot": 7,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 68,
+          "y": 27
+        },
+        {
+          "slot": 8,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 36,
+          "y": 27
+        },
+        {
+          "slot": 9,
+          "role": 12,
+          "role_name": "CF",
+          "x": 64,
+          "y": 43
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 40,
+          "y": 43
+        }
+      ]
+    },
+    {
+      "name": "5-4-1",
+      "derived": "3-2-4-1",
+      "clubs": 3,
+      "modal": 2,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 72,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 32,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 15
+        },
+        {
+          "slot": 5,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 15
+        },
+        {
+          "slot": 6,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 64,
+          "y": 25
+        },
+        {
+          "slot": 7,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 40,
+          "y": 25
+        },
+        {
+          "slot": 8,
+          "role": 7,
+          "role_name": "RMF",
+          "x": 84,
+          "y": 25
+        },
+        {
+          "slot": 9,
+          "role": 6,
+          "role_name": "LMF",
+          "x": 20,
+          "y": 25
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 41
+        }
+      ]
+    },
+    {
+      "name": "5-3-1-1",
+      "derived": "3-2-3-1-1",
+      "clubs": 10,
+      "modal": 6,
+      "slots": [
+        {
+          "slot": 0,
+          "role": 0,
+          "role_name": "GK",
+          "x": 52,
+          "y": 3
+        },
+        {
+          "slot": 1,
+          "role": 1,
+          "role_name": "CB",
+          "x": 52,
+          "y": 11
+        },
+        {
+          "slot": 2,
+          "role": 1,
+          "role_name": "CB",
+          "x": 72,
+          "y": 11
+        },
+        {
+          "slot": 3,
+          "role": 1,
+          "role_name": "CB",
+          "x": 32,
+          "y": 11
+        },
+        {
+          "slot": 4,
+          "role": 3,
+          "role_name": "RB",
+          "x": 88,
+          "y": 15
+        },
+        {
+          "slot": 5,
+          "role": 2,
+          "role_name": "LB",
+          "x": 16,
+          "y": 15
+        },
+        {
+          "slot": 6,
+          "role": 4,
+          "role_name": "DMF",
+          "x": 52,
+          "y": 21
+        },
+        {
+          "slot": 7,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 68,
+          "y": 23
+        },
+        {
+          "slot": 8,
+          "role": 5,
+          "role_name": "CMF",
+          "x": 36,
+          "y": 23
+        },
+        {
+          "slot": 9,
+          "role": 8,
+          "role_name": "AMF",
+          "x": 52,
+          "y": 33
+        },
+        {
+          "slot": 10,
+          "role": 12,
+          "role_name": "CF",
+          "x": 52,
+          "y": 43
+        }
+      ]
+    }
+  ]
+}

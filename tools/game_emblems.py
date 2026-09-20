@@ -177,7 +177,13 @@ def main() -> int:
     ap.add_argument("--dt200", default=str(BASE_CPK), help="the dt200 the world was read from (for Team.bin)")
     args = ap.parse_args()
     if not HAVE_PIL:
-        sys.exit("Pillow is needed to decode crests (BC7)")
+        # Every emblem in the game is a BC7 Texture2D and Pillow's "bcn" raw decoder is what reads
+        # one. There is no numpy fallback for BC7 (game_faces' covers DXT5 only), so this is fatal
+        # — and it is the whole reason a download can come up with no crests, so say so by name.
+        sys.exit("Pillow is needed to decode crests (they are BC7 textures) and this Python has "
+                 "none — clubs will show their initials.\n"
+                 f"    {sys.executable} -m pip install Pillow\n"
+                 "    (a release's bundled python\\ ships it; one built before 2026-09-20 does not)")
 
     game = Path(args.game_dir) if args.game_dir else default_game_dir()
     t0 = time.time()

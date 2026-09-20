@@ -6,8 +6,22 @@ namespace ML.App;
 /// <summary>Derives a readable formation shape (e.g. "4-3-3") from a formation's slot depths.</summary>
 public static class Formations
 {
-    /// <summary>Cluster the ten outfield players by pitch depth into lines: 4-3-3, 4-2-3-1, ...</summary>
+    /// <summary>
+    /// The formation these slot depths make: 4-3-3, 4-2-3-1, 5-3-2, …
+    ///
+    /// The clustering below is a reading of the geometry, not a name — it over-splits a line whose
+    /// wide players sit a few units deeper than the central pair, so a 3-4-2-1 comes out as
+    /// "3-2-2-2-1" and a back five as "3-2-1-2-2". <see cref="FormationCatalog"/> holds the name
+    /// each of those readings belongs to; anything it does not name keeps the raw reading.
+    /// </summary>
     public static string ShapeOf(IEnumerable<int> ys)
+    {
+        var lines = LinesOf(ys);
+        return FormationCatalog.NameFor(lines) ?? lines;
+    }
+
+    /// <summary>Cluster the ten outfield players by pitch depth into lines.</summary>
+    private static string LinesOf(IEnumerable<int> ys)
     {
         var outfield = ys.Where(y => y >= 9).OrderBy(y => y).ToList();
         if (outfield.Count == 0) return "—";
@@ -22,9 +36,13 @@ public static class Formations
         return string.Join("-", lines);
     }
 
-    /// <summary>A normal outfield shape: 3–4 lines, each 1–5, ten outfield players in total.</summary>
+    /// <summary>
+    /// A shape worth printing by name rather than calling "Custom": one the catalogue names, or a
+    /// normal outfield reading — 3–4 lines, each 1–5, ten outfield players in total.
+    /// </summary>
     public static bool IsStandard(string shape)
     {
+        if (FormationCatalog.IsNamed(shape)) return true;
         var parts = shape.Split('-');
         if (parts.Length is < 3 or > 4) return false;
         if (!parts.All(p => int.TryParse(p, out var n) && n is >= 1 and <= 5)) return false;

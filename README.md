@@ -79,7 +79,7 @@ dotnet test
 `Play Master League.bat` builds `ML.App` on first run and launches it from the repo root.
 
 For the full eFootball integration you also need eFootball on Steam, Python 3.11+ with
-`numpy` and `pycryptodome`, and, to capture results automatically, a Rust toolchain to build
+`Pillow`, `numpy` and `pycryptodome`, and, to capture results automatically, a Rust toolchain to build
 the stats host in `tools/vendor/efootball-re/` and install it into the game.
 See [PLAYTESTING.md](PLAYTESTING.md) for the step-by-step setup.
 

@@ -224,6 +224,40 @@ def decode_teams(arch: Archive) -> dict[int, dict]:
     return teams
 
 
+def decode_tactics(arch: Archive) -> tuple[dict[int, list[tuple[int, int, int, int]]],
+                                           dict[int, list[tuple[int, int, int]]]]:
+    """
+    The game's own formations and per-team tactics.
+
+    Tactics.bin (stride 12)          team_id @0, formation_id @4, style @8, phase @9 (0 attack, 1 defence)
+    TacticsFormation.bin (stride 12) role u32 @0, formation_id @4, y @8, x @9, slot @10 — 11 rows per shape
+
+    Both verified against this install: 1,780 formations, exactly 11 slots each, two rows per team.
+    Coordinates are on the game's 21x21 grid — depth odd (3..43), width a multiple of 4 (12..92).
+
+    Returns (formation_id -> [(slot, role, x, y)], team_id -> [(phase, formation_id, style)]).
+    Missing or unreadable tables are not fatal: a world without them simply has no shapes, which
+    is what every game-built world had before this was read at all.
+    """
+    tac = arch.table("Tactics.bin")
+    tf = arch.table("TacticsFormation.bin")
+    if not tac or not tf:
+        return {}, {}
+    geometry: dict[int, list[tuple[int, int, int, int]]] = defaultdict(list)
+    for i in range(0, len(tf) - 11, 12):
+        fid = struct.unpack_from("<I", tf, i + 4)[0]
+        role = struct.unpack_from("<I", tf, i)[0]
+        geometry[fid].append((tf[i + 10], role, tf[i + 9], tf[i + 8]))
+    # A shape the game never finished is not one we can field: an XI is eleven players.
+    shapes = {fid: sorted(slots) for fid, slots in geometry.items() if len(slots) == 11}
+    tactics: dict[int, list[tuple[int, int, int]]] = defaultdict(list)
+    for i in range(0, len(tac) - 11, 12):
+        tid, fid = struct.unpack_from("<II", tac, i)
+        if fid in shapes:
+            tactics[tid].append((tac[i + 9], fid, tac[i + 8]))
+    return shapes, dict(tactics)
+
+
 def decode_countries(arch: Archive) -> dict[int, str]:
     """Player nationality id -> English country name, from the game's own Country.bin
     (bits 9-18 of the 8-byte header; the English name is the fifth string)."""
@@ -295,10 +329,13 @@ def build(archives: list[Archive], layouts: dict, coeffs: dict | None = None, lo
         blocks = decode_assignments(arch)
         squad_pids = {r["player_id"] for rows in blocks.values() for r in rows}
         gate = sanity(arch.label, players, squad_pids)
+        shapes, tactics = decode_tactics(arch)
         per[arch.label] = {"arch": arch, "players": players, "blocks": blocks, "layout": layout,
                            "teams": decode_teams(arch), "countries": decode_countries(arch),
-                           "competitions": decode_competitions(arch), "gate": gate}
-        log(f"  {arch.label}: {len(players):,} players ({layout}), {len(blocks):,} squads — gate {gate}")
+                           "competitions": decode_competitions(arch), "gate": gate,
+                           "shapes": shapes, "tactics": tactics}
+        log(f"  {arch.label}: {len(players):,} players ({layout}), {len(blocks):,} squads, "
+            f"{len(shapes):,} formations — gate {gate}")
 
     order = [a.label for a in archives]
     countries: dict[int, str] = {}
@@ -397,7 +434,24 @@ def build(archives: list[Archive], layouts: dict, coeffs: dict | None = None, lo
         for t in lg["clubs"]:
             clubs[t].setdefault("league_id", lg["id"])
 
+    # ---- formations: merged across archives, the first in priority order winning a shared id,
+    # and a club's tactics taken from the archive its squad came from.
+    shapes: dict[int, list] = {}
+    for label in reversed(order):
+        shapes.update(per[label]["shapes"])
+    tactics: dict[int, list] = {}
+    for tid, c in clubs.items():
+        rows = per[c["source"]]["tactics"].get(tid)
+        if rows is None:
+            for label in order:
+                rows = per[label]["tactics"].get(tid)
+                if rows:
+                    break
+        if rows:
+            tactics[tid] = rows
+
     return {"per": per, "order": order, "clubs": clubs, "players": players, "leagues": leagues,
+            "shapes": shapes, "tactics": tactics,
             "skipped": dict(skipped), "unattached": unattached}
 
 
@@ -493,6 +547,21 @@ def write(world: dict, out: Path, replace: bool, scope: str) -> dict:
                 seen.add(pid)
                 sm.append((c["id"], pid, shirt if 1 <= shirt <= 99 else 99, slot, role))
     con.executemany("INSERT INTO squad_members(team_id,player_id,squad_number,slot,role) VALUES(?,?,?,?,?)", sm)
+    # The game's own formations. Only shapes some club in this world actually points at: the rest
+    # are geometry for teams that never made it into the catalog, and a formation with no club is
+    # an orphan the app would offer and nothing would play. Names are the raw id — the shape a
+    # reader prints is derived from the geometry (ML.App.Formations.ShapeOf).
+    tactics = {tid: rows for tid, rows in world["tactics"].items() if tid in clubs}
+    used = {fid for rows in tactics.values() for _phase, fid, _style in rows}
+    con.executemany("INSERT INTO formations(id,name) VALUES(?,?)",
+                    [(fid, f"F{fid}") for fid in sorted(used)])
+    con.executemany("INSERT INTO formation_slots(formation_id,slot_index,position,x,y) VALUES(?,?,?,?,?)",
+                    [(fid, slot, role, x, y) for fid in sorted(used)
+                     for slot, role, x, y in world["shapes"][fid]])
+    tt = sorted({(tid, phase): (tid, phase, fid, style)
+                 for tid, rows in tactics.items()
+                 for phase, fid, style in rows}.values())
+    con.executemany("INSERT INTO team_tactics(team_id,phase,formation_id,style) VALUES(?,?,?,?)", tt)
     meta = {
         "world_source": "game",
         "world_scope": scope,
@@ -508,7 +577,7 @@ def write(world: dict, out: Path, replace: bool, scope: str) -> dict:
     cat = write_catalog(world, out.with_name(CATALOG_NAME))
     return {"players": len(prow), "attribute_rows": len(arow), "playstyle_rows": len(srow),
             "skill_rows": len(krow), "squad_rows": len(sm), "clubs": len(clubs), "leagues": len(leagues),
-            "catalog": cat}
+            "formations": len(used), "tactics_rows": len(tt), "catalog": cat}
 
 
 # ============================================================================ command line

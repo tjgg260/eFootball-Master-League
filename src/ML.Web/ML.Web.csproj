@@ -52,6 +52,7 @@
     <Compile Include="..\ML.App\CareerLoader.cs" Link="Engine\CareerLoader.cs" />
     <Compile Include="..\ML.App\CatalogData.cs" Link="Engine\CatalogData.cs" />
     <Compile Include="..\ML.App\Formations.cs" Link="Engine\Formations.cs" />
+    <Compile Include="..\ML.App\FormationCatalog.cs" Link="Engine\FormationCatalog.cs" />
     <Compile Include="..\ML.App\MatchLauncher.cs" Link="Engine\MatchLauncher.cs" />
     <Compile Include="..\ML.App\WorldFiles.cs" Link="Engine\WorldFiles.cs" />
     <Compile Include="..\ML.App\SessionBands.cs" Link="Engine\SessionBands.cs" />

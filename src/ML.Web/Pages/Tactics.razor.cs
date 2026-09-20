@@ -171,7 +171,11 @@ public partial class Tactics : ComponentBase, IDisposable
         var tactics = s.Repo.TeamTactics(s.CurrentTeamId);
         _styleIx = Math.Clamp(tactics.FirstOrDefault(t => t.Phase == 0)?.Style ?? 0, 0, StyleCatalog.Length - 1);
         _autoSub = s.GetSetting($"autosub_{s.CurrentTeamId}") ?? "Flexible";
-        _templates = s.FormationOptions().GroupBy(f => f.Shape).Select(g => g.First())
+        // ML.Web is frozen (2026-08-23) and applies a template BY FORMATION ID. The built-in
+        // catalogue that FormationOptions now leads with carries its geometry inline under Id 0, and
+        // this page has no path for that, so it keeps the world's own shapes — what it always showed.
+        _templates = s.FormationOptions().Where(f => f.Id != 0)
+            .GroupBy(f => f.Shape).Select(g => (Shape: g.Key, g.First().Id))
             .OrderBy(f => f.Shape).ToList();
 
         var (fid0, fid1) = s.OwnFormationIds();

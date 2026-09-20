@@ -9,7 +9,10 @@ namespace ML.App.ViewModels;
 
 // --- Tactics (the eFootball/FM formation editor, on a drawn pitch) ----------------
 
-public sealed record FormationOption(string Shape, int Id)
+/// <summary>A row of the Set Formation list. <see cref="Slots"/> is the built-in catalogue's
+/// geometry; when it is null the shape lives in this world's formation_slots under <see cref="Id"/>.</summary>
+public sealed record FormationOption(string Shape, int Id,
+                                     IReadOnlyList<ML.App.FormationCatalog.Slot>? Slots = null)
 {
     public override string ToString() => Shape;
 }
@@ -422,7 +425,7 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
         _s = s;
         foreach (var st in StyleCatalog) Styles.Add(st);
         foreach (var p in AllPositions) Positions.Add(p);
-        foreach (var f in s.FormationOptions()) Templates.Add(new FormationOption(f.Shape, f.Id));
+        foreach (var f in s.FormationOptions()) Templates.Add(new FormationOption(f.Shape, f.Id, f.Slots));
 
         var tactics = s.Repo.TeamTactics(s.CurrentTeamId);
         var styleIx = tactics.FirstOrDefault(t => t.Phase == 0)?.Style ?? 0;
@@ -1148,7 +1151,12 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
                 // MD1 / unseeded club: no tactics row (or empty geometry). Borrow a standard
                 // shape for the PREVIEW only — nothing is written back to the opponent.
                 var borrowed = _s.FormationOptions().FirstOrDefault();
-                if (borrowed.Id != 0)
+                if (borrowed?.Slots is { Count: > 0 } geo)
+                    slots = geo.Select((sl, i) => new FormationSlotRow
+                    {
+                        SlotIndex = i, Position = sl.Role, X = sl.X, Y = sl.Y,
+                    }).ToList();
+                else if (borrowed is { Id: not 0 })
                     slots = _s.Repo.FormationSlots(borrowed.Id).OrderBy(sl => sl.SlotIndex).ToList();
             }
             var players = _s.Repo.SquadPlayers(oppId).ToDictionary(p => p.Id);
@@ -2062,12 +2070,16 @@ public sealed partial class TacticsViewModel : PageViewModel, ISaveablePage
     partial void OnSelectedTemplateChanged(FormationOption? value)
     {
         if (value is null) return;
-        var slots = _s.Repo.FormationSlots(value.Id).OrderBy(sl => sl.SlotIndex).ToList();
+        // Built-in templates carry their own geometry; a world shape is read back by id.
+        var slots = value.Slots is { Count: > 0 } builtin
+            ? builtin.Select(sl => (sl.Role, sl.X, sl.Y)).ToList()
+            : _s.Repo.FormationSlots(value.Id).OrderBy(sl => sl.SlotIndex)
+                 .Select(sl => (Role: sl.Position, sl.X, sl.Y)).ToList();
         for (var i = 0; i < Players.Count && i < slots.Count; i++)
         {
             Players[i].Left = LeftFor(slots[i].Y);
             Players[i].Top = TopFor(slots[i].X);
-            Players[i].Position = Visuals.RoleCodeLabel(slots[i].Position);
+            Players[i].Position = Visuals.RoleCodeLabel(slots[i].Role);
         }
         UpdateYourShape();
         MarkDirty(KindShape);
