@@ -52,14 +52,17 @@ Testers should start with [PLAYTESTING.md](PLAYTESTING.md).
 ## Download and play
 
 The [Releases page](https://github.com/tjgg260/eFootball-Master-League/releases) carries a
-zip with the built app and the world database. Unzip it anywhere, double-click
-`Play Master League.bat`, and start a new career. Nothing else is needed to run a career by
-entering results yourself. Player photos are not included in the package: with eFootball
-installed, `python tools/game_faces.py` decodes the game's own player thumbnails into
-`build/game_faces/` and links them by PID. Without that, portraits are generated avatars.
-`python tools/game_emblems.py` does the same for club crests: it decodes them from the game's paks
-into `build/game_emblems/`, with installed mods such as EvoMod taking precedence, so unlicensed
-clubs show the real crests the mod ships. The first run does both.
+zip with the built app and an embedded Python. Unzip it anywhere, double-click
+`Play Master League.bat`, and start a new career.
+
+**No world ships with it.** The first New Career builds one out of your own eFootball install
+(`tools/first_run.py`): your clubs, leagues, players and squads from dt200, the club crests from
+the game's paks with installed mods such as EvoMod taking precedence, and the player photos from
+the game's own thumbnails. It takes about a minute, once, and it never writes to the game. A
+player without eFootball gets generated badges and avatars instead.
+
+The world lands in `build/game_world.db` beside the app, and your careers live in it — so keep
+that file if you want to keep a save.
 
 `tools/make_release.sh <version>` builds that package from a checkout.
 

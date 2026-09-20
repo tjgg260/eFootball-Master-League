@@ -47,8 +47,10 @@ experimental**. This guide covers the easy path first, then the advanced integra
    dotnet run --project src/ML.App
    ```
 
-Either way, the app opens on the **Office** (dashboard) screen with a career already seeded
-(a Premier League club). Your save lives in `build/master.db` — back that file up to keep a save.
+Either way, the first thing you get is **New Career**, which builds a world out of your own
+eFootball install before it offers you a club — about a minute, once. Then the app opens on the
+**Office** (dashboard) screen. Your world and your save both live in `build/game_world.db` — back
+that file up to keep a save.
 
 ---
 

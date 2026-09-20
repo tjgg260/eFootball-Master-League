@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
-# Build the "download and play" package: the published app, an embedded Python, the world
-# database with the owner's career stripped out of it, and the runtime folders the app resolves
-# by walking up to a root that holds tools/play_match.py.
+# Build the "download and play" package: the published app, an embedded Python, and the runtime
+# folders the app resolves by walking up to a root that holds tools/play_match.py.
 #
-#   ML_WORLD_ROOT=<checkout with build/master.db and assets packs> bash tools/make_release.sh <version> [out-dir]
+#   ML_WORLD_ROOT=<checkout with the assets packs> bash tools/make_release.sh <version> [out-dir]
+#
+# NO WORLD IS SHIPPED. The app's world is build/game_world.db, which the first run builds from the
+# player's own eFootball — CareerLoader.FindMasterDb() returns WorldFiles.Database and nothing
+# resolves to master.db any more (ruling 2026-09-13). The package carried a 2.05 GiB master.db and
+# a 138 MB club-logo pack reachable only through its rows, so ~95% of the download was a world the
+# app could not open. Set ML_SHIP_WORLD=1 to put them back — the copy, the sanitiser and both
+# world gates are still here, just off — for when there is a curated world worth shipping again.
 #
 # Layout of the package (a zip of the MasterLeague/ folder):
 #   app/                    published self-contained win-x64 ML.App
@@ -11,11 +17,9 @@
 #                           Career runs the seeder through
 #                           this, so a downloader installs nothing (python.org/pythonhosted
 #                           downloads, every one pinned by sha256, cached in $ML_CACHE)
-#   build/master.db         the world — copied through sqlite3's backup API, then sanitised:
-#                           no career, no owner settings, no C:\Users paths
-#   build/catalog.json      the world index New Career reads to offer countries and clubs
 #   src/ML.Data/schema.sql  the seeder applies this to the database it seeds
-#   tools/ assets/ data/ docs/   tracked files, plus the club-logo and flag packs the DB references
+#   tools/ assets/ data/ docs/   tracked files, plus the nationality flag pack the Squad screen
+#                           reads through assets/flag_map.json
 #   README.md PLAYTESTING.md LICENSE  "Play Master League.bat" (launches app\ML.App.exe)
 # Player faces (facepack/, build/game_faces/) are NOT shipped: multi-GB, and game_faces is Konami's
 # art. A player with eFootball installed runs tools/game_faces.py; otherwise generated avatars.
@@ -24,9 +28,12 @@ VER="${1:?version, e.g. v0.1.0}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${2:-$REPO/dist}"
 PKG="$OUT/MasterLeague"
-# The checkout that holds build/master.db and the downloaded asset packs (a worktree may not).
+# The checkout that holds the downloaded asset packs, and master.db when one is shipped (a
+# worktree may not).
 WORLD="${ML_WORLD_ROOT:-$REPO}"
 DB="${ML_DB:-$WORLD/build/master.db}"
+# Off by default: see NO WORLD IS SHIPPED at the top.
+SHIP_WORLD="${ML_SHIP_WORLD:-0}"
 CACHE="${ML_CACHE:-$OUT/.dlcache}"
 PYBIN="$PKG/python/python.exe"
 # The one python step that runs BEFORE the embedded interpreter exists (unpacking it) needs a
@@ -63,8 +70,14 @@ echo "== tracked runtime files"
 git -C "$REPO" archive HEAD tools assets data docs src/ML.Data/schema.sql \
   README.md PLAYTESTING.md LICENSE | tar -x -C "$PKG"
 rm -rf "$PKG/tools/ActionsSmoke" "$PKG/tools/TacticsSmoke"
-echo "== untracked asset packs the database references"
-for d in assets/dvx_logos assets/dvx_flags assets/gen_badges; do
+echo "== untracked asset packs"
+# dvx_flags is the one the MVP path reads: SquadViewModel resolves a player's nationality through
+# assets/flag_map.json into it. dvx_logos (138 MB) and gen_badges are club art reachable ONLY
+# through master.db's logo_path — a game-built world wears build/game_emblems/, decoded from the
+# player's own paks — so they ship only when the world does.
+packs="assets/dvx_flags"
+[ "$SHIP_WORLD" = "1" ] && packs="$packs assets/dvx_logos assets/gen_badges"
+for d in $packs; do
   [ -d "$WORLD/$d" ] && mkdir -p "$PKG/$d" && cp -r "$WORLD/$d/." "$PKG/$d/" || echo "  (no $d under $WORLD)"
 done
 
@@ -176,6 +189,9 @@ PTH
 Image.frombytes('RGBA', (4, 4), b'\x00' * 16, 'bcn', 7); \
 print('embedded python ok - numpy', numpy.__version__, 'Pillow', Image.__version__, 'BC7 ok')"
 
+if [ "$SHIP_WORLD" = "1" ]; then
+# Everything from here to the matching fi ships a curated world. Left whole and flush-left (the
+# heredoc terminators have to sit at column 0) so turning it back on is one variable.
 echo "== database"
 mkdir -p "$PKG/build"
 "$PYBIN" - "$DB" "$PKG/build/master.db" <<'PY'
@@ -279,11 +295,119 @@ else
   rm -rf "$SMOKE"; exit 1
 fi
 rm -rf "$SMOKE" "$PKG/careers"
+else
+echo "== no world shipped — the first run builds one from the player's eFootball"
+echo "  (ML_SHIP_WORLD=1 restores the database, the logo packs and the two gates above)"
+fi
 find "$PKG" -type d -name __pycache__ -prune -exec rm -rf {} +
+
+echo "== gate: the packaged python can drive the first run"
+# The bug this replaces the old seed gate with. tools/ ships from `git archive HEAD`, so a module
+# that only ever existed in someone's working tree is in no commit and in no zip, and the failure
+# lands on a downloader's first New Career. Import everything first_run.py reaches, through the
+# PACKAGED interpreter, from the package, with HOME pointing at an empty directory — no eFootball,
+# no OneDrive, nothing of the owner's on any path.
+IMPORTS="$OUT/.importgate"
+rm -rf "$IMPORTS"; mkdir -p "$IMPORTS"
+if ( cd "$PKG" && HOME="$IMPORTS" USERPROFILE="$IMPORTS" "$PYBIN" - <<'GATE'
+import importlib, sys
+# The tools first_run.py drives, in the order it drives them. Only these are importable by name:
+# the vendored readers live under tools/vendor/ and reach sys.path when a tool puts them there,
+# so they are checked below as a CONSEQUENCE of these imports rather than imported directly.
+for name in ("steam_paths", "cpk_patch", "game_world", "game_faces", "game_emblems",
+             "career_seed", "play_match"):
+    importlib.import_module(name)
+for vendored in ("wesys", "pesdb", "iostore"):
+    if vendored not in sys.modules:
+        sys.exit(f"{vendored} never loaded — tools/vendor is not in the package")
+import sqlite3, pathlib
+schema = pathlib.Path("src/ML.Data/schema.sql")
+if not schema.exists():
+    sys.exit("src/ML.Data/schema.sql is not in the package — career_seed dies on its first CREATE TABLE")
+con = sqlite3.connect(":memory:")
+con.executescript(schema.read_text(encoding="utf-8"))
+tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+for need in ("teams", "players", "squad_members", "formations", "formation_slots", "team_tactics"):
+    if need not in tables:
+        sys.exit(f"schema.sql applied but has no {need} table")
+print(f"  every first-run module imports; schema.sql builds {len(tables)} tables")
+GATE
+); then :; else
+  echo "  the package cannot drive its own first run — a downloader would land nowhere" >&2
+  rm -rf "$IMPORTS"; exit 1
+fi
+rm -rf "$IMPORTS"
+
+echo "== gate: first run + a career, end to end from the package"
+# The real thing, when this machine has eFootball: build a world out of the game with the PACKAGED
+# tools and the PACKAGED python, seed a career into it, and check the three things a downloader
+# notices first — squads, club crests, formations. Run in a COPY so no build artefact ships.
+E2E="$OUT/.e2e"
+GAMEDIR="${ML_EFOOTBALL_DIR:-}"
+if [ -z "$GAMEDIR" ] && [ -f "$WORLD/build/efootball_dir.txt" ]; then
+  GAMEDIR="$(tr -d '\r' < "$WORLD/build/efootball_dir.txt")"
+fi
+if [ -n "$GAMEDIR" ] && [ -f "$GAMEDIR/cpk/dt200_console_all.cpk" ]; then
+  rm -rf "$E2E"; mkdir -p "$E2E/home"
+  cp -r "$PKG" "$E2E/pkg"
+  if ( cd "$E2E/pkg" && HOME="$E2E/home" USERPROFILE="$E2E/home" PYTHONIOENCODING=utf-8 \
+         "$E2E/pkg/python/python.exe" "$E2E/pkg/tools/first_run.py" --game-dir "$GAMEDIR" --skip-faces ); then
+    "$PYBIN" - "$E2E/pkg" <<'CHECK'
+import json, os, sqlite3, sys
+pkg = sys.argv[1]
+con = sqlite3.connect(os.path.join(pkg, "build", "game_world.db"))
+n = lambda q: con.execute(q).fetchone()[0]
+clubs, squads = n("SELECT COUNT(*) FROM teams"), n("SELECT COUNT(*) FROM squad_members")
+shapes = n("SELECT COUNT(DISTINCT formation_id) FROM formation_slots")
+tactics = n("SELECT COUNT(DISTINCT team_id) FROM team_tactics")
+crests = n("SELECT COUNT(*) FROM teams WHERE logo_path IS NOT NULL AND logo_path<>''")
+con.close()
+cat = json.load(open(os.path.join(pkg, "build", "game_catalog.json"), encoding="utf-8"))
+picker = sum(len(l["teams"]) for c in cat["countries"] for l in c["leagues"])
+print(f"  {clubs:,} clubs, {squads:,} squad places, {picker:,} in the picker; "
+      f"{crests:,} crests, {shapes:,} formations over {tactics:,} clubs")
+for what, got in (("clubs", clubs), ("squad places", squads), ("picker clubs", picker),
+                  ("crests", crests), ("formations", shapes)):
+    if got == 0:
+        sys.exit(f"the first run produced NO {what} — that is what a downloader would get")
+CHECK
+    # One line, team and ITS league together — picking the club from a flattened list and the
+    # league from countries[0] would seed a club into a competition it does not play in.
+    PICK="$(cd "$E2E/pkg" && "$PYBIN" - <<'PICK'
+import json
+cat = json.load(open("build/game_catalog.json", encoding="utf-8"))
+for country in cat["countries"]:
+    for league in country["leagues"]:
+        if league["teams"]:
+            t = league["teams"][0]
+            print(f"{league['league_id']}|{t['team_id']}|{t['name']}")
+            raise SystemExit
+raise SystemExit("the catalog the first run wrote has no club in any league")
+PICK
+)"
+    PICK="$(echo "$PICK" | tr -d '\r')"
+    LID="${PICK%%|*}"; TID="$(echo "$PICK" | cut -d'|' -f2)"; TNAME="${PICK#*|*|}"
+    if ( cd "$E2E/pkg" && HOME="$E2E/home" USERPROFILE="$E2E/home" PYTHONIOENCODING=utf-8 \
+           ML_CONFIRM_RESEED=1 "$PYBIN" tools/career_seed.py --db "build/game_world.db" \
+           --catalog "build/game_catalog.json" --comp-id "$LID" --rfs-id "$TID" --team "$TNAME" ); then
+      echo "  a $TNAME career seeded from the world the package built"
+    else
+      echo "  career_seed.py failed against the world the package built" >&2
+      rm -rf "$E2E"; exit 1
+    fi
+  else
+    echo "  first_run.py failed against the package" >&2
+    rm -rf "$E2E"; exit 1
+  fi
+  rm -rf "$E2E"
+else
+  echo "  SKIPPED: no eFootball on this machine (set ML_EFOOTBALL_DIR) — the package ships UNPROVEN"
+fi
 
 cat > "$PKG/Play Master League.bat" <<'BAT'
 @echo off
-rem Launch Master League. The app finds build\master.db and tools\ by walking up from app\.
+rem Launch Master League. The app finds tools\ (and the world it builds beside them) by
+rem walking up from app\.
 cd /d "%~dp0"
 start "" "%~dp0app\ML.App.exe"
 BAT
