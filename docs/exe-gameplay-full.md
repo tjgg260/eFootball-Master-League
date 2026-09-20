@@ -2,6 +2,24 @@
 
 Whole-`match::`-surface sweep: 14 subsystems mapped by parallel agents over `tools/exe_map.py`, then synthesized and spot-checked. 221 levers. Base `0x140000000`. This complements [exe-gameplay-map.md](exe-gameplay-map.md) (the kick-error / difficulty deep-dives) and is the data behind the **eFootball Mod Deck** artifact (`tools/gameplay_catalog.py`). Confidence: proven = code followed; likely = structure/naming; guess = hypothesis.
 
+> **⚠ SUPERSEDED IN PLACES (2026-09-20).** This is an *August agent sweep*. The hand-verified
+> subsystem decode finished 2026-09-20 and re-derived much of it from PRISTINE with emulation;
+> where they disagree, **the chapters win** — `ball-carrier-brain.md`, `match-ai-decoded.md`,
+> `player-executors.md`, `registry-blackboard.md`, `anime-actions.md`, `goalkeeper.md`,
+> `pad-input.md`, `set-pieces.md`, `dt270-residue.md`. Corrections already known:
+> * **`ball-physics-exe`'s "only the RNG spin path adds nondeterminism" is wrong for the match as a
+>   whole.** The on-ball decision layer reads the possession random `r` as a **threshold at ~25
+>   sites** (`ball-carrier-brain.md`). The *off-ball selector* layer is the RNG-free one.
+> * **`rng-and-globals` is superseded by `registry-blackboard.md`**, which decodes the owning record:
+>   `URandomInfo`, 28 bytes, the seed store, updater `0x1453dea17`; the flagged open question is
+>   whether `+0x08` has a writer, settled by one live read at `0x145653e5f`.
+> * **`stamina-condition` remains `partial` and that is still accurate** — the per-frame drain is
+>   not an isolated constant. Workaround: `playerData+0x48a0`, a per-player effectiveness scalar
+>   (init 1.0, 257 refs into reach/range checks, never decremented per-frame).
+> * Several `difficulty-rows` "current" values were read from **our own patched image**, not stock
+>   (`player-executors.md` caught row `0x14`). Re-read any row from `eFootballonlinevanilla.exe`
+>   before trusting its quoted value.
+
 ## Coverage
 
 | subsystem | state | note |

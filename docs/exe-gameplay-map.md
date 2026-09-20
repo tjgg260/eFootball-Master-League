@@ -38,6 +38,14 @@ not resolve, so it severs matchmaking. It is present in PRISTINE, in the live `e
 chapter's claim touches it. But when a truly clean reference is needed, use
 `eFootballonlinevanilla.exe`, not PRISTINE.
 
+**Impact on anything you BUILD from PRISTINE: it inherits the matchmaking block.** Confirmed
+2026-09-20 by building `variants/eFootball.exe.difficulty-variance-v1` from PRISTINE and diffing it
+against `eFootballonlinevanilla.exe`: **5 bytes** — the 3 intended gameplay edits at `0x6c0635f`,
+`0x6c06ac2`, `0x6c06ac3`, plus the 2 inherited hostname bytes at `0x6e6eee3`, `0x6e6eee4`. For an
+offline Master League build that is harmless and arguably wanted (it enforces the standing "keep
+modified builds away from online" rule). Just never ship a PRISTINE-derived exe to someone
+expecting online play, and state the inheritance whenever handing one over.
+
 **The block is narrower than it looks.** Only 1 of the 11 Konami hostnames in the image was changed.
 `https://info.service.konami.net`, `ntl/ntleu/ntljp/ntlus.service.konami.net` (http and https) and
 `pesam.stun.service.konami.net` are all intact. This stops you joining matches; it does not stop the
@@ -49,7 +57,21 @@ install talking to Konami.
 |---|---|---|
 | `eFootballonlinevanilla.exe` | 2 bytes / 1 run | the untouched original (19 Aug) |
 | `eFootballhi.exe` | 104 bytes / 38 runs | **a mod build**, not a backup (25 Aug) — edits in `ActionSelectorCounterSpaceRun::vf4`, `AnimePlayer::vf3`, `anime::action::Kick::vf19` x2, `Sliding::vf5`, `Injury::vf4` x2 and the kick-builder band. Consistent with the August hyper-realism build that was wiped to stock ~09-13 |
-| `eFootball.exe` (live) | 909 bytes / 105 runs | the current build — see `realism-todo.md` for the inventory |
+| `eFootball.exe` (live) | ~~909 bytes / 105 runs~~ **do not quote this number** | the current build — see `realism-todo.md` for the inventory |
+
+**The live-exe byte count is not a fact you can write down.** Measured three times on 2026-09-20 it
+read **909**, then **63**, then **157** — it moves within a session because patches are applied and
+reverted continuously, sometimes by a concurrent session working in another worktree (the game dir
+also accumulates `eFootball.exe.V*` variants as that happens). **Always measure, never cite:**
+
+```bash
+python tools/exe_patch.py diff      # byte count vs PRISTINE
+python tools/exe_patch.py status    # per-spec applied / pristine / OTHER
+```
+
+`OTHER` means a site holds neither the original nor that spec's patched bytes — i.e. something else
+overwrote it. Several specs read `OTHER` on 2026-09-20. The catalogue makes the same point in
+`catalogue-notes.md` § "Applied right now" is measured, not looked up.
 
 `eFootballhi.exe` shares some sites with the live exe (`AnimePlayer::vf3`, the kick-builder cluster)
 and not others, so it is a **different** edit set, not an ancestor of it.

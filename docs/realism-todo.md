@@ -11,10 +11,27 @@ cover roughly a year of misdirected tuning.
 ## The five, in the owner's order
 
 ### 1. More randomness in AI decisions + varied off-ball movement from all players — IN PROGRESS
-The decision layer is provably deterministic: `ChanceSpaceRun::vf5` = `100 + attackDir*player.x +
-roleBonus` (whoever is furthest up the pitch), `DiagonalRun::vf5` = depth behind the line, and **no
-RNG is reachable from any selector** (943k-edge call-graph closure, positive control at depth 4 on
-the kick builder). So this cannot be tuned — it needs code.
+The **off-ball** decision layer is provably deterministic: `ChanceSpaceRun::vf5` =
+`100 + attackDir*player.x + roleBonus` (whoever is furthest up the pitch), `DiagonalRun::vf5` =
+depth behind the line, and **no RNG is reachable from any selector** (943k-edge call-graph closure,
+positive control at depth 4 on the kick builder). So this cannot be tuned — it needs code.
+
+> **Scope note added 2026-09-20: that determinism finding is about the OFF-BALL selectors only, and
+> the on-ball layer is the cheaper target.** The carrier brain already consumes a random: `r`
+> (`BP+0x14`, from `URandomInfo`) is read **as a threshold at ~25 enumerated sites** — Shoot (7),
+> PassForward, PassOneTwo (4), Dribble (2), PassSafety (2), PassLong, PassSpecial (6+), the arbiter
+> `0x145650eb9`, `Safety::canStart`. It is latched **once per possession spell** (refresh
+> `0x145653e47..0x145653e62`, gated on `BP+0x8ac == 1` or negative), which is exactly why a
+> possession plays out the same way twice. **Widening that gate may be a same-length branch edit —
+> no cave, no payload.**
+> Two cheaper-still routes to check first, in order:
+> 1. **`ThinkUnitPassRandomTest`** (§ "What this unblocks", below) — a fully-built randomiser that
+>    is *registered but never listed*. If listing it is a table edit, that is the whole feature.
+> 2. **One live read at `0x145653e5f`** settles `registry-blackboard.md`'s flagged risk that
+>    `URandomInfo+0x08` **may have no writer at all**. If it doesn't, re-latching re-draws the same
+>    number and the gate edit is inert — that read gates the entire approach and costs nothing.
+> Neither the score-term route nor run kind 6 below is invalidated; they address *off-ball* variety,
+> which the on-ball random does not touch. See `exe-cave-injector-plan.md`.
 
 Two independent routes, and they compose:
 - **score term** — add heterogeneity + genuine per-decision variation to `vf5`. First attempt
@@ -55,6 +72,20 @@ eligibility builder has no role filter. The memory-safety work behind them is so
 **So: build it on RB, not LB.** That is the single most shovel-ready item in this file.
 
 ### 3. A freer ball — ricochets, poor touches, realistic pass and shot error
+
+> **SHIPPED 2026-09-20 — `tools/data/tunings/chaos-freeball-combined.json`, installed and verified
+> live** (29 edits, `gameplay_tune.py diff` confirms all 29 against pristine). It merges the
+> held-out first-touch loosening with the three packs that had been staged-but-never-applied:
+> `trap.ballControlRate` **1.0 → 0.58** (acting on Tight Possession `0x19`, per this section),
+> `trap.reachOut.reach` 1.0 → 0.42, the `duels-firsttouch` reaction-speed/time ladder,
+> `dribble-feel` (`Feint.rate` 0.9 → 0.72, `runTrapStopTurnAngle` 90 → 55) and
+> `aerial-pitch-spread`. Installed on **bare pristine** — the earlier realism stack was NOT live at
+> the time (see `realism-audit.md` § WHAT IS ACTUALLY INSTALLED), so this pack stands alone rather
+> than stacking on loose-realism-v2.
+> **Caveat carried from the source pack:** the `aerial-pitch-spread` edits target `ball` array
+> indices `[0]/[2]/[3]/[4]` and *which index a default match actually loads was never confirmed* —
+> treat that third of the pack as unverified until observed in game.
+> **Still does not touch the ricochet question below**, which remains the real blocker for this item.
 Partly built already (kick-error model, `bobble-pitch`, first-touch work). The owner's standing
 ruling: **do not produce indiscriminate bad touches — create the conditions for looseness.** Keep
 `ballControlRate` below 1.0, because at exactly 1.0 a BC99 player is mathematically incapable of a

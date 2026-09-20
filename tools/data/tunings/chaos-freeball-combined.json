@@ -1,0 +1,179 @@
+{
+ "_comment": "Combined dt270 change (2026-09-20): the held-out first-touch loosening + the three staged 'freer ball / more chaotic duels' packs from the realism audit, merged into one install. Installed on top of BARE PRISTINE dt270 (nothing else from loose-realism-v2/game-feel/tactical-flow/shoot-realism/aerial-drag/setpiece-curl was live at install time -- this pack alone, not stacked on the earlier proven stack). Sources: held-out ballControlRate tweak (docs/realism-audit.md TIER 7 'Held out'), tools/data/tunings/duels-firsttouch.json, tools/data/tunings/dribble-feel.json, tools/data/tunings/aerial-pitch-spread.json.",
+ "edits": [
+  {
+   "object": "trap",
+   "path": "ballControlRate",
+   "value": 0.58,
+   "_note": "held out in the audit pending feel of the kick-error tier; applied now against pristine (Konami stock, not the 0.65 loose-realism-v2 midpoint) -- worse first touch for everyone"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.airBall.paraMin.reactionBallSpeed",
+   "value": 42.0,
+   "_note": "duels-firsttouch: 50->42"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionOwnBall.airBall.paraMin.reactionTime",
+   "value": 0.4,
+   "_note": "duels-firsttouch: 0.30->0.40 visible plant before controlling"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionBoundBall.airBall.paraMin.reactionBallSpeed",
+   "value": 38.0,
+   "_note": "duels-firsttouch: 45->38"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionBoundBall.airBall.paraMin.reactionTime",
+   "value": 0.5,
+   "_note": "duels-firsttouch: 0.40->0.50"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.airBall.paraMax.reactionBallSpeed",
+   "value": 52.0,
+   "_note": "duels-firsttouch: 50->52"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.airBall.paraMax.reactionTime",
+   "value": 0.25,
+   "_note": "duels-firsttouch: 0.30->0.25"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.airBall.paraMin.reactionBallSpeed",
+   "value": 38.0,
+   "_note": "duels-firsttouch: 45->38"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.airBall.paraMin.reactionTime",
+   "value": 0.4,
+   "_note": "duels-firsttouch: 0.30->0.40"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.groundBall.paraMax.reactionBallSpeed",
+   "value": 62.0,
+   "_note": "duels-firsttouch: 60->62"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.groundBall.paraMax.reactionTime",
+   "value": 0.35,
+   "_note": "duels-firsttouch: 0.40->0.35"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.groundBall.paraMin.reactionBallSpeed",
+   "value": 44.0,
+   "_note": "duels-firsttouch: 50->44"
+  },
+  {
+   "object": "trap",
+   "path": "reactionTrapBall.reactionEnemyBall.groundBall.paraMin.reactionTime",
+   "value": 0.48,
+   "_note": "duels-firsttouch: 0.40->0.48"
+  },
+  {
+   "object": "trap",
+   "path": "staggerTrapHeight",
+   "value": 0.3,
+   "_note": "duels-firsttouch: 0.4->0.30 easier to stagger a high touch"
+  },
+  {
+   "object": "trap",
+   "path": "ballForceDirect.rateCollisionSpin",
+   "value": 0.45,
+   "_note": "duels-firsttouch: 0.25->0.45 contact spin (horizontal, low balloon risk)"
+  },
+  {
+   "object": "trap",
+   "path": "afterCollision.hitAfterFrame",
+   "value": 8,
+   "_note": "duels-firsttouch: 14->8 contact can dislodge during the touch"
+  },
+  {
+   "object": "ballplayer",
+   "path": "Feint.rate",
+   "value": 0.72,
+   "_note": "dribble-feel: 0.9->0.72 mute one-button auto-beats"
+  },
+  {
+   "object": "trap",
+   "path": "reachOut.reach",
+   "value": 0.42,
+   "_note": "dribble-feel: 0.6->0.42 heavier touch on hard receptions"
+  },
+  {
+   "object": "trap",
+   "path": "busyTrapControl.runTrapStopTurnAngle",
+   "value": 55.0,
+   "_note": "dribble-feel: 90->55 no 90-degree instant spin on a pressured first touch"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate[2]",
+   "value": 0.66,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 0.72->0.66 dry worn: less lively bounce"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMax[2]",
+   "value": 0.978,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 0.987->0.978"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMin[2]",
+   "value": 0.974,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 0.983->0.974"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateStop[2]",
+   "value": 0.968,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 0.979->0.968"
+  },
+  {
+   "object": "ball",
+   "path": "boundRate[3]",
+   "value": 0.47,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 0.514->0.47 wet: deadened bounce"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMin[3]",
+   "value": 0.986,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 0.980->0.986 wet: ball skids/retains"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateStop[3]",
+   "value": 0.978,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 0.970->0.978"
+  },
+  {
+   "object": "ball",
+   "path": "boundCheckFrictionAddRate[4]",
+   "value": 12.0,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 7.5->12 heavy/snow grip"
+  },
+  {
+   "object": "ball",
+   "path": "frictionRollRateMax[4]",
+   "value": 0.94,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 0.955->0.940"
+  },
+  {
+   "object": "ball",
+   "path": "boundCheckBoundAddRate[0]",
+   "value": 15.0,
+   "_note": "aerial-pitch-spread (UNCONFIRMED index): 10->15 firm pitch livelier"
+  }
+ ]
+}

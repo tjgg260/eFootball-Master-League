@@ -16,6 +16,50 @@ exe only when the behaviour genuinely isn't in the data (kick error, AI threshol
 
 Coverage: 8 of 14 exe subsystems well-mapped, 6 partial. dt270 is fully decoded (every field named).
 
+## ⚠ THIS DOCUMENT IS SUPERSEDED IN PLACES — read the chapters first (2026-09-20)
+
+This audit dates from the 2026-08 sweeps. The **subsystem decode completed 2026-09-20** and
+overturns several entries here. Where they disagree, **the chapters win**:
+[ball-carrier-brain.md](ball-carrier-brain.md), [match-ai-decoded.md](match-ai-decoded.md),
+[player-executors.md](player-executors.md), [registry-blackboard.md](registry-blackboard.md),
+[anime-actions.md](anime-actions.md), [goalkeeper.md](goalkeeper.md), [pad-input.md](pad-input.md),
+[set-pieces.md](set-pieces.md), [dt270-residue.md](dt270-residue.md), and the live queue in
+[realism-todo.md](realism-todo.md).
+
+Known supersessions, all marked in place below: **2a** (wrong layer — the on-ball possession random
+is the lever, not the off-ball score site); **Tier 5 fatigue** (the audit's premise is too
+generous); **Tier 6 RNG reseed** (`URandomInfo` and its updater are decoded); **4a** ("the engine is
+Unreal Z-up" — the ball frame is **Y-up**, see [[kick-ball-physics-emulated]] and
+`docs/exe-gameplay-map.md`); and every **APPLIED** tag (see next section).
+
+## WHAT IS ACTUALLY INSTALLED (checked 2026-09-20 — read this before trusting an "APPLIED" tag)
+
+The per-lever **APPLIED** labels below record that a pack was *built and installed at some point*,
+not that it is live now. Measured against the real install today:
+
+- **dt270 was back at pristine.** `gameplay_tune.py diff` reported byte-identical to the pristine
+  backup — `loose-realism-v2`, `game-feel`, `tactical-flow`, `shoot-realism`, `aerial-drag` and
+  `setpiece-curl` were all installed at some point and were **not live**. Something reset the CPK
+  (Konami patch, a `restore`, or a reinstall) after those verdicts were written.
+- **The exe is a mixed state, not any one preset.** `exe_patch.py status`: `mishit-spin` and
+  `slices-scuffs` fully applied; `loose-realism-v2`'s exe half only 14/32; `cave-remove` applied
+  (the old slice-caves are reverted); `technique-realism` and `knuckle-mishit` **pristine**; and
+  `kick-error-x2` plus parts of `slices-scuffs-max` read `OTHER` — neither original nor patched
+  bytes, i.e. those sites were overwritten by something else since.
+- **Installed 2026-09-20:** `tools/data/tunings/chaos-freeball-combined.json` — 29 edits on top of
+  bare pristine (the held-out `ballControlRate` loosening + the three staged packs
+  `duels-firsttouch` / `dribble-feel` / `aerial-pitch-spread`). Note the stock values it found:
+  `trap.ballControlRate` is **1.0** and `trap.reachOut.reach` is **1.0** at Konami stock, not the
+  0.65 / 0.6 this document quotes — those were loose-realism-v2's tuned values, so any "0.65→x"
+  framing below is relative to that pack, not to stock.
+- **Built but NOT deployed 2026-09-20:** `tools/data/patches/difficulty-reaction-variance.json`
+  applied to a copy of the pristine exe at
+  `~/Backups/eFootball/variants/eFootball.exe.difficulty-variance-v1` (3 bytes from pristine).
+  The live exe was left untouched.
+
+Lesson: an APPLIED tag is a build record, not install state. `gameplay_tune.py diff` and
+`exe_patch.py status` are the only honest answers to "what am I playing right now".
+
 ---
 
 ## What makes eFootball feel un-real (the core diagnosis)
@@ -92,7 +136,30 @@ into space; `ballplayer.touch0` carry distance de-magnetises close control.
 
 ### TIER 2 — AI realism (mixed status)
 
-**2a. Non-deterministic CPU decisions** *(exe cave, designed + verified, not built)*
+**2a. Non-deterministic CPU decisions** — **SUPERSEDED 2026-09-20. This entry points at the wrong
+layer.** Nothing was ever built here, and the chapters found better levers:
+
+- **This entry is about the OFF-BALL selector** (`0x143df127b`, the candidate-action score). That
+  layer genuinely has no RNG — confirmed twice over, by a 943k-edge call-graph closure
+  (`offball-quota-chance.json`) and by `match-ai-decoded.md`. `ChanceSpaceRun::vf5` is just
+  `100 + attackDir·player.x + roleBonus`, so the run always goes to whoever is furthest upfield.
+- **But the ON-BALL layer is a different story, and it is where the unpredictability lives.**
+  `ball-carrier-brain.md`: the possession random `r` (`BP+0x14`, latched from `URandomInfo`) is read
+  **as a threshold at ~25 enumerated sites** — Shoot (7), PassForward, PassOneTwo (4), Dribble (2),
+  PassSafety (2), PassLong, PassSpecial (6+), the arbiter `0x145650eb9`, `Safety::canStart`. It is
+  latched **once per possession spell** (refresh `0x145653e47..0x145653e62`, gated on
+  `BP+0x8ac == 1` or negative), so a whole possession is locked to one draw. **Widening that gate
+  is potentially a same-length branch edit — no cave.**
+- **`registry-blackboard.md` supplies the missing piece:** `URandomInfo` is the 28-byte seed store,
+  updater `0x1453dea17`, and it flags that `+0x08` (that very random) **may have no writer at all**
+  — which **one live read at `0x145653e5f` settles**. Do that read before building anything.
+- **There may be nothing to write.** `realism-todo.md` records `ThinkUnitPassRandomTest`, "the
+  carrier brain's fully-built randomiser that is **registered but never listed**". Listing it is a
+  table edit.
+
+Injector availability is not the blocker either: `tools/live_inject.py` (runtime `VirtualAllocEx` +
+`jmp rel32`, three safety gates, alloc round-trip proven against the live game) is on `master`.
+Full scope in [exe-cave-injector-plan.md](exe-cave-injector-plan.md).
 The CPU's candidate-action scores (`0x143df127b`) are deterministic. A verified code-cave design
 multiplies each score by a random ±20% (own seed buffer, seeded per match from
 QueryPerformanceCounter) so marginal decisions flip — the CPU stops always picking the optimal
@@ -136,8 +203,15 @@ animation event tables (CPK/anime data), not the exe.
 **4a. Ball physics** *(dt270, proven)*
 `ball` object: Magnus curl, drag, bounce (`boundRate[6]` per pitch condition), spin decay, roll
 friction. **Caution: raising `magnusRate` amplifies backspin into gravity-cancelling LIFT — balls
-balloon.** Keep it near stock (0.035). The engine is Unreal Z-up (X fwd, Y right, Z up): spin
-about Y = lift, spin about Z = horizontal curl — relevant for any spin work.
+balloon.** Keep it near stock (0.035).
+
+~~The engine is Unreal Z-up (X fwd, Y right, Z up): spin about Y = lift, spin about Z = horizontal
+curl.~~ **WRONG — CORRECTED 2026-09-17 by emulation, then independently re-derived.** The ball
+physics frame is **Y-UP**: air-force routine `0x144089620` with `omega=0, v=(20,0,0)` returns
+`(-5.597, -9.80665, 0)` — gravity is on component **[1]**. Only spin about the **vertical (Y)** axis
+curls the ball, and it adds zero vertical force. Two static reads got this backwards; see
+[[kick-ball-physics-emulated]]. **Never reason about spin axes from disassembly — re-run
+`tools/emu_spin.py`.**
 
 **4b. Knuckle / wobble on mishits** *(exe + dt270, proven, APPLIED — `knuckle-mishit.json`)*
 The engine has a full knuckleball system (a 6-keyframe spin-vector table it snaps between
@@ -166,10 +240,21 @@ kick-factor fold (offending player is in scope there):
 Stamina is confirmed to exist as a live per-player value; wiring it into kick error is the
 cleanest new-cause cave.
 
+**Correction (2026-09-20):** the match-long stamina value has **never been located**. The only
+isolated per-player meter is the exertion counter `player+0x30f4`, which
+[[kick-ball-physics-emulated]] explicitly rules out as fatigue (it rises only during on-ball
+sprint-dribble, decays in under a second, and already feeds a different accuracy penalty at
+`0x14401bdb0`). So this is not a cave-design problem yet — it is a find-the-data problem. See
+[exe-cave-injector-plan.md](exe-cave-injector-plan.md).
+
 ### TIER 6 — match authenticity
 
-- **Per-match RNG reseed** *(cave, designed)* — the match LCG zero-inits, so runs can repeat;
-  reseed from a timer so games differ.
+- **Per-match RNG reseed** — *"cave, designed"* **overstates it: no bytes exist.** But it is no
+  longer a blank search. `registry-blackboard.md` decoded the record: **`URandomInfo`, 28 bytes,
+  the seed store, updater `0x1453dea17`**. Its word `+0` seeds **15 other generators** in the image
+  and is taken modulo 1000 at `0x143d70d70`. The LCG itself (`0x144345e13` mult / `0x144345e08`
+  seed base) zero-inits with no clock reseed, which is why runs repeat. Open: whether `+0x08` has
+  any writer — **one live read at `0x145653e5f` settles it.**
 - **Rating spread** *(dt270, proven, APPLIED)* — base band 5.0–7.0 → 3.0–9.0 (13 steps), percentile
   penalty ladder re-spread, clamp 0.5–10, fouls −8. Ratings now use the full range.
 - **Goalkeeper realism** *(exe, partial)* — save reach, rush-out trigger distance, parry-vs-catch,

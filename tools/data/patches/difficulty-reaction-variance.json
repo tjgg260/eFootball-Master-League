@@ -1,0 +1,19 @@
+{
+ "description": "THE combined exe change (2026-09-20): CPU reaction-delay variance from the difficulty table (table B, 44x10 @0x146c06f40, GetParam 0x1442e48f0). Both rows that carry a reaction-delay frame count get a realistic SUPERSTAR value instead of a near-frame-perfect one, so the CPU reads the play with human latency rather than reacting on the frame the ball is struck. Pure DATA cells, same-length float swaps, no new code -- the achievable half of the 'chaos' list; CPU score randomisation / per-match RNG reseed / fatigue->kick-error all need an injected code cave and are scoped in docs/exe-cave-injector-plan.md instead. Row 0 duplicates superstar-reaction-professional.json (kept so this file alone rebuilds the exe in one command). Row 43 address derived from the proven row-0 offset by the table's own stride (base + row*0x2c + 4 + col*4) and CONFIRMED by reading the live exe: the cell held 0.0f exactly as predicted before the write, and the write changed exactly the 2 predicted bytes.",
+ "patches": [
+  {
+   "name": "CPU level table B row0 (reaction delay frames) SUPERSTAR column: 4 -> 16",
+   "module_offset": "0x6c06f5c",
+   "expect": "00 00 80 40",
+   "patch": "00 00 80 41",
+   "kind": "data"
+  },
+  {
+   "name": "CPU level table B row43 (alt/secondary reaction delay frames) SUPERSTAR column: 0 -> 10",
+   "module_offset": "0x6c076c0",
+   "expect": "00 00 00 00",
+   "patch": "00 00 20 41",
+   "kind": "data"
+  }
+ ]
+}
