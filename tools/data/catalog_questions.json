@@ -1,0 +1,1155 @@
+{
+ "source": "Re-keyed from the eight finished gameplay chapters in docs/ — every row's `where` names the chapter section and the addresses it was proved from. Where a chapter hedges, the hedge is reproduced verbatim. Where a chapter withdrew a claim, the row records the withdrawal, not the original.",
+ "questions": [
+  {
+   "q": "Why do my players' off-ball runs all look the same?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai"
+   ],
+   "section": "The scores — this is the root cause",
+   "answer": "Because the run score is pure geometry with no tie-breaker and no dice. ChanceSpaceRun scores 100.0 + attackDir·player.x + roleBonus; DiagonalRun scores (opponentLineX − player.x)·attackDir. No space term, no defender-distance term, no pass-likelihood term, no attribute, in either. 15 of the 16 run kinds leave the base at a flat 100.0; only kind 3 computes anything situational, and it is a penalty band (72–100), never a bonus. Identical geometry gives identical scores, identical ranking, identical runs, every time.",
+   "where": "ChanceSpaceRun::vf5 0x143df5950, DiagonalRun::vf5 0x143e036e0, kind-3 scorer 0x143df5de0; score base cell 0x145a8aa4c = 100.0f (1,701 sharers), separate +20 role bonus 0x145a8aa44 (1,099)",
+   "lever": "NONE as a constant edit. A second scoring term needs a cave in vf5 — and the 0.0 sentinel means a cave must not lift a 0.0 above zero nor push a candidate to ≤0, which truncates the sorted walk and silently cancels every lower-ranked runner in the frame.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Is there any randomness at all in which off-ball run is chosen?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai"
+   ],
+   "section": "There is no randomness",
+   "answer": "No. The match RNG is a Lehmer LCG living only in 0x144345d80..0x1443461d0. A direct-call closure of ChanceSpaceRun::vf5 to depth 10 (2,741 functions) reaches it zero times; same for the Counter / SecondLine / Diagonal / PostPlay scorers, the dispatcher, the manager update and the quota builder. Positive control: the identical scan reaches the LCG from the kick builder at depth 4.",
+   "where": "LCG entries 0x144345d90 / e00 / e50 / eb0 / 0x1443461a0; positive controls 0x14401a900 (depth 4), 0x14401a060 (depth 3)",
+   "lever": "NONE",
+   "route": "none",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I get a genuinely new kind of off-ball run?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai",
+    "executors"
+   ],
+   "section": "The 16 run kinds",
+   "answer": "Run kind 6 is a complete free slot: it has a full vf6 geometry path AND its own executor handler, and is never tagged in this build. It is the cheapest route to a new movement pattern in the subsystem. Caveat from the executor chapter: 0x144261f10 rewrites the sub-mode id every frame and is undecoded, so \"kind 6 never runs\" is unproven IN BOTH DIRECTIONS until it is traced — the cheap test is a live-patch breakpoint on 0x1441f360b, not more static work.",
+   "where": "match-ai-decoded.md § The 16 run kinds (geometry 0x143df1cc5, handler 0x1441f360b); player-executors.md Open 2 (0x144261f10, 0xa28 bytes, jump table 0x1442628cc)",
+   "lever": "a cave in vf6's tagging chain. Kinds 11, 12 and 13 are also never tagged but are not as complete.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can a later run selector steal a player an earlier one already took?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai"
+   ],
+   "section": "Quotas, caps and priority",
+   "answer": "No. There is no preemption. The rank comparator sends all eight run action ids to `mov eax,2; ret` — an unconditional immediate with no context dependence — and 2 < 2 is false. Each player holds exactly one action id, so a selector earlier in the bidding order takes a player and every later selector never sees him. Bidding order: Overlap > ChanceSpaceRun > CounterSpaceRun > SecondLineSpaceRun > LineBreak > DiagonalRun > GoalGet > PostPlay > PullAway > CenteringGet.",
+   "where": "0x1442ed7c0, rank jump table 0x1442ed9c0, handlers 0x1442ed9ac; action ids at teamAI+0x8f4c+slot*4",
+   "lever": "NONE. Reordering selectors is explicitly Refuted — Chance and Diagonal score by the same scalar with opposite slope and never compete for the same player.",
+   "route": "none",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "How long does a player stay committed to a run once he starts it?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai"
+   ],
+   "section": "Quotas, caps and priority",
+   "answer": "0.2 s — int(fps·0.2+0.5) = 12 frames — protected by each selector's vf3. Turnover happens ONLY when vf3 aborts and the freed slot is re-bid; a held slot is never reassigned. Lengthening this window is directionally ANTI-variety: a longer hold means fewer different runners.",
+   "where": "built 0x143df73a8 / 0x143e051b2, compared 0x143df73bd / 0x143e051c7 against the per-slot record at teamAI+0x8f78+slot*0x34",
+   "lever": "the 0.2 constant — but § Refuted refutes lengthening it.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "If I raise the team's attack level, do I get more varied runs?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai",
+    "registry"
+   ],
+   "section": "Quotas, caps and priority / Refuted",
+   "answer": "No — you get more bodies with the same determinism. The quota table is indexed by attack level; raising it gives you the deepest AND second-deepest man, and it makes a deep block play like it is chasing a game. Two further corrections from the registry chapter: the live level (team+0xb450) is a dword, not a byte, and it is derived every think tick from the SETTING at +0xb454 whose shipped default is 5 = \"let the AI drive it\" — so out of the box the AI walks the level itself, and any quota tuning premised on a stable per-team attack level needs that caveat.",
+   "where": "quota builder 0x1442f9a90, jump table 0x1442f9ca4; registry-blackboard.md 12.4 and 6.2 (converter 0x143d04830, read as dword at 0x143d02efe, reset default 0x1442eff0a)",
+   "lever": "the setting team+0xb454 — but NO STATIC ROUTE EXISTS: 0x1442eff0a is a register store, so re-aiming it just pins the level to the minimum, and the 6-byte store has no room for an imm32 form. Needs a runtime write after reset, or a cave.",
+   "route": "NOT-SAFELY-TUNABLE",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Do playing styles change what run a player makes off the ball?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai"
+   ],
+   "section": "Playing styles are booleans, gated by formation role",
+   "answer": "Barely. The three space-run selectors contain six style gates between them and five are pure vetoes (DiagonalRun bails on Classic No.10 / Anchor Man / Orchestrator; SecondLineSpaceRun rejects Orchestrator; Hole Player skips a pitch-X requirement). Style never selects a DIFFERENT run target. To the off-ball AI a style is a boolean — there is no numeric weight anywhere. On the ball it matters a great deal.",
+   "where": "masks at R+0xCC (21-bit in-possession) / R+0xD0 (16-bit out-of-possession), builder 0x145440e10, queries 0x1442e2130 / 0x1442e0480",
+   "lever": "the style bits themselves (Player.bin bits 374 / 440) — the app already writes them.",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Why did my player's playing style stop working when I moved him?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai",
+    "bp"
+   ],
+   "section": "Playing styles are booleans, gated by formation role",
+   "answer": "Because every off-ball AI style query returns \"player has style X\" AND \"X is legal for the ROLE of the squad slot he occupies\". Play a man off his slot and his style silently stops firing. Emulating the gate over the whole 21×10 grid reproduces eFootball's own published position scoping exactly. Note the carrier chapter's correction: on the ball this role gate is called at only two sites (CBOverlap) and 50+ style reads are the raw bits, so the rule does NOT carry over to the ball carrier.",
+   "where": "role = dword[teamObj+0x42B8+(playerNo%11)*4]; ball-carrier-brain.md § Corrections",
+   "lever": "squad-slot assignment, or the role codes in TacticsFormation.bin.",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Do skill cards change what the AI decides to do?",
+   "subsystem": "match::ai / match::ai::bp",
+   "chapters": [
+    "match-ai",
+    "bp"
+   ],
+   "section": "Skill cards do not drive decisions / Corrections",
+   "answer": "Split answer, and the old blanket \"no\" was wrong. OFF the ball: no — all 287 card test sites are in match::anime::action::*, none in match::ai::, and cards change execution quality and which animation plays, never choice. ON the ball: YES — 68 card reads in about 35 bp functions change entry chances, gates and Personality P2 (Pinpoint Crossing, for instance, is +40 on the cross roll).",
+   "where": "73-bit array at R+0xC0, tests 0x143eadbe0 / 0x1442c0000; ball-carrier-brain.md § Corrections (\"skill cards do not drive decisions … wrong for the carrier\")",
+   "lever": "Player.bin skill flags.",
+   "route": "player-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Does changing formation change how the AI thinks?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai"
+   ],
+   "section": "Formation",
+   "answer": "No. There is no formation-keyed decision table anywhere. 4-3-3 versus 4-4-2 changes geometry, line membership, marking/cover eligibility and style legality — nothing else. The 13 position codes collapse to 10 mirror-symmetric groups, so LMF and RMF are the same thing to the AI. Formation data is seeded verbatim, with no scaling, from what the app's TacticsFormation.bin writer already produces.",
+   "where": "2 presets × 11 players × 3 phases at teamAiInfo+0x8078, seeded by 0x143d49f40",
+   "lever": "formation geometry and role codes.",
+   "route": "player-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Does a defender's ability change how hard he works to get back?",
+   "subsystem": "match::ai — base position / shape",
+   "chapters": [
+    "match-ai",
+    "executors"
+   ],
+   "section": "The one ability-scaled defensive term (+ its 2026-09-19 CORRECTION)",
+   "answer": "Yes — there is exactly ONE ability-scaled defensive term, in the shared base-position runner, out of possession only: gait threshold = 19.0 − 0.1·attr; sprint-back gate = lineX + 8 − 12·clamp01((attr−45)/35); recoveryDist = 15.0 − 10.5·clamp01((attr−40)/80). Emulated, the sprint trigger distance falls from 15.0 m at attr 40 to 7.26 m at attr 99. BUT the attribute is 0x17 = DRIBBLE, not Defensive Awareness (0x15), under the proven DATA_PARAMETER+7 alignment — so the \"spread it in master.db\" advice is WITHDRAWN pending the owner's call. The mechanism is real; the attribute is not the one the original row assumed.",
+   "where": "0x143da92c0, direct reads 0x143da943a / 0x143daa779 / 0x144181101; player-executors.md § Corrections (0x17 read at 11–12 sites, not three, via wrapper 0x1442dd650)",
+   "lever": "the attribute — but which attribute is unsettled; 0x15 is the candidate to check for the same mechanism.",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Is CPU difficulty why my defenders are lazy?",
+   "subsystem": "match::ai — off-ball selection",
+   "chapters": [
+    "match-ai",
+    "executors"
+   ],
+   "section": "CPU difficulty is not the bottleneck (+ its 2026-09-19 CORRECTION)",
+   "answer": "No — difficulty gates which RUN TYPES exist (rows 0x13–0x16 of the level table), and nothing in the base-position code consults the difficulty table at all: all 24 GetParam call sites were enumerated and none is in the shape/positioning ranges. WARNING: the row values that section originally quoted came from OUR PATCHED IMAGE, not stock. The executor chapter settles it further: row 0x14 is not stock, and stock CounterSpaceRun is OFF at the three lowest settings. Re-deriving the correct row mapping and the stock values is owed work — and this catalogue's own dump of the table, taken from PRISTINE, is the corrective source.",
+   "where": "cap builder 0x143df0080, table 0x146c06f40, gate 0x1442e4c00, getter 0x1442e48f0; player-executors.md § Corrections (row 0x14)",
+   "lever": "the table rows — but re-dump from PRISTINE before quoting any of them.",
+   "route": "exe-constant",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "How do I make my team defend as a compact block?",
+   "subsystem": "match::ai — base position / shape",
+   "chapters": [
+    "match-ai"
+   ],
+   "section": "Corrections / Self-inflicted regressions",
+   "answer": "dt270 basePosition fields — and the standing belief that they are inert was WRONG and misdirected months of tuning. lengthOf (team front-to-back length in metres, read at 0x143deaa33), adjustZCompact, adjustXCompactFW, dfLine, dfLineRate, dfLineCloseRate, lastLineCloseMaxRate, keepDfTargetLineX, backOffsideLine, minWidth, lineControl and spaceCoverRate all have readers. Genuinely unread: pressRate, defenceCompact, lengthDf, dfLineWidth_3/4/5, wideRate, attackLevel, attackLevelAdjustX.",
+   "where": "dfLine byte read at 0x143ddb9a0 → clamp01(v/20); pack tools/data/tunings/compact-and-tight.json",
+   "lever": "lengthOf, adjustZCompact, adjustXCompactFW — all by name in the CPK.",
+   "route": "dt270-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Why does my centre-back stand off the striker?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "Where the standoff comes from — and it is not a radius",
+   "answer": "There is NO radius, and it is not in ActionMark::vf20 where this project looked and patched. The marker's destination is slot 4's: his formation-slot position LERPed toward the team's published marking target, with BOTH the X and Z weights killed by a 10 m ramp on the ball's position relative to a per-team defensive-line field. When the ramp opens he goes fully zonal in both axes. Emulated: 6.08 m off his man with the ramp closed, 0.300 m off him when it is open. The standoff IS the ramp.",
+   "where": "ActionMark::vf4 0x1441a2a80 → 0x143e1c9d0 → 0x143e1bfb0, ramp 0x143e1c1b8..0x143e1c214, ramp start 0x143e1c1e1 (10.0 @0x145a8dd7c, 1,832 sharers), ramp end 0x143e1c1e9 (20.0 @0x145a8aa44, 1,099)",
+   "lever": "re-aim 0x143e1c1e1 / 0x143e1c1e9 to push both ends up, which keeps man-marking alive with the ball further upfield.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Can I make a defender mark tighter without patching anything?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "Tunables / What this enables",
+   "answer": "Yes — this is THE SAFEST LEVER IN THE SUBSYSTEM. Out-of-possession playing-style category 9 adds +50 to BOTH marking weights (then min'd against 100): emulated, 0.300 m off the man becomes 0.000 m. Category 0xb zeroes both weights and sends the marker back to his zonal slot — use deliberately, or avoid on anyone you want marking. Role-gated: it only fires when the slot's role legalises the category. Which catalog playstyle names map to categories 9 and 0xb is NOT in that chapter (Open 17); tools/playstyle_catalog.py already owns the map.",
+   "where": "category 9 at 0x143e1c166 (mov edx,9; call 0x1442e0510) → 0x143e1c16f/77 addss 50.0 @0x145ae7580; category 0xb at 0x143e1c151",
+   "lever": "the out-of-possession playing-style mask the app already writes (Player.bin bit 440).",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Is the 45°→90° marking patch we shipped doing anything?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "Why ActionMark::vf20 is not the standoff / Open 16",
+   "answer": "Very likely a placebo, and it should be A/B'd or removed. ActionMark::vf20's steering cap was patched 45.0 → 90.0 on the installed image, but vf20 emits a STEERING POINT at a fixed radius, not the destination — slot 4 (or slot 18 where overridden) supplies the destination. The cap affects only the steering point in the non-goal-side branch, which the controls show does not move the destination. Note also that the image has since been reverted to PRISTINE, so the patch is not live right now.",
+   "where": "0x1441a2475 minss: PRISTINE → 0x145b1d910 = 45.0, INSTALLED (when patched) → 0x145b52b90 = 90.0; Corrections row on slot 20 vs slot 4 (ActionMove::vf18 0x145625830 calls slot 4 at 0x145625868)",
+   "lever": "remove it.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Where does a run actually go once it is chosen?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "ActionSpaceRun::vf18 is a path compiler / The shared geometry core",
+   "answer": "A run executor is a path compiler, not \"the movement code\". The target's X is ASSIGNED every frame to rawOpponentLine + attackDir·10.0 — only the Z is negotiable, blended between \"straight up your channel\" (when level with the ball laterally) and \"converge on the centre of the line\" (when ≥18 m from it). Output downstream is (target, gait, movement-class, 0x4ec-byte path). 25 distinct handlers serve the 26 sub-mode ids, with emitted geometry in the chapter for 18 of them.",
+   "where": "0x1441f3010, shared geometry core 0x143d222e0, tables 0x1441f3b20 / 0x1441f3b88",
+   "lever": "the +10.0 pin distance — cell 0x145a8dd7c at run sites 0x144200062, 0x1441fad19, 0x1441feb0d; re-aim only, 1,832 sharers.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Do runs respect offside, or can I make runners hold the shoulder of the last defender?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "The offside answer",
+   "answer": "Runs are neither clamped behind the line nor ignoring it: the target is pinned to a fixed offset BEYOND it (+10 for the AIM family; +2 / −2 / +8.18 / +5 for others), and there is NO timing term anywhere in the executor. Timing is upstream, in the selector. The full offside line is the MID waypoint; the FINAL plane uses the raw line. Moving the pin to about 3–4 m makes runners hold the shoulder.",
+   "where": "offside line function 0x143d24e70",
+   "lever": "the +10.0 pin distance (re-aim only). ActionDiagonalRun's own +5 m endpoint depth is NOT LOCATED — no +5.0f literal in 0x144201d60..0x14420235e — so the diagonal's depth is not actionable.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "If I let a midfielder take a striker's run, will he run it properly?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "The cross-role answer / Negatives / Open 21",
+   "answer": "For the kinds tested, yes — and this is an empirical result over a tested set, NOT a structural guarantee. 2,820 emulated comparisons across 11 role codes over 15 of the 25 handler entries and 14 of the 30 distinct slot-20 bodies: every emitted target and waypoint list byte-identical. But the seven second-level handlers were never emulated, and one counter-example is proven: sub-mode id 3 (= ChanceSpaceRun kind 1) reads the role array and takes −5.0 for role codes 3–4 versus −6.0 for every other role, so a non-attacking role runs it a metre deeper.",
+   "where": "helper 0x144268630, role reads 0x144268754 / 0x144268764 on teamAI+0x42b8, cells −5.0 @0x145b1d940 / −6.0 @0x145ace398",
+   "lever": "widening the selectors' eligibility gates upstream is geometrically safe for the tested set.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Can I make my team press harder?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "Pressing / Negatives / Tunables",
+   "answer": "Not at this layer, and NOT PROVEN ABSENT. ActionPress::vf20 targets the ball outright; the 3 m \"step in front\" correction has non-zero weight only inside 0.5 m of predicted separation, so as shipped it is invisible beyond half a metre. dt270's pressRate has no live equivalent in ActionPress. The chapter is explicit that the team object was not swept, so this is \"not found\", not \"absent\".",
+   "where": "3.0 @0x1478504e8 loaded at 0x1441903a2; the 0.5 band loaded ONCE at 0x144190408 and compared register-to-register at 0x1441904fa (nothing to re-aim — widening the band alone needs a cave)",
+   "lever": "widening the 0.5 m activation band — cave required, not a re-aim.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "How does the offside trap actually move the line?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "How ActionOffsideTrap moves the line",
+   "answer": "Through slot 4, not slot 20. ActionOffsideTrap::vf4 demands player.x + attackDir·10.0 every frame, relative to the player's CURRENT x, so the line marches continuously while the executor is active. It never aims at an absolute line, and it is completely ungated at the executor layer — no attribute, style, card, difficulty or RNG in a 133-function closure.",
+   "where": "vf4 0x1442067f0, step-up 0x1442068f3 (10.0 @0x145a8dd7c), lateral snap radius 7.0 at 0x144206923 (@0x145c36ac0)",
+   "lever": "the step-up demand and the lateral snap radius, both re-aim only.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Is a loose ball contested between the intended receiver and the nearest defender?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "Is a loose ball contested? / Open 10",
+   "answer": "Yes mechanically, and nothing arbitrates it. The receiver route and the interception route are branches of ONE first-true priority chain, run by each player over his own route-work object and discriminated only by a class field. There is NO priority flag, NO reservation and NO \"intended receiver wins\" term. The one thing that can suppress the interception branch is a dt270-driven air-ball pre-test, which is a ball-state test, not a claim on the pass. Who arrives is decided by geometry and the movement layer — and that race was NOT emulated.",
+   "where": "route work at parent+0xfa00, class field routeWork+0xbb0, air pre-test 0x144163020 called at 0x14416cc48",
+   "lever": "dt270 trap/passget inputMoveAir.enable / .ballBound / .ballHeight / .inputR2 gate the air path.",
+   "route": "dt270-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I tune pass reception and first-touch positioning through a data file?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "dt270 — the safest levers in this chapter",
+   "answer": "Yes, and these are the safest levers in the executor chapter — the previous claim that dt270 only reached depth 3 was WRONG and hid them. dt270 passget (idx 0x6c) is read by 15 get() calls INSIDE PassGetRoute* vtable methods themselves, and basePosition (idx 0xe2) inside ActionBasePosition::vf4. 26 of passget's 56 fields are read, including naturalPassget.enable (the master switch, 15 sites), .moveFreedom, inputMovePosition.* (the human-input route), inputMoveAir.* (the air-ball gate that can suppress interception), ballFollow.*, openBodyMaxValue and the trap-run receive-motion switches.",
+   "where": "naturalPassget.enable off 0x84 read at 0x14416cb8f / 0x14416cc6b, .moveFreedom off 0x86 sole reader 0x14416cb9e, basePosition reader 0x1441832db",
+   "lever": "the named passget fields, by name, in the CPK — no exe patch, no shared cell, no cave.",
+   "route": "dt270-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Which action id runs which executor?",
+   "subsystem": "match::player — executors",
+   "chapters": [
+    "executors"
+   ],
+   "section": "The action-id → executor dispatch is NOT a table / Open 1",
+   "answer": "NOT KNOWN — this is the subsystem's biggest hole. It is proven NOT to be an offset table (three independent controls). The remaining lead is the writer of the action manager's current-action pointer. A naming trap is already visible: ActionKeeperCatching REQUESTS id 0x46, which the save-quality selector maps to Reflexes/Reach, not Catching — so either +0x8bc requests the follow-on action rather than the class's own id, or the two id spaces differ.",
+   "where": "work+0xd30, accessor 0x143eee720",
+   "lever": "NONE",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "How does the CPU decide what to do when it has the ball?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "THE DECISION LOOP",
+   "answer": "Plan first, then a fixed priority list — and NO score is compared anywhere. The Image layer picks a plan by walking a situation-keyed list and taking the first canStart that says yes (four of them roll a percentage). The held plan fixes the order in which ThinkUnits are asked; every listed unit thinks into a table; the FIRST unit in list order with a delay-accepted answer wins. Force and PassRespondRequest always come first, Shoot beats every pass wherever listed, PassDirectHighBall is always last. Dribbling is the floor. Before any of this, byte[entity+0x41] can divert the carrier to a move-only output that skips the loop.",
+   "where": "loop 0x145654060, selector 0x145650cf0, list builders 0x14566b980 / 0x14566b7f0, divert 0x145651100",
+   "lever": "swapping two `mov edx, kind` pushes in the list builders swaps the CPU's preference (PassForward before Shoot gives lay-offs instead of shots); removing a push removes that option for that plan.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Why does the CPU keep playing the same ball from the same position?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "The roll is fixed for the whole possession",
+   "answer": "Plans are HELD across frames, a finished plan is on cooldown, a decided shot/pass/clear is sticky until it executes, and the plan rolls use a threshold fixed for the whole possession spell. So the same shape on the same frame gives the same ball. A different spell re-latches the per-possession random r, which is also read as a threshold inside eight decision functions, so identical geometry CAN produce a different answer next spell.",
+   "where": "r at ctx+0x50, latched from BP+0x14 refresh 0x145653e56..0x145653e62",
+   "lever": "NONE safely — see the r-is-possibly-zero risk row.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Is the carrier brain random?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "Negatives / Is it as deterministic as off-ball movement?",
+   "answer": "Almost not, and differently from off-ball. There is NO free-running RNG stream in the live carrier brain: every live draw is the first output of a freshly seeded local LCG whose seed is the frame counter, the match tick word, the per-possession r, or an attribute byte. Same shape on the same frame always gives the same ball; replays are exact. The one unit that draws a free-running random number, ThinkUnitPassRandomTest, is never consulted — kind 0x17 is pushed by no list builder and vf2 has no direct caller.",
+   "where": "reverse closure from the LCG (793 functions, 162 vtable methods) touches 9 bp functions",
+   "lever": "push kind 0x17 in 0x14566b980 (e.g. a cave after the PassOneTwo push at 0x14566bc41) to enable the random pass unit — the only true entropy source in the subsystem; it must still survive first-valid-wins.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "RISK: is the carrier's per-possession random actually random?",
+   "subsystem": "match::ai::bp / match::registry",
+   "chapters": [
+    "registry",
+    "bp",
+    "setpieces"
+   ],
+   "section": "registry § 12.3 and § 11; bp Open 10; set-pieces Open 1",
+   "answer": "UNSETTLED, and it is a risk flag on a finished chapter. BP+0x14 is latched from URandomInfo+0x08, and NO WRITER for +0x08 exists anywhere in the image after five exhaustive searches. If none exists, r is constant 0.0 all match — which would collapse four of the carrier chapter's tunables (Cross / MiddleShot / CurveShot / Long variety) and re-enable nothing. Not asserted: match::RandomControl is undecoded and is the plausible writer. Settle it with ONE live read at 0x145653e5f before touching anything downstream. The same word also indexes the CPU penalty-aim table.",
+   "where": "read site 0x145653e5f; the record is 28 bytes, not 192",
+   "lever": "NONE until the live read is done.",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I make one player take more risks on the ball than another?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "Personality — per-player variety, decoded / Open 9",
+   "answer": "Yes, partly, and it is the cheapest per-player variety lever in the game because it is pure player data. Personality::update builds 8 floats from 11 attributes, 5 skill cards, 12 style bits, 7 COM/AI flags and the formation role — closed form a-emulated with 0 mismatches, no random and no per-match term. Six of the eight floats are read by 60+ carrier functions including the arbiter. BUT: players below the 70–75 input floors have P ≈ 0 and behave generically, and what each Personality threshold changes INSIDE a unit is mostly still open. So \"risk\" today maps to \"style bit → P0 ≠ 0\", \"Trickster → shorter feint refractory\", \"Pinpoint / Early Cross → cross plan\" and little more.",
+   "where": "0x145663920; P4 also reads B[0x18], B[0x28], B[0x2c] at 0x145663f5b / f6f / f84",
+   "lever": "the in-possession style bit is the cheapest way to make two identical-rating forwards behave differently.",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Why does the CPU dwell on the ball and get closed down?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "The reaction delay / Corrections",
+   "answer": "A difficulty-dependent reaction delay: rows 0x17 (pass/clear), 0x18 (dribble) and 0x19 (dribble move) of the CPU level table, at 60/40/22/12/8/6/2 ticks for a pass from Beginner to Legend (stock Superstar 6, Legend 2). There is a second-order effect worth knowing: while a unit sits on its answer, that answer is ABSENT from the results table, so a lower-priority unit with a shorter delay wins instead. Note an earlier reading of this table was inverted by a stride error — the stride is 0x2c, not 40.",
+   "where": "table 0x146c06f40 + row*0x2c + 4 + col*4, consumer 0x1456526a0, lea at 0x1442e491a (offline) and 0x1442e4910 (online table 0x146c067b0)",
+   "lever": "raise the c6 / c8 columns.",
+   "route": "exe-constant",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "How do I make the CPU cross more, or try more long shots?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "The four rolling entry tests / Tunables / Corrections",
+   "answer": "Through the card / COM / attribute inputs that build the score, NOT through the roll range. The plan roll is a GATE, not the whole test: after it passes, an any-of chain of about ten further conditions runs and any one firing accepts. Caps: Cross 100, but MiddleShot and CurveShot clamp to 90, so the maximum plan rate is 91% and 100 is unreachable. The range immediates (mov esi,0x64 etc.) are NOT SAFELY TUNABLE — the value is also the RNG stream index, the local state is four u32s on the stack, and any range outside 98..101 writes outside that state.",
+   "where": "Cross 0x14567af10 / roll 0x14567b504 / chain 0x14567b54e..0x14567b666, MiddleShot 0x145678b30 / cap 0x1456790c7, CurveShot 0x1456786c0, Long 0x14567b670",
+   "lever": "the +30 / +40 card and COM bonuses (0x14567b44e, 0x14567b462) and the Heading-based cross mapping 10 + 50·(Heading−60)/30 — plus the player-data cards and COM flags themselves.",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Can I force the CPU to play direct and stop playing safe?",
+   "subsystem": "match::ai::bp / match::registry",
+   "chapters": [
+    "registry",
+    "bp"
+   ],
+   "section": "registry § 6.1 and § 11 (NOT SAFELY TUNABLE) and § 12.2",
+   "answer": "NO — and this row exists because the carrier chapter called team+0xb3c4 \"the largest single on-ball lever found\". It is not a lever at all. It is the CPU's transient DIRECT-PLAY DIRECTIVE, set and force-cleared once per think tick; there is no file, no table and no persistent setting behind it, so it comes off the authorable list entirely. It does NOT come off the runtime list: an injected non-zero value survives while the mode gate and a deterministic 5/7/14-second timer test hold. Its sibling team+0xb44d is simply (attackLevel ≥ 4), recomputed every tick.",
+   "where": "0x143d7c5b0, set 0x143d7c7f0 from 0x143d7b650, clear 0x143d7c7d6, called from 0x143d02c80 at 0x143d03150; correction: the release is DETERMINISTIC — 0x14533ea80 is the frame-rate getter, not rand01()",
+   "lever": "NONE authorable. If you want the behaviour, move the attack level.",
+   "route": "NOT-SAFELY-TUNABLE",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Who does the CPU actually pass to?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "Pass-target selection / Corrections",
+   "answer": "Decoded for PassForward's first pass only, and it is NOT an argmax — the earlier claim was withdrawn. The loop fixes its reference at the FIRST eligible candidate's score and never raises it, so the winner is the LAST candidate in plan-array order whose score beats the first eligible candidate's. A role-legal Classic No.10 wins outright. There is also a post-selection emission gate that can return with no answer, and a second lofted search when nobody qualifies. Because the winner depends on plan-array order, the ImageUnit vf1 target choice that fills plan+0x9c matters — and it is open.",
+   "where": "loop 0x14569d393..0x14569d3d1, Classic No.10 branch after 0x143e31a10(match, slot, 9), Open 11 / 18",
+   "lever": "replacing the compare reference with the running best (movaps xmm6,xmm0 after 0x14569d3af) turns it into a true argmax; or remove/add the Classic No.10 style.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Do the on-ball and off-ball brains talk to each other?",
+   "subsystem": "match::ai::bp / match::player",
+   "chapters": [
+    "executors",
+    "bp"
+   ],
+   "section": "player-executors § Corrections and Open 20; contrast ball-carrier-brain § Negatives",
+   "answer": "Partly, and this is the one Corrections row in the executor chapter standing on a single source. The bp DECISION never reads the runner action ids. But a re-scan that accepts the displacement anywhere in the instruction finds THIRTEEN reads at five chained-unwind roots, three of them inside the bp module range as that chapter defines it — including the pass preamble. So the carrier's PASS code does appear to see the runners, and the carrier chapter's Negatives section needs a repair pass. The executor chapter flags this as a strong lead pending an independent re-scan.",
+   "where": "roots 0x145644700 (5), 0x145655430 (2), 0x145655dd0 (2), 0x145690f60 (3), preamble 0x145699510 (1, at 0x145699988 comparing 0x25 ONE_TWO_PASS_RUN)",
+   "lever": "the −80.0 receiver penalty for a kind-3 space runner at 0x145645bb3 (cell 0x14670f5b0, 23 sharers), paired baseline −50.0 at 0x145645bc3 — re-aim only.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I tune the ball carrier through dt270?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "What this enables (last row) / Negatives",
+   "answer": "No. No dt270 field reaches this subsystem — 105 located objects, depth 3, no ConstantManager call anywhere in the carrier band. Stated as exhaustive.",
+   "where": "ball-carrier-brain.md § Negatives",
+   "lever": "NONE",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Do tired or out-of-form players get sloppy on the ball?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "Negatives / Tunables (attributes the carrier actually consults)",
+   "answer": "Not in the on-ball DECISION. The carrier reads Stamina, Form/Condition, Injury Resistance, Age, Weight and the whole C array at zero sites. Form does not influence any on-ball choice. Dribbling (0x17) is likewise read nowhere in the carrier — Dribbling does not influence whether the CPU dribbles. What the carrier does consult is Ball Control, Tight Possession, Low Pass, Lofted Pass, Finishing, Heading, Speed, Acceleration, Kicking Power, Curl, Set Piece, Jumping, Physical Contact, Balance, Weak Foot Accuracy, Height and Offensive Awareness.",
+   "where": "thresholds e.g. B[KickPower] ≥ 70, B[LowPass] ≥ 70 at 0x145679035, A[Heading] ≥ 70 at 0x14567b9e2",
+   "lever": "the consulted attributes — Kicking Power / Low Pass under 70 remove long shots and curlers; Heading under 70 removes long balls.",
+   "route": "player-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Which skill moves will a given player attempt?",
+   "subsystem": "match::ai::bp — carrier brain",
+   "chapters": [
+    "bp"
+   ],
+   "section": "The dribble moves / Tunables / Corrections",
+   "answer": "A card-gated pool plus attribute-scaled weights. Seven cards gate the pool (Double Touch, Roulette, Edge Turn, Eracico, Chapeu, Sharp Cut, Tap Trick) along with COM bit 0. The weights window is 70..90 — an all-80 player tries Roulette 40% and Body Fake 22%. Legend difficulty applies a ×1.2 to move weights. How quickly a trickster CHAINS feints is 1 − P4, i.e. player data (Ball Control / Speed / Acceleration and four COM flags), not difficulty — an earlier reading had it as a difficulty parameter.",
+   "where": "pool 0x1456ab3b0 with gates 0x1456ab418 / 46a / 489 / 4a8 / 4e8 / 523 / 542, Legend ×1.2 at 0x1456a96d8 (factor @0x145c7e410), refractory 0x1456ab116",
+   "lever": "the cards and COM flags the app already writes; lower edx at 0x1456a96d8 from 6 to 3 to give Professional+ the Legend trick rate.",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Is there a tactical-instruction channel my app could write to?",
+   "subsystem": "match::registry — blackboard",
+   "chapters": [
+    "registry"
+   ],
+   "section": "§ 5.2, § 5.3, § 11, § 12.1",
+   "answer": "Two exist and NEITHER is authorable yet — and this is the highest-value open item in the subsystem. (1) UTeamAIInfo+0x8078: two sets, a 0–5 approach code, seven instruction bytes and two [2][11][3] tables; the only writer found stores 0 or 1, and the instruction tables have NO disp32 writer at all. (2) UAnalyzeInfo's two AnalyzeDetailInstruction subobjects, read as kind[2][4] / value[2][4] and queried at 271 SITES across the off-ball selectors, the executors and the carrier, with 18 distinct kinds and 255 as a wildcard. This also corrects the carrier chapter's flat \"no tactical-instruction channel exists\".",
+   "where": "query 0x1442e1200, tables at +0x273f0 / +0x27430 and +0x27498 / +0x274d8; six carrier-band callers 0x145623990, 0x145624630, 0x14565bf80, 0x14568f430, 0x145699510, 0x14569cb20; plus the off-ball quota builder 0x1442f9a90",
+   "lever": "NONE today — origin not traced for either channel.",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can the companion app write anything into the live match state?",
+   "subsystem": "match::registry — blackboard",
+   "chapters": [
+    "registry"
+   ],
+   "section": "The machine in one paragraph / § 11 / § 13",
+   "answer": "No. Nothing in the blackboard subsystem is app-writable, and dt270 does not enter it at all: 0 of 268 dt270 getter sites lie in the registry band, and the intersection of registry-acquiring and dt270-calling functions is 2, in both of which the values never meet. Owners bind their Refs once per match and from then on gameplay works on raw pointers, which is why not one of the 1,431 registry entry-point call sites lies inside any match::ai, match::ai::bp or match::player vtable method — that is an absence of API calls, not an absence of the records.",
+   "where": "registry-blackboard.md § 11, § 13",
+   "lever": "NONE",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "If I patch a match record at runtime, will the game actually see it?",
+   "subsystem": "match::registry — blackboard",
+   "chapters": [
+    "registry"
+   ],
+   "section": "§ 2 The access discipline",
+   "answer": "Only if you write the right buffer and commit. Readers always get the FRONT buffer; writers get the BACK buffer on a Copy record (33 of 45 records) and the single buffer on a Pointer record. ScopedWAndC's destructor — and nothing else — calls the commit, which publishes back over front. A write to the front buffer is overwritten by the next commit; a write to the back buffer without a commit is never seen. There is no lock anywhere: ScopedRead and ScopedWrite \"release\" through a single ret. The chapter calls this the single most important operational fact in it.",
+   "where": "read resolver 0x145340c80, write resolver 0x1453415d0, commit 0x145340a10",
+   "lever": "decide which buffer before writing anything.",
+   "route": "runtime-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I make a match reproducible by fixing the seed?",
+   "subsystem": "match::registry — blackboard",
+   "chapters": [
+    "registry"
+   ],
+   "section": "§ 8 / § 11",
+   "answer": "No. URandomInfo+0x18 is the match master seed, drawn once from a clock-seeded LCG. The entropy input is the clock, so there is nothing in a file to pin. The 16-byte literal it copies from is SHARED (61 raw referrers) and must never be edited in place; re-aiming the single movdqa is the safe form if anyone ever needs it.",
+   "where": "draw at 0x1453dea17 inside 0x1453dc560, clock 0x143b37540 / 0x143b374c0, literal 0x146ad6cf0 copied by the movdqa at 0x1453dea43",
+   "lever": "NONE",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "When an old note says team+0x…, matchInfo+0x… or matchWork+0x…, what object is that?",
+   "subsystem": "match::registry — blackboard",
+   "chapters": [
+    "registry"
+   ],
+   "section": "§ 4.1, § 5.3, § 10.2, § 12.4, § 12.5",
+   "answer": "team == teamAI == match::registry::UTeamAIInfo (0xbd8c = 48,524 bytes, one per team), reached through the Ref embedded in UModeInfo whose read cache is at +team*0x58+0x3450 — that cache IS the registry record's front buffer. matchInfo == matchWork == UAnalyzeInfo (a Pointer record, single-buffered, read live), which carries the defensive line, the ball X and the instruction tables. The executor chapter's \"matchWork + team*20 + 0x44\" defensive line is UAnalyzeInfo + 0x44 + team*0x14. Also corrected: the executor parent constructs SEVEN registry Refs, not nine.",
+   "where": "accessors 0x1442d7090 / 0x1442d6e20, teardown 0x1442d5500, Ref builder 0x1442d0050 (leas at 0x1442d09a8 / 0x1442d09cf / 0x1442d09f6)",
+   "lever": "notation only.",
+   "route": "none",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "How long am I actually stuck after being shoved?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime"
+   ],
+   "section": "The post-contact lockout, in seconds",
+   "answer": "In seconds, from the game's own tables, at 60 fps: in-play staggers are cancellable at a FIRST cancel key of min 0.200 / median 0.450 / max 4.033 s, inside a median 0.98 s motion. It is not the animation length — the gate is the first cancel key, and canCancel is literally \"currentFrame ≥ keyFrame\". Worked example: stagger_upbody_0_0_090 is a 0.53 s motion cancellable at 0.267 s. Also: the no-key default is frame 4 (67 ms), NOT a permanent lock — any spec premised on \"keyless = locked forever\" is wrong on both halves.",
+   "where": "recomputed from build/anime_motion_tables.json; decode rule frame = (((v>>13)&0x3FF)+2)*2, idx = v&0x1FFF; keyless default via 0x143e99e6b",
+   "lever": "Mbinfo/bin/CancelData.bin, 12-byte records, per-animation granularity — but see the write gate: the packer does not exist yet.",
+   "route": "motion-asset",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Why does contact punish the ball carrier so much more than everyone else?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime",
+    "match-ai"
+   ],
+   "section": "Stagger::vf14 — the gate in full, and why the carrier is the victim",
+   "answer": "Structural, not CPU cheating. Stagger::vf14 routes request kind 4 (Dribble — running with the ball) to the channel-3 animation END whenever the motion has ≤1 cancel key, which is 44 of 69 staggers; every other requester gets the FIRST key. Carrier stock median 1.000 s versus generic 0.600 s. The gate reads only motion id, current frame, contact sub-kind and requested kind — no controlled-player flag, no team, no attribute. The asymmetry is that a staggered player is usually the carrier (so he asks for Dribble, the late gate) while the arriving defender asks for Move or Tackle (the early gate).",
+   "where": "Stagger::vf14 0x143f00de0, one-byte edit jne→jmp at 0x143f00efa (contact-dribble-cancel-early.json); match-ai-decoded.md § The contact lockout for the eligibility layer",
+   "lever": "one byte at 0x143f00efa — median saving 0.333 s, worst case 0.700 s, every other requester unaffected.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Does a mistimed slide tackle cost anything?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime"
+   ],
+   "section": "FallDown::vf14 and Sliding::vf14 are the same function",
+   "answer": "Barely, as shipped. Sliding::vf14 answers \"yes, interrupt me\" only from the LAST cancel key on one branch — a median 1.367 s of a 1.63 s slide, i.e. 86% of it during which the slider cannot be knocked over. On the other branch it is the FIRST key, a median 0.800 s. WHICH branch runs is c-inferred, because the discriminating byte anime+0x2bdc is unidentified.",
+   "where": "Sliding::vf14 0x143f70360, 3-byte edit at 0x143f7037d (falls-slide-tackle-contact.json, described as sound); sliding_0_0_000 = end 104, keys 44 and 88",
+   "lever": "3 bytes at 0x143f7037d makes sliders knockable-over at any point. Raises no foul odds by itself.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "How long is a player on the floor after going down?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime"
+   ],
+   "section": "The fall → get-up chain / Tunables",
+   "answer": "75 of 87 fall_* motions have two cancel keys, so the LAST-key gate costs a median 2.800 s against the FIRST key's 1.400 s, inside a 3.13 s animation. Halving it is one edit — but it is ONLY useful paired with the Dribble::vf2 table byte, because Dribble and Move are refused outright while a FallDown runs. Which fall PLAYS is chosen by FallDown::vf30 and Stagger::vf30, and neither was decoded, so \"properly falling over, not stumbling\" is only half answered.",
+   "where": "FallDown::vf14 0x143f00d00, edit at 0x143f00d71 (contact-falldown-cancel-early.json); Dribble::vf2 case table 0x143f99f60 entries +0x0f / +0x0d, 03 → 02; motion selectors 0x143effa40 / 0x143effd70",
+   "lever": "0x143f00d71 plus the two Dribble::vf2 table bytes.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Are the motion assets reachable, or are the filenames hashed?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime"
+   ],
+   "section": "The motion assets / Corrections 8, 10, 15 / The write gate",
+   "answer": "They are NAMED, not hashed — the standing belief was wrong. The exe carries a 7,883-entry animation-name table in motion-id order. The files are fixed-size binary record walkers (NOT compiled JSON — that is the AnimeTable/ side), 21 channels per animation in 0x1f8-byte records. The WESYS container is stored VERBATIM in dt230_console_win.cpk at a unique 0x800-aligned offset, so an in-place byte overwrite reaches it: CancelData.bin was located at 0xb5bf800 with a full byte match and exactly one occurrence.",
+   "where": "name table 0x148027310 bounded by cmp edx,0x1ecb; loader divide-by-36 magic 0x143e95565",
+   "lever": "the LOCATE half is solved; the PACK half is NOT — the project's WESYS packer cannot emit key nibble 0 / flag 0x81 / unencrypted, Konami's deflate beats zlib -9 so it needs zopfli, ml_deploy.py is hardcoded to dt200, and headroom is 5–19 bytes and MUST be measured per record-set and per delta (a uniform +6 frames across the contact family overflows by 13 bytes; +12 fits with 8 to spare).",
+   "route": "motion-asset",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Can I make players feel heavier and turn more realistically?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime"
+   ],
+   "section": "The locomotion surface — realism item 4 has a home",
+   "answer": "There is a real surface and it is narrower than it looks. dt270 moveMatching.RouteParameter[14] (stride 56) is live: 11 of the 14 fields are read, acc/dec are MULTIPLIED not merely copied, and rotSpeed / decRotSpeed / accRateDif60/120/180 are compiled into a 0x3c-byte per-frame block. But there is NO MASS TERM — accacc, poseWeight and routeWeight have zero readers. It is one global blob: nothing indexes it by player, attribute or style. The compiler is pinned to element 5 by its only call site and another reader to element 0. And the SHIPPED DATA has rotSpeed = 7.0 in all 14 rows and decRotSpeed = 0.0 in all 14, so per-route turning differentiation does not exist in stock.",
+   "where": "indexed imul reg, idx, 0x38; compiler 0x143ec3ed0 pinned by mov r8d,5 at 0x144082f15; 0x143fef370 reads element 0",
+   "lever": "acc / dec / accRateDif* in the dt270 file. Per-player weight needs a runtime hook on 0x143ec3ed0's output block — note that on its high branch [rdi+4]/[rdi+8] are overwritten with 1.0f, discarding the dt270 values.",
+   "route": "dt270-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I make first touches looser so good players stand out?",
+   "subsystem": "match::anime — first touch",
+   "chapters": [
+    "anime"
+   ],
+   "section": "Tunables / realism item 3 / Negatives",
+   "answer": "Yes, in data — and as shipped the owner's ruling is VIOLATED, not satisfied. trap.ballControlRate ships at 1.0 (read live from both the PRISTINE and the installed dt270 packs), gating clamp01((TightPossession_eff − 40)/59) · rate — so at 1.0 a TP99 player's term saturates at exactly 1.0 and is mathematically incapable of a bad touch. LOWERING this one field is the lever. Two further corrections: the attribute is Tight Possession 0x19, NOT Ball Control 0x18 (which the trap family never reads); and trap.trapLoss — the field that sounds like the answer — has no readers at all and is stock true.",
+   "where": "readers 0x144079c38, 0x144079dc3, 0x14407aab5; weak-foot differentiator trap.ballControlWeekFootDownLimit stock 20.0, sole reader 0x144079163",
+   "lever": "trap.ballControlRate (set it by NAME, not by offset — liveness soff 56 versus schema off 16) and trap.ballControlWeekFootDownLimit.",
+   "route": "dt270-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Can the ball ricochet off a player who is not tackling?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime"
+   ],
+   "section": "realism item 3 / Negatives",
+   "answer": "NOT FOUND, and the negative is explicitly ONE-SIDED. The ball integrator's 15-function forward closure reaches no collision system, no attribute and no dt270, and every dt270 bounce array has six ground-surface entries and no body entry — those two legs hold. But the third leg, \"collision::Human has zero callers image-wide\", is FALSE: it is heap-allocated per player by a factory inside match::AnimeCollision and attached at AnimePlayer+0x47a8, and that object was never followed. So \"the ball cannot ricochet off a player as physics\" is not proven.",
+   "where": "integrator 0x14408d0f0, ctor 0x1451305f0 ← factory 0x143ff2210 (3 call sites), vftable 0x146b6fb48",
+   "lever": "unknown — follow AnimePlayer+0x47a8.",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Do saves and first touches get harder on a higher difficulty?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime",
+    "gk"
+   ],
+   "section": "What this enables / Negatives; goalkeeper § 9",
+   "answer": "No. There is no CPU difficulty anywhere in match::anime: 0 of 24 AiLevelUnit::GetParam sites, 0 of 46 Team::GetCurrentLevel, 0 of 20 IsEnabled. Saves and first touches are identical on Beginner and Legend.",
+   "where": "anime-actions.md § Negatives; goalkeeper.md § 9 (re-checked, not re-derived)",
+   "lever": "NONE",
+   "route": "none",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "How do I get more fouls out of more contact?",
+   "subsystem": "match::anime / referee",
+   "chapters": [
+    "anime",
+    "setpieces"
+   ],
+   "section": "Fouls: the animation layer reports, the referee decides",
+   "answer": "The mechanism is decoded downstream and the poster is NOT. Contact reaches the referee as event kind 0xe on the match event bus; the payload is two player handles and the severity is computed WHOLLY INSIDE THE REFEREE (it is the sum of three sub-scorers stored as a float at referee+0xac; the animation layer passes no severity). But the POSTER of the kind-0xe event was not found, so \"more contact produces more fouls\" is unproven at exactly the step that matters. If fouls are the goal TODAY, go straight at the referee's own thresholds — which are all stock in the installed image.",
+   "where": "Judge 0x143c917b0, referee handler 0x143d18570; set-pieces.md § THE ANTI-PENALTY BIAS for the thresholds",
+   "lever": "the referee thresholds — see the anti-penalty rows.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I add a new animation?",
+   "subsystem": "match::anime — animation",
+   "chapters": [
+    "anime"
+   ],
+   "section": "What this enables / Tunables / Negatives",
+   "answer": "No. Every MbInfo table is a fixed row count indexed by a 13-bit animation id bounded at 7,883, and the CPK slot length is fixed. The 660 enum_dummy* reserved ids are the only conceivable hole and nothing references them. Animation LENGTH is also not safely tunable, for two independent reasons: lengthening 69 stagger animations overflows the compressed slot by 12 bytes and a CPK entry cannot grow, and Animation.bin's path is not one of the 68 the exe names, so it may not even be live.",
+   "where": "bound cmp edx,0x1ecb",
+   "lever": "NONE",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I trigger a run without passing — tap a shoulder button to send a man?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad"
+   ],
+   "section": "§ 13 The trigger-run spec — reviewable, NOT APPLIED",
+   "answer": "IT ALREADY SHIPS. ThinkUnitPassAndGo::vf17's chain A is exactly \"logical 19 not held\" + \"logical 21 tap\", and vf12 emits command 0x47. Emulated: a ≤5-frame tap of logical 21 with logical 19 up fires; with 19 held it does not. The mapping 19 = RT and 21 = RB is c-inferred — pinned by the in-game control screen and XInput axis convention, not by disassembly. RB is the button that is actually free on the ball: no attack-bank ThinkUnit uses it. Three data-only retunes are specified and NOT APPLIED.",
+   "where": "chain A nodes at 0x1486b88d0 (2 × 40 B), chain B at 0x1486b8930 (3 × 40 B), gate byte 0x1486b88d4, button mask 0x1486b88f8 = 1<<21",
+   "lever": "runtime-data writes to the pattern nodes — tier 1, a plain WriteProcessMemory into a loader-committed zero page, no VirtualProtect, no code-page exposure. The write must land AFTER the first vf17 call.",
+   "route": "runtime-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Can I bind \"tap LB = make a run\"?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad",
+    "registry"
+   ],
+   "section": "pad § 14; registry § 12.6 items 2 and 3",
+   "answer": "Impossible as stated, end to end. ThinkUnitCursorChange is bound to logical button 18 = LB and overrides only vtable slot 12, so it triggers on the INHERITED ThinkUnitBase::vf17 — a one-frame rising edge. An LB tap fires Cursor Change on frame 0, before a tap could ever be distinguished. This also corrects docs/realism-todo.md item 2, which claimed both shoulder-alone functions are holds so a tap is free.",
+   "where": "ThinkUnitCursorChange vf12 = 0x1440e20b0 (mov eax,0x37; ret)",
+   "lever": "use RB instead.",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "What does the game count as a \"tap\" rather than a hold?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad",
+    "registry"
+   ],
+   "section": "pad § 5.4 The tap law, exactly [b + a]; registry § 11 Tunables (the 0.08 cell)",
+   "answer": "Pattern node kind 4, and the law is precise: it matches iff the PRESS EDGE is no more than B frames back — that is press DURATION plus release AGE ≤ B — with B = (int)(0.08·FPS + 0.5) = 5 at 60 fps. Not \"a press of at most 4 frames\". Two engine constraints: B is stored as a dword but READ AS A BYTE by both edge searches, so ≥256 wraps mod 256; and the chain window is fixed at 100 frames, so B > 100 is inert. Useful range 1–100.",
+   "where": "per-node B at 0x1486b8904 for PassAndGo; the shared 0.08 cell 0x145e87854 is loaded at 0x1440e54b0–0x1440e54c5 (pad-input.md § 5.4). The two read sites 0x1440e54b5 / 0x1440e551e are registry-blackboard.md’s spelling of the same loads — cited there, not in the pad chapter",
+   "lever": "edit the per-node B (runtime-data, private, THE SAFEST EDIT IN THE SUBSYSTEM). Do NOT edit the 0.08 cell — 44 referrers across 36 functions including Kick, SavingBase, Dribble, RagdollManager, camera and ActionPress.",
+   "route": "runtime-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Does the CPU get fed fake controller input?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad"
+   ],
+   "section": "§ 7.6 / Negatives 1 and 7",
+   "answer": "No. The CPU never enters the pad channel: pad-bound entries are driven by the main loop, participating non-pad entries get CommandPlayer::vf2 which is a pure clear, and entries failing all three gates are skipped entirely. No pad-level change can reach a CPU team or your own off-ball players. There is also no match::Cpu* class in the RTTI at all.",
+   "where": "clear = 0x1440de4f0, gates at 0x1440d487a / 0x1440d4891 / 0x1440d48ab",
+   "lever": "NONE",
+   "route": "none",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Does the human get an accuracy advantage the CPU does not?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad"
+   ],
+   "section": "§ 8.4 / Negatives 3",
+   "answer": "No — there is nothing to remove. The kick-error model has NO human/CPU branch: the error factor is a pure function of the kicker's own attribute. Verified by a depth-4 closure over raw direct call/jmp targets (482 functions) with three positive controls in, two difficulty reads and the command decoder out, zero ControlMode operands, and a displacement scan with its own positive control. Honest limit: direct calls only; virtual dispatch inside the closure was not followed.",
+   "where": "pad-input.md § 8.4",
+   "lever": "the attribute, or the error model itself (which lives in subsystem 3).",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "How do I make shooting require more commitment?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad"
+   ],
+   "section": "§ 8.1–8.3 / Tunables",
+   "answer": "The power gauge fill time: Shoot 0.25 s, open-play passes 0.30 s, set-piece shot 0.38 s, set-piece pass 0.42 s, from a 16-entry table. At 60 fps 0.25 s is 15 frames to full; 0.40 s would be 24 frames and 24 power levels. Power itself crosses the wire as 7 BITS, floor(g·127). Note the open-play PASS gauge has NO isolating edit — its load is the shared default arm serving eight-plus ids, so isolating it needs a cave, a different risk class from every other row.",
+   "where": "table builder 0x1440d8070, shoot cell 0x1478501fc at 0x1440d824a (reached only by ids 0x3d/0x3e), quantiser 0x144317860 + dequantiser 0x144317d43",
+   "lever": "re-aim 0x1440d824a — but this is TIER 3: a write to the .xcode EXECUTE|READ page, which live_patch.py's own DENUVO_NOTES singles out as integrity-checked and warns can crash the game. Treat as an experiment, not a setting.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Can I make aiming manual instead of assisted?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad"
+   ],
+   "section": "§ 7.8 / Tunables / Negatives 2",
+   "answer": "There is a single threshold: below 0.10 left-stick magnitude the aim angle is REPLACED by an assist source. Re-aiming the load is the knob. Honest gap: the SIZE of the correction the assist applies was not measured, and this is a tier-3 write to an executable page. Separately, a clean negative: no assistance SETTING (Control Style / Pass Search / Shoot Type / Ball Cource) reaches the command layer at all — assistance changes neither the ControlMode nor which ThinkUnit fires, and where it does land is not proven.",
+   "where": "branch 0x1440db845..0x1440db891, cell 0x145a8dd68 (1,186 sharers) loaded at 0x1440db7f0, compared at 0x1440db840",
+   "lever": "re-aim 0x1440db7f0 (tier 3, completely untested).",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Which players can I control, and which of them run the carrier brain?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad"
+   ],
+   "section": "§ 7.4, § 7.5, Tunables (Not yet actionable), Negatives 8",
+   "answer": "One byte decides both: byte[UMatchInfo+0x41f6+onPitchIdx] gates the degenerate ControlModes AND match::ai::bp activation (bp fails on zero). It is set at setup from a per-team human-control count, or overridden per player. This is the single highest-value lever in the subsystem AND it cannot be executed: the base object X has no located address and the two count fields have no located writer. Note 0x41f6 has exactly ONE writer against 961 read sites, so there is no second per-frame writer to fight.",
+   "where": "count X+0x3c / X+0x40, per-player override byte[X+0xf26b+idx] behind byte[X+0xf297], direct accessor 0x144308db0, sole writer 0x1442c5368",
+   "lever": "NONE today — nowhere to write it.",
+   "route": "not-reachable",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Does dt270 reach the pad layer at all?",
+   "subsystem": "match::pad",
+   "chapters": [
+    "pad"
+   ],
+   "section": "§ 12 dt270 rows / Negatives 17 and 18",
+   "answer": "YES — three fields proven, and the earlier \"no dt270 field reaches match::pad\" was produced by an instrument that structurally could not have found it (a census of RIP-relative constant loads cannot see a value arriving through a GetParam call and a pointer deref). trap.stopTrap.use gates the whole ThinkUnitTrapStop unit; trap.stopTrap.inputTime is multiplied by live FPS to become the unit's frame window; grounderpass.search.searchMinDist is read in the Command band. And the read-versus-effective check pays off immediately: stopTrap.use ships FALSE in both the PRISTINE and the installed CPK, so ThinkUnitTrapStop does nothing at all in the shipped game.",
+   "where": "0x1440e883f mov edx,0x6f → 0x145348d70 → cmp byte[rax+0x1c8],0; inputTime at +0x1c4 × FPS at 0x1440e887c; searchMinDist at +0xbc via 0x1440d64b7. Data: PRISTINE and INSTALLED both read use=False, inputTime=0.5, searchMinDist=2.25",
+   "lever": "flip stopTrap.use in the CPK — the cheapest experiment in the chapter, and an experiment, because what the unit then DOES is unknown. TIER 0: no memory write at all.",
+   "route": "dt270-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Why are all my goalkeepers basically the same?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk",
+    "executors"
+   ],
+   "section": "goalkeeper § 3, § 10, § 11",
+   "answer": "Because the save-quality selector FLOORS the bottom of the scale. It floors Reach at an output of 50 and Reflexes at 63 (inline constants 52 and 65, then anything below 90 is scaled ×0.98), and on any ball under 50 km/h it takes max(Catching, Reflexes, Reach) and remaps 40..90 into 73..89 across the whole roster. So a 40-Reflexes keeper parries like a 63, 23 points of the Reflexes scale are unreachable, and a single-attribute nerf on routine catches is invisible.",
+   "where": "selector 0x144032870, Reflexes floor lea ebx,[rax+0x41] at 0x1440329b0, Reach floor add ebx,0x34 at 0x1440329d9, easy-catch floor add ebx,0x49 at 0x144032940, ×0.98 pass at 0x1440329ed..0x1440329fe",
+   "lever": "three instruction-local inline immediates — the easy-catch floor is described as the cheapest single byte in the chapter. Note the function is in the ANIME layer, not the executor layer.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "What does raising a keeper's Reflexes actually buy me?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk"
+   ],
+   "section": "§ 3, § 11, § 13",
+   "answer": "Less than the UI implies: the output is compressed to 63..99, so dropping a keeper from 70 to 40 buys fifteen quality points, not thirty. And the payoff depends on which Deflect sub-type the engine picks — the wide transfer fires only for sub == 1 while the Reflexes quality arm fires for sub in {1,4,5} — and the SAVE-TYPE CHOOSER IS NOT LOCATED, so which of the three you get is itself unknown. There is also a rating cliff: the <90 test is on the POST-REMAP value, so the Reach arm jumps between 90 and 91 while Reflexes / Catching / Parrying jump between 89 and 90. For a smooth roster keep Reach ≤ 90 and Reflexes / Catching / Parrying ≤ 89.",
+   "where": "goalkeeper.md § 13 Negatives (\"The save-type chooser is NOT LOCATED\", a precise not-proven)",
+   "lever": "drop the floors first, then steepen the slopes (lea eax,[rax+rax*2] at 0x1440329cc, sar ebx,2 at 0x1440329d6, sar eax,1 at 0x1440329ae) — otherwise the band just shifts.",
+   "route": "player-data",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "What does GK Reach do that the others do not?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk"
+   ],
+   "section": "What this enables / § 10 / § 11",
+   "answer": "It is the only goalkeeping attribute with a BINARY BEHAVIOURAL THRESHOLD. goal_keeper::Deflect::vf35 returns false unless GK Reach ≥ 0x55 = 85: below 85 a keeper loses a diving-parry BEHAVIOUR, not a few percent of quality. That is worth more than any amount of quality arithmetic. Correcting an earlier draft: attribute points 40–50 are NOT wasted — the arm still moves the output by about 0.75 points per attribute point across 40..90.",
+   "where": "cmp eax,0x55 at 0x143f4ae10 in 0x143f4add0, one referrer, one caller (0x144038820) — the only slot-35 override, entirely uncompressed",
+   "lever": "either the immediate, or simply author keepers on the correct side of 85.",
+   "route": "player-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "What does GK Awareness do, and is there a number I must never use?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk"
+   ],
+   "section": "What this enables / § 10 / § 11",
+   "answer": "It buys ANTICIPATION: up to 15 frames (0.25 s) of head start on a threat's wind-up, an onset moving from 0.500 s to 0.170 s, a ball look-ahead, plus the vanishing standing error. And yes there is a forbidden band: NEVER author a keeper at GK Awareness 40–43. The anticipation branch needs BUDGET = floor(fps·0.25·norm) ≥ 1, i.e. attr ≥ 43.93, so 40–43 loses the behaviour entirely — the first points of the scale are a step, not a slope. Spread keepers across 44–99 and you get a visible gradient.",
+   "where": "reads at 0x1442254c2 and 0x14422aba3; goalkeeping.md § 1.4 for the budget arithmetic",
+   "lever": "the attribute, in master.db — no patch needed.",
+   "route": "player-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Does a weak keeper ever just stand in the wrong place?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "executors",
+    "gk"
+   ],
+   "section": "player-executors § Positioning / Tunables; goalkeeper § 10",
+   "answer": "Yes — and it is the ONLY random number in the entire goalkeeper family at the executor layer: RandInt(0..5) · 0.1 · (1 − (GKAwareness−40)/59) metres, re-rolled every 2·T ticks. That is a maximum of 0.50 m at awareness 40 and exactly 0.00 m at 99. The range immediate was specifically verified as a PLAIN bound, not an RNG stream index (unlike the carrier's plan rolls).",
+   "where": "mov edx,6 at 0x144228863, bound checked against 0x144345e50(state, bound); refresh period add eax,eax at 0x144228800; ability slope cells at 0x144228823 / 0x14422883a / 0x144228852",
+   "lever": "6 → 18 gives a 1.7 m maximum error at awareness 40. The refresh period can only be HALVED in place (2-byte budget: shr eax,1); lengthening needs a cave.",
+   "route": "exe-code",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Is a save random?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk"
+   ],
+   "section": "§ 4 / § 13",
+   "answer": "SCOPED negative, and the flat version was withdrawn. No roll reaches the quality path or any save-permission gate THAT THE CHAPTER SEARCHED — selector, multiplier, canStart, Deflect::vf35, Block::vf30, all run to exhaustion with both controls. But: five of the six vf30 overrides are clean only to depth 4 and DO reach an LCG entry at depth 5–6 (whether it is effective is NOT PROVEN); the save body 0x143f46370 DOES draw RandInt % {10,5,21} · 0.01 into a float, up to a 0.20 m span, and its only reader is undecoded; and the save-type chooser was never located, so it could not be searched at all. Do not restate this as \"no randomness in goalkeeping\".",
+   "where": "the methodological warning that an unbounded forward closure in this band saturates — the NEGATIVE control explores 33,123 functions and reaches all five LCG entries",
+   "lever": "NONE identified.",
+   "route": "none",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I make a sweeper keeper?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk",
+    "executors"
+   ],
+   "section": "goalkeeper § 5 and § 10; player-executors § Tunables",
+   "answer": "Partly. The engagement radius inside which he may notice an opponent's action at all is 16.42 m, stored SQUARED as 269.6164 in a genuinely private cell (refcount 1, sole referrer) — one of the very few constants in the whole map that is safe to edit in place. Write R-squared, not R. Its exact consumer condition is only partly read. The two come-out trigger radii (15 m and 7 m) in ActionKeeperPress::vf6 are shared cells and need re-aims.",
+   "where": "cell 0x146bdfd90, sole referrer 0x144224d1d, consumer 0x1442246d0; 15 m = 225.0 @0x146a0476c tested at 0x14421c9d7 (118 sharers), 7 m = 49.0 @0x146a6fa18 at 0x14421c9ac (73)",
+   "lever": "the private radius cell — exe-constant, in-place edit verified safe.",
+   "route": "exe-constant",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can a better keeper come out better, or distribute better?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk"
+   ],
+   "section": "What this enables / § 6 / § 13",
+   "answer": "No, on both. The ONLY attribute anywhere in the Press family is HEIGHT (0x32), and it feeds a steering parameter, not a decision. The keeper's on-ball distribution brain is not a ThinkUnit and reads HEIGHT plus two flag bits — no passing, vision or technique attribute appears anywhere. Coming out and distribution are entirely unscaled by ability.",
+   "where": "distribution brain 0x145655430, short/long split 30 m / 40 m at 0x145655595 / 0x145655aed compared squared at 0x145655b2b",
+   "lever": "NONE by ability; the short/long split constants are shared cells.",
+   "route": "none",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I bind a save to a button?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk"
+   ],
+   "section": "What this enables / § 13 Negatives",
+   "answer": "No. There is no match::pad::ThinkUnit for Catch, Punch, Deflect, ScoopOut or SnapUnder. The map lists keeper units for Block, Tackle, PickupBall, DropBall, AutoPuntkick, Press, TrapMove, AutoMove, CursorChangeKeeper, FreekickKeeperMove and three Penaltykick units, and none for the five saves. Saves are engine-automatic and unbindable.",
+   "where": "goalkeeper.md § 13",
+   "lever": "NONE",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I tune goalkeepers through dt270?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk",
+    "executors"
+   ],
+   "section": "goalkeeper § 9, § 10, § 13; player-executors § Negatives and Corrections",
+   "answer": "No, and the trap is specific: dt270 basePosition has exactly 20 gk* fields, of which 6 are read and 14 are dead — and all six readers are in the OUTFIELD goal-kick shape layer. Editing them changes where the outfield players stand at a goal kick, never the keeper. There are zero dt270 reader sites anywhere in the keeper executor band and zero get() sites in any goal_keeper:: body.",
+   "where": "0 of 18,366 reader sites in 0x144215000..0x144243000, re-checked; fourteen dead, not nine; the six read are gklAdjustRateX, gklBaseX, gklBaseZRate, gklSupportRate, gklWidthZ, gksWidthZ",
+   "lever": "NONE",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Where does the keeper start from, and can I move him without a patch?",
+   "subsystem": "goalkeeping",
+   "chapters": [
+    "gk"
+   ],
+   "section": "§ 1 / § 10",
+   "answer": "Yes — team data, not a patch. The base x is the formation's own GK slot coordinate, clamped to ±10 m of a per-team field and capped at 4 / 15 / 20 / 42 m by state. Moving the formation's GK slot moves the base spot one-for-one to the clamp. The four state caps are all shared cells and three of them heavily so (1,086 / 943 / 1,099 referrers; only the 42.0 is as low as 26) — an earlier draft quoted the smallest as if it were typical.",
+   "where": "base at teamAI + slot*20 + 0x40, clamp reference team+0x799c",
+   "lever": "the formation editor.",
+   "route": "player-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "How do I get more penalties?",
+   "subsystem": "set pieces / referee",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "THE ANTI-PENALTY BIAS",
+   "answer": "Undo the anti-penalty bias — the most targeted realism lever found anywhere in this project, and NOTHING IS APPLIED (all six bytes verified identical in PRISTINE, INSTALLED and STOCK). Two mechanisms. (1) The severity threshold is RAISED inside the box: severity must reach 60 in the area versus 40 outside for a foul to exist at all. (2) The ball-contest veto is LOWERED inside the box: a foul stands only if the tackler's contest score is BELOW the threshold, 0.7 outside and 0.4 inside — so more contests are excused in the area. Card knees are 80 (yellow) and 110 (red).",
+   "where": "foul level function 0x143d861f0, in-box threshold mov eax,0x3c at 0x143d862a4, out-of-box mov ecx,0x28 at 0x143d8629f, classifier 0x1443236e0 bit 11; veto at 0x143d874a7 (0.7 @0x145bbe200, 461 sharers) and the 4-byte movaps at 0x143d874c1 (0.4 @0x145b2a690, 623)",
+   "lever": "#1 is ONE BYTE and private-inline — the single most targeted \"more penalties\" edit in the game. #2's in-box half needs a CAVE: the detour must consume 0x143d874c1..c8 (the 4-byte movaps PLUS the 4-byte comiss at 0x143d874c5), reload the threshold, re-execute the comiss and return to 0x143d874c9. Caveat: byte[player+0x4a8] cancels the in-box downgrade when non-zero and its meaning is NOT established.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Does a 95-rated free-kick taker actually take better free kicks than a 60?",
+   "subsystem": "set pieces",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "What this enables / Delivery / Tunables",
+   "answer": "Only on NEAR-POST strikes, and the scope must travel with the answer. A logistic in Restart::vf8 sets P(re-draw the kick solution): rating 40 → 90.74%, 72 → 25.43%, 85 → 5.40%, 99 → 0.58%. It crosses 50% at rating 63 and is steepest across 58–68, which means the whole band above about 85 is already flat and undifferentiated. But the roll is reached only from a simulated step the goal-mouth test classifies as entering the goal within 1.0 m of a post, inside a loop gated on the player's action id. It does NOTHING for corner delivery, throw-ins, kick-offs, goal kicks or any restart played as a pass.",
+   "where": "cells at 0x143f0540b (99.0, 90 sharers), 0x143f05413 (−59.0, 8), 0x143f0541b (5.5, 64), 0x143f05423 (2.5, 477); scope gate 0x143f05575–0x143f0557c, loop gate 0x143f054b5",
+   "lever": "re-aim 2.5 to shift everyone toward \"good taker\", 5.5 to steepen. The 1.0 m post margin that triggers the roll at all is the image-wide 1.0f with 13,240 referrers — re-aim only, never in place.",
+   "route": "exe-constant",
+   "evidence": "a-emulated"
+  },
+  {
+   "q": "Does a dead ball use the same error model as an open-play pass?",
+   "subsystem": "set pieces",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "Delivery — and dead balls do not use the open-play kick-error model / Negatives",
+   "answer": "No. No dead ball goes through the open-play kick-error builder at all: it has exactly one caller, whose only caller is Kick::vf8, and every Restart-family class carries a different slot 8. So editing the kick-error model to \"fix free kicks\" changes open play only. Related: Set Piece Taking and Curl are never read as ATTRIBUTES by the open-play error model — its 0x21/0x22 reads are CARD ids.",
+   "where": "0x14401a900 ← 0x144016d3d in 0x144016a70 ← Kick::vf8 0x143ed0f80; Restart slot 8 = 0x143f05150",
+   "lever": "NONE via the open-play model.",
+   "route": "none",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Why does the wrong player get on the end of my corners?",
+   "subsystem": "set pieces",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "Negatives / Corners",
+   "answer": "Because target and aim selection for corners, free kicks, goal kicks, kick-offs, throw-ins and penalties is completely ABILITY-FREE. Twelve functions were scanned end to end for seven different getters with positive controls: zero attribute, card, playstyle, level-row or difficulty reads. The LONG THROW is the single exception — its receiver picker really does read attributes. So \"the wrong player gets on the end of my corners\" is a formation / assignment-table issue, not a scoring one.",
+   "where": "long-throw picker 0x1456af7f0, reach 35.0 → 45.5 m at 0x1456afa4c / 0x1456afa6e (45.5 has 3 sharers, 175.0 has 6, 190.0 has 14 — all near-private)",
+   "lever": "formation and set-piece assignment; and for long throws, the near-private band cells.",
+   "route": "player-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I move the twenty-two players at a penalty?",
+   "subsystem": "set pieces",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "The positionPK_* dt270 objects — LOCATED, and live",
+   "answer": "Yes — and it is the safest lever in the chapter: no exe patch, no shared cell, and it survives Konami updates. The positionPK_{2,3,4,5} dt270 objects are located and live, fetched BY NAME via sprintf(\"positionPK_%d\", backLineCount), with playerData[0..21].{enable, playerNo, startPosX, startPosZ}. Pick the file by the DEFENDING BACK LINE: a back four edits positionPK_4. Coordinates are canonical-attacking and mirrored per side, Y is forced to 0, and playerNo is wrapped mod 22 by the reader. positionNone is INERT and unreachable — do not bother with it.",
+   "where": "name build 0x143c4c43d, reader 0x143c685a0, applier 0x143c4f5f0; dt270-residue.md § positionNone (4) + positionPK_2..5 (16) — BOUND BY NAME",
+   "lever": "the four positionPK objects in the CPK.",
+   "route": "dt270-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Does it matter who takes my penalties?",
+   "subsystem": "set pieces",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "Penalties / Negatives / Tunables / Open 1",
+   "answer": "No. Not one attribute is read in the level function, the veto, the standoff provider, the enforcer, the CPU aim builder, the penalty power ladder or the keeper's penalty stance. Penalty power is the WHOLE of it: base 0.4 plus span ×0.5, giving 0.40–0.90, with no attribute term and no RNG. CPU aim is a 7-entry jump table indexed by a match word mod 7 — and if that word is never written (see the r-is-possibly-zero row) the index is always 0 and the CPU aims at one spot all match. That frozen-index risk is the highest-value live read in the chapter.",
+   "where": "power at 0x144205bd0 / 0x144205bc8 / 0x144205bc0, ladder 11 steps at 0x144205ba7 / 0x144205bb1; aim table 0x1456aeefc consumed at 0x1456aedc3, index = dword[URandomInfo_front + 0] % 7",
+   "lever": "narrowing the power span removes the weak penalties; re-weighting the 7-entry table spreads CPU aim — but entry 0 is ALSO the out-of-range default, so changing entry 0 changes both.",
+   "route": "exe-constant",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Why does the CPU take corners and free kicks instantly?",
+   "subsystem": "set pieces",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "The delivery clock / Corners / Tunables",
+   "answer": "The delivery clock in ThinkUnitSetPlay's per-kind arms, and the CPU/human split is large: CPU corner fps × 3.0 versus human 7.0; CPU kick-off 0.5 s; CPU free kick 3.0 s (2.0 s in ball states 0xa–0xd) versus human 6.0 or 8.0; CPU penalty is a BARE fps (1.0 s) with no multiply at all, versus human 6.0. Short corners are a 10% branch (50% under one flag), and a pad-bound taker never gets the 7.0 s short-corner stretch — widening the 2.0 s window is the only way to give a human more of one.",
+   "where": "all the delay floats are generic pooled cells (3.0 = 1,761 sharers, 7.0 = 398, 6.0 = 646, 4.0 = 1,086, 8.0 = 829, 0.5 = 7,052) — re-aim only; CPU penalty is the compare at 0x1456b04a7, not a float",
+   "lever": "short-corner frequency is a PRIVATE inline immediate: cmp r8d,0xa at 0x1456b0634 — 0x0a → 0x14 doubles short corners, → 0x00 removes them. The cleanest single-byte variety lever in the chapter. But the word it compares was NOT traced, so \"10% of corners\" is the code's shape, not a measured rate.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "How far do players retreat at a restart, and where does the wall stand?",
+   "subsystem": "set pieces",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "Referee placement, and the 9.15 m / Open 12",
+   "answer": "The 9.15 m the restart standoff uses is a pool cell with 6 referrers, read by exactly one instruction in the provider — NOT the inline 9.15 a probe nominated, which writes a different copy consumed only by the pitch-zone classifier and will not move a wall. Kick-offs and penalties add +1.0 m, making the ring 10.15 m rather than the legal 9.15. The throw-in standoff is 6.0 m, far more than the laws' 2 m, which is why throw-ins feel unpressed. \"PROBABLY\" is load-bearing on the wall: whether EMatchFlowTask::FkWallSet places wall members with the same radius was NOT traced.",
+   "where": "instruction 0x143d48c25 (disp32 field 0x143d48c29..0x143d48c2c) → cell 0x146b18170; chain 0x143d48bc0 → 0x143d48cb0 → 0x143d48e90; +1.0 m at 0x143d48c5d; throw-in 6.0 at 0x143d48c0d, taker's −3.0 discount at 0x143d48e56; the decoy inline is 0x1442ec757",
+   "lever": "re-aim 0x143d48c25 — the cell's other five referrers are outside the referee band, so a re-aim touches nothing else. Change it and test the wall.",
+   "route": "exe-constant",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Can I choose who is in the wall, or make jumping depend on ability?",
+   "subsystem": "set pieces",
+   "chapters": [
+    "setpieces"
+   ],
+   "section": "The wall / Negatives / Tunables",
+   "answer": "Not reachable. ActionWallJump is a relay: it reads a pre-written per-slot command cell holding WALL_JUMP (0x69) or WALL_NOT_JUMP (0x6a) and emits it. No attribute, card or playstyle is on the path — a full disassembly of the jump/not-jump decision contains no attribute getter, no card test and no playstyle test. The WRITER of that cell was not found. ActionWallPress holds no wall line either (its vf4 returns the ball position), and ActionKeeperCoaching does not organise the wall.",
+   "where": "cells at teamAI + 0x8f4c + slot*4; decision 0x144205c80",
+   "lever": "the command cells are the control surface but they are runtime state written by something unlocated — a live-patch experiment, not a file or exe edit.",
+   "route": "not-reachable",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Does the CPU keeper dive before the penalty is struck?",
+   "subsystem": "set pieces / goalkeeping",
+   "chapters": [
+    "setpieces",
+    "gk"
+   ],
+   "section": "The keeper's PRE-KICK STEP / Negatives / Open 2",
+   "answer": "He almost certainly never does. ActionKeeperMovePenaltyKick::vf16 needs a COMMAND RECORD of kind 2 on the keeper's own index, and the only writers of command records in the image are the human/online marshalling chain — established two independent ways. The step itself is ±5.0 m in z on a single < 90.0 test of a 9-bit field unpacked from a descriptor, with no RNG, no attribute and no difficulty. And the ±5.0 is NOT tunable anyway: it is saturated by a clamp to ±2.160 m. Stated limit: \"the CPU keeper's record is empty\" is c-inferred; a writer using plain mov immediates would be invisible to both sweeps.",
+   "where": "writers 0x1440dab90 / 0x1440dcf60 / 0x1440db1c0 / CommandPlayer::vf3 0x1440de590 / OnlineCommandControllerImpl::vf17 / 0x145716310; clamp at 0x14422cb7c",
+   "lever": "the 1.5 m inset, not the ±5.0 step — and it too is shared.",
+   "route": "NOT-SAFELY-TUNABLE",
+   "evidence": "c-inferred"
+  },
+  {
+   "q": "Which single change would make the biggest realism difference for the least risk?",
+   "subsystem": "cross-subsystem",
+   "chapters": [
+    "anime",
+    "executors",
+    "setpieces",
+    "pad",
+    "gk"
+   ],
+   "section": "cross-referenced from the Tunables tables of all eight chapters; pad-input § 12 Route legend",
+   "answer": "Ranked by the chapters' own route tiers, the no-memory-write data levers come first: dt270 trap.ballControlRate (lower it — at the shipped 1.0 a TP99 player cannot mis-control), dt270 passget's 26 reception fields, dt270 positionPK_{2,3,4,5} for penalty shape, and the out-of-possession playing-style category 9 for marking tightness (player data the app already writes, 0.300 m → 0.000 m off the man). Then the private inline immediates: the in-box severity threshold 60 → 40 for penalties, the three GK selector floors, the Deflect Reach gate at 85, the free-kick curl gates. Everything involving a shared pool cell is a re-aim, and everything landing in .xcode is an experiment, not a setting.",
+   "where": "pad-input.md § 12 is the clearest statement of the risk ordering (.text RW = tier 1 plain write; .tls$ R = tier 2 needs VirtualProtect; .xcode RX = tier 3, integrity-checked, a mismatch crashes the game)",
+   "lever": "see answer.",
+   "route": "dt270-data",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "What should I NOT bother trying?",
+   "subsystem": "cross-subsystem",
+   "chapters": [
+    "executors",
+    "bp",
+    "registry",
+    "anime",
+    "pad",
+    "gk",
+    "setpieces"
+   ],
+   "section": "the Negatives view (every chapter’s Negatives / Refuted section) and the NOT SAFELY TUNABLE card in the Levers view",
+   "answer": "Open the Negatives tab and the first card of the Levers tab before you open anything else. Between them they hold the things that were built, looked reasonable and were killed by verification: dt270 fields with readers that discard the value (basePosition.marginPredictionFrameAdjust is multiplied by a −0.0f cell; forceDashDistDefence is overwritten before its only compare; trap.trapLoss and trapLossDashOnly have no reader at all), constants that double as RNG stream indices or jump-table bounds, cells multiplied by a just-zeroed register (Deflect::vf37, the d≥18 m arm of the run-straightness weight at 0x143d2274e), values the game rewrites every frame (the power gauge, team+0xb450), and per-match AI moods that no file can author (team+0xb3c4 — retired by the blackboard chapter after being the catalogue’s headline on-ball lever). Nothing here is a maybe: each row names the instruction that kills it.",
+   "where": "Levers → NOT SAFELY TUNABLE (first card); Negatives → absent / refuted; Exe map → the rows badged superseded",
+   "lever": "NONE — that is the point of the view.",
+   "route": "NOT-SAFELY-TUNABLE",
+   "evidence": "b-disassembly"
+  },
+  {
+   "q": "Which of the patches we already shipped are placebos?",
+   "subsystem": "cross-subsystem",
+   "chapters": [
+    "executors",
+    "bp",
+    "anime"
+   ],
+   "section": "player-executors.md § Why ActionMark::vf20 is not the standoff (Open 16); ball-carrier-brain.md § The reaction delay; the State view’s pack table",
+   "answer": "Three are named by the chapters, and the answer is “probably, and it is now testable” rather than “yes”. (1) ActionMark::vf20’s 45°→90° steering cap: vf20 is a fixed-radius steering point and the controls show it does not move the marking destination, so the chapter calls it very likely a placebo for the standoff complaint and asks for an A/B — it is also NOT currently applied, because the installed exe has been reverted to PRISTINE. (2) superstar-reaction-professional.json edits difficulty row 0, which the carrier chapter shows is not the reaction delay (0x17/0x18/0x19 are). (3) The anticipation cave built on basePosition.marginPredictionFrameAdjust cannot have done anything, since the field is truncated to zero before use. Beyond those three, the State view byte-compares all 119 packs against the live image: what the journal claims and what the bytes say disagree, and the bytes win.",
+   "where": "State → exe patch packs (measured); State → what the 2026-08-23 catalogue got wrong",
+   "lever": "remove or A/B them; the State view says which are actually on the disk right now.",
+   "route": "exe-code",
+   "evidence": "b-disassembly"
+  }
+ ]
+}

@@ -480,7 +480,7 @@ function renderObjects(){
         <span class="oname">attribute ids<span class="ofile">player data</span></span>
         <span class="ocount"><span class="mono" style="color:var(--muted);font-size:12px">${at.rows.length}</span>
           <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></span>
-        <span class="oblurb">Not a dt270 object — the match-side attribute index that rows across this catalogue are written in (<span class="mono">attr(0x17)</span>, <span class="mono">cmp eax,0x55</span>). Four of the recorded corrections turn on it: 0x17 is <b>Dribbling</b>, not Defensive Awareness; 0x16 is GK Awareness, not Speed; 0x2a is Balance, not Acceleration. <span class="mono">${esc(at.rule||"")}</span></span></summary>
+        <span class="oblurb">Not a dt270 object — the match-side attribute index that rows across this catalogue are written in (<span class="mono">attr(0x17)</span>, <span class="mono">cmp eax,0x55</span>). Four of the recorded corrections turn on it. <b>Re-settled 2026-09-20 from the game's own {matchAbilityIdx, compactIdx} pair table at 0x14825CAA0 (consumer 0x1454406a0): 0x17 is <b>Defensive Engagement</b> — not Dribbling (0x18) and not Defensive Awareness (0x15).</b> The old "DATA_PARAMETER + 7" rule was never derived and is refuted at 0x36. 0x16 is GK Awareness, not Speed; 0x2a is Balance, not Acceleration. <span class="mono">${esc(at.rule||"")}</span></span></summary>
       <div class="fieldwrap"><table><thead><tr><th>id</th><th>DATA_PARAMETER</th><th>UI name</th><th>Confidence</th><th>Range</th></tr></thead><tbody>${arows}</tbody></table></div>`;
     box.appendChild(d);
   }

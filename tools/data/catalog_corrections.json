@@ -1,0 +1,521 @@
+{
+ "source": "Audit of build/gameplay-catalog.html + build/gameplay_catalog.json (2026-08-23, field-first) against the eight finished chapters, plus measurements taken for this rebuild (exe sha1s, exe_patch byte-compare, installed dt270 reads).",
+ "fixed": [
+  {
+   "was": "The whole catalogue is FIELD-FIRST: a list of dt270 constant names with liveness verdicts.",
+   "now": "SUBSYSTEM-FIRST. A reader arriving with \"why does my centre-back stand off\" now has an entry point; the dt270 field table is kept as a secondary tab.",
+   "source": "the eight chapters"
+  },
+  {
+   "was": "\"Values shown are what's installed right now\" — but the values are the 2026-08-23 pack.",
+   "now": "Values are re-read from the installed CPK at every build, and the header states which dt270 pack is installed and whether it is stock. Sampled drift: ball.magnusRate 0.06→0.035, ball.nonSpinRate 1.35→1, trap.ballControlRate 0.8→1.0, basePosition.spaceCoverRate 0.45→0.33, lengthOf 35→28, dfLineCloseRate 0.55→0.7, lastLineCloseMaxRate 0.8→0.95, marginPredictionFrameBase 6→0.",
+   "source": "measured this build"
+  },
+  {
+   "was": "trap.ballControlRate = 0.800, status live.",
+   "now": "Stock and installed both read 1.0. The 0.80 was OUR loose-realism-v1 value; the old catalogue presented our edit as the game's. At 1.0 a Tight-Possession-99 player's term saturates at exactly 1.0 and is mathematically incapable of a bad touch.",
+   "source": "anime-actions.md § Tunables / realism item 3; measured this build"
+  },
+  {
+   "was": "trap.ballControlRate \"multiplies normalised BALL CONTROL\".",
+   "now": "Wrong attribute. It is Tight Possession (0x19). Ball Control (0x18) has no reader in the trap family at all.",
+   "source": "anime-actions.md § Tunables"
+  },
+  {
+   "was": "trap.trapLossDashOnly = False; trapLoss listed \"unverified\".",
+   "now": "BOTH trapLoss fields are stock TRUE, and both are DEAD — no readers anywhere. \"unverified\" should read \"dead\".",
+   "source": "anime-actions.md § Negatives; measured this build"
+  },
+  {
+   "was": "basePosition.marginPredictionFrameBase = 6.",
+   "now": "Stock is 0. The 6 was our own edit and was reversed.",
+   "source": "match-ai-decoded.md § Corrections; measured this build"
+  },
+  {
+   "was": "basePosition.marginPredictionFrameAdjust listed unverified / a defensive-anticipation lever at confidence proven.",
+   "now": "READ BUT INERT — multiplied by the −0.0f cell 0x147850538 and truncated, always 0; its containing function is a pass-timing / slow-down horizon, not the marking path. The anticipation cave built on it is Refuted for being both wrong-target and mis-calibrated.",
+   "source": "match-ai-decoded.md § Corrections"
+  },
+  {
+   "was": "basePosition.forceDashDistDefence \"dead load — the defence branch uses 19−0.1·attr instead\".",
+   "now": "Dead, but not for that reason. byte[r14+0x28d] is tested TWICE with the same sense: the first test picks which of the pair is loaded (0x143da9414 Offence +0x188 / 0x143da9420 Defence +0x184), the second (0x143da9551 jne) lets the OFFENCE path skip the overwrite at 0x143da9553. Correlated-branch inertness — invisible to every dead-load detector this project has — and forceDashDistOffence is fully live.",
+   "source": "dt270-residue.md § Corrections 4"
+  },
+  {
+   "was": "basePosition.spaceCoverRate 0.45 / \"likely — the cache pointer is unconfirmed\".",
+   "now": "LIVE (2 readers each for spaceCoverRate and adjustSpaceCoverRate; the cache path is proven) — but carry the warning: our own 0.43→0.55 edit SATURATED the 1.0 clamp, pushed the CB cushion the wrong way and was reversed on 2026-09-18. Installed today is 0.33.",
+   "source": "match-ai-decoded.md § Corrections and § Self-inflicted regressions; build/dt270_liveness.json"
+  },
+  {
+   "was": "dfLine, dfLineRate, dfLineCloseRate, lastLineCloseMaxRate, keepDfTargetLineX, backOffsideLine, lengthOf, minWidth, adjustZCompact, lineControl all rendered \"unverified\".",
+   "now": "All have proven readers — dfLine is a byte read at 0x143ddb9a0 → clamp01(v/20). The catalogue showed doubt where the chapters show proof, and that silence is what misdirected months of tuning.",
+   "source": "match-ai-decoded.md § Corrections; dt270-residue.md § Corrections 6"
+  },
+  {
+   "was": "passget listed 52 unverified / 4 inert — effectively a dead object.",
+   "now": "26 of its fields are READ AT DEPTH 0, inside PassGetRoute* vtable methods themselves, and they are the safest levers in the executor subsystem. The single most consequential omission in the old catalogue.",
+   "source": "player-executors.md § dt270 — the safest levers in this chapter"
+  },
+  {
+   "was": "moveMatching RouteParameter fields (rotSpeed, accRateDif60/120/180) \"unverified\".",
+   "now": "11 of the 14 fields are live-read; accacc, poseWeight and routeWeight are DEAD (no mass term exists). Operationally decisive and absent from the old catalogue: rotSpeed is 7.0 in all 14 shipped rows and decRotSpeed is 0.0 in all 14, so per-route turning differentiation does not exist in stock.",
+   "source": "anime-actions.md § The locomotion surface"
+  },
+  {
+   "was": "shoot.control_dy marked live across the whole subtree.",
+   "now": "shoot.control_dy.gageMax is UNREAD (0 readers); its sibling gageMin has 1. A pure prefix-matching artefact of the old generator's 18 hand-written verdict tuples — now replaced by a per-field join on build/dt270_liveness.json.",
+   "source": "build/dt270_liveness.json; tools/gameplay_catalog.py verdict_for()"
+  },
+  {
+   "was": "Set pieces offered basePosition.gksPenaltyLineRateX_DF and the gks* set as levers.",
+   "now": "14 of the 20 gk*/gkl* fields have NO reader, gksPenaltyLineRateX_DF among them, and the six that do are the OUTFIELD goal-kick shape — they never move the keeper.",
+   "source": "player-executors.md § Negatives; goalkeeper.md § 9"
+  },
+  {
+   "was": "\"Speed attribute id 0x16 read gate\" at 0x143f2c5a1 / 0x143f4238a / 0x143f4a21c.",
+   "now": "0x16 is GK Awareness (GK_DECISION); Speed is 0x28. Those three sites are the GK Awareness reads. Under the proven DATA_PARAMETER+7 alignment (tools/data/attr_index_map.json) the old +0x15 alignment is superseded.",
+   "source": "goalkeeper.md § attribute census; tools/data/attr_index_map.json"
+  },
+  {
+   "was": "\"Agility attribute id 0x2a read gate (acceleration)\", including 0x143f28d95.",
+   "now": "0x2a is Balance (BODY_CONTROL); Acceleration/AGILITY is 0x2c. 0x143f28d95 is a Balance read.",
+   "source": "goalkeeper.md line 413; tools/data/attr_index_map.json"
+  },
+  {
+   "was": "Goalkeeper blurb: \"gk_decision idx=0x18, catching idx=0x22, deflecting idx=0x23\".",
+   "now": "GK Awareness 0x16, GK Catching 0x23, GK Parrying 0x24, GK Reflexes 0x25, GK Reach 0x26. 0x18 is Ball Control and 0x22 is Curl.",
+   "source": "goalkeeper.md § 3 action→attribute table; tools/data/attr_index_map.json"
+  },
+  {
+   "was": "\"GK AI-side decision reads (behaviour planner) 0x145663b52\".",
+   "now": "Mis-filed. That address is inside match::ai::bp::Personality::update (0x145663920..0x145664234) — the BALL-CARRIER personality recompute. The keeper's on-ball brain is the private 0x145655430 and reads only HEIGHT plus two flag bits.",
+   "source": "ball-carrier-brain.md § Personality; goalkeeper.md § 6"
+  },
+  {
+   "was": "\"The single highest-impact goalkeeper lever is the gk_decision reaction gate near 0x143f0f2e1\".",
+   "now": "UNCONFIRMED — 0x143f0f2e1 appears in none of the eight chapters. The decoded high-impact GK levers are the save-quality output floors (0x1440329b0 Reflexes, 0x1440329d9 Reach, 0x144032940 easy catch) and the one behavioural cliff, Deflect::vf35 cmp eax,0x55 at 0x143f4ae10 (GK Reach ≥ 85).",
+   "source": "goalkeeper.md § What this enables, § 3, § 10"
+  },
+  {
+   "was": "\"Deflect/parry effectiveness clamp 0x144032891 — the deflecting attribute governs how well the GK controls a parry\".",
+   "now": "0x144032870 is the save-quality SELECTOR across five GK attributes; 0x144032891 is specifically the GK Catching (0x23) read. The +0x49 / cmp 0x78 immediates are the easy-catch floor and the ceiling of the remap.",
+   "source": "goalkeeper.md § 3"
+  },
+  {
+   "was": "\"Where CPU decisions live\": ActionSelectorScore::vf2 0x143df1080, confidence guess, \"thresholds not yet mapped\", \"next reverse-engineering target\"; match::ai::Judge named as a decision oracle.",
+   "now": "Superseded wholesale by two chapters. Off-ball selection is decoded (bidding order, frame-parity guard, teamAI+0x8f4c slot ownership); the on-ball brain is match::ai::bp, first-valid-in-list-order with no score compared anywhere. match::ai::Judge has NO DIRECT CALLER in the image. And 0x143df1080 is the shared OFF-ball dispatcher only — not the on-ball scorer.",
+   "source": "match-ai-decoded.md; ball-carrier-brain.md"
+  },
+  {
+   "was": "\"CPU difficulty: row 0 is reaction-delay frames\" + pack superstar-reaction-professional.json (\"row 0, SUPERSTAR column, 4 frames\").",
+   "now": "The carrier reaction rows are 0x17 (pass/clear), 0x18 (dribble) and 0x19 (dribble move), at stride 0x2c. Stock Superstar pass delay is 6 ticks, Legend 2, Beginner 60. Earlier emulations indexed at stride 40 and produced inverted readings.",
+   "source": "ball-carrier-brain.md § The reaction delay + § Corrections"
+  },
+  {
+   "was": "\"Card / booking probability (foul escalation roll) 0x143c84d22, 30 %, confidence proven\".",
+   "now": "NOT CORROBORATED by any chapter. What IS decoded is a deterministic, RNG-free severity ladder in 0x143d861f0: thresholds 40 outside the box / 60 inside, yellow at 80, red at 110 — all six bytes verified identical in PRISTINE, INSTALLED and STOCK. The old roll is demoted to \"named in the 2026-08-23 map, not re-derived\".",
+   "source": "set-pieces.md § THE ANTI-PENALTY BIAS"
+  },
+  {
+   "was": "ballplayer.touch0[7] and ballplayer.TurnData[1440] at confidence proven.",
+   "now": "NOT-SAFELY-TUNABLE, unresolved: ballplayer has no sound fetch site, and the four fields the liveness pass calls \"read\" have readers that are movss [r14+8/0xc/0x10/0x14] in 0x143fef370, where r14 holds idx 0x6a = grounderpass, not ballplayer. The decoded field layout is kept as documentation; the verdict is flipped.",
+   "source": "dt270-residue.md § ballplayer and § Corrections C6"
+  },
+  {
+   "was": "Mishit-spin system blurb: \"Spin is built in 0x144018c10 after the kick\".",
+   "now": "FLAGGED, not fixed. The project's own standing note (kick-ball-physics-emulated, 2026-09-17) records 0x144018c10 as a VELOCITY RE-CLAMP, not a spin builder, and the ball frame as Y-up not Z-up. None of the eight chapters re-derives it, so the four mishit-spin levers need re-derivation before they are trusted.",
+   "source": "project memory note (2026-09-17); no chapter re-derives it"
+  },
+  {
+   "was": "\"Magnus curl amplifier — current: 0.07 (stock 0.035)\", hard-coded in prose.",
+   "now": "Wrong when written (the JSON captured 0.06) and wrong now (installed reads 0.035). The value is read from the installed pack at build time and never hard-coded in prose again.",
+   "source": "measured this build"
+  },
+  {
+   "was": "Header chip \"dt270 · loose-realism-v2 (161 live edits)\" under \"Applied now\", emitted unconditionally.",
+   "now": "Computed. Every tuning's edits[] are evaluated against the installed pack and the chip shows how many match. loose-realism-v2 is NOT applied (it wants ballControlRate 0.65 / nonSpinRate 1.5 / spaceCoverRate 0.45 against installed 1.0 / 1 / 0.33), and its edit count has grown from 165 to 179.",
+   "source": "measured this build"
+  },
+  {
+   "was": "Patch-pack \"applied\" flags read out of build/exe_patch_state.json, which still lists 27 specs.",
+   "now": "Measured by byte-compare against the live exe. The installed exe is byte-identical to eFootball.exe.PRISTINE, so nothing is applied; the state file is shown as a journal with a visible mismatch warning. Revert-shaped packs (whose patch bytes ARE the stock bytes) are flagged no-op-on-stock rather than reported as on.",
+   "source": "exe_patch.py status; sha1 measured this build"
+  },
+  {
+   "was": "7 patch packs and 1 tuning listed.",
+   "now": "Every spec in tools/data/patches (119) and every tuning in tools/data/tunings (25) is listed, each with a measured verdict.",
+   "source": "measured this build"
+  },
+  {
+   "was": "match-ai-decoded.md's own parenthetical \"(ours: 36 outside)\" on the out-of-box foul threshold.",
+   "now": "Stale: stock is 40 and phys-whistle-threshold.json is not applied. A correction that tried to change this was itself WITHDRAWN on 2026-09-20 after it turned out to be the wrong one — worth recording as a near-miss.",
+   "source": "set-pieces.md § THE ANTI-PENALTY BIAS"
+  }
+ ],
+ "dt270_effective": [
+  {
+   "object": "basePosition",
+   "path": "marginPredictionFrameAdjust",
+   "effective": "inert",
+   "why": "Read, then multiplied by the −0.0f cell 0x147850538 and truncated — always 0. Its containing function is a pass-timing / slow-down horizon, not the marking path.",
+   "source": "match-ai-decoded.md § Corrections"
+  },
+  {
+   "object": "basePosition",
+   "path": "forceDashDistDefence",
+   "effective": "inert",
+   "why": "Correlated-branch dead: byte[r14+0x28d] is tested twice with the same sense, so the value loaded on the defence branch is always overwritten at 0x143da9553 before its only compare. forceDashDistOffence, loaded by the other arm, is fully live.",
+   "source": "dt270-residue.md § Corrections 4"
+  },
+  {
+   "object": "trap",
+   "path": "trapLoss",
+   "effective": "inert",
+   "why": "No reader anywhere; stock true. The field that sounds like the answer to loose first touches is not it — trap.ballControlRate is.",
+   "source": "anime-actions.md § Negatives"
+  },
+  {
+   "object": "trap",
+   "path": "trapLossDashOnly",
+   "effective": "inert",
+   "why": "No reader anywhere; stock true.",
+   "source": "anime-actions.md § Negatives"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter.accacc",
+   "effective": "inert",
+   "why": "Zero readers — there is no mass term in the locomotion surface.",
+   "source": "anime-actions.md § The locomotion surface"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter.poseWeight",
+   "effective": "inert",
+   "why": "Zero readers.",
+   "source": "anime-actions.md § The locomotion surface"
+  },
+  {
+   "object": "moveMatching",
+   "path": "RouteParameter.routeWeight",
+   "effective": "inert",
+   "why": "Zero readers.",
+   "source": "anime-actions.md § The locomotion surface"
+  },
+  {
+   "object": "ballplayer",
+   "path": "",
+   "effective": "unresolved",
+   "why": "No sound fetch site for the whole object. The four fields the liveness pass calls read have readers of the form movss [r14+K] in 0x143fef370, where r14 holds idx 0x6a = grounderpass — so the index cannot be ballplayer's. Treat the entire object as NOT-SAFELY-TUNABLE until a fetch site is found; the decoded layout stays as documentation.",
+   "source": "dt270-residue.md § ballplayer, § Corrections C6"
+  },
+  {
+   "object": "trap",
+   "path": "ballControlRate",
+   "effective": "live",
+   "why": "Three readers (0x144079c38, 0x144079dc3, 0x14407aab5), gating clamp01((TightPossession−40)/59)·rate. The attribute is Tight Possession 0x19, NOT Ball Control.",
+   "source": "anime-actions.md § Tunables"
+  },
+  {
+   "object": "positionPK_2",
+   "path": "",
+   "effective": "live",
+   "why": "build/dt270_liveness.json reports this object UNLOCATED — that is an artefact of the fetch, not evidence: it is the one family in the image fetched BY NAME, via sprintf(\"positionPK_%d\", backLineCount) at 0x143c4c43d, resolved through the 5-entry name table 0x1475d1850, read by 0x143c685a0 and applied by 0x143c4f5f0. Live, and the safest lever in the set-piece chapter. Pick the file by the DEFENDING back line.",
+   "source": "set-pieces.md § The positionPK_* dt270 objects — LOCATED, and live; dt270-residue.md § Corrections 3"
+  },
+  {
+   "object": "positionPK_3",
+   "path": "",
+   "effective": "live",
+   "why": "As positionPK_2 — fetched by name, live. Back three.",
+   "source": "set-pieces.md § The positionPK_* dt270 objects"
+  },
+  {
+   "object": "positionPK_4",
+   "path": "",
+   "effective": "live",
+   "why": "As positionPK_2 — fetched by name, live. A back four edits this one.",
+   "source": "set-pieces.md § The positionPK_* dt270 objects"
+  },
+  {
+   "object": "positionPK_5",
+   "path": "",
+   "effective": "live",
+   "why": "As positionPK_2 — fetched by name, live. Back five.",
+   "source": "set-pieces.md § The positionPK_* dt270 objects"
+  },
+  {
+   "object": "basePosition",
+   "path": "spaceCoverRate",
+   "effective": "live",
+   "why": "Two readers and a proven cache path — but our 0.43→0.55 edit saturated the 1.0 clamp and pushed the CB cushion the wrong way. Direction matters more than magnitude here.",
+   "source": "match-ai-decoded.md § Corrections / § Self-inflicted regressions"
+  }
+ ],
+ "dt270_orphans": [
+  {
+   "objects": [
+    "setplayGuideCornerKick",
+    "setplayGuideFreeKickFar",
+    "setplayGuideFreeKickMiddle",
+    "setplayGuideFreeKickNear",
+    "setplayGuideGoalKick",
+    "setplayGuideCommon"
+   ],
+   "note": "~124 fields, reported 100% read by build/dt270_liveness.json — but set-pieces.md never mentions the word setplayGuide, and neither does any other chapter. Nobody has traced a per-field consumer to a byte offset. Under the chapters' own rule that read ≠ effective, these stay at \"likely\" with no chapter owner. This is the largest uncovered gameplay-data surface the audit found."
+  }
+ ],
+ "exe_lever_notes": [
+  {
+   "match": "0x143df1080",
+   "verdict": "superseded",
+   "note": "The shared OFF-ball dispatcher only. It is not the on-ball attacking-intent scorer; the carrier brain is match::ai::bp with its own chapter. Its thresholds ARE now mapped.",
+   "source": "match-ai-decoded.md § The shared dispatcher; ball-carrier-brain.md"
+  },
+  {
+   "match": "0x143c84d22",
+   "verdict": "unconfirmed",
+   "note": "The 30% booking roll is named in the 2026-08-23 exe map and re-derived by no chapter. The decoded booking model is the deterministic severity ladder at 0x143d861f0 (yellow 80, red 110).",
+   "source": "set-pieces.md § THE ANTI-PENALTY BIAS"
+  },
+  {
+   "match": "0x143f0f2e1",
+   "verdict": "unconfirmed",
+   "note": "Called \"the single highest-impact goalkeeper lever\" by the old catalogue and cited by no chapter.",
+   "source": "goalkeeper.md"
+  },
+  {
+   "match": "0x144032891",
+   "verdict": "renamed",
+   "note": "The GK Catching (0x23) read inside the save-quality selector 0x144032870 — not a \"deflect/parry effectiveness clamp\".",
+   "source": "goalkeeper.md § 3"
+  },
+  {
+   "match": "0x145663b52",
+   "verdict": "renamed",
+   "note": "match::ai::bp::Personality::update — the ball-carrier personality recompute, not a goalkeeper planner.",
+   "source": "ball-carrier-brain.md § Personality"
+  },
+  {
+   "match": "0x144018c10",
+   "verdict": "unconfirmed",
+   "note": "Described as the spin builder. The project's own 2026-09-17 note records it as a VELOCITY RE-CLAMP and the ball frame as Y-up, not Z-up. No chapter re-derives it — re-derive before trusting the mishit-spin levers.",
+   "source": "project memory note kick-ball-physics-emulated"
+  },
+  {
+   "match": "0x146c06f5c",
+   "verdict": "superseded",
+   "note": "Row 0 is not the carrier reaction delay. The carrier reaction rows are 0x17 / 0x18 / 0x19 at stride 0x2c. The 44×10 table dump itself is STOCK and is re-measured from PRISTINE at build time.",
+   "source": "ball-carrier-brain.md § The reaction delay"
+  },
+  {
+   "match": "0x1441a1e50",
+   "verdict": "superseded",
+   "note": "ActionMark::vf20 is a fixed-radius steering point, not the marking destination. The CB standoff lives in ActionMark::vf4 0x1441a2a80 → 0x143e1c9d0 → 0x143e1bfb0 and its 10 m ball-position ramp.",
+   "source": "player-executors.md § Why ActionMark::vf20 is not the standoff"
+  },
+  {
+   "match": "0x1440d8070",
+   "verdict": "confirmed",
+   "note": "Upgraded by pad-input.md § 8: the shoot cell is 0x1478501fc loaded at 0x1440d824a, reached only by ids 0x3d/0x3e, so it is genuinely isolable — but the real fill is 8 frames = 0.267 s at 60 fps, not 0.250 s, and the write lands on an executable page (tier 3).",
+   "source": "pad-input.md § 8.1–8.3"
+  },
+  {
+   "match": "0x14401a900",
+   "verdict": "confirmed",
+   "note": "The open-play kick-error builder. Two independent confirmations: it has NO human/CPU branch (pad-input.md § 8.4, 482-function closure), and NO dead ball reaches it (set-pieces.md § Delivery) — so these levers are global to open play and do nothing for free kicks.",
+   "source": "pad-input.md § 8.4; set-pieces.md § Delivery"
+  },
+  {
+   "match": "Row 0 — CPU reaction/wait delay",
+   "verdict": "superseded",
+   "note": "Row 0 is NOT the carrier reaction delay. The carrier reaction rows are 0x17 (pass/clear), 0x18 (dribble) and 0x19 (dribble move) at stride 0x2c; stock Superstar pass delay is 6 ticks, Legend 2, Beginner 60. The shipped pack superstar-reaction-professional.json was built on the old reading.",
+   "source": "ball-carrier-brain.md § The reaction delay + § Corrections"
+  },
+  {
+   "match": "Row 43 — Alt reaction delay",
+   "verdict": "unconfirmed",
+   "note": "Named by the 2026-08-23 sweep and re-derived by no chapter. The decoded reaction rows are 0x17/0x18/0x19.",
+   "source": "ball-carrier-brain.md § The reaction delay"
+  }
+ ],
+ "gaps": [
+  {
+   "title": "Which action id runs which executor",
+   "why": "Proven not to be an offset table (three controls); the lead is the writer of work+0xd30. Until it closes, nobody can answer \"if I tag a player with run kind X, what code actually moves him?\" — and \"kind 6 never runs\" stays unproven in both directions.",
+   "chapters": [
+    "executors"
+   ]
+  },
+  {
+   "title": "Who posts contact event kind 0xe",
+   "why": "Everything downstream is decoded — payload, scorer, thresholds, cards — so \"if I make contact stickier, do I get more fouls?\" has no answer at the only step that matters.",
+   "chapters": [
+    "anime"
+   ]
+  },
+  {
+   "title": "Whether URandomInfo+0x08 is ever written",
+   "why": "If it is not, the carrier's per-possession random r is constant 0.0 all match, four carrier tunables collapse, and the CPU penalty-aim index never leaves 0. ONE live read at 0x145653e5f settles it, and nothing downstream should be touched first.",
+   "chapters": [
+    "registry",
+    "bp",
+    "setpieces"
+   ]
+  },
+  {
+   "title": "Who writes the man-marking master switch, the marking target and the per-team line",
+   "why": "teamObj + slot*0x44 + 0x2b0 = 0x32, +0x2b4/+0x2bc, and the line the standoff ramp measures against: the master switch, the aim point and the ramp reference for ALL man-marking, none with a located writer. The executor chapter calls it the highest-value single follow-up in its subsystem.",
+   "chapters": [
+    "executors"
+   ]
+  },
+  {
+   "title": "Whether man-marking is simply OFF at Beginner and Amateur",
+   "why": "The test 0x1442e48a0(0x1442ee570(teamObj)) ≥ 2 gates it; the mechanism is strong but \"is this CPU difficulty?\" is inferred. If it is, that is a headline in its own right.",
+   "chapters": [
+    "executors"
+   ]
+  },
+  {
+   "title": "The origin of the two tactical-instruction channels",
+   "why": "UTeamAIInfo+0x8078 and UAnalyzeInfo's instruction tables are queried at 271 sites and neither has a traced origin, so \"can my app tell the CPU to sit deep this match?\" has no route at all. The registry chapter calls it the highest-value open item in the subsystem.",
+   "chapters": [
+    "registry"
+   ]
+  },
+  {
+   "title": "Who fills the pass route table the carrier ranks by",
+   "why": "Until it is decoded, \"receiver quality\" is a black box and \"why did he pass to him?\" is unanswerable beyond PassForward's first pass.",
+   "chapters": [
+    "bp"
+   ]
+  },
+  {
+   "title": "The save-type chooser",
+   "why": "Not in the attribute reads, not in PreSaving, not in 0x14403cc60, not in the pad layer. So \"which save does my keeper play?\" has no answer — and the effect of Reflexes depends on it.",
+   "chapters": [
+    "gk"
+   ]
+  },
+  {
+   "title": "Whether the goalkeeper quality block is actually capped",
+   "why": "The documented route gives a 0.900–1.295 multiplier, but it is ONE of four consumers of the save-quality integer; a second measures 0.500–0.959 and the block-wide range is explicitly NOT BOUNDED. \"Can I author a genuinely bad keeper?\" is answered for one route only.",
+   "chapters": [
+    "gk"
+   ]
+  },
+  {
+   "title": "Where the executor's output tuple is consumed",
+   "why": "Not reached by direct call, so it is vtable- or manager-driven. This is the real animation seam and it is unmapped — \"how does the chosen target become the body moving?\" has a gap in the middle.",
+   "chapters": [
+    "executors",
+    "anime"
+   ]
+  },
+  {
+   "title": "The WESYS packer for dt230",
+   "why": "Every contact-timing answer in the map is READ-ONLY until it exists (key nibble 0, flag 0x81, unencrypted, zopfli), and ml_deploy.py is hardcoded to dt200. The reader can find out exactly how long he is stuck and cannot yet change it per animation.",
+   "chapters": [
+    "anime"
+   ]
+  },
+  {
+   "title": "Which playstyle catalog entries map to out-of-possession categories 9 and 0xb",
+   "why": "The marking-tightness mechanism is proven and emulated and it is the safest lever in the executor chapter — and nobody can name the style to put on a player. tools/playstyle_catalog.py already owns the map; this is a lookup, not research.",
+   "chapters": [
+    "executors"
+   ]
+  },
+  {
+   "title": "The base address of the human-control object X",
+   "why": "The per-team count and per-player override are the cleanest \"does this player run the carrier brain\" switch in the game, and there is nowhere to write them.",
+   "chapters": [
+    "pad"
+   ]
+  },
+  {
+   "title": "Which of the seven second-level run handlers do what",
+   "why": "No emitted geometry (the endpoint table covers 18 of 26 sub-mode ids and 10 of 16 kinds) and no role sweep — and id 3 already branches on role. This is where the next wrong answer is most likely.",
+   "chapters": [
+    "executors"
+   ]
+  },
+  {
+   "title": "Whether the carrier's pass code really does read the off-ball runner ids",
+   "why": "One Corrections row stands on a single source and contradicts a shipped chapter's Negatives section. It needs an independent re-scan (player-executors Open 20).",
+   "chapters": [
+    "executors",
+    "bp"
+   ]
+  },
+  {
+   "title": "Names for the unexplained condition bytes",
+   "why": "team+0xb3bd, team+0xb4c/+0xb50, flag index 0x1e in the GK save bonus, byte[player+0x4a8] (cancels the in-box foul downgrade), anime+0x2bdc (picks the slide/fall cancel branch), Player+0x7f49 (diverts the carrier to a move-only path). Each one turns a decoded mechanism into a conditional a reader cannot evaluate.",
+   "chapters": [
+    "registry",
+    "gk",
+    "setpieces",
+    "anime",
+    "bp"
+   ]
+  },
+  {
+   "title": "Who owns the six setplayGuide* dt270 objects",
+   "why": "~124 fields, 100% read by the liveness pass, and not one chapter mentions them. Corner / free-kick / goal-kick power, loft, gauge and spin have no traced consumer, so they stay \"likely\" with no owner.",
+   "chapters": []
+  },
+  {
+   "title": "Whether the 2026-08-23 exe sweep holds anything else mis-named",
+   "why": "Physical & locomotion, Goalkeeper, Attribute model and Tackling/fouls were re-checked address by address for this rebuild. Shooting, Passing, Set pieces, Dribbling, Stamina, Match RNG and Ball physics were only scanned by lever NAME. Treat their attribute names with the same suspicion until re-derived. Since 2026-09-20 the supersession badge is COMPUTED rather than hand-listed — any sweep row naming a dt270 field the chapters proved inert or unresolved, or naming a subject or address in the ‘what the catalogue got wrong’ table, inherits the correction automatically — so a mis-named row in an unchecked area is caught the moment any chapter corrects it. That is a safety net, not a re-check: Shooting, Passing, Set pieces, Dribbling, Stamina, Match RNG and Ball physics were still verified by lever NAME only.",
+   "chapters": []
+  }
+ ],
+ "self_fixes": [
+  {
+   "was": "Levers view: “Everything you can actually change — 440 rows”, of which 198 lifted from chapter Tunables tables.",
+   "now": "24 of the 33 rows in player-executors.md’s Tunables table were never harvested: one row’s cell wraps onto a second line, leaving it without a closing pipe, and the scanner stopped there. parse_tables now folds continuations; verify() compares harvested rows against row lines and warns on any shortfall. Chapter levers 198 → 227.",
+   "source": "docs/player-executors.md:1220-1244; tools/catalog_chapters.py parse_tables + verify"
+  },
+  {
+   "was": "team+0xb3c4 rendered twice as a live exe-code lever — “the largest single on-ball lever found”.",
+   "now": "RETIRED by registry-blackboard.md § 11: a transient AI directive set and force-cleared inside 0x143d7c5b0, with no file, table or persistent setting behind it. That retirement table was being skipped because its header does not start with ‘what’. Harvested now, and the badge it produces reaches both the Levers row and the Subsystems enables row.",
+   "source": "docs/registry-blackboard.md § 11 NOT SAFELY TUNABLE"
+  },
+  {
+   "was": "basePosition.marginPredictionFrameAdjust badged inert in the dt270 view and “proven — patch it up to 5-15” in the Levers and Exe map views.",
+   "now": "Supersession is computed from the chapters’ own data (dt270_effective overrides, the fixed list, the retirement tables) instead of a five-entry hand list, so a field proved inert cannot be recommended anywhere on the page.",
+   "source": "tools/gameplay_catalog.py supersession_index()"
+  },
+  {
+   "was": "Evidence badges upgraded what the chapters claimed: “**c** (bytes are b)” → b-disassembly; unrecognised cells → c-inferred; the 2026-08-23 sweep’s hand-typed “proven” → b-disassembly.",
+   "now": "The LEADING tag of a mixed cell wins, unrecognised cells are unstated with no fallback, and the sweep has its own dashed vocabulary (sweep-proven / sweep-likely / sweep-guess). A superseded row loses its evidence badge.",
+   "source": "tools/catalog_chapters.py evidence_of(); docs/anime-actions.md:975"
+  },
+  {
+   "was": "Route classification fell through to exe-code, so “why it cannot be executed” rows and “app already writes them (Player.bin bits 374/440)” were filed as exe-code levers.",
+   "now": "No default. Every class a row’s words support is kept (two badges where a chapter offers two routes), a table headed ‘why it cannot be executed’ is not-reachable wholesale, and an unresolvable route lands in unclassified.",
+   "source": "docs/pad-input.md:1398; tools/catalog_chapters.py classify_routes()"
+  },
+  {
+   "was": "dt270 array rows read “N more identical records” — emitted unconditionally, never compared.",
+   "now": "False in every family it was applied to: positionPK_*.playerData is 22 records, 22 distinct; ballplayer.TurnData 1,440 records, 1,298 distinct. The note is now measured, and the four positionPK_* objects render all 22 penalty positions rather than 2.",
+   "source": "re-read of the installed pack via dt270_objects.load_game_packs at build time"
+  },
+  {
+   "was": "State view pack and tuning descriptions clamped to four lines, with an unclamp rule keyed to a <details> wrapper that nothing emitted.",
+   "now": "Wrapped in <details>. The rationale, risk and revert instructions are readable by click rather than by hovering a 2,700-character tooltip.",
+   "source": "tools/catalog_html.py noteCell()"
+  },
+  {
+   "was": "Tuning verdicts ignored unreadable edits — loose-realism-v1 read ‘off’ on 34 measured edits out of 155, with 121 never read.",
+   "now": "A tuning whose unread edits outnumber its read ones is INDETERMINATE, and the unread count is on the badge. The dt270 pack’s own install state is now a chip on the first screen.",
+   "source": "tools/gameplay_catalog.py tunings()"
+  },
+  {
+   "was": "Smaller defects: the exe-map value column headed ‘Now’; Q55 citing two addresses that appear only in registry-blackboard.md; a dead .tag\\.NOT CSS selector; no subsystem filter; a search box labelled ‘Search everything’ that filters one view; no ‘what should I not bother trying’ question; the attribute id table reachable only as a JSON file.",
+   "now": "Column relabelled ‘Sweep 2026-08-23’ with a note that it is a snapshot, not a measurement; Q55 cites both chapters and quotes pad-input’s own 0x1440e54b0–0x1440e54c5 range; selector deleted; subsystem chips added; tabs carry per-view hit counts and the empty state names the view holding the hits; two curated questions added; the 61-row attribute table renders in the dt270 view.",
+   "source": "two adversarial reviews, 2026-09-20"
+  }
+ ]
+}

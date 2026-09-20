@@ -8,7 +8,7 @@
   "entity_lookup": "0x1442d6ef0(_, entityIdx) = *( *0x1486bd888 + entityIdx*0x58 + 0x55a8 ), entityIdx 0..0x1e",
   "range": "0x1442bfae0(&min,&max,idx) field / 0x1442bfb10 level-up; reject idx 0x12,0x13 and idx>0x3c"
  },
- "_mapping_rule": "match byte-array index = DATA_PARAMETER enum index + 7, for match idx 0x14..0x30 (PROVEN). Outside that range the array is reordered.",
+ "_mapping_rule": "CORRECTED 2026-09-20. The old rule 'match index = DATA_PARAMETER enum + 7 (PROVEN)' was NOT proven \u2014 the +7 was hard-coded in the cross-check print of tools/emu_enum_names.py and never derived, and it is REFUTED at match idx 0x36 (it predicts DATA_PARAMETER_WEIGHT, whose range is 30..129, while the game's range table 0x146c00860 gives 0..3). The REAL mapping is a data table: {matchAbilityIdx, compactIdx} u32 pairs at 0x14825CAA0, walked by the roster->match copy loop 0x1454406a0 (lea r12,[0x14825caa4]; mov ebx,[r12]; mov r13d,[r12-4]). compactIdx is the 0-based ordinal of the editor/CSV attribute columns (offensive_awareness=0 .. injury_resistance=29). Validated by FIVE independent range constraints that all land (0x27 weak_foot_accuracy 0..3, 0x36 weak_foot_usage 0..3, 0x2f form 0..7, 0x30 injury_resistance 0..2) plus the three anchors all prior readings already agreed on (0x14/0x15/0x16). CONSEQUENCE: 0x17 = defensive_engagement, 0x18 = dribbling, 0x19 = ball_control.",
  "entries": {
   "0x00": {
    "min": 0,
@@ -148,233 +148,342 @@
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "OFFENSE_DECISION",
+   "data_parameter": "",
    "ui_name": "Offensive Awareness",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "offensive_awareness",
+   "compact_index": 0,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x15": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "DEFENSE_DECISION",
+   "data_parameter": "",
    "ui_name": "Defensive Awareness",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "defensive_awareness",
+   "compact_index": 17,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x16": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "GK_DECISION",
+   "data_parameter": "",
    "ui_name": "GK Awareness",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "gk_awareness",
+   "compact_index": 21,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x17": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "DRIBBLE",
-   "ui_name": "Dribbling",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Defensive Engagement",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "defensive_engagement",
+   "compact_index": 20,
+   "ui_name_refuted": "Dribbling",
+   "data_parameter_refuted": "DRIBBLE",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x18": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "TRAP",
-   "ui_name": "Ball Control",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Dribbling",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "dribbling",
+   "compact_index": 2,
+   "ui_name_refuted": "Ball Control",
+   "data_parameter_refuted": "TRAP",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x19": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "BALL_TOUCH",
-   "ui_name": "Tight Possession",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Ball Control",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "ball_control",
+   "compact_index": 1,
+   "ui_name_refuted": "Tight Possession",
+   "data_parameter_refuted": "BALL_TOUCH",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x1a": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "SHOT",
-   "ui_name": "Finishing",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Tight Possession",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "tight_possession",
+   "compact_index": 3,
+   "ui_name_refuted": "Finishing",
+   "data_parameter_refuted": "SHOT",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x1b": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "SHORT_PASS",
-   "ui_name": "Low Pass",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Finishing",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "finishing",
+   "compact_index": 6,
+   "ui_name_refuted": "Low Pass",
+   "data_parameter_refuted": "SHORT_PASS",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x1c": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "LONG_PASS",
-   "ui_name": "Lofted Pass",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Low Pass",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "low_pass",
+   "compact_index": 4,
+   "ui_name_refuted": "Lofted Pass",
+   "data_parameter_refuted": "LONG_PASS",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x1d": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "HEADING",
-   "ui_name": "Heading",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Lofted Pass",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "lofted_pass",
+   "compact_index": 5,
+   "ui_name_refuted": "Heading",
+   "data_parameter_refuted": "HEADING",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x1e": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "INTERCEPT",
-   "ui_name": "Ball Winning",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Heading",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "heading",
+   "compact_index": 7,
+   "ui_name_refuted": "Ball Winning",
+   "data_parameter_refuted": "INTERCEPT",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x1f": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "AGGRESSIVENESS",
-   "ui_name": "Aggression",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Tackling",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "tackling",
+   "compact_index": 18,
+   "ui_name_refuted": "Aggression",
+   "data_parameter_refuted": "AGGRESSIVENESS",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x20": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "CONSCIOUS_DEFENSE",
-   "ui_name": "Defensive Engagement",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Aggression",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "aggression",
+   "compact_index": 19,
+   "ui_name_refuted": "Defensive Engagement",
+   "data_parameter_refuted": "CONSCIOUS_DEFENSE",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x21": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "PLACE_KICKING",
+   "data_parameter": "",
    "ui_name": "Set Piece Taking",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "set_piece_taking",
+   "compact_index": 8,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x22": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "BALL_SPIN_CONTROL",
+   "data_parameter": "",
    "ui_name": "Curl",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "curl",
+   "compact_index": 9,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x23": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "CATCHING",
+   "data_parameter": "",
    "ui_name": "GK Catching",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "gk_catching",
+   "compact_index": 22,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x24": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "CLEARANCES",
+   "data_parameter": "",
    "ui_name": "GK Parrying",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "gk_parrying",
+   "compact_index": 23,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x25": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "COLLAPSING",
+   "data_parameter": "",
    "ui_name": "GK Reflexes",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "gk_reflexes",
+   "compact_index": 24,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x26": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "DEFLECTING",
+   "data_parameter": "",
    "ui_name": "GK Reach",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "gk_reach",
+   "compact_index": 25,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x27": {
    "min": 0,
    "max": 3,
    "max_levelup": 3,
-   "data_parameter": "R_FOOT_ACC",
+   "data_parameter": "",
    "ui_name": "Weak Foot Accuracy",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "weak_foot_accuracy",
+   "compact_index": 27,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x28": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "SPEED",
+   "data_parameter": "",
    "ui_name": "Speed",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "speed",
+   "compact_index": 10,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x29": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "BODY_BALANCE",
+   "data_parameter": "",
    "ui_name": "Physical Contact",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "physical_contact",
+   "compact_index": 14,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x2a": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "BODY_CONTROL",
+   "data_parameter": "",
    "ui_name": "Balance",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "balance",
+   "compact_index": 15,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x2b": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "KICK_POWER",
+   "data_parameter": "",
    "ui_name": "Kicking Power",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "kicking_power",
+   "compact_index": 12,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x2c": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "AGILITY",
+   "data_parameter": "",
    "ui_name": "Acceleration",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "acceleration",
+   "compact_index": 11,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x2d": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "JUMP",
+   "data_parameter": "",
    "ui_name": "Jumping",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "jumping",
+   "compact_index": 13,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x2e": {
    "min": 40,
    "max": 99,
    "max_levelup": 120,
-   "data_parameter": "STAMINA",
+   "data_parameter": "",
    "ui_name": "Stamina",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "stamina",
+   "compact_index": 16,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x2f": {
    "min": 0,
    "max": 7,
    "max_levelup": 7,
-   "data_parameter": "STABILITY",
-   "ui_name": "Condition / Form",
-   "confidence": "proven"
+   "data_parameter": "",
+   "ui_name": "Form",
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "form",
+   "compact_index": 28,
+   "ui_name_refuted": "Condition / Form",
+   "data_parameter_refuted": "STABILITY",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x30": {
    "min": 0,
    "max": 2,
    "max_levelup": 2,
-   "data_parameter": "DURABILITY",
+   "data_parameter": "",
    "ui_name": "Injury Resistance",
-   "confidence": "proven"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "injury_resistance",
+   "compact_index": 29,
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x31": {
    "min": 10,
@@ -415,7 +524,14 @@
    "min": 0,
    "max": 3,
    "max_levelup": 3,
-   "confidence": "unknown"
+   "confidence": "proven (pair table 0x14825CAA0 + range cross-check)",
+   "name": "weak_foot_usage",
+   "compact_index": 26,
+   "ui_name_refuted": "",
+   "data_parameter_refuted": "",
+   "ui_name": "Weak Foot Usage",
+   "data_parameter": "",
+   "data_parameter_note": "no DATA_PARAMETER correspondence is asserted \u2014 the +7 rule that produced one is refuted (see _mapping_rule)"
   },
   "0x37": {
    "min": 0,
@@ -453,5 +569,11 @@
    "max_levelup": 9,
    "confidence": "unknown"
   }
+ },
+ "_mapping_source": {
+  "pair_table": "0x14825CAA0",
+  "consumer": "0x1454406a0",
+  "range_table": "0x146c00860",
+  "evidence": "b-disassembly + data; five range checks, three anchors"
  }
 }

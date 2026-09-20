@@ -627,7 +627,8 @@ SWEEP_EVIDENCE = {"proven": "sweep-proven", "likely": "sweep-likely", "guess": "
 def attribute_table():
     """The attribute id <-> UI-name table, straight out of tools/data/attr_index_map.json.
 
-    Four of the thirty recorded corrections turn on attribute identity (0x17 is Dribbling, not
+    Four of the thirty recorded corrections turn on attribute identity (0x17 is Defensive
+    Engagement — re-settled 2026-09-20 from the pair table 0x14825CAA0; it is not Dribbling, not
     Defensive Awareness; 0x16 is GK Awareness, not Speed), and dozens of rows are written as
     `attr(0x17)`. Sending the reader to a JSON file for the key to their own catalogue was the
     gap; the generator already had the file open.
@@ -918,6 +919,15 @@ def cmd_state(a):
     if st["pristine_vs_stock"]:
         print(f"  PRISTINE vs STOCK: {st['pristine_vs_stock']['n']} byte(s) differ "
               f"{[d['off'] for d in st['pristine_vs_stock']['first']]}")
+    if st.get("dt270_installed_sha1"):
+        print(f"installed dt270: {st['dt270_installed_sha1']}")
+        print(f"PRISTINE dt270 : {st['dt270_pristine_sha1']}   "
+              f"-> installed == PRISTINE: {st['dt270_is_pristine']}")
+        if not st["dt270_is_pristine"]:
+            print("  *** dt270 IS NOT STOCK — every value column in this catalogue is OUR number, "
+                  "not the game's. Restore before quoting any field value. ***")
+    else:
+        print("installed dt270: NOT FOUND")
     packs, journal = patch_packs(cat_tr)
     from collections import Counter
     c = Counter(p["verdict"] for p in packs)
