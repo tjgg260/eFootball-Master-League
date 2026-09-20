@@ -4,8 +4,10 @@ Static reverse-engineering map of `eFootball.exe` (352 MB, MSVC x64, **RTTI inta
 Anti-Tamper; no anti-cheat module shipped). Produced by five explorer agents + two independent
 skeptics over `tools/exe_map.py` (RTTI → vftables → 64,158 virtual methods, disassembly, xrefs).
 All addresses are virtual addresses at the preferred base `0x140000000` (the PE has no
-dynamic-base flag; `tools/live_patch.py probe` verifies the runtime base). Nothing here touches
-the exe on disk — Denuvo would break it; every patch is an in-memory write from our own process.
+dynamic-base flag; `tools/live_patch.py probe` verifies the runtime base).
+
+> **SUPERSEDED 2026-09-19 — this document's "never touch the exe on disk" premise is wrong in
+> practice and the owner has ruled it out of scope as a constraint.** See § Constraints below.
 
 Confidence: **proven** = the code was followed instruction by instruction (and, for the
 `dt270-consumers` and `decision-units` areas, re-derived by a second agent); **likely** =
@@ -21,12 +23,49 @@ structural/naming evidence; **guess** = hypothesis. Skeptic corrections are list
 | CPU shooting/passing choices | `match::ai::ActionSelector*` (e.g. `ActionSelectorScore::vf2 0x143df1080`), `match::ai::Judge`, `PlayerOffence` | next mapping target — thresholds not yet traced |
 | confirm a dt270 field is live | `ConstantManager` `0x148c22b98` → `get(idx)` `0x145348d70`; consumers read struct offsets | see the consumer table; three tuning levers found inert |
 
+## The baseline: `eFootball.exe.PRISTINE` is NOT stock (found 2026-09-20)
+
+Every chapter uses "verified against PRISTINE" as a synonym for "stock". It is very slightly false.
+`C:/Users/tjgg2/Backups/eFootball/eFootball.exe.PRISTINE` differs from the untouched Konami binary
+by **2 bytes**, and the untouched binary is on disk next to the live one as
+`Binaries/Win64/eFootballonlinevanilla.exe`.
+
+The edit is a hostname: `pes22-game.cs.konami.net` -> **`pes99-`**, at `0x146e6fae3`. `pes99-` does
+not resolve, so it severs matchmaking. It is present in PRISTINE, in the live `eFootball.exe` and in
+`eFootballhi.exe`; only `eFootballonlinevanilla.exe` retains the original.
+
+**Impact on the decode work: none.** It is a string in a data region, not gameplay code, and no
+chapter's claim touches it. But when a truly clean reference is needed, use
+`eFootballonlinevanilla.exe`, not PRISTINE.
+
+**The block is narrower than it looks.** Only 1 of the 11 Konami hostnames in the image was changed.
+`https://info.service.konami.net`, `ntl/ntleu/ntljp/ntlus.service.konami.net` (http and https) and
+`pesam.stun.service.konami.net` are all intact. This stops you joining matches; it does not stop the
+install talking to Konami.
+
+**File census (2026-09-20), all 352,409,088 bytes:**
+
+| file | vs PRISTINE | what it is |
+|---|---|---|
+| `eFootballonlinevanilla.exe` | 2 bytes / 1 run | the untouched original (19 Aug) |
+| `eFootballhi.exe` | 104 bytes / 38 runs | **a mod build**, not a backup (25 Aug) — edits in `ActionSelectorCounterSpaceRun::vf4`, `AnimePlayer::vf3`, `anime::action::Kick::vf19` x2, `Sliding::vf5`, `Injury::vf4` x2 and the kick-builder band. Consistent with the August hyper-realism build that was wiped to stock ~09-13 |
+| `eFootball.exe` (live) | 909 bytes / 105 runs | the current build — see `realism-todo.md` for the inventory |
+
+`eFootballhi.exe` shares some sites with the live exe (`AnimePlayer::vf3`, the kick-builder cluster)
+and not others, so it is a **different** edit set, not an ancestor of it.
+
 ## Constraints
 
-- Denuvo Anti-Tamper: exe on disk is sacred. Code-page writes in memory *may* trip an integrity
-  check (crash, not ban — offline). Data-page writes (tables, constants, struct fields) are the
-  safe first class of patches. Cheat Engine is blocked; our own `ReadProcessMemory` is proven,
-  `WriteProcessMemory` is untested (`live_patch.py probe` first, then a data write).
+- **Denuvo / disk patching — CORRECTED 2026-09-19.** This section used to read "exe on disk is
+  sacred; every patch is an in-memory write". That is **contradicted by the installed image**: a
+  byte diff of INSTALLED against `eFootball.exe.PRISTINE` gives **909 differing bytes in 105
+  contiguous runs, 100 of them in the match band `0x143000000`–`0x144800000`**, at an unchanged
+  file size — i.e. this project has been shipping on-disk code patches for some time and the game
+  runs with them. The feared integrity trip has not been observed. **OWNER RULING 2026-09-19: "I
+  don't mind changing the exe" — on-disk patching is the default route, not a last resort.**
+  `live_patch.py` remains available for cases where a runtime-only write is preferable.
+  What this ruling does NOT change: the physical limits below and in `match-ai-decoded.md`
+  § The cave allocator. Permission was never the binding constraint on those.
 - All `match::` code lives in the plaintext `.xcode` section; `.impdata` (183 MB) is the Denuvo
   blob and holds no gameplay code.
 - Many float constants are **shared `.tls$` cells** (e.g. `0.5f`, `22.5f`). Never change the

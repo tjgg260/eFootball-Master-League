@@ -19,7 +19,7 @@ structural reasoning only. Every section ends with what is *not* proven.
 |---|---|---|
 | understand why off-ball runs repeat | `ChanceSpaceRun::vf5` `0x143df5950` — score is `100 + attackDir·player.x + roleBonus` | nothing to tune; needs a cave adding a second term |
 | a genuinely unused run type | run **kind 6** — full `vf6` geometry `0x143df1cc5` + own executor handler `0x1441f360b`, never tagged | cave in `vf6`'s tagging chain |
-| ability-dependent defending | `attr(0x17)` in `0x143da92c0` — already scaled three ways | write the attribute in `master.db`; no patch needed |
+| ability-dependent defending | `attr(0x17)` in `0x143da92c0` — already scaled three ways | ⚠️ **WITHDRAWN 2026-09-19: `0x17` is DRIBBLING, not Defensive Awareness** (see § The one ability-scaled defensive term). The mechanism is real; the attribute is not the one this row assumed. `0x15` is the candidate to check |
 | tighter block / compactness | dt270 `basePosition.lengthOf`, `adjustZCompact`, `adjustXCompactFW` | `gameplay_tune`; all were stock until 2026-09-18 |
 | per-player AI variety from data | playing-style category bits `R+0xCC` / `R+0xD0` | app already writes them (Player.bin bits 374/440) |
 | stop contact eating your input | `canStart` (vtable slot 2) + `canCancel` (slot 14) on `match::anime::action::Contact` | see [§ Contact](#the-contact-lockout) — mechanism proven, fix not yet |
@@ -192,9 +192,26 @@ believed they were live. Reviving either means writing ~2,500 instructions acros
 
 Inside the cap builder `0x143df0080`, row `0x13` gates SecondLine **and** Chance, `0x14` gates
 Counter, `0x15` gates LineBreak **and** PullAway, `0x16` gates Diagonal, via
-`0x1442e4c00(row) = |GetParam(row)| > FLT_EPSILON` on table `0x146c06f40`. Dumped from both tables in
-both images: rows `0x13`/`0x14`/`0x16` read `{0,1,1,1,1,1,1,1,1,1}` and `0x15` reads
-`{0,0,0,1,1,1,1,1,1,1}`. **Only the lowest difficulty loses run types.** [b]
+`0x1442e4c00(row) = |GetParam(row)| > FLT_EPSILON` on table `0x146c06f40`.
+
+> **CORRECTION 2026-09-19 — the row values below came from the PATCHED image, and the
+> "dumped from both images" claim is false.** A byte diff of INSTALLED against
+> `eFootball.exe.PRISTINE` finds the two images differ *inside this table*, at exactly
+> **`0x146c072b8` and `0x146c072bc`: `0.0f` in stock, `1.0f` installed** (the only 4-byte runs that
+> differ in the whole 44x10 window). In the raw table those are row 22 (`0x16`), columns 2 and 3,
+> so stock reads `{~0, 0, 0, 0, 1,1,1,1,1,1}` there and our image reads `{~0, 0, 1, 1, 1,1,1,1,1,1}`
+> — two more difficulty columns switched ON by us. (Column 0 holds a denormal `1.4e-45`, which fails
+> `> FLT_EPSILON` and therefore gates as zero.)
+>
+> Note also that the chapter's row numbering is offset by one from the raw table: the values quoted
+> below for row `0x15` match raw row `0x16`. Re-deriving the correct mapping and the stock values for
+> every row is **owed work**, not done here — what is established is that at least one quoted row is
+> our patch rather than the game, so **no conclusion in this section should be trusted until it is
+> re-dumped from PRISTINE.** [b, verified by direct diff]
+
+Dumped (FROM THE INSTALLED IMAGE — see above): rows `0x13`/`0x14`/`0x16` read
+`{0,1,1,1,1,1,1,1,1,1}` and `0x15` reads `{0,0,0,1,1,1,1,1,1,1}`, which read as
+"only the lowest difficulty loses run types" — **a conclusion that rests on our own edit.** [b]
 
 Nothing in the base-position code consults the difficulty table at all: all 24 call sites of
 `AiLevelUnit::GetParam` (`0x1442e48f0`) were enumerated and none is in the shape/positioning ranges.
@@ -272,11 +289,24 @@ recoveryDist     = 15.0 - 10.5 * clamp01((attr-40)/80)
 ```
 
 Emulated at identical geometry: attr 40 jogs (gait 2), attr 50+ sprints (gait 5); the sprint trigger
-distance falls from **15.0 m at attr 40 to 7.26 m at attr 99**. Attribute index `0x17` is read at
-exactly **three sites image-wide** — `0x143da943a`, `0x143daa779`, `0x144181101` — all inside the
-base-position/movement system. An attribute whose only consumers are positioning is very likely
-Defensive Awareness (**name inferred, mechanism emulated**). Settle it by reading a known player's
-ability array at `matchPlayer+0x394` live and correlating index `0x17`.
+distance falls from **15.0 m at attr 40 to 7.26 m at attr 99**.
+
+> **CORRECTION 2026-09-19 — the attribute is DRIBBLING, and it is read far more widely than stated.**
+> [player-executors.md](player-executors.md) (adversarially reviewed, repair applied) settles the
+> name this section left inferred: `0x17` is `DRIBBLE`, `0x15` is Defensive Awareness, `0x16` is
+> GK Awareness, under the **proven** `DATA_PARAMETER + 7` alignment in
+> `tools/data/attr_index_map.json`; `docs/exe-gameplay-map.md` row 47 marks the older `+0x15`
+> alignment this section rests on as "WRONG — off by one, superseded 2026-09-18".
+> And `0x17` is read at **11–12 sites image-wide, not three**: the three below are the direct
+> `0x1441172b0` calls; the rest pass `0x17` through the wrapper `0x1442dd650`, which tail-jumps to
+> the same getter — including `ActionPassCourseCut::vf13` at `0x14420ac35`.
+> **The mechanism above is unaffected and still real** — the gait threshold, sprint-back gate and
+> recovery distance are genuine ability-scaled positioning terms. They scale with **Dribbling**.
+> The consequence is that the "spread it in `master.db`" advice in the *What this enables* table at
+> the top of this chapter would spread Dribbling, and is **withdrawn pending the owner's call**. [b]
+
+Attribute index `0x17` is read at three sites *directly* — `0x143da943a`, `0x143daa779`,
+`0x144181101` — all inside the base-position/movement system.
 
 **The decision layer never reads an attribute.** Not one quota, rank compare, run selector or
 difficulty row. Four of the five run selectors make zero calls to any ability getter; ChanceSpaceRun
@@ -472,7 +502,9 @@ it binds at **every** attack level including 0) and `offball-run-variety.json`.
 - What the two 2-second latch arrays at `mgr+0x220` / `mgr+0x24c` gate, and what the human-player
   exemption means.
 - The two predicates behind the +20 role bonus (`0x143d37f30`, `0x143d32a90`).
-- Confirmation that attribute `0x17` is Defensive Awareness.
+- ~~Confirmation that attribute `0x17` is Defensive Awareness.~~ **ANSWERED 2026-09-19: it is
+  `DRIBBLE`.** The open question is now whether the same positioning mechanism reads Defensive
+  Awareness (`0x15`) anywhere, and what — if anything — should be spread in `master.db` instead.
 - Whether the ball deflects off non-tackling players (limb collision parts exist — a 21-slot array at
   `player+0x2f18` with per-frame physics filter groups via `0x144fa58d0` — but the consequence for
   loose balls is untested).
