@@ -20,6 +20,8 @@
 #   src/ML.Data/schema.sql  the seeder applies this to the database it seeds
 #   tools/ assets/ data/ docs/   tracked files, plus the nationality flag pack the Squad screen
 #                           reads through assets/flag_map.json
+#   tools/vendor/efootball-re/bin/dxgi.dll   the built match-stats host, so a downloader needs
+#                           no Rust; its source ships beside it (GPL-3.0). Gated below.
 #   README.md PLAYTESTING.md LICENSE  "Play Master League.bat" (launches app\ML.App.exe)
 # Player faces (facepack/, build/game_faces/) are NOT shipped: multi-GB, and game_faces is Konami's
 # art. A player with eFootball installed runs tools/game_faces.py; otherwise generated avatars.
@@ -300,6 +302,26 @@ echo "== no world shipped — the first run builds one from the player's eFootba
 echo "  (ML_SHIP_WORLD=1 restores the database, the logo packs and the two gates above)"
 fi
 find "$PKG" -type d -name __pycache__ -prune -exec rm -rf {} +
+
+echo "== gate: the match-stats host is in the package"
+# The one binary a downloader cannot build without installing Rust. It went missing for three
+# releases because .gitignore has a bare `bin/` rule that matches
+# tools/vendor/efootball-re/bin/ at any depth, so `git archive` silently dropped it and
+# install_stats_host.py refused with "no dxgi.dll to install" — while its own comment said the
+# release ships one. Fail the build instead, and check the SOURCE travels with it: GPL-3.0
+# means the corresponding source, and a stale DLL beside fresh .rs files is its own bug.
+HOSTDLL="$PKG/tools/vendor/efootball-re/bin/dxgi.dll"
+if [ ! -f "$HOSTDLL" ]; then
+  echo "  MISSING $HOSTDLL — the download could not capture a result." >&2
+  echo "  Build it (cargo build --release in tools/vendor/efootball-re/memprobe/host), copy it" >&2
+  echo "  to tools/vendor/efootball-re/bin/dxgi.dll and commit it." >&2
+  exit 1
+fi
+for f in Cargo.toml Cargo.lock src/lib.rs src/statshook.rs src/statsexport.rs; do
+  [ -f "$PKG/tools/vendor/efootball-re/memprobe/host/$f" ] || {
+    echo "  the host DLL ships but its source does not: missing $f" >&2; exit 1; }
+done
+echo "  dxgi.dll $(stat -c%s "$HOSTDLL") bytes, sha256 $(sha256sum "$HOSTDLL" | cut -c1-16)…, source alongside"
 
 echo "== gate: the packaged python can drive the first run"
 # The bug this replaces the old seed gate with. tools/ ships from `git archive HEAD`, so a module

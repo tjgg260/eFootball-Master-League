@@ -1,5 +1,10 @@
 # Build output
 bin/
+# ...except the match-stats host. It is the ONE binary the download needs and cannot build
+# for itself: without it Settings' "Install stats host" refuses and results have to be typed
+# in by hand. GPL-3.0, and its corresponding source ships beside it in memprobe/host/src.
+!tools/vendor/efootball-re/bin/
+!tools/vendor/efootball-re/bin/dxgi.dll
 obj/
 [Dd]ebug/
 [Rr]elease/

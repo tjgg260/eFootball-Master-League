@@ -27,7 +27,8 @@ experimental**. This guide covers the easy path first, then the advanced integra
 - eFootball on Steam (PC)
 - Python 3.11+ with `Pillow` (the club crests are BC7 textures and nothing else decodes them),
   `numpy` and `pycryptodome`
-- A Rust toolchain, to build and install the stats host (for automatic result capture)
+- A Rust toolchain **only if you want to rebuild** the match-stats host. The built `dxgi.dll`
+  ships in the release and in the repo, and Settings → Install stats host puts it in the game.
 - These are **not needed** to play a career by entering results yourself.
 
 ---

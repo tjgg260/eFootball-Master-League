@@ -25,9 +25,17 @@ target.** Nothing reads game state back in as authority after the initial seed.
 | 4 | Writeback (`ML.Sync`, diff against applied state) | Core mechanism proven; diff model in progress |
 | 5 | Polish | Not started |
 
+## Documentation
+
+| | |
+|---|---|
+| **[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)** | Install, build your world, take a job, play your first matchday. **Start here.** |
+| **[docs/FEATURES.md](docs/FEATURES.md)** | What the app does, at a glance |
+| **[docs/MANUAL.md](docs/MANUAL.md)** | The full manual: every screen, every setting, the rules the engine plays by, and troubleshooting |
+| [PLAYTESTING.md](PLAYTESTING.md) | What we'd like tested, and how to report it |
+
 The full plan is in [efootball-master-league-plan.md](efootball-master-league-plan.md).
 Engineering rules and hard-won format knowledge live in [CLAUDE.md](CLAUDE.md).
-Testers should start with [PLAYTESTING.md](PLAYTESTING.md).
 
 ## Layout
 
@@ -81,10 +89,12 @@ dotnet test
 
 `Play Master League.bat` builds `ML.App` on first run and launches it from the repo root.
 
-For the full eFootball integration you also need eFootball on Steam, Python 3.11+ with
-`Pillow`, `numpy` and `pycryptodome`, and, to capture results automatically, a Rust toolchain to build
-the stats host in `tools/vendor/efootball-re/` and install it into the game.
-See [PLAYTESTING.md](PLAYTESTING.md) for the step-by-step setup.
+For the full eFootball integration you also need eFootball on Steam, and — **only if you run from
+a source checkout rather than the download** — Python 3.11+ with `Pillow`, `numpy` and
+`pycryptodome`. The release brings its own Python and the built stats host, so a downloader
+installs nothing. A Rust toolchain is needed only to rebuild that host from
+`tools/vendor/efootball-re/memprobe/host/`; the prebuilt `dxgi.dll` ships beside its source and
+Settings installs it for you. See [PLAYTESTING.md](PLAYTESTING.md) for the step-by-step setup.
 
 ## What you must supply yourself
 
@@ -96,7 +106,7 @@ place will not dirty your checkout.
 |---|---|---|
 | eFootball install (Steam appid 1665460) | Wherever Steam put it | Everything in Phase 3 and 4 |
 | EvoMod | Installed into the game as its author documents | The install order rule below |
-| Stats host build (Rust toolchain) | `bash tools/vendor/efootball-re/memprobe/deploy_host.sh` builds it and installs `dxgi.dll` into the game; it writes `<eFootball>\ml_stats\match_*.json` | Result capture (Dashboard pre-fill, Settings → Match data) |
+| Stats host **rebuild** (Rust toolchain) — optional | The built `dxgi.dll` is committed at `tools/vendor/efootball-re/bin/` and ships in the release; Settings → Install stats host puts it in the game. Rebuild only to change it: `bash tools/vendor/efootball-re/memprobe/deploy_host.sh` | Result capture (Dashboard pre-fill, Settings → Match data) |
 | Your own game exports, FM exports, face packs | Repo root or `samples/` | The `tools/` import pipeline |
 
 No CPK tooling has to be supplied. The tools read and patch eFootball's `.cpk` archives directly
