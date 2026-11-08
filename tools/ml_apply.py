@@ -56,7 +56,8 @@ def use_tree(tree: str | None) -> None:
         BINS = Path(tree).resolve()
         ASSIGNMENT_BIN = BINS / "common" / "etc" / "pesdb" / "PlayerAssignment.bin"
 BACKUP_DIR = Path.home() / "Backups" / "eFootball"
-GAME_DT200 = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk\dt200_console_all.cpk")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+GAME_DT200 = (_efootball_dir() / "cpk" / "dt200_console_all.cpk")
 
 REC = pesdb.ASSIGNMENT_RECORD_SIZE  # 24
 

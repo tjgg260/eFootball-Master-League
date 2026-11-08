@@ -67,7 +67,7 @@ from ml_apply import prove_round_trip  # noqa: E402
 RFS_DB = Path.home() / "OneDrive/Documents/RFS/DB/RFS.DB"
 TREE_BASE = REPO / "build" / "tree_base"
 BASE_CPK = REPO / "dt200_console_all.cpk"   # the archive tree_base was extracted from (rebaseline.py)
-from steam_paths import game_cpk_dir  # noqa: E402  (tools/ is on sys.path above)
+from steam_paths import game_cpk_dir, refuse_if_game_running  # noqa: E402  (tools/ is on sys.path above)
 GAME_CPK = game_cpk_dir()           # Steam's own library list, not a hard-coded C: path
 BACKUPS = Path.home() / "Backups" / "eFootball"
 
@@ -606,6 +606,7 @@ def rebuild_and_install(tree: Path, out: Path, install: bool) -> None:
     print(f"  built {out} ({r['out_size']:,} bytes, {r['patched']} of {r['files']} files patched)")
     if install:
         target = GAME_CPK / "dt200_console_all.cpk"
+        refuse_if_game_running(target.name)
         _patch_guard(target)
         BACKUPS.mkdir(parents=True, exist_ok=True)
         if target.exists():

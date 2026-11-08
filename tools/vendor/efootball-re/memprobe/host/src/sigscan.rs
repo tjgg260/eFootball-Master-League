@@ -302,18 +302,19 @@ mod tests {
     };
     const IMAGE_BASE: usize = 0x1_4000_0000;
 
-    /// 2026-09-13 这个 build 的值 (和 exetool.py 的 SIG_HISTORY 同一份)。
+    /// Values for eFootball build 25359256 (2026-11-07), resolved in-game by this host (the [SIG]
+    /// log line) and team_obj located offline. The 2026-09-13 build's values are in git history.
     const HISTORY: [(&str, usize); 33] = [
-        ("attr_get", 0x143EA8CB0), ("sel_off", 0x2BD8), ("ctx_off", 0x47C0),
-        ("stats_get", 0x1443378C0), ("max_id", 0x76), ("image_base", 0x140000000),
-        ("attr_table", 0x1442D6EF0), ("attr_slots", 0x1F), ("attr_stride", 0x58), ("singleton", 0x1486BD888),
-        ("attr_table_off", 0x55A8), ("team_obj", 0x1442D6E40), ("team_obj_off", 0x3BD0), ("team_stride", 0x58),
-        ("roster_rec", 0x1442C3050), ("roster_slots", 0x28), ("lineup_off", 4), ("rec_stride", 0x198),
-        ("rec_off", 0xE8), ("skill_test", 0x1442C0000), ("skill_bits", 0x49), ("skill_off", 0xC0),
-        ("player_block", 0x1442E6640), ("stat_slots", 0x28), ("player_stride", 0x13E8),
+        ("attr_get", 0x143EF31C0), ("sel_off", 0x2BD8), ("ctx_off", 0x47C0),
+        ("stats_get", 0x144385920), ("max_id", 0x76), ("image_base", 0x140000000),
+        ("attr_table", 0x144324390), ("attr_slots", 0x1F), ("attr_stride", 0x58), ("singleton", 0x148773EC8),
+        ("attr_table_off", 0x5570), ("team_obj", 0x1443242D0), ("team_obj_off", 0x3B98), ("team_stride", 0x58),
+        ("roster_rec", 0x1443145A0), ("roster_slots", 0x28), ("lineup_off", 4), ("rec_stride", 0x198),
+        ("rec_off", 0xE8), ("skill_test", 0x144311520), ("skill_bits", 0x4B), ("skill_off", 0xC0),
+        ("player_block", 0x1443349A0), ("stat_slots", 0x28), ("player_stride", 0x13E8),
         ("stats_team_stride", 0x38238), ("players_off", 0x65C0), ("attr_form_off", 0x394),
-        ("stat_entry_off", 0x10), ("attr_forward", 0x1442DD650), ("attr_array", 0x144301840),
-        ("skill_by_sel", 0x1442E2640), ("team_total", 0x14431B4DA),
+        ("stat_entry_off", 0x10), ("attr_forward", 0x14432B880), ("attr_array", 0x144351370),
+        ("skill_by_sel", 0x1443307A0), ("team_total", 0x14436957A),
     ];
 
     /// 把 exe 文件当成「加载到 IMAGE_BASE 的模块」读: 头部按文件偏移, 节按节表映射。

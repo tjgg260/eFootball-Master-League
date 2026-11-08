@@ -35,7 +35,8 @@ from unicorn import (Uc, UC_ARCH_X86, UC_MODE_64, UC_HOOK_CODE, UC_HOOK_MEM_READ
                      UC_HOOK_MEM_READ, UcError)
 from unicorn import x86_const as X
 
-EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\eFootball\Binaries\Win64\eFootball.exe")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+EXE = (_efootball_dir() / "eFootball" / "Binaries" / "Win64" / "eFootball.exe")
 
 DEFAULT_GAIN = 0.15
 

@@ -68,6 +68,20 @@ dotnet build
 dotnet test
 ```
 
+## Linux (Steam + Proton)
+
+The app runs on Linux against the same Windows game, which Proton runs from an ordinary Steam
+library. Read [docs/LINUX.md](docs/LINUX.md). Rules that keep it working:
+
+- Never hard-code a game path. Use `tools/steam_paths.py` (`efootball_dir()`, `game_cpk_dir()`,
+  `game_exe()`, `proton_prefix()`); in C#, `MatchExportFolder.DefaultGameDir` is per-OS.
+- **Any tool that writes into the game folder calls `steam_paths.refuse_if_game_running()` first.**
+  On Windows the game's open handle makes the write fail. On Linux the write succeeds under the
+  running game.
+- Paths stored in the DB stay relative with forward slashes (`build/game_faces/84.png`).
+- Icons: Segoe MDL2 glyphs exist only on Windows (`MainWindowViewModel.Ico` gives an emoji twin);
+  everything else needs a system emoji font.
+
 ## Environment (this machine)
 
 Recorded so paths don't have to be rediscovered. Verify before relying on them.

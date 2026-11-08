@@ -43,7 +43,8 @@ import wesys  # noqa: E402
 import pesdb  # noqa: E402
 import cpk_patch  # noqa: E402
 
-GAME_CPK = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk")
+from steam_paths import game_cpk_dir, refuse_if_game_running  # noqa: E402
+GAME_CPK = game_cpk_dir()           # Steam's own library list, Windows or Linux
 ARCHIVE_PATH = "common/etc/pesdb/PlayerAssignment.bin"
 BACKUPS = Path.home() / "Backups" / "eFootball"
 REC = 24
@@ -168,6 +169,7 @@ def main() -> int:
         return 0
 
     target = GAME_CPK / base_cpk.name
+    refuse_if_game_running(target.name)
     BACKUPS.mkdir(parents=True, exist_ok=True)
     if target.exists():
         keep = BACKUPS / f"{target.stem}.{datetime.now():%Y%m%d-%H%M%S}.cpk"

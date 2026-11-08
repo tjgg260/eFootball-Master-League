@@ -40,7 +40,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = REPO / "tools" / "data" / "dt270_schema.json"
-GAME_DT270 = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk\dt270_console_all.cpk")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+GAME_DT270 = (_efootball_dir() / "cpk" / "dt270_console_all.cpk")
 
 SCALAR_FMT = {"float": "<f", "int": "<i", "bool": "<?", "int8": "<b", "int16": "<h",
               "double": "<d", "int64": "<q"}

@@ -1,0 +1,15 @@
+; Exports of the dxgi.dll proxy, for the GNU (MinGW/zig) build only: build_host_linux.sh.
+; MSVC exports every #[no_mangle] fn by itself. The MinGW auto-export drops the names
+; that its own libdxgi import library defines (CreateDXGIFactory*, DXGIGetDebugInterface1),
+; and a dxgi proxy without CreateDXGIFactory stops the game from starting. Keep in step with lib.rs.
+LIBRARY dxgi
+EXPORTS
+    CreateDXGIFactory
+    CreateDXGIFactory1
+    CreateDXGIFactory2
+    DXGID3D10CreateDevice
+    DXGID3D10CreateLayeredDevice
+    DXGID3D10GetLayeredDeviceSize
+    DXGID3D10RegisterLayers
+    DXGIGetDebugInterface1
+    DXGIReportAdapterConfiguration

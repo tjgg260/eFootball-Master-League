@@ -31,6 +31,7 @@ target.** Nothing reads game state back in as authority after the initial seed.
 |---|---|
 | **[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)** | Install, build your world, take a job, play your first matchday. **Start here.** |
 | **[docs/FEATURES.md](docs/FEATURES.md)** | What the app does, at a glance |
+| [docs/LINUX.md](docs/LINUX.md) | Running on Linux with Steam + Proton |
 | **[docs/MANUAL.md](docs/MANUAL.md)** | The full manual: every screen, every setting, the rules the engine plays by, and troubleshooting |
 | [PLAYTESTING.md](PLAYTESTING.md) | What we'd like tested, and how to report it |
 
@@ -78,7 +79,7 @@ that file if you want to keep a save.
 
 Requirements:
 
-- Windows 10/11
+- Windows 10/11, or Linux with eFootball run by Steam's Proton ([docs/LINUX.md](docs/LINUX.md))
 - .NET 8 SDK (a newer SDK builds the `net8.0` targets fine)
 - To play a career by entering results yourself, nothing else is needed
 
@@ -87,7 +88,9 @@ dotnet build
 dotnet test
 ```
 
-`Play Master League.bat` builds `ML.App` on first run and launches it from the repo root.
+`Play Master League.bat` builds `ML.App` on first run and launches it from the repo root. On Linux,
+run `./setup-linux.sh` once (Python venv + build) and then `./play-master-league.sh`; see
+[docs/LINUX.md](docs/LINUX.md).
 
 For the full eFootball integration you also need eFootball on Steam, and — **only if you run from
 a source checkout rather than the download** — Python 3.11+ with `Pillow`, `numpy` and
@@ -131,10 +134,84 @@ redistribute the executable; apply the change to your own copy, with the game cl
 
 ```bash
 python tools/exe_patch.py apply tools/data/patches/offline-no-gameplay-change.json
+python tools/exe_patch.py status    # the spec reads "applied"
+python tools/exe_patch.py diff      # exactly 2 bytes differ from the pristine copy
 ```
 
+(On Linux, run these with `.venv/bin/python`. See [Linux](#linux-steam--proton) below.)
+
 `python tools/exe_patch.py remove <same spec>` reverses it, and so does Steam's "verify
-integrity of game files". The first apply keeps a byte-exact pristine backup.
+integrity of game files". The first apply keeps a byte-exact pristine backup, about 370 MB, at
+`~/Backups/eFootball/eFootball.exe.PRISTINE`. `restore` copies it back.
+
+**The patch finds the string; it does not trust an address.** The spec used to pin the string at
+a fixed RVA (`0x6e6fae3`). Build 25359256 moved it to `0x6f18853`, so `apply` found other bytes
+there and aborted without writing anything. The spec now carries a `"find"` text
+(`pes22-game.cs.konami.net`, with `find_offset` 3), and `exe_patch.py` locates it by searching
+the exe in its shipped or patched form. It must occur exactly once, or nothing is written. A
+Konami update that moves the string no longer breaks the patch. One that removes or duplicates
+the string makes it refuse, and then the spec needs a look. Any exe spec may use `find`. Its
+`module_offset` is kept, at the current build's address, for the tools that read it directly
+(`live_patch.py`, `cave_*`).
+
+Verified 2026-11-07 on build 25359256 under Linux/Proton. On a copy of the exe, `apply` renamed
+the host, a second `apply` was a no-op, and `remove` gave back a byte-identical exe. It was then
+applied to the installed game, and `diff` showed the 2 bytes. Whether the game starts with it
+under Proton has not been checked yet: Denuvo may refuse a modified exe, and if it does, run
+`remove` or `restore`.
+
+## Linux (Steam + Proton)
+
+eFootball has no Linux build. Steam runs the Windows game through Proton, from an ordinary Steam
+library, so the game folder is laid out exactly as on Windows. Everything the app does to the game
+is file I/O on that folder, and all of it runs natively on Linux. The full guide is
+[docs/LINUX.md](docs/LINUX.md).
+
+```bash
+./setup-linux.sh          # once: Python venv (.venv/) from requirements.txt, builds the app
+./play-master-league.sh   # every time: the Linux counterpart of "Play Master League.bat"
+```
+
+You need `python3` 3.11+, the .NET SDK 8 or newer, and **an emoji font** (`noto-fonts-emoji` on
+Arch, `fonts-noto-color-emoji` on Debian/Ubuntu). The UI's icons are emoji; without the font they
+are empty boxes, and the setup script warns about it.
+
+What differs from Windows, and how it is handled:
+
+| | Windows | Linux |
+|---|---|---|
+| Finding the game | registry + `libraryfolders.vdf` | `~/.local/share/Steam`, `~/.steam`, Flatpak, Snap + `libraryfolders.vdf`, then any library holding `steamapps/common/eFootball` (`tools/steam_paths.py`) |
+| Game's `C:` drive | — | Proton prefix `<library>/steamapps/compatdata/1665460/pfx` (`steam_paths.proton_prefix()`) |
+| Python the app runs | the download's embedded `python\` | the repo's `.venv/`, else `python3` on PATH; `ML_PYTHON` overrides |
+| .NET runtime | 8 | `RollForward=Major`: the newest installed when 8 is missing (Arch ships only 9/10) |
+| Writing while the game runs | the game's file locks make it fail | **no locks, so the write would land under the running game.** Every tool that writes into the game folder checks for `eFootball.exe` and refuses (`steam_paths.refuse_if_game_running`). Quit the game before Play Match. |
+| Sidebar icons | Segoe MDL2 glyphs | emoji twins (Segoe is Windows-only) |
+| Stats host `dxgi.dll` | loads beside the exe | the same file; Proton loads native `dxgi` from the exe's folder first. If no `ml_stats` appears after a match, set launch options to `WINEDLLOVERRIDES="dxgi=n,b" %command%` |
+
+Verified 2026-11-07 on Arch Linux, Proton Experimental, eFootball build 25359256. Tested: the
+first-run world build (22,903 players, 666 clubs, 28 leagues), faces and crests, a compile-only
+Play Match through the byte-exact gates, the app's UI, the test suite, and the offline patch
+above. Then in-game, 2026-11-08: the game starts with the offline patch, Play Match installs
+dt200 and the fixture is played, and the stats host loads under Proton with no launch options and
+writes `ml_stats/match_*.json`.
+
+**Build 25359256 broke the stats host's squad lookup, and that is fixed.** Its exports carried
+scores and counters but no player ids (`teamobj: null`; in `sider_rust.log`:
+`[SIG] 问题: team_obj: 0 处字节命中`). Without ids the app cannot link an export to the fixture
+("that export has no player ids"). The `team_obj` signature in
+`tools/vendor/efootball-re/memprobe/host/signatures.txt` has been updated for the new code shape,
+the host's offline signature test was re-pinned to this build and passes, and the rebuilt
+`dxgi.dll` is in `tools/vendor/efootball-re/bin/`. Exports written before the fix stay without
+ids: enter those results by hand.
+
+Rebuilding the stats host works on Linux too, with no Windows SDK:
+`bash tools/vendor/efootball-re/memprobe/build_host_linux.sh [--test <pristine eFootball.exe>]`
+(needs `rustup target add x86_64-pc-windows-gnu`, `cargo install cargo-zigbuild` and zig). It
+links with zig instead of MSVC, so `memprobe/host/dxgi-gnu.def` pins the export table.
+
+Windows-only still: the research tools that attach to the live process (`live_patch.py`,
+`live_inject.py`, `find_aes_key_live.py`, `fm_mem.py`), the research scripts that pin the
+original author's `C:\Users\…` paths. The app uses none of them.
 
 ## Operational rules
 

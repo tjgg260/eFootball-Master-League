@@ -116,7 +116,15 @@ public sealed class ExportPlayer
 /// <summary>Where the stats host writes, and which files in there are finished matches.</summary>
 public static class MatchExportFolder
 {
-    public const string DefaultGameDir = @"C:\Program Files (x86)\Steam\steamapps\common\eFootball";
+    /// <summary>
+    /// Steam's default library on this OS. On Linux the game is the same Windows build run by
+    /// Proton from an ordinary library, so the layout under it, ml_stats included, is identical.
+    /// The stats host finds ml_stats from the exe's own path, which Wine maps back to this folder.
+    /// </summary>
+    public static string DefaultGameDir => OperatingSystem.IsWindows()
+        ? @"C:\Program Files (x86)\Steam\steamapps\common\eFootball"
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".local", "share", "Steam", "steamapps", "common", "eFootball");
 
     public static string ExportDir(string gameDir) => Path.Combine(gameDir, "ml_stats");
 

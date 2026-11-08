@@ -24,7 +24,23 @@ report / popup / identity-check scripts and the stat-labelling snapshots.
 
 ## Changes from upstream
 
-Two, both removing machine-specific paths:
+Upstream is not public, so it cannot be re-pulled. Every local change is listed here.
+
+Made 2026-11-07, for eFootball build 25359256 and for building on Linux:
+
+- `memprobe/host/signatures.txt`, `team_obj`: the old pattern (`add rax,imm32; imul; mov
+  rax,[rax+rcx]`) found 0 matches in build 25359256, so the host exported no player ids. The
+  function now reads `imul rax,rax,stride; mov rax,[rax+rcx+disp32]`. That shape has an identical
+  sibling right after it, so the pattern spans both functions. It resolves `team_obj_off=0x3B98`,
+  `team_stride=0x58`.
+- `memprobe/host/src/sigscan.rs`, test module: `HISTORY` is pinned to build 25359256 (all 33 values
+  resolved in-game, plus `team_obj`). The 2026-09-13 values are in git history.
+- `memprobe/build_host_linux.sh` and `memprobe/host/dxgi-gnu.def` (new): cross-build with Rust's
+  `x86_64-pc-windows-gnu` target linked by zig, and an explicit export table. MinGW's
+  auto-export drops `CreateDXGIFactory*`/`DXGIGetDebugInterface1`, which its own libdxgi defines.
+- `bin/dxgi.dll` is now that GNU build, made from the sources above.
+
+Made at vendoring, both removing machine-specific paths:
 
 - `memprobe/host/src/sigscan.rs`, test module: the pristine-exe path comes from the build-time
   environment variable `EFOOTBALL_PRISTINE_EXE` instead of a hard-coded local path. Without it

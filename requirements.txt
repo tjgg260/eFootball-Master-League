@@ -1,0 +1,8 @@
+# Runtime deps of the tools/ pipeline the app drives (world build, faces, crests, Play Match).
+# The Windows download ships these inside its embedded Python; on Linux, ./setup-linux.sh puts
+# them in .venv/ and the app picks that interpreter up on its own.
+numpy
+Pillow
+pycryptodome
+# Optional: dt270 gameplay tuning falls back to zopfli when zlib 9 does not fit the slot.
+zopfli

@@ -7,6 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <InvariantGlobalization>true</InvariantGlobalization>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- net8.0 is the target, but run on a newer runtime when 8 is not installed: Arch and other
+         rolling distros ship only the current .NET (9/10). Where 8 is present it is still used. -->
+    <RollForward>Major</RollForward>
   </PropertyGroup>
 
 </Project>

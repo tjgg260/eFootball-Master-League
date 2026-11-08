@@ -23,7 +23,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "build" / "master.db"
-GAME = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+GAME = (_efootball_dir() / "cpk")
 REC = 64
 
 sys.path.insert(0, str(REPO / "tools" / "vendor" / "sider"))

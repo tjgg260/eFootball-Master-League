@@ -16,7 +16,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from iostore_read import read_utoc
 
-DEFAULT_PAKDIR = r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\pak"
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+DEFAULT_PAKDIR = str(_efootball_dir() / "pak")
 
 # Buckets that matter for the "AI plays the same / where are ratings" question, plus the
 # asset kinds worth knowing about. Order matters: first match wins.

@@ -38,8 +38,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 
-EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\eFootball\Binaries\Win64\eFootball.exe")
-CPK = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk\dt270_console_all.cpk")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+EXE = (_efootball_dir() / "eFootball" / "Binaries" / "Win64" / "eFootball.exe")
+CPK = (_efootball_dir() / "cpk" / "dt270_console_all.cpk")
 OUT = REPO / "tools" / "data" / "dt270_schema.json"
 JSON_PREFIX = b"DevelopData/common/match/constant/"
 

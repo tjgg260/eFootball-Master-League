@@ -19,6 +19,10 @@ What install does, and nothing else
   * an attrhook.mode file would make the host REWRITE abilities; if one is there it is renamed to
     attrhook.mode.disabled rather than left to act, and said so
 Refuses while eFootball.exe is running (the game holds dxgi.dll open).
+
+On Linux the same Windows dll goes in the same place: Proton loads native dlls from the exe's
+folder first, and the host chains to C:\Windows\System32\dxgi.dll, which in the Proton prefix
+is DXVK's. ml_stats is found from the exe's own path, so it lands in the real game folder.
 """
 from __future__ import annotations
 
@@ -39,16 +43,31 @@ BACKUPS = REPO / "build" / "backups" / "dxgi"
 SWITCHES = ("statshook.on", "attrhook.on")
 
 
+def is_our_host(p: Path) -> bool:
+    """An earlier build of this host, not a dxgi.dll that belongs to the player (ReShade, a
+    driver shim). Every build embeds signatures.txt, whose first line names the format."""
+    try:
+        return b"sigscan.rs, include_str!" in p.read_bytes()
+    except OSError:
+        return False
+
+
 def sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
 def game_running() -> bool:
-    try:
-        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq eFootball.exe"], capture_output=True, text=True).stdout
-    except OSError:
-        return False
-    return "efootball.exe" in out.lower()
+    sys.path.insert(0, str(TOOLS))
+    from steam_paths import game_running as running
+    return running()
+
+
+LINUX_NOTE = """\
+Linux / Proton: Proton already prefers a native dxgi.dll from the exe's folder (it ships DXVK's as
+native), so the host loads with no extra setup. If it does not (no ml_stats folder appears after a
+match), set the game's Steam launch options to:
+    WINEDLLOVERRIDES="dxgi=n,b" %command%
+and do not set PROTON_USE_WINED3D=1, which swaps DXVK's dxgi for Wine's builtin one."""
 
 
 def paths() -> tuple[Path, Path]:
@@ -91,7 +110,9 @@ def install() -> int:
               "tools/vendor/efootball-re/memprobe/host")
         return 1
     dst = win64 / "dxgi.dll"
-    if dst.exists() and sha(dst) != sha(src):
+    if dst.exists() and sha(dst) != sha(src) and is_our_host(dst):
+        print(f"replacing an earlier build of the stats host -> {dst} (no backup: it is ours, not the game's)")
+    elif dst.exists() and sha(dst) != sha(src):
         BACKUPS.mkdir(parents=True, exist_ok=True)
         original = BACKUPS / "dxgi.dll.original"
         keep = original if not original.exists() else BACKUPS / f"dxgi.dll.replaced_{time.strftime('%Y%m%d_%H%M%S')}"
@@ -108,6 +129,8 @@ def install() -> int:
             print(f"renamed {mode} -> attrhook.mode.disabled (it would make the host rewrite abilities)")
     print("switches statshook.on + attrhook.on set in the game root and Win64")
     print("Play a match offline; it is exported ~15 s after you return to the main menu.")
+    if sys.platform != "win32":
+        print(LINUX_NOTE)
     return 0
 
 

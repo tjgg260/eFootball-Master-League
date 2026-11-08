@@ -31,8 +31,13 @@ attr_table | 83 FA ?? 73 ?? 48 63 C2 48 6B C8 ?? 48 8B 05 ?? ?? ?? ?? 48 8B 84 0
 # 属性数组基址 @0x144301840
 attr_array | 48 8D 81 ?? ?? ?? ?? C3 | attr_form_off@3:u32 | at=attr_array
 
-# teamobj(T, team) @0x1442D6E40
-team_obj | 83 FA 01 76 ?? 48 8B 81 ?? ?? ?? ?? C3 48 63 C2 48 05 ?? ?? ?? ?? 48 6B C0 ?? 48 8B 04 08 C3 | team_obj_off@8:u32 team_stride@25:u8
+# teamobj(T, team) @0x1443242D0 (build 25359256; was @0x1442D6E40 on 2026-09-13)
+# 2026-11-07: the old shape (add rax,K; imul; mov rax,[rax+rcx]) only existed because 0x3BD0 was a
+# multiple of the stride (174*0x58). At 0x3B98 the compiler folds it into the displacement:
+#   cmp edx,1; jbe; mov rax,[rcx+off]; ret; movsxd rax,edx; imul rax,rax,stride; mov rax,[rax+rcx+off]; ret
+# One function of that shape matches twice: its sibling right after it (off 0x6E40) is identical.
+# So the pattern spans both, team_obj + int3 padding + the sibling, and only team_obj starts it.
+team_obj | 83 FA 01 76 ?? 48 8B 81 ?? ?? ?? ?? C3 48 63 C2 48 6B C0 ?? 48 8B 84 08 ?? ?? ?? ?? C3 CC CC CC 83 FA 01 76 ?? 48 8B 81 ?? ?? ?? ?? C3 48 63 C2 48 6B C0 ?? 48 8B 84 08 ?? ?? ?? ?? C3 | team_obj_off@8:u32 team_stride@19:u8
 
 # 技能位测试 @0x1442C0000
 skill_test | 83 FA ?? 73 ?? 8B C2 83 E2 1F 48 C1 E8 05 8B 84 81 ?? ?? ?? ?? 0F B6 CA D3 E8 83 E0 01 C3 | skill_bits@2:u8 skill_off@17:u32
