@@ -86,8 +86,34 @@ The reverse-engineering tools that attach to the live process (`live_patch.py`, 
 the app never calls. On Linux they would have to run inside the game's prefix, for example
 `protontricks-launch --appid 1665460 python.exe …` with a Windows Python. Several other research
 scripts pin paths from the owner's Windows machine (`C:\Users\…`) and are not portable as written.
-Rebuilding the stats host from source needs a Windows Rust target. The prebuilt
-`tools/vendor/efootball-re/bin/dxgi.dll` does not.
+
+## Rebuilding the stats host on Linux
+
+The host is a Windows DLL, but it cross-builds here. That matters after a Konami update, because
+its signatures are compiled in: `signatures.txt` is read by `include_str!`.
+
+```bash
+rustup target add x86_64-pc-windows-gnu
+cargo install --locked cargo-zigbuild          # plus zig from your distro
+bash tools/vendor/efootball-re/memprobe/build_host_linux.sh --test ~/Backups/eFootball/eFootball.exe.PRISTINE
+```
+
+`--test` runs the host's offline signature test under wine against an untouched exe. Every
+signature must resolve to the values pinned in `sigscan.rs`. The build lands in
+`tools/vendor/efootball-re/bin/dxgi.dll`. With the game closed, install it from Settings, or with
+`tools/install_stats_host.py`, which replaces an earlier host build without backing it up as
+"the original".
+
+The upstream build is MSVC. Linked by MinGW/zig, the automatic export list drops
+`CreateDXGIFactory*` and `DXGIGetDebugInterface1`, because MinGW's own `libdxgi` defines them.
+Without those exports the game cannot start, so `memprobe/host/dxgi-gnu.def` lists the proxy's
+exports explicitly.
+
+**After a game update:** if exports come back with `player_id: null`, look for
+`[SIG] 问题` lines in `sider_rust.log` (game root). Each one names a signature that no longer
+matches. Find the function's new shape in the exe, change `signatures.txt`, update the pinned values
+in `sigscan.rs`, and rebuild with `--test`. The 2026-11 `team_obj` fix in `signatures.txt` is a
+worked example.
 
 ## The offline exe
 

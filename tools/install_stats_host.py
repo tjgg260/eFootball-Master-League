@@ -43,6 +43,15 @@ BACKUPS = REPO / "build" / "backups" / "dxgi"
 SWITCHES = ("statshook.on", "attrhook.on")
 
 
+def is_our_host(p: Path) -> bool:
+    """An earlier build of this host, not a dxgi.dll that belongs to the player (ReShade, a
+    driver shim). Every build embeds signatures.txt, whose first line names the format."""
+    try:
+        return b"sigscan.rs, include_str!" in p.read_bytes()
+    except OSError:
+        return False
+
+
 def sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
@@ -101,7 +110,9 @@ def install() -> int:
               "tools/vendor/efootball-re/memprobe/host")
         return 1
     dst = win64 / "dxgi.dll"
-    if dst.exists() and sha(dst) != sha(src):
+    if dst.exists() and sha(dst) != sha(src) and is_our_host(dst):
+        print(f"replacing an earlier build of the stats host -> {dst} (no backup: it is ours, not the game's)")
+    elif dst.exists() and sha(dst) != sha(src):
         BACKUPS.mkdir(parents=True, exist_ok=True)
         original = BACKUPS / "dxgi.dll.original"
         keep = original if not original.exists() else BACKUPS / f"dxgi.dll.replaced_{time.strftime('%Y%m%d_%H%M%S')}"

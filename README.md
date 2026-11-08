@@ -191,13 +191,27 @@ What differs from Windows, and how it is handled:
 Verified 2026-11-07 on Arch Linux, Proton Experimental, eFootball build 25359256. Tested: the
 first-run world build (22,903 players, 666 clubs, 28 leagues), faces and crests, a compile-only
 Play Match through the byte-exact gates, the app's UI, the test suite, and the offline patch
-above. **Not yet tested in-game:** the stats host loading under Proton, and a Play Match
-installed and played.
+above. Then in-game, 2026-11-08: the game starts with the offline patch, Play Match installs
+dt200 and the fixture is played, and the stats host loads under Proton with no launch options and
+writes `ml_stats/match_*.json`.
+
+**Build 25359256 broke the stats host's squad lookup, and that is fixed.** Its exports carried
+scores and counters but no player ids (`teamobj: null`; in `sider_rust.log`:
+`[SIG] 问题: team_obj: 0 处字节命中`). Without ids the app cannot link an export to the fixture
+("that export has no player ids"). The `team_obj` signature in
+`tools/vendor/efootball-re/memprobe/host/signatures.txt` has been updated for the new code shape,
+the host's offline signature test was re-pinned to this build and passes, and the rebuilt
+`dxgi.dll` is in `tools/vendor/efootball-re/bin/`. Exports written before the fix stay without
+ids: enter those results by hand.
+
+Rebuilding the stats host works on Linux too, with no Windows SDK:
+`bash tools/vendor/efootball-re/memprobe/build_host_linux.sh [--test <pristine eFootball.exe>]`
+(needs `rustup target add x86_64-pc-windows-gnu`, `cargo install cargo-zigbuild` and zig). It
+links with zig instead of MSVC, so `memprobe/host/dxgi-gnu.def` pins the export table.
 
 Windows-only still: the research tools that attach to the live process (`live_patch.py`,
 `live_inject.py`, `find_aes_key_live.py`, `fm_mem.py`), the research scripts that pin the
-original author's `C:\Users\…` paths, and rebuilding the stats host from source. The app uses
-none of them.
+original author's `C:\Users\…` paths. The app uses none of them.
 
 ## Operational rules
 

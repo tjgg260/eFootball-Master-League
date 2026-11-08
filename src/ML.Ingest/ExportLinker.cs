@@ -44,7 +44,12 @@ public static class ExportLinker
         var withPid = export.Teams.Sum(t => t.Players.Count(p => p.PlayerId is not null));
         if (withPid == 0)
         {
-            reason = "that export has no player ids (written before the stats host exported PIDs).";
+            // Two causes: an export older than the host's PID support, or a host that could not find
+            // the squads in this game build (sider_rust.log: "[SIG] 问题: team_obj …"). Both leave
+            // the score typeable; the second needs signatures.txt updated after a Konami patch.
+            reason = "that export has no player ids — the stats host could not read the squads " +
+                     "(an older host, or a game update it does not know yet: see [SIG] in sider_rust.log). " +
+                     "Enter the score by hand.";
             return null;
         }
 
