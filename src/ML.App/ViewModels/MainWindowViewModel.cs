@@ -18,42 +18,45 @@ public partial class MainWindowViewModel : ObservableObject
 
         // Nav items build their page fresh on click, so screens always reflect the latest DB state
         // (table, form, finances after you record a result and the matchday is simmed).
-        // Icons are Segoe MDL2 Assets glyphs — monochrome, tinted by the nav styles.
+        // Icons are Segoe MDL2 Assets glyphs — monochrome, tinted by the nav styles. Segoe exists
+        // only on Windows; elsewhere (Linux) those code points are private-use blanks, so each item
+        // carries an emoji twin drawn by the system emoji font instead (see Ico).
         Pages = new ObservableCollection<NavItem>
         {
             // MATCHDAY
-            new("Office",   "\uE80F", s => new DashboardViewModel(s)),
-            new("Tactics",  "\uE8A9", s => new TacticsViewModel(s)),
-            new("Calendar", "\uE787", s => new CalendarViewModel(s)),
+            new("Office",   Ico("\uE80F", "🏢"), s => new DashboardViewModel(s)),
+            new("Tactics",  Ico("\uE8A9", "📋"), s => new TacticsViewModel(s)),
+            new("Calendar", Ico("\uE787", "📅"), s => new CalendarViewModel(s)),
             // CLUB
-            new("Squad",    "\uE716", s => new SquadViewModel(s)),
-            new("Training", "\uE945", s => new TrainingViewModel(s)),
-            new("Academy",  "\uE8F1", s => new AcademyViewModel(s)),
-            new("Staff",    "\uE77B", s => new StaffViewModel(s)),
-            new("Board",    "\uE825", s => new BoardViewModel(s)),
-            new("Finances", "\uE8EF", s => new FinancesViewModel(s)),
+            new("Squad",    Ico("\uE716", "👥"), s => new SquadViewModel(s)),
+            new("Training", Ico("\uE945", "🏃"), s => new TrainingViewModel(s)),
+            new("Academy",  Ico("\uE8F1", "🎓"), s => new AcademyViewModel(s)),
+            new("Staff",    Ico("\uE77B", "👔"), s => new StaffViewModel(s)),
+            new("Board",    Ico("\uE825", "🏛"), s => new BoardViewModel(s)),
+            new("Finances", Ico("\uE8EF", "💷"), s => new FinancesViewModel(s)),
             // COMPETITION
-            new("Table",    "\uE8FD", s => new TableViewModel(s)),
-            new("Cup",      "\uE735", s => new CupViewModel(s)),
-            new("Stats",    "\uE9E9", s => new StatsViewModel(s)),
-            new("History",  "\uE736", s => new HistoryViewModel(s)),
+            new("Table",    Ico("\uE8FD", "📊"), s => new TableViewModel(s)),
+            new("Cup",      Ico("\uE735", "🏆"), s => new CupViewModel(s)),
+            new("Stats",    Ico("\uE9E9", "📈"), s => new StatsViewModel(s)),
+            new("History",  Ico("\uE736", "📜"), s => new HistoryViewModel(s)),
             // WORLD
-            new("Market",   "\uE8AB", s => new MarketViewModel(s)),
-            new("Scouting", "\uE721", s => new ScoutingViewModel(s)),
-            new("News",     "\uE715", s => new InboxViewModel(s)),
+            new("Market",   Ico("\uE8AB", "🤝"), s => new MarketViewModel(s)),
+            new("Scouting", Ico("\uE721", "🔍"), s => new ScoutingViewModel(s)),
+            new("News",     Ico("\uE715", "📰"), s => new InboxViewModel(s)),
             // pinned at the foot of the sidebar, outside the section scroll
-            new("Settings", "\uE713", s => new SettingsViewModel(s)),
+            new("Settings", Ico("\uE713", "⚙"), s => new SettingsViewModel(s)),
             // DESTINATIONS — you reach these by clicking a player, never from the sidebar, so
             // they are deliberately absent from Sections below. They are registered HERE
             // because everything the shell does works off this list by Title: Nav.Go("Player",
             // him) resolves against it, Back replays a visit to it, and ML_PAGE can open
             // straight onto one for a screenshot run.
-            new("Player",   "\uE77B", s => new PlayerViewModel(s)),
-            new("Bidding",  "\uE8AB", s => new BiddingViewModel(s)),
-            new("Match Report", "\uE9D2", s => new MatchReportViewModel(s)),
+            new("Player",   Ico("\uE77B", "👤"), s => new PlayerViewModel(s)),
+            new("Bidding",  Ico("\uE8AB", "🔨"), s => new BiddingViewModel(s)),
+            new("Match Report", Ico("\uE9D2", "📝"), s => new MatchReportViewModel(s)),
         };
 
         NavItem P(string title) => Pages.First(p => p.Title == title);
+        static string Ico(string mdl2, string emoji) => OperatingSystem.IsWindows() ? mdl2 : emoji;
         Sections = new List<NavSection>
         {
             new("MATCHDAY",    new[] { P("Office"), P("Tactics"), P("Calendar") }),

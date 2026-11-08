@@ -82,7 +82,8 @@ import cave_alloc
 from cave_alloc import Refuse
 
 REPO = Path(__file__).resolve().parent.parent
-EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\eFootball\Binaries\Win64\eFootball.exe")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+EXE = (_efootball_dir() / "eFootball" / "Binaries" / "Win64" / "eFootball.exe")
 PRISTINE = Path.home() / "Backups" / "eFootball" / "eFootball.exe.PRISTINE"
 SPEC = REPO / "tools" / "data" / "patches" / "anticipation-ability.json"
 BASE = 0x140000000

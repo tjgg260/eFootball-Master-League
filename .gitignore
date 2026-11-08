@@ -143,3 +143,7 @@ sk/
 #   curl -sL -o tools/tessdata/eng.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/eng.traineddata
 scraper.7z
 tools/tessdata/
+
+# Linux: the tools' Python venv (./setup-linux.sh)
+.venv/
+venv/

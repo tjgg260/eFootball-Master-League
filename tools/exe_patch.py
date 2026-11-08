@@ -165,6 +165,9 @@ def write_patches(exe: Path, specs, reverse: bool, dry: bool, label: str) -> int
         # applying forwards lays the payload before the hook can reach it; reverting backwards
         # removes the hook before the payload it points at.  Never leave a live jmp into int3.
         plan.reverse()
+    if not dry:
+        from steam_paths import refuse_if_game_running
+        refuse_if_game_running(exe.name)
     for off, new, s in plan:
         print(f"  {'REVERT' if reverse else 'PATCH '} {s['name']}  @file {off:#x} (va {base + s['rva']:#x}) {s['kind']}: {s['expect'].hex() if reverse else s['patch'].hex()}")
     if dry:
@@ -218,6 +221,8 @@ def cmd_restore(a):
     if not PRISTINE.exists():
         sys.exit("no pristine backup — nothing was ever patched with this tool")
     exe = Path(a.exe)
+    from steam_paths import refuse_if_game_running
+    refuse_if_game_running(exe.name)
     try:
         shutil.copy2(PRISTINE, exe)
     except PermissionError:

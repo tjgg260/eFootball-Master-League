@@ -31,6 +31,7 @@ target.** Nothing reads game state back in as authority after the initial seed.
 |---|---|
 | **[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)** | Install, build your world, take a job, play your first matchday. **Start here.** |
 | **[docs/FEATURES.md](docs/FEATURES.md)** | What the app does, at a glance |
+| [docs/LINUX.md](docs/LINUX.md) | Running on Linux with Steam + Proton |
 | **[docs/MANUAL.md](docs/MANUAL.md)** | The full manual: every screen, every setting, the rules the engine plays by, and troubleshooting |
 | [PLAYTESTING.md](PLAYTESTING.md) | What we'd like tested, and how to report it |
 
@@ -78,7 +79,7 @@ that file if you want to keep a save.
 
 Requirements:
 
-- Windows 10/11
+- Windows 10/11, or Linux with eFootball run by Steam's Proton ([docs/LINUX.md](docs/LINUX.md))
 - .NET 8 SDK (a newer SDK builds the `net8.0` targets fine)
 - To play a career by entering results yourself, nothing else is needed
 
@@ -87,7 +88,9 @@ dotnet build
 dotnet test
 ```
 
-`Play Master League.bat` builds `ML.App` on first run and launches it from the repo root.
+`Play Master League.bat` builds `ML.App` on first run and launches it from the repo root. On Linux,
+run `./setup-linux.sh` once (Python venv + build) and then `./play-master-league.sh`; see
+[docs/LINUX.md](docs/LINUX.md).
 
 For the full eFootball integration you also need eFootball on Steam, and — **only if you run from
 a source checkout rather than the download** — Python 3.11+ with `Pillow`, `numpy` and

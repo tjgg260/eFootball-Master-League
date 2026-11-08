@@ -37,7 +37,8 @@ from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
 REPO = Path(__file__).resolve().parent.parent
-EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\eFootball\Binaries\Win64\eFootball.exe")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+EXE = (_efootball_dir() / "eFootball" / "Binaries" / "Win64" / "eFootball.exe")
 PRISTINE = Path.home() / "Backups" / "eFootball" / "eFootball.exe.PRISTINE"
 POOL_JSON = REPO / "build" / "caves.json"
 LEDGER = REPO / "tools" / "data" / "cave_reservations.json"

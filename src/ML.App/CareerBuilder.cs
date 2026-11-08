@@ -33,9 +33,11 @@ public static class CareerBuilder
         var env = Environment.GetEnvironmentVariable("ML_PYTHON");
         if (!string.IsNullOrWhiteSpace(env) && File.Exists(env)) return (env, null);
 
+        var root = MatchLauncher.FindRepoRoot();
+        if (!OperatingSystem.IsWindows()) return ResolveUnix(root);
+
         // 2. The interpreter that ships in the release, beside tools/. This is what makes a fresh
         //    download work for somebody who has never installed Python.
-        var root = MatchLauncher.FindRepoRoot();
         var bundledDir = root is null ? null : Path.Combine(root, "python");
         var bundledExe = bundledDir is null ? null : Path.Combine(bundledDir, "python.exe");
         if (bundledExe is not null && File.Exists(bundledExe)) return (bundledExe, null);
@@ -76,6 +78,33 @@ public static class CareerBuilder
         // work in that state either; say so rather than launch the Store.
         return ("python",
             "Couldn't find the download folder (the one holding tools and Play Master League.bat) — extract the zip again and start the app from inside it.");
+    }
+
+    /// <summary>
+    /// Linux (and anything else that is not Windows). There is no embedded interpreter and no
+    /// Store stub: setup-linux.sh makes <c>.venv/</c> beside tools/ with the pipeline's packages,
+    /// and that is the one to run, since a system python3 usually lacks pycryptodome and Pillow.
+    /// Then <c>python3</c>/<c>python</c> on PATH, which the desktop launcher does inherit.
+    /// </summary>
+    private static (string Exe, string? Problem) ResolveUnix(string? root)
+    {
+        if (root is null)
+            return ("python3",
+                "Couldn't find the project folder (the one holding tools/play_match.py) — start the app from inside it.");
+        foreach (var venv in new[] { ".venv", "venv" })
+            foreach (var name in new[] { "python3", "python" })
+            {
+                var exe = Path.Combine(root, venv, "bin", name);
+                if (File.Exists(exe)) return (exe, null);
+            }
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (var name in new[] { "python3", "python" })
+            foreach (var dir in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var exe = Path.Combine(dir, name);
+                if (File.Exists(exe)) return (exe, null);
+            }
+        return ("python3", "Python 3 was not found — run ./setup-linux.sh in the project folder first.");
     }
 
     /// <summary>

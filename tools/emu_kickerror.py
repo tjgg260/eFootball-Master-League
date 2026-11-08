@@ -74,7 +74,8 @@ import keystone
 import numpy as np
 
 REPO = Path(__file__).resolve().parent.parent
-EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\eFootball\Binaries\Win64\eFootball.exe")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+EXE = (_efootball_dir() / "eFootball" / "Binaries" / "Win64" / "eFootball.exe")
 SPEC = REPO / "tools" / "data" / "patches" / "cave-fatigue.json"
 
 BUILDER = 0x14401A900

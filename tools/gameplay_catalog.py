@@ -55,7 +55,8 @@ sys.path.insert(0, str(REPO / "tools"))
 CATALOG = REPO / "build" / "gameplay_catalog.json"
 HTML = REPO / "build" / "gameplay-catalog.html"
 
-EXE = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\eFootball\Binaries\Win64\eFootball.exe")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+EXE = (_efootball_dir() / "eFootball" / "Binaries" / "Win64" / "eFootball.exe")
 BACKUPS = Path.home() / "Backups" / "eFootball"
 PRISTINE = BACKUPS / "eFootball.exe.PRISTINE"
 STOCK = BACKUPS / "eFootball.exe.STOCK"
@@ -263,7 +264,7 @@ def difficulty_table(exe: Path):
     return rows
 
 
-DT270_CPK = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk\dt270_console_all.cpk")
+DT270_CPK = (_efootball_dir() / "cpk" / "dt270_console_all.cpk")
 
 
 def image_state(tr: Path = None):

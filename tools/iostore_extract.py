@@ -35,7 +35,8 @@ except ImportError:
     from iostore_read import aes256_ecb_decrypt   # noqa: F401
 
 KEY = bytes.fromhex("4552D45005DFE94964893F4925EC747D3D591401E060ED8B3D58BE5721C81295")
-PAK_DIR = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\pak")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+PAK_DIR = (_efootball_dir() / "pak")
 INDEX_CACHE = REPO / "build" / "iostore_index.json"
 
 

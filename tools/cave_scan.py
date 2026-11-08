@@ -68,7 +68,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 BUILD = REPO / "build"
 PATCHES = REPO / "tools" / "data" / "patches"
-INSTALLED = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\eFootball\Binaries\Win64\eFootball.exe")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+INSTALLED = (_efootball_dir() / "eFootball" / "Binaries" / "Win64" / "eFootball.exe")
 PRISTINE = Path.home() / "Backups" / "eFootball" / "eFootball.exe.PRISTINE"
 OUT = BUILD / "caves.json"
 

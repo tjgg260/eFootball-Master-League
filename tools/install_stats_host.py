@@ -19,6 +19,10 @@ What install does, and nothing else
   * an attrhook.mode file would make the host REWRITE abilities; if one is there it is renamed to
     attrhook.mode.disabled rather than left to act, and said so
 Refuses while eFootball.exe is running (the game holds dxgi.dll open).
+
+On Linux the same Windows dll goes in the same place: Proton loads native dlls from the exe's
+folder first, and the host chains to C:\Windows\System32\dxgi.dll, which in the Proton prefix
+is DXVK's. ml_stats is found from the exe's own path, so it lands in the real game folder.
 """
 from __future__ import annotations
 
@@ -44,11 +48,17 @@ def sha(p: Path) -> str:
 
 
 def game_running() -> bool:
-    try:
-        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq eFootball.exe"], capture_output=True, text=True).stdout
-    except OSError:
-        return False
-    return "efootball.exe" in out.lower()
+    sys.path.insert(0, str(TOOLS))
+    from steam_paths import game_running as running
+    return running()
+
+
+LINUX_NOTE = """\
+Linux / Proton: Proton already prefers a native dxgi.dll from the exe's folder (it ships DXVK's as
+native), so the host loads with no extra setup. If it does not (no ml_stats folder appears after a
+match), set the game's Steam launch options to:
+    WINEDLLOVERRIDES="dxgi=n,b" %command%
+and do not set PROTON_USE_WINED3D=1, which swaps DXVK's dxgi for Wine's builtin one."""
 
 
 def paths() -> tuple[Path, Path]:
@@ -108,6 +118,8 @@ def install() -> int:
             print(f"renamed {mode} -> attrhook.mode.disabled (it would make the host rewrite abilities)")
     print("switches statshook.on + attrhook.on set in the game root and Win64")
     print("Play a match offline; it is exported ~15 s after you return to the main menu.")
+    if sys.platform != "win32":
+        print(LINUX_NOTE)
     return 0
 
 

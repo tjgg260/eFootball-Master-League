@@ -42,7 +42,8 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "tools"))
 from dt270_constants import decode_constant, encode_constant   # noqa: E402
 
-GAME_CPK = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+GAME_CPK = (_efootball_dir() / "cpk")
 BACKUPS = Path.home() / "Backups" / "eFootball"
 
 MODS = {
@@ -92,6 +93,8 @@ def ensure_pristine_backup() -> Path:
 
 def install_bytes(data: bytes) -> None:
     target = game_dt270()
+    from steam_paths import refuse_if_game_running
+    refuse_if_game_running(target.name)
     stamp = BACKUPS / f"dt270_console_all.{datetime.now():%Y%m%d-%H%M%S}.cpk"
     BACKUPS.mkdir(parents=True, exist_ok=True)
     shutil.copy2(target, stamp)

@@ -32,7 +32,8 @@ import wesys                        # noqa: E402
 import cpk_patch                    # noqa: E402
 
 ARCHIVE_PATH = "common/etc/pesdb/Tactics.bin"
-GAME_CPK = Path(r"C:\Program Files (x86)\Steam\steamapps\common\eFootball\cpk\dt200_console_all.cpk")
+from steam_paths import efootball_dir as _efootball_dir  # noqa: E402  (Windows or Linux)
+GAME_CPK = (_efootball_dir() / "cpk" / "dt200_console_all.cpk")
 
 
 def main() -> int:
