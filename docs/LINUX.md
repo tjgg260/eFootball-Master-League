@@ -88,3 +88,10 @@ the app never calls. On Linux they would have to run inside the game's prefix, f
 scripts pin paths from the owner's Windows machine (`C:\Users\…`) and are not portable as written.
 Rebuilding the stats host from source needs a Windows Rust target. The prebuilt
 `tools/vendor/efootball-re/bin/dxgi.dll` does not.
+
+## The offline exe
+
+`tools/exe_patch.py` patches `eFootball.exe` with plain file I/O, so it works the same on Linux.
+Run it with `.venv/bin/python` and the game closed (it refuses otherwise). The offline spec finds
+its string by search, so game updates that move the string no longer break it. See "Playing
+offline" in the [README](../README.md#playing-offline).
