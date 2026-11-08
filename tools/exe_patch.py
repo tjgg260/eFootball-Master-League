@@ -7,6 +7,12 @@ Same spec format as tools/live_patch.py (patch specs in tools/data/patches/*.jso
         {"name": "...", "module_offset": "0x401b3df" | "va": "0x14401b3df",
          "expect": "f3 0f 59 05 99 35 75 02", "patch": "f3 0f 59 05 29 25 b0 01", "kind": "code"} ]}
 
+    An entry may also carry "find" (ASCII text, or {"hex": "…"}) and "find_offset" (where `expect`
+    starts inside it). exe_patch then locates the entry by searching the exe instead of trusting
+    module_offset, which every Konami update moves. Data patches (strings) use this. The search
+    must hit exactly once, in either the pristine or the patched form, or nothing is written.
+    module_offset stays in the spec for the tools that read it directly (live_patch, cave_*).
+
     python tools/exe_patch.py status                       # pristine sha, which patches are applied
     python tools/exe_patch.py apply  tools/data/patches/kick-error-x2.json [--dry-run]
     python tools/exe_patch.py remove tools/data/patches/kick-error-x2.json    # reverse that spec
@@ -84,7 +90,41 @@ def hexbytes(s: str) -> bytes:
     return bytes.fromhex(s.replace(" ", "").replace("_", ""))
 
 
-def load_spec(path: Path):
+def _find_needle(s: dict) -> bytes:
+    f = s["find"]
+    return hexbytes(f["hex"]) if isinstance(f, dict) else f.encode("ascii")
+
+
+def locate(exe: Path, s: dict) -> int:
+    """RVA of a `find` entry in THIS exe. The needle is searched in both forms, as shipped (expect
+    at find_offset) and as patched, so `remove` and `status` work on a patched exe too. Exactly
+    one hit across both, or exit: two hits mean we would not know which one is the right one."""
+    import mmap
+    needle = _find_needle(s)
+    k = int(s.get("find_offset", 0))
+    e, p = hexbytes(s["expect"]), hexbytes(s["patch"])
+    if needle[k:k + len(e)] != e:
+        sys.exit(f"spec '{s['name']}': find_offset {k} of its 'find' does not hold its 'expect' bytes")
+    patched = needle[:k] + p + needle[k + len(p):]
+    hits = []
+    with open(exe, "rb") as f, mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as m:
+        for form in {needle, patched}:
+            at = m.find(form)
+            while at != -1:
+                hits.append(at)
+                at = m.find(form, at + 1)
+    if len(hits) != 1:
+        sys.exit(f"spec '{s['name']}': its 'find' text occurs {len(hits)} times in {exe.name} "
+                 "(expected exactly once) — different game version? nothing written")
+    _base, secs = sections(exe)
+    off = hits[0] + k
+    for _name, va, _vsize, raw, rsize in secs:
+        if raw <= off < raw + rsize:
+            return va + off - raw
+    sys.exit(f"spec '{s['name']}': file offset {off:#x} is in no section")
+
+
+def load_spec(path: Path, exe: Path | None = None):
     data = json.loads(path.read_text(encoding="utf-8"))
     desc = ""
     if isinstance(data, dict) and "patches" in data:
@@ -96,12 +136,14 @@ def load_spec(path: Path):
         for k in ("name", "expect", "patch"):
             if k not in s:
                 sys.exit(f"spec[{i}] missing '{k}'")
-        if "module_offset" in s:
+        if "find" in s:
+            rva = locate(exe or EXE, s)
+        elif "module_offset" in s:
             rva = int(s["module_offset"], 16)
         elif "va" in s:
             rva = int(s["va"], 16) - 0x140000000
         else:
-            sys.exit(f"spec[{i}] needs module_offset or va")
+            sys.exit(f"spec[{i}] needs find, module_offset or va")
         e, p = hexbytes(s["expect"]), hexbytes(s["patch"])
         if len(e) != len(p):
             sys.exit(f"spec '{s['name']}': expect/patch length differ")
@@ -206,14 +248,14 @@ def write_patches(exe: Path, specs, reverse: bool, dry: bool, label: str) -> int
 
 
 def cmd_apply(a):
-    desc, specs = load_spec(Path(a.spec))
+    desc, specs = load_spec(Path(a.spec), Path(a.exe))
     if desc:
         print(f"spec: {desc}")
     return write_patches(Path(a.exe), specs, reverse=False, dry=a.dry_run, label=Path(a.spec).name)
 
 
 def cmd_remove(a):
-    desc, specs = load_spec(Path(a.spec))
+    desc, specs = load_spec(Path(a.spec), Path(a.exe))
     return write_patches(Path(a.exe), specs, reverse=True, dry=a.dry_run, label=Path(a.spec).name)
 
 
@@ -241,7 +283,7 @@ def cmd_status(a):
     print(f"pristine backup: {'present' if PRISTINE.exists() else 'none yet'}  sha1 {str(st.get('pristine_sha1'))[:16]}")
     print(f"applied specs (per state file): {st.get('applied') or '-'}")
     for spec in sorted((REPO / "tools" / "data" / "patches").glob("*.json")):
-        _d, specs = load_spec(spec)
+        _d, specs = load_spec(spec, exe)
         base, secs = sections(exe)
         with open(exe, "rb") as f:
             states = []
